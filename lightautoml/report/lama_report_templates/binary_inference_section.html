@@ -1,0 +1,36 @@
+<li>
+    <h3 class="caret" id="section3">{{ title }}</h3>
+    <ul class="nested">
+        <li>
+            <h4 class="caret" id="section3_2">ROC curve</h4>
+            <ul class="nested">
+                <p><img src={{roc_curve}} alt="AUC valid plot full"></p>
+            </ul>
+        </li>
+        <li>
+            <h4 class="caret" id="section3_3">ROC-PR curve</h4>
+            <ul class="nested">
+                <p><img src={{pr_curve}} alt="PR valid plot full"></p>
+            </ul>
+        </li>
+        <li>
+            <h4 class="caret" id="section3_4">Pie F1 metric</h4>
+            <ul class="nested">
+                <p><img src={{pie_f1_metric}} alt="Pie F1 metric"></p>
+            </ul>
+        </li>
+        <li>
+            <h4 class="caret" id="section3_5">Distribution of object predictions by bins</h4>
+            <ul class="nested">
+                <p><img src={{preds_distribution_by_bins}} alt="preds_distribution_by_bins"></p>
+                <p><img src={{distribution_of_logits}} alt="distribution_of_logits"></p>
+            </ul>
+        </li>
+        <li>
+            <h4 class="caret" id="section3_6">Distribution of Logits by bins</h4>
+            <ul class="nested">
+                {{ sample_bins_table }}
+            </ul>
+        </li>
+    </ul>
+</li>

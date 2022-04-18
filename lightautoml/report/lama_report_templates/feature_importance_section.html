@@ -1,0 +1,11 @@
+<li>
+    <h2 class="caret" id="section1">Feature importance</h2>
+    <ul class="nested">
+        {% if feature_importance is not none %}
+            <p>Feature importance calculation method: <b>{{fi_method}}</b>.</p>
+            <p><img src={{feature_importance}} alt="feature_importance"></p>
+        {% else %}
+            <p>No feature importance provided for original features.</p>
+        {% endif %}
+    </ul>
+</li>
