@@ -1,4 +1,4 @@
-<img src=https://github.com/AILab-MLTools/LightAutoML/raw/master/imgs/LightAutoML_logo_big.png width=600 />
+<img src=https://github.com/AILab-MLTools/LightAutoML/raw/master/imgs/LightAutoML_logo_big.png />
 
 # LightAutoML - automatic model creation framework
 
@@ -122,13 +122,13 @@ LighAutoML framework has a lot of ready-to-use parts and extensive customization
 
 ### Google Colab tutorials and [other examples](examples/):
 
-- `Tutorial_1_basics.ipynb` - get started with LightAutoML on tabular data.
-- `Tutorial_2_WhiteBox_AutoWoE.ipynb` - creating interpretable models.
-- `Tutorial_3_sql_data_source.ipynb` - shows how to use LightAutoML presets (both standalone and time utilized variants) for solving ML tasks on tabular data from SQL data base instead of CSV.
-- `Tutorial_4_NLP_Interpretation.ipynb` - example of using TabularNLPAutoML preset, LimeTextExplainer.
-- `Tutorial_5_uplift.ipynb` - shows how to use LightAutoML for a uplift-modeling task.
-- `Tutorial_6_custom_pipeline.ipynb` - shows how to create your own pipeline from specified blocks: pipelines for feature generation and feature selection, ML algorithms, hyperparameter optimization etc.
-- `Tutorial_7_ICE_and_PDP_interpretation.ipynb` - shows how to obtain local and global interpretation of model results using ICE and PDP approaches.
+- [`Tutorial_1_basics.ipynb`](https://colab.research.google.com/github/AILab-MLTools/LightAutoML/blob/master/examples/tutorials/Tutorial_1_basics.ipynb) - get started with LightAutoML on tabular data.
+- [`Tutorial_2_WhiteBox_AutoWoE.ipynb`](https://colab.research.google.com/github/AILab-MLTools/LightAutoML/blob/master/examples/tutorials/Tutorial_2_WhiteBox_AutoWoE.ipynb) - creating interpretable models.
+- [`Tutorial_3_sql_data_source.ipynb`](https://colab.research.google.com/github/AILab-MLTools/LightAutoML/blob/master/examples/tutorials/Tutorial_3_sql_data_source.ipynb) - shows how to use LightAutoML presets (both standalone and time utilized variants) for solving ML tasks on tabular data from SQL data base instead of CSV.
+- [`Tutorial_4_NLP_Interpretation.ipynb`](https://colab.research.google.com/github/AILab-MLTools/LightAutoML/blob/master/examples/tutorials/Tutorial_4_NLP_Interpretation.ipynb) - example of using TabularNLPAutoML preset, LimeTextExplainer.
+- [`Tutorial_5_uplift.ipynb`](https://colab.research.google.com/github/AILab-MLTools/LightAutoML/blob/master/examples/tutorials/Tutorial_5_uplift.ipynb) - shows how to use LightAutoML for a uplift-modeling task.
+- [`Tutorial_6_custom_pipeline.ipynb`](https://colab.research.google.com/github/AILab-MLTools/LightAutoML/blob/master/examples/tutorials/Tutorial_6_custom_pipeline.ipynb) - shows how to create your own pipeline from specified blocks: pipelines for feature generation and feature selection, ML algorithms, hyperparameter optimization etc.
+- [`Tutorial_7_ICE_and_PDP_interpretation.ipynb`](https://colab.research.google.com/github/AILab-MLTools/LightAutoML/blob/master/examples/tutorials/Tutorial_7_ICE_and_PDP_interpretation.ipynb) - shows how to obtain local and global interpretation of model results using ICE and PDP approaches.
 
 **Note 1**: for production you have no need to use profiler (which increase work time and memory consomption), so please do not turn it on - it is in off state by default
 
