@@ -11,7 +11,7 @@
 Thank you for your interest in contributing to LightAutoML! Before you begin writing code,
 it is important that you share your intention to contribute with the developers team.
 
-- First, please look for discussions on this topic in [issues](https://github.com/sberbank-ai-lab/LightAutoML/issues)
+- First, please look for discussions on this topic in [issues](https://github.com/AILab-MLTools/LightAutoML/issues)
 before implementing anything inside the project.
 - Pick an issue and comment that you would like to work on it.
 - If there is no discussion on this topic, create one.
@@ -21,7 +21,7 @@ before implementing anything inside the project.
 - If you need more details, please ask we will provide them ASAP.
 
 Once you implement and test your feature or bug-fix, please submit
-a Pull Request to https://github.com/sberbank-ai-lab/LightAutoML.
+a Pull Request to https://github.com/AILab-MLTools/LightAutoML.
 
 When adding functionality, please add examples that will fully explain it.
 Examples can be added in several ways:
@@ -66,7 +66,7 @@ to work with environments.
 
 2. Clone the project to your own local machine:
 ```bash
-git clone git@github.com:sberbank-ai-lab/LightAutoML.git
+git clone git@github.com:AILab-MLTools/LightAutoML.git
 cd LightAutoML
 ```
 
@@ -140,7 +140,7 @@ To build the documentation:
 
 1. Clone repository to your device.
 ```
-git clone https://github.com/sberbank-ai-lab/LightAutoML
+git clone https://github.com/AILab-MLTools/LightAutoML
 cd LightAutoML
 ```
 
