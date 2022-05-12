@@ -21,8 +21,10 @@ Multitable datasets and sequences are a work in progress :)
 
 **Documentation** of LightAutoML is available [here](https://lightautoml.readthedocs.io/), you can also [generate](https://github.com/AILab-MLTools/LightAutoML/blob/master/.github/CONTRIBUTING.md#building-documentation) it.
 
-# (New feature) GPU pipeline
-Full GPU pipeline for LightAutoML currently available for developers testing (still in progress). The code and tutorials [available here](https://github.com/Rishat-skoltech/LightAutoML_GPU)
+# (New features) GPU and Spark pipelines
+Full GPU and Spark pipelines for LightAutoML currently available for developers testing (still in progress). The code and tutorials for:
+- GPU pipeline is [available here](https://github.com/Rishat-skoltech/LightAutoML_GPU)
+- Spark pipeline is [available here](https://github.com/fonhorst/LightAutoML_Spark)
 
 <a name="toc"></a>
 # Table of Contents
