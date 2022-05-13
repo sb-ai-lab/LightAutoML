@@ -21,7 +21,7 @@ from .base import FeaturesPipeline
 
 
 _model_name_by_lang = {
-    "ru": "DeepPavlov/rubert-base-cased-conversational", 
+    "ru": "DeepPavlov/rubert-base-cased-conversational",
     "en": "bert-base-cased",
     "multi": "bert-base-multilingual-cased",
 }

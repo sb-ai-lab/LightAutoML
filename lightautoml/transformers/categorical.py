@@ -675,8 +675,7 @@ class MultiClassTargetEncoder(LAMLTransformer):
 
 
 class MultioutputTargetEncoder(LAMLTransformer):
-    """
-    Out-of-fold target encoding for multi:reg and multilabel task.
+    """Out-of-fold target encoding for multi:reg and multilabel task.
 
     Limitation:
 
@@ -691,6 +690,7 @@ class MultioutputTargetEncoder(LAMLTransformer):
 
     @property
     def features(self) -> List[str]:
+        """Return feature list."""
         return self._features
 
     def __init__(self, alphas: Sequence[float] = (0.5, 1.0, 2.0, 5.0, 10.0, 50.0, 250.0, 1000.0)):
@@ -698,8 +698,7 @@ class MultioutputTargetEncoder(LAMLTransformer):
 
     @staticmethod
     def reg_score_func(candidates: np.ndarray, target: np.ndarray) -> int:
-        """
-
+        """Compute statistics for regression tasks.
 
         Args:
             candidates: np.ndarray.
@@ -719,8 +718,7 @@ class MultioutputTargetEncoder(LAMLTransformer):
 
     @staticmethod
     def class_score_func(candidates: np.ndarray, target: np.ndarray) -> int:
-        """
-
+        """Compute statistics for each class.
 
         Args:
             candidates: np.ndarray.

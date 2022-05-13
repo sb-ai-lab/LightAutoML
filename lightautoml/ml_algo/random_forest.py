@@ -3,15 +3,12 @@
 import logging
 
 from copy import copy
-from typing import Callable
 from typing import Dict
-from typing import Optional
 from typing import Tuple
 from typing import Union
 
 import numpy as np
 
-from optuna.trial import Trial
 from pandas import Series
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import RandomForestRegressor
@@ -31,9 +28,11 @@ RFModel = Union[RandomForestClassifier, RandomForestRegressor]
 
 class RandomForestSklearn(TabularMLAlgo, ImportanceEstimator):
     """Random forest algorigthm from Sklearn.
+
     default_params: All available parameters listed in lightgbm documentation:
         - https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html
         - https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html
+
     freeze_defaults:
         - ``True`` :  params may be rewritten depending on dataset.
         - ``False``:  params may be changed only manually or with tuning.
@@ -63,6 +62,7 @@ class RandomForestSklearn(TabularMLAlgo, ImportanceEstimator):
 
     def _infer_params(self) -> dict:
         """Infer parameters for RF.
+
         Returns:
             Tuple (params, verbose).
         """
@@ -81,12 +81,13 @@ class RandomForestSklearn(TabularMLAlgo, ImportanceEstimator):
 
     def init_params_on_input(self, train_valid_iterator: TrainValidIterator) -> dict:
         """Get model parameters depending on dataset parameters.
+
         Args:
             train_valid_iterator: Classic cv-iterator.
+
         Returns:
             Parameters of model.
         """
-
         rows_num = len(train_valid_iterator.train)
         features_num = len(train_valid_iterator.features)
         task = train_valid_iterator.train.task.name
@@ -151,13 +152,14 @@ class RandomForestSklearn(TabularMLAlgo, ImportanceEstimator):
 
     def fit_predict_single_fold(self, train: TabularDataset, valid: TabularDataset) -> Tuple[RFModel, np.ndarray]:
         """Implements training and prediction on single fold.
+
         Args:
             train: Train Dataset.
             valid: Validation Dataset.
+
         Returns:
             Tuple (model, predicted_values)
         """
-
         params = self._infer_params()
 
         task = self.task.name
@@ -183,9 +185,11 @@ class RandomForestSklearn(TabularMLAlgo, ImportanceEstimator):
 
     def predict_single_fold(self, model: RFModel, dataset: TabularDataset) -> np.ndarray:
         """Predict target values for dataset.
+
         Args:
             model: Lightgbm object.
             dataset: Test Dataset.
+
         Return:
             Predicted target values.
         """
@@ -203,10 +207,10 @@ class RandomForestSklearn(TabularMLAlgo, ImportanceEstimator):
 
     def get_features_score(self) -> Series:
         """Computes feature importance as mean values of feature importance provided by RandomForest per all models.
+
         Returns:
             Series with feature importances.
         """
-
         imp = 0
         for model in self.models:
             imp = imp + model.feature_importances_
@@ -217,6 +221,7 @@ class RandomForestSklearn(TabularMLAlgo, ImportanceEstimator):
 
     def fit(self, train_valid: TrainValidIterator):
         """Just to be compatible with :class:`~lightautoml.pipelines.selection.base.ImportanceEstimator`.
+
         Args:
             train_valid: Classic cv-iterator.
         """

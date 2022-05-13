@@ -214,6 +214,8 @@ class LinearFeatures(FeaturesPipeline, TabularDataFeatures):
 
 
 class LinearTrendFeatures(FeaturesPipeline):
+    """Creates pipeline for linear trend model."""
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 

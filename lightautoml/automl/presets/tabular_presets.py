@@ -79,29 +79,29 @@ class TabularAutoML(AutoMLPreset):
     To generate config template call
     :meth:`TabularAutoML.get_config('config_path.yml')`.
 
-        Args:
-            task: Task to solve.
-            timeout: Timeout in seconds.
-            memory_limit: Memory limit that are passed to each automl.
-            cpu_limit: CPU limit that that are passed to each automl.
-            gpu_ids: GPU IDs that are passed to each automl.
-            timing_params: Timing param dict. Optional.
-            config_path: Path to config file.
-            general_params: General param dict.
-            reader_params: Reader param dict.
-            read_csv_params: Params to pass ``pandas.read_csv``
-              (case of train/predict from file).
-            nested_cv_params: Param dict for nested cross-validation.
-            tuning_params: Params of Optuna tuner.
-            selection_params: Params of feature selection.
-            lgb_params: Params of lightgbm model.
-            cb_params: Params of catboost model.
-            rf_params: Params of Sklearn Random Forest model.
-            linear_l2_params: Params of linear model.
-            gbm_pipeline_params: Params of feature generation
-              for boosting models.
-            linear_pipeline_params: Params of feature generation
-              for linear models.
+    Args:
+        task: Task to solve.
+        timeout: Timeout in seconds.
+        memory_limit: Memory limit that are passed to each automl.
+        cpu_limit: CPU limit that that are passed to each automl.
+        gpu_ids: GPU IDs that are passed to each automl.
+        timing_params: Timing param dict. Optional.
+        config_path: Path to config file.
+        general_params: General param dict.
+        reader_params: Reader param dict.
+        read_csv_params: Params to pass ``pandas.read_csv``
+            (case of train/predict from file).
+        nested_cv_params: Param dict for nested cross-validation.
+        tuning_params: Params of Optuna tuner.
+        selection_params: Params of feature selection.
+        lgb_params: Params of lightgbm model.
+        cb_params: Params of catboost model.
+        rf_params: Params of Sklearn Random Forest model.
+        linear_l2_params: Params of linear model.
+        gbm_pipeline_params: Params of feature generation
+            for boosting models.
+        linear_pipeline_params: Params of feature generation
+            for linear models.
 
     """
 

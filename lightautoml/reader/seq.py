@@ -1,3 +1,5 @@
+"""Calculating inds for different TS datasets."""
+
 import numpy as np
 import pandas as pd
 

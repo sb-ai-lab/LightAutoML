@@ -1,10 +1,10 @@
+"""Generate sequential features."""
+
 from typing import List
-from typing import Optional
 from typing import Union
 
 import numpy as np
 
-from ..dataset.base import LAMLDataset
 from ..dataset.np_pd_dataset import CSRSparseDataset
 from ..dataset.np_pd_dataset import NumpyDataset
 from ..dataset.np_pd_dataset import PandasDataset
@@ -19,7 +19,14 @@ NumpyCSR = Union[NumpyDataset, CSRSparseDataset]
 
 
 class SeqLagTransformer(LAMLTransformer):
-    """LAG."""
+    """LAG.
+
+    Flattens different features
+
+    Args:
+        n_lags: number of lags to compute.
+
+    """
 
     _fit_checks = ()
     _transform_checks = ()
@@ -31,27 +38,16 @@ class SeqLagTransformer(LAMLTransformer):
         return self._features
 
     def __init__(self, n_lags: int = 10):
-        """
-        Flattens different features
-        Args:
-
-            n_lags:
-
-        """
-
         self.n_lags = n_lags
 
     def fit(self, dataset):
         """Fit algorithm on seq dataset.
 
         Args:
-            dataset:
+            dataset: NumpyDataset.
 
         """
-        # set transformer names and add checks
-        # for check_func in self._fit_checks:
-        #    check_func(dataset)
-        # set transformer features
+
         sample_data = dataset.to_sequence([0]).data
 
         # convert to accepted dtype and get attributes
@@ -89,9 +85,6 @@ class SeqLagTransformer(LAMLTransformer):
             params[attribute] = _data
         # transform
         data = np.moveaxis(data, 1, 2).reshape(len(data), -1)
-
-        # print('name', dataset.name)
-        # print('scheme', dataset.scheme)
         # create resulted
         return NumpyDataset(data, self.features, NumericRole(np.float32), **params)
 
@@ -115,7 +108,7 @@ class SeqNumCountsTransformer(LAMLTransformer):
         """Fit algorithm on seq dataset.
 
         Args:
-            dataset:
+            dataset: NumpyDataset.
 
         """
         # set transformer names and add checks
@@ -129,7 +122,15 @@ class SeqNumCountsTransformer(LAMLTransformer):
         return self
 
     def transform(self, dataset) -> NumpyDataset:
+        """Transform input seq dataset to normal numpy representation.
 
+        Args:
+            dataset: seq.
+
+        Returns:
+            Numpy dataset with len of the sequence.
+
+        """
         # checks here
         super().transform(dataset)
         # convert to accepted dtype and get attributes
@@ -161,13 +162,9 @@ class SeqStatisticsTransformer(LAMLTransformer):
         """Fit algorithm on seq dataset.
 
         Args:
-            dataset:
+            dataset: NumpyDataset.
 
         """
-        # set transformer names and add checks
-        # for check_func in self._fit_checks:
-        #    check_func(dataset)
-        # set transformer features
 
         feats = []
         for feat in dataset.features:
@@ -176,16 +173,20 @@ class SeqStatisticsTransformer(LAMLTransformer):
         return self
 
     def transform(self, dataset) -> NumpyDataset:
+        """Transform input seq dataset to normal numpy representation.
 
+        Args:
+            dataset: seq.
+
+        Returns:
+            Numpy dataset with last known feature in the sequence.
+
+        """
         # checks here
         super().transform(dataset)
         # convert to accepted dtype and get attributes
         data = dataset.apply_func((slice(None)), self._get_last)
-        # transform
 
-        # print('name', dataset.name)
-        # print('scheme', dataset.scheme)
-        # create resulted
         return NumpyDataset(data, self.features, NumericRole(np.float32))
 
     @staticmethod
@@ -220,7 +221,7 @@ class GetSeqTransformer(LAMLTransformer):
         """Fit algorithm on seq dataset.
 
         Args:
-            dataset:
+            dataset: NumpyDataset.
 
         """
         # set transformer names and add checks

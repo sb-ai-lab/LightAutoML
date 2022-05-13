@@ -1,11 +1,15 @@
+"""Generate features for data base structure."""
+
 import logging
 import re
 
 from copy import deepcopy
 from typing import Any
 from typing import Dict
-from typing import List, Tuple
+from typing import List
 from typing import Optional
+from typing import Tuple
+
 
 try:
     import featuretools as ft
@@ -29,6 +33,7 @@ from ..reader.utils import set_sklearn_folds
 from ..validation.np_iterators import get_numpy_iterator
 from ..validation.utils import create_validation_iterator
 from .base import LAMLTransformer
+
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -65,8 +70,7 @@ def get_interesting_values(dataset: LAMLDataset, per_top_categories: float) -> D
 
 
 def renaming_function(column_name) -> str:
-    """
-    Renaming for appropriate LGBM format.
+    """Renaming for appropriate LGBM format.
 
     Args:
         column_name: name of column.
@@ -79,7 +83,21 @@ def renaming_function(column_name) -> str:
 
 
 class FeatureGeneratorTransformer(LAMLTransformer, TabularDataFeatures):
-    """Generate features."""
+    """Generate features.
+
+    Args:
+        seq_params: sequence-related params.
+        max_gener_features: maximum generated features.
+        max_depth: maximum allowed depth of features.
+        agg_primitives: list of aggregation primitives.
+        trans_primitives: list of transform primitives.
+        interesting_values: categorical values if the form of {table_name: {column: [values]}} for feature generation in corresponding slices.
+        generate_interesting_values: whether generate feature in slices of unique categories or not.
+        per_top_categories: percent of most frequent categories for feature generation in corresponding slices. If number of unique values is less than 10, then the all values are be used.
+        sample_size: size of data to make generated feature selection on it.
+        n_jobs: number of processes to run in parallel
+
+    """
 
     _fit_checks = ()
     _transform_checks = ()
@@ -88,59 +106,42 @@ class FeatureGeneratorTransformer(LAMLTransformer, TabularDataFeatures):
     @property
     def features(self) -> List[str]:
         """Features list."""
-
         return self._features
 
     def __init__(
-            self,
-            seq_params: Dict,
-            max_gener_features: int = -1,
-            max_depth: int = 2,
-            agg_primitives: Optional[Tuple[str]] = (
-                "entropy",
-                "count",
-                "mean",
-                "std",
-                "median",
-                "max",
-                "sum",
-                "num_unique",
-                "min",
-                "percent_true",
-            ),
-            trans_primitives: Optional[Tuple[str]] = (
-                "hour",
-                "month",
-                "weekday",
-                "is_weekend",
-                "day",
-                "time_since_previous",
-                "week",
-                "age",
-                "time_since",
-            ),
-            interesting_values: Dict[str, Dict[str, List[Any]]] = None,
-            generate_interesting_values: bool = False,
-            per_top_categories: float = 0.25,
-            sample_size: int = None,
-            n_jobs: int = 1,
+        self,
+        seq_params: Dict,
+        max_gener_features: int = -1,
+        max_depth: int = 2,
+        agg_primitives: Optional[Tuple[str]] = (
+            "entropy",
+            "count",
+            "mean",
+            "std",
+            "median",
+            "max",
+            "sum",
+            "num_unique",
+            "min",
+            "percent_true",
+        ),
+        trans_primitives: Optional[Tuple[str]] = (
+            "hour",
+            "month",
+            "weekday",
+            "is_weekend",
+            "day",
+            "time_since_previous",
+            "week",
+            "age",
+            "time_since",
+        ),
+        interesting_values: Dict[str, Dict[str, List[Any]]] = None,
+        generate_interesting_values: bool = False,
+        per_top_categories: float = 0.25,
+        sample_size: int = None,
+        n_jobs: int = 1,
     ):
-
-        """
-
-        Args:
-            seq_params: sequence-related params.
-            max_gener_features: maximum generated features.
-            max_depth: maximum allowed depth of features.
-            agg_primitives: list of aggregation primitives.
-            trans_primitives: list of transform primitives.
-            interesting_values: categorical values if the form of {table_name: {column: [values]}} for feature generation in corresponding slices.
-            generate_interesting_values: whether generate feature in slices of unique categories or not.
-            per_top_categories: percent of most frequent categories for feature generation in corresponding slices. If number of unique values is less than 10, then the all values are be used.
-            sample_size: size of data to make generated feature selection on it.
-            n_jobs: number of processes to run in parallel
-
-        """
 
         super().__init__()
 
@@ -178,7 +179,6 @@ class FeatureGeneratorTransformer(LAMLTransformer, TabularDataFeatures):
 
     def _create_entities(self, dataset: LAMLDataset):
         """Create entities"""
-
         # An entity of the main table
         self.es = self.es.add_dataframe(
             dataframe_name="plain",
@@ -225,7 +225,6 @@ class FeatureGeneratorTransformer(LAMLTransformer, TabularDataFeatures):
 
     def _add_relationships(self):
         """Add in the defined relationships"""
-
         relationships = list()
         for seq_table_name in sorted(list(self.seq_params.keys())):
             scheme = self.seq_params[seq_table_name]["scheme"]
@@ -233,7 +232,6 @@ class FeatureGeneratorTransformer(LAMLTransformer, TabularDataFeatures):
 
     def _set_interesting_values(self):
         """Add interesting values if any"""
-
         for seq_table_name in self.seq_table_names and sorted(list(self.interesting_values.keys())):
             columns = sorted(list(self.interesting_values[seq_table_name].keys()))
             for column in columns:
@@ -242,7 +240,6 @@ class FeatureGeneratorTransformer(LAMLTransformer, TabularDataFeatures):
 
     def _get_new_feature_names(self):
         """DFS with specified primitives"""
-
         return ft.dfs(
             entityset=self.es,
             target_dataframe_name="plain",
@@ -265,7 +262,6 @@ class FeatureGeneratorTransformer(LAMLTransformer, TabularDataFeatures):
             self.
 
         """
-
         # set transformer names and add checks
         for check_func in self._fit_checks:
             check_func(dataset)
@@ -286,16 +282,16 @@ class FeatureGeneratorTransformer(LAMLTransformer, TabularDataFeatures):
                 self.interesting_values = dict()
 
             self.interesting_values.update(new_interesting_values)
-            logger.info3(f"Interesting values have been generated")
+            logger.info3("Interesting values have been generated")
 
         # Add interesting values
         if bool(self.interesting_values):
             self._set_interesting_values()
-            logger.info3(f"Interesting values have been added to the entityset")
+            logger.info3("Interesting values have been added to the entityset")
 
         # Add relationships
         self._add_relationships()
-        logger.info3(f"Relationships have been added to the entityset")
+        logger.info3("Relationships have been added to the entityset")
 
         # DFS with specified primitives
         self._ignore_columns = dataset.data.columns.tolist()
@@ -338,11 +334,10 @@ class FeatureGeneratorTransformer(LAMLTransformer, TabularDataFeatures):
 
         self.feats_imp.fit(dataset_sample_iter)
 
-        logger.info3(f"Selection completed")
+        logger.info3("Selection completed")
         logger.info3(f"{len(self.feats_imp.selected_features)} features have been selected from generated")
 
     def transform(self, dataset: LAMLDataset) -> LAMLDataset:
-
         """Generate new columns from inrintut dataset.
 
         Args:
@@ -352,7 +347,6 @@ class FeatureGeneratorTransformer(LAMLTransformer, TabularDataFeatures):
             LAMLDataset with new features.
 
         """
-
         # checks here
         super().transform(dataset)
 
@@ -377,5 +371,5 @@ class FeatureGeneratorTransformer(LAMLTransformer, TabularDataFeatures):
         dataset_out = dataset.empty()
         dataset_out.set_data(fm, self.selected_features, fm_roles_dict)
 
-        logger.info3(f"Feature generation is completed")
+        logger.info3("Feature generation is completed")
         return dataset_out

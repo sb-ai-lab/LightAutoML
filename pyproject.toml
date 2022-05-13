@@ -207,4 +207,3 @@ whitelist_externals = poetry
 commands =
     poetry run pytest tests -v
 """
-

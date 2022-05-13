@@ -12,7 +12,6 @@ from ...dataset.roles import NumericRole
 from ...transformers.base import ChangeRoles
 from ...transformers.base import ColumnsSelector
 from ...transformers.base import ConvertDataset
-from ...transformers.base import EmptyTransformer
 from ...transformers.base import LAMLTransformer
 from ...transformers.base import SequentialTransformer
 from ...transformers.base import SetAttribute
@@ -95,6 +94,20 @@ class LGBSimpleFeatures(FeaturesPipeline):
 
 
 class LGBSeqSimpleFeatures(FeaturesPipeline, TabularDataFeatures):
+    """LGBSeqSimpleFeatures.
+
+    Args:
+        feats_imp: Features importances mapping.
+        top_intersections: Max number of categories
+          to generate intersections.
+        max_intersection_depth: Max depth of cat intersection.
+        subsample: Subsample to calc data statistics.
+        multiclass_te_co: Cutoff if use target encoding in cat
+          handling on multiclass task if number of classes is high.
+        auto_unique_co: Switch to target encoding if high cardinality.
+
+    """
+
     def __init__(
         self,
         feats_imp: Optional[ImportanceEstimator] = None,
@@ -108,19 +121,6 @@ class LGBSeqSimpleFeatures(FeaturesPipeline, TabularDataFeatures):
         scaler=False,
         **kwargs
     ):
-        """
-
-        Args:
-            feats_imp: Features importances mapping.
-            top_intersections: Max number of categories
-              to generate intersections.
-            max_intersection_depth: Max depth of cat intersection.
-            subsample: Subsample to calc data statistics.
-            multiclass_te_co: Cutoff if use target encoding in cat
-              handling on multiclass task if number of classes is high.
-            auto_unique_co: Switch to target encoding if high cardinality.
-
-        """
         super().__init__(
             multiclass_te_co=multiclass_te_co,
             top_intersections=top_intersections,
@@ -136,6 +136,15 @@ class LGBSeqSimpleFeatures(FeaturesPipeline, TabularDataFeatures):
         self.scaler = scaler
 
     def get_seq_pipeline(self, train):
+        """Create pipeline for seq data.
+
+        Args:
+            train: Dataset with train features.
+
+        Returns:
+            Composite datetime, categorical, numeric transformer.
+
+        """
         transformers_list = []
         # process categories
 
@@ -247,6 +256,20 @@ class LGBSeqSimpleFeatures(FeaturesPipeline, TabularDataFeatures):
 
 
 class LGBMultiSeqSimpleFeatures(FeaturesPipeline, TabularDataFeatures):
+    """LGBMultiSeqSimpleFeatures.
+
+    Args:
+        feats_imp: Features importances mapping.
+        top_intersections: Max number of categories
+          to generate intersections.
+        max_intersection_depth: Max depth of cat intersection.
+        subsample: Subsample to calc data statistics.
+        multiclass_te_co: Cutoff if use target encoding in cat
+          handling on multiclass task if number of classes is high.
+        auto_unique_co: Switch to target encoding if high cardinality.
+
+    """
+
     def __init__(
         self,
         feats_imp: Optional[ImportanceEstimator] = None,
@@ -258,19 +281,7 @@ class LGBMultiSeqSimpleFeatures(FeaturesPipeline, TabularDataFeatures):
         output_categories: bool = False,
         **kwargs
     ):
-        """
 
-        Args:
-            feats_imp: Features importances mapping.
-            top_intersections: Max number of categories
-              to generate intersections.
-            max_intersection_depth: Max depth of cat intersection.
-            subsample: Subsample to calc data statistics.
-            multiclass_te_co: Cutoff if use target encoding in cat
-              handling on multiclass task if number of classes is high.
-            auto_unique_co: Switch to target encoding if high cardinality.
-
-        """
         super().__init__(
             multiclass_te_co=multiclass_te_co,
             top_intersections=top_intersections,
@@ -283,6 +294,15 @@ class LGBMultiSeqSimpleFeatures(FeaturesPipeline, TabularDataFeatures):
         )
 
     def get_seq_pipeline(self, train):
+        """Create pipeline for seq data.
+
+        Args:
+            train: Dataset with train features.
+
+        Returns:
+            Composite datetime, categorical, numeric transformer.
+
+        """
         transformers_list = []
         # process categories
         categories = get_columns_by_role(train, "Category")

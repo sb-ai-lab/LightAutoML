@@ -40,6 +40,7 @@ from .seq import IDSInd
 from .seq import TopInd
 from .utils import set_sklearn_folds
 
+
 logger = logging.getLogger(__name__)
 
 # roles, how it's passed to automl
@@ -100,11 +101,11 @@ class Reader:
         return self._used_array_attrs
 
     def fit_read(
-            self,
-            train_data: Any,
-            features_names: Optional[List[str]] = None,
-            roles: UserRolesDefinition = None,
-            **kwargs: Any
+        self,
+        train_data: Any,
+        features_names: Optional[List[str]] = None,
+        roles: UserRolesDefinition = None,
+        **kwargs: Any
     ):
         """Abstract function to get dataset with initial feature selection."""
         raise NotImplementedError
@@ -114,9 +115,9 @@ class Reader:
         raise NotImplementedError
 
     def upd_used_features(
-            self,
-            add: Optional[Sequence[str]] = None,
-            remove: Optional[Sequence[str]] = None,
+        self,
+        add: Optional[Sequence[str]] = None,
+        remove: Optional[Sequence[str]] = None,
     ):
         """Updates the list of used features.
 
@@ -210,25 +211,25 @@ class PandasToPandasReader(Reader):
     """
 
     def __init__(
-            self,
-            task: Task,
-            samples: Optional[int] = 100000,
-            max_nan_rate: float = 0.999,
-            max_constant_rate: float = 0.999,
-            cv: int = 5,
-            random_state: int = 42,
-            roles_params: Optional[dict] = None,
-            n_jobs: int = 4,
-            # params for advanced roles guess
-            advanced_roles: bool = True,
-            numeric_unique_rate: float = 0.999,
-            max_to_3rd_rate: float = 1.1,
-            binning_enc_rate: float = 2,
-            raw_decr_rate: float = 1.1,
-            max_score_rate: float = 0.2,
-            abs_score_val: float = 0.04,
-            drop_score_co: float = 0.01,
-            **kwargs: Any
+        self,
+        task: Task,
+        samples: Optional[int] = 100000,
+        max_nan_rate: float = 0.999,
+        max_constant_rate: float = 0.999,
+        cv: int = 5,
+        random_state: int = 42,
+        roles_params: Optional[dict] = None,
+        n_jobs: int = 4,
+        # params for advanced roles guess
+        advanced_roles: bool = True,
+        numeric_unique_rate: float = 0.999,
+        max_to_3rd_rate: float = 1.1,
+        binning_enc_rate: float = 2,
+        raw_decr_rate: float = 1.1,
+        max_score_rate: float = 0.2,
+        abs_score_val: float = 0.04,
+        drop_score_co: float = 0.01,
+        **kwargs: Any
     ):
         super().__init__(task)
         self.samples = samples
@@ -257,7 +258,7 @@ class PandasToPandasReader(Reader):
         self.params = kwargs
 
     def fit_read(
-            self, train_data: DataFrame, features_names: Any = None, roles: UserDefinedRolesDict = None, **kwargs: Any
+        self, train_data: DataFrame, features_names: Any = None, roles: UserDefinedRolesDict = None, **kwargs: Any
     ) -> PandasDataset:
         """Get dataset with initial feature selection.
 
@@ -293,7 +294,7 @@ class PandasToPandasReader(Reader):
                 # TODO: Think, what if multilabel or multitask? Multiple column target ..
                 # TODO: Maybe for multilabel/multitask make target only avaliable in kwargs??
                 if ((self.task.name == "multi:reg") or (self.task.name == "multilabel")) and (
-                        attrs_dict[r.name] == "target"
+                    attrs_dict[r.name] == "target"
                 ):
                     if attrs_dict[r.name] in kwargs:
                         kwargs[attrs_dict[r.name]].append(feat)
@@ -352,9 +353,9 @@ class PandasToPandasReader(Reader):
                         flg_default_params = False
 
                     if (
-                            flg_default_params
-                            and not np.issubdtype(cat_role.dtype, np.number)
-                            and np.issubdtype(subsample.dtypes[feat], np.number)
+                        flg_default_params
+                        and not np.issubdtype(cat_role.dtype, np.number)
+                        and np.issubdtype(subsample.dtypes[feat], np.number)
                     ):
                         r.dtype = self._get_default_role_from_str("numeric").dtype
 
@@ -644,55 +645,52 @@ class DictToPandasSeqReader(PandasToPandasReader):
         - Same function for plain dataset as PandasToPandasReader.
         - Parse sequential data (simple auto-typing).
 
+    Args:
+        task: Task object.
+        samples: Number of elements used when checking role type.
+        max_nan_rate: Maximum nan-rate.
+        max_constant_rate: Maximum constant rate.
+        cv: CV Folds.
+        random_state: Random seed.
+        roles_params: dict of params of features roles. \
+            Ex. {'numeric': {'dtype': np.float32}, 'datetime': {'date_format': '%Y-%m-%d'}}
+            It's optional and commonly comes from config
+        n_jobs: Int number of processes.
+        advanced_roles: Param of roles guess (experimental, do not change).
+        numeric_unqiue_rate: Param of roles guess (experimental, do not change).
+        max_to_3rd_rate: Param of roles guess (experimental, do not change).
+        binning_enc_rate: Param of roles guess (experimental, do not change).
+        raw_decr_rate: Param of roles guess (experimental, do not change).
+        max_score_rate: Param of roles guess (experimental, do not change).
+        abs_score_val: Param of roles guess (experimental, do not change).
+        drop_score_co: Param of roles guess (experimental, do not change).
+        seq_params: sequence-related params.
+        **kwargs: For now not used.
+
     """
 
     def __init__(
-            self,
-            task: Task,
-            samples: Optional[int] = 100000,
-            max_nan_rate: float = 0.999,
-            max_constant_rate: float = 0.999,
-            cv: int = 5,
-            random_state: int = 42,
-            roles_params: Optional[dict] = None,
-            n_jobs: int = 4,
-            # params for advanced roles guess
-            advanced_roles: bool = True,
-            numeric_unique_rate: float = 0.999,
-            max_to_3rd_rate: float = 1.1,
-            binning_enc_rate: float = 2,
-            raw_decr_rate: float = 1.1,
-            max_score_rate: float = 0.2,
-            abs_score_val: float = 0.04,
-            drop_score_co: float = 0.01,
-            seq_params=None,
-            **kwargs: Any
+        self,
+        task: Task,
+        samples: Optional[int] = 100000,
+        max_nan_rate: float = 0.999,
+        max_constant_rate: float = 0.999,
+        cv: int = 5,
+        random_state: int = 42,
+        roles_params: Optional[dict] = None,
+        n_jobs: int = 4,
+        # params for advanced roles guess
+        advanced_roles: bool = True,
+        numeric_unique_rate: float = 0.999,
+        max_to_3rd_rate: float = 1.1,
+        binning_enc_rate: float = 2,
+        raw_decr_rate: float = 1.1,
+        max_score_rate: float = 0.2,
+        abs_score_val: float = 0.04,
+        drop_score_co: float = 0.01,
+        seq_params=None,
+        **kwargs: Any
     ):
-        """
-
-        Args:
-            task: Task object.
-            samples: Number of elements used when checking role type.
-            max_nan_rate: Maximum nan-rate.
-            max_constant_rate: Maximum constant rate.
-            cv: CV Folds.
-            random_state: Random seed.
-            roles_params: dict of params of features roles. \
-                Ex. {'numeric': {'dtype': np.float32}, 'datetime': {'date_format': '%Y-%m-%d'}}
-                It's optional and commonly comes from config
-            n_jobs: Int number of processes.
-            advanced_roles: Param of roles guess (experimental, do not change).
-            numeric_unqiue_rate: Param of roles guess (experimental, do not change).
-            max_to_3rd_rate: Param of roles guess (experimental, do not change).
-            binning_enc_rate: Param of roles guess (experimental, do not change).
-            raw_decr_rate: Param of roles guess (experimental, do not change).
-            max_score_rate: Param of roles guess (experimental, do not change).
-            abs_score_val: Param of roles guess (experimental, do not change).
-            drop_score_co: Param of roles guess (experimental, do not change).
-            seq_params: sequence-related params.
-            **kwargs: For now not used.
-
-        """
 
         super().__init__(task)
         self.samples = samples
@@ -728,6 +726,8 @@ class DictToPandasSeqReader(PandasToPandasReader):
         self.meta = {}
 
     def create_ids(self, seq_data, plain_data, dataset_name):
+        """Calculate ids for different seq tasks."""
+
         if self.seq_params[dataset_name]["case"] == "next_values":
             self.ti[dataset_name] = TopInd(
                 scheme=self.seq_params[dataset_name].get("scheme", None),
@@ -743,6 +743,8 @@ class DictToPandasSeqReader(PandasToPandasReader):
             self.ti[dataset_name].read(seq_data, plain_data)
 
     def parse_seq(self, seq_dataset, plain_data, dataset_name, parsed_roles, roles):
+        """Method to read sequential data."""
+
         subsample = seq_dataset
         if self.samples is not None and self.samples < subsample.shape[0]:
             subsample = subsample.sample(self.samples, axis=0, random_state=42)
@@ -781,9 +783,9 @@ class DictToPandasSeqReader(PandasToPandasReader):
                         flg_default_params = False
 
                     if (
-                            flg_default_params
-                            and not np.issubdtype(cat_role.dtype, np.number)
-                            and np.issubdtype(subsample.dtypes[feat], np.number)
+                        flg_default_params
+                        and not np.issubdtype(cat_role.dtype, np.number)
+                        and np.issubdtype(subsample.dtypes[feat], np.number)
                     ):
                         r.dtype = self._get_default_role_from_str("numeric").dtype
 
@@ -850,7 +852,7 @@ class DictToPandasSeqReader(PandasToPandasReader):
         return seq_dataset, parsed_roles
 
     def fit_read(
-            self, train_data: Dict, features_names: Any = None, roles: UserDefinedRolesDict = None, **kwargs: Any
+        self, train_data: Dict, features_names: Any = None, roles: UserDefinedRolesDict = None, **kwargs: Any
     ) -> PandasDataset:
         """Get dataset with initial feature selection.
 
@@ -897,7 +899,7 @@ class DictToPandasSeqReader(PandasToPandasReader):
                     # defined in kwargs is rewrited.. TODO: Maybe raise warning if rewrited?
 
                     if ((self.task.name == "multi:reg") or (self.task.name == "multilabel")) and (
-                            attrs_dict[r.name] == "target"
+                        attrs_dict[r.name] == "target"
                     ):
                         if attrs_dict[r.name] in kwargs:
                             kwargs[attrs_dict[r.name]].append(feat)
@@ -961,9 +963,9 @@ class DictToPandasSeqReader(PandasToPandasReader):
                             flg_default_params = False
 
                         if (
-                                flg_default_params
-                                and not np.issubdtype(cat_role.dtype, np.number)
-                                and np.issubdtype(subsample.dtypes[feat], np.number)
+                            flg_default_params
+                            and not np.issubdtype(cat_role.dtype, np.number)
+                            and np.issubdtype(subsample.dtypes[feat], np.number)
                         ):
                             r.dtype = self._get_default_role_from_str("numeric").dtype
 
@@ -983,7 +985,7 @@ class DictToPandasSeqReader(PandasToPandasReader):
                     self._dropped_features.append(feat)
 
             assert (
-                    len(set(self.used_features) & set(subsample.columns)) > 0
+                len(set(self.used_features) & set(subsample.columns)) > 0
             ), "All features are excluded for some reasons"
 
         if self.cv is not None:

@@ -8,6 +8,7 @@ from typing import Type
 from typing import Union
 
 import numpy as np
+import pandas as pd
 
 from ..dataset.base import LAMLDataset
 from ..dataset.base import RolesDict
@@ -555,15 +556,16 @@ class ChangeRoles(LAMLTransformer):
 
 
 class SetAttribute(LAMLTransformer):
-    """Set data attribute."""
+    """Set data attribute.
+
+    Args:
+        attr: New attribute for dataset.
+        column: Name of column.
+
+    """
 
     def __init__(self, attr, column):
-        """
-        Args:
-            attr: New attribute for dataset.
-            column: Name of column.
 
-        """
         self.attr = attr
         self.column = column
 
@@ -596,12 +598,7 @@ class EmptyTransformer(LAMLTransformer):
     """Set data attribute."""
 
     def __init__(self):
-        """
-        Args:
-            attr: New attribute for dataset.
-            column: Name of column.
-
-        """
+        pass
 
     def transform(self, dataset: LAMLDataset) -> LAMLDataset:
         """Paste new attributes into dataset.

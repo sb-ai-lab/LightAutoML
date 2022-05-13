@@ -25,13 +25,11 @@ from .base import IntIdx
 from .base import LAMLColumn
 from .base import LAMLDataset
 from .base import RolesDict
-from .base import array_attr_roles
 from .base import valid_array_attributes
+from .np_pd_dataset import CSRSparseDataset
 from .np_pd_dataset import NumpyDataset
 from .np_pd_dataset import PandasDataset
 from .roles import ColumnRole
-from .roles import DropRole
-from .roles import NumericRole
 
 
 NpFeatures = Union[Sequence[str], str, None]
@@ -160,7 +158,14 @@ class SeqNumpyPandasDataset(PandasDataset):
             self.set_data(data, roles, idx)
 
     def set_data(self, data: DenseSparseArray, roles: NpRoles = None, idx: Optional[List] = None):
+        """Inplace set data, features, roles for empty dataset.
 
+        Args:
+            data: 2d array like or ``None``.
+            roles: roles dict.
+            idx: list.
+
+        """
         # assert data is None or type(data) is np.ndarray, 'Numpy dataset support only np.ndarray features'
         super().set_data(data, None, roles)
         if idx is None:
@@ -242,9 +247,8 @@ class SeqNumpyPandasDataset(PandasDataset):
 
             # case of multiple columns - return LAMLDataset
             roles = dict(((x, self.roles[x]) for x in self.roles if x in cols))
-            features = [x for x in cols if x in set(self.features)]
         else:
-            roles, features = self.roles, self.features
+            roles = self.roles
             data = self._get_rows(self.data, rows)
 
         # case when rows are defined
@@ -405,8 +409,7 @@ class SeqNumpyPandasDataset(PandasDataset):
         return data.iloc[:, cols].values[rows]
 
     def to_csr(self) -> "CSRSparseDataset":
-        """
-        Convert to csr.
+        """Convert to csr.
 
         Returns:
             Same dataset in CSRSparseDatatset format.
