@@ -80,7 +80,7 @@ class BoostLGBM(TabularMLAlgo, ImportanceEstimator):
         early_stopping_rounds = params.pop("early_stopping_rounds")
         num_trees = params.pop("num_trees")
 
-        verbose_eval = True
+        verbose_eval = 100
 
         # get objective params
         loss = self.task.losses["lgb"]

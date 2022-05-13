@@ -25,6 +25,7 @@ from ...dataset.np_pd_dataset import NumpyDataset
 from ...ml_algo.boost_cb import BoostCB
 from ...ml_algo.boost_lgbm import BoostLGBM
 from ...ml_algo.linear_sklearn import LinearLBFGS
+from ...ml_algo.random_forest import RandomForestSklearn
 from ...ml_algo.tuning.optuna import OptunaTuner
 from ...pipelines.features.lgb_pipeline import LGBAdvancedPipeline
 from ...pipelines.features.lgb_pipeline import LGBSimpleFeatures
@@ -78,41 +79,36 @@ class TabularAutoML(AutoMLPreset):
     To generate config template call
     :meth:`TabularAutoML.get_config('config_path.yml')`.
 
-    Args:
-        task: Task to solve.
-        timeout: Timeout in seconds.
-        memory_limit: Memory limit that are passed to each automl.
-        cpu_limit: CPU limit that that are passed to each automl.
-        gpu_ids: GPU IDs that are passed to each automl.
-        timing_params: Timing param dict. Optional.
-        config_path: Path to config file.
-        general_params: General param dict.
-        reader_params: Reader param dict.
-        read_csv_params: Params to pass ``pandas.read_csv``
-            (case of train/predict from file).
-        nested_cv_params: Param dict for nested cross-validation.
-        tuning_params: Params of Optuna tuner.
-        selection_params: Params of feature selection.
-        lgb_params: Params of lightgbm model.
-        cb_params: Params of catboost model.
-        linear_l2_params: Params of linear model.
-        gbm_pipeline_params: Params of feature generation
-            for boosting models.
-        linear_pipeline_params: Params of feature generation
-            for linear models.
+        Args:
+            task: Task to solve.
+            timeout: Timeout in seconds.
+            memory_limit: Memory limit that are passed to each automl.
+            cpu_limit: CPU limit that that are passed to each automl.
+            gpu_ids: GPU IDs that are passed to each automl.
+            timing_params: Timing param dict. Optional.
+            config_path: Path to config file.
+            general_params: General param dict.
+            reader_params: Reader param dict.
+            read_csv_params: Params to pass ``pandas.read_csv``
+              (case of train/predict from file).
+            nested_cv_params: Param dict for nested cross-validation.
+            tuning_params: Params of Optuna tuner.
+            selection_params: Params of feature selection.
+            lgb_params: Params of lightgbm model.
+            cb_params: Params of catboost model.
+            rf_params: Params of Sklearn Random Forest model.
+            linear_l2_params: Params of linear model.
+            gbm_pipeline_params: Params of feature generation
+              for boosting models.
+            linear_pipeline_params: Params of feature generation
+              for linear models.
 
     """
 
     _default_config_path = "tabular_config.yml"
 
     # set initial runtime rate guess for first level models
-    _time_scores = {
-        "lgb": 1,
-        "lgb_tuned": 3,
-        "linear_l2": 0.7,
-        "cb": 2,
-        "cb_tuned": 6,
-    }
+    _time_scores = {"lgb": 1, "lgb_tuned": 3, "linear_l2": 0.7, "cb": 2, "cb_tuned": 6, "rf": 5, "rf_tuned": 10}
 
     def __init__(
         self,
@@ -131,6 +127,7 @@ class TabularAutoML(AutoMLPreset):
         selection_params: Optional[dict] = None,
         lgb_params: Optional[dict] = None,
         cb_params: Optional[dict] = None,
+        rf_params: Optional[dict] = None,
         linear_l2_params: Optional[dict] = None,
         gbm_pipeline_params: Optional[dict] = None,
         linear_pipeline_params: Optional[dict] = None,
@@ -148,6 +145,7 @@ class TabularAutoML(AutoMLPreset):
                 "selection_params",
                 "lgb_params",
                 "cb_params",
+                "rf_params",
                 "linear_l2_params",
                 "gbm_pipeline_params",
                 "linear_pipeline_params",
@@ -161,6 +159,7 @@ class TabularAutoML(AutoMLPreset):
                 selection_params,
                 lgb_params,
                 cb_params,
+                rf_params,
                 linear_l2_params,
                 gbm_pipeline_params,
                 linear_pipeline_params,
@@ -190,6 +189,9 @@ class TabularAutoML(AutoMLPreset):
             self.general_params["use_algos"] = [["lgb", "lgb_tuned", "linear_l2", "cb", "cb_tuned"]]
             if self.task.name == "multiclass" and multilevel_avail:
                 self.general_params["use_algos"].append(["linear_l2", "lgb"])
+
+            if (self.task.name == "multi:reg") or (self.task.name == "multilabel"):
+                self.general_params["use_algos"] = [["linear_l2", "cb", "rf", "rf_tuned", "cb_tuned"]]
 
         if not self.general_params["nested_cv"]:
             self.nested_cv_params["cv"] = 1
@@ -249,6 +251,12 @@ class TabularAutoML(AutoMLPreset):
             **{"feature_fraction": 1},
         }
 
+        cb_params = deepcopy(self.cb_params)
+        cb_params["default_params"] = {
+            **cb_params["default_params"],
+            **{"rsm": 1},
+        }
+
         mode = selection_params["mode"]
 
         # create pre selection based on mode
@@ -256,13 +264,22 @@ class TabularAutoML(AutoMLPreset):
         if mode > 0:
             # if we need selector - define model
             # timer will be useful to estimate time for next gbm runs
-            time_score = self.get_time_score(n_level, "lgb", False)
-
-            sel_timer_0 = self.timer.get_task_timer("lgb", time_score)
             selection_feats = LGBSimpleFeatures()
 
-            selection_gbm = BoostLGBM(timer=sel_timer_0, **lgb_params)
+            if (self.task.name == "multi:reg") or (self.task.name == "multilabel"):
+                time_score = self.get_time_score(n_level, "cb", False)
+                sel_timer_0 = self.timer.get_task_timer("cb", time_score)
+                selection_gbm = BoostCB(timer=sel_timer_0, **cb_params)
+                model_name = "cb"
+            else:
+                time_score = self.get_time_score(n_level, "lgb", False)
+                sel_timer_0 = self.timer.get_task_timer("lgb", time_score)
+                selection_gbm = BoostLGBM(timer=sel_timer_0, **lgb_params)
+                model_name = "lgb"
             selection_gbm.set_prefix("Selector")
+            time_score = self.get_time_score(n_level, model_name, False)
+
+            sel_timer_0 = self.timer.get_task_timer(model_name, time_score)
 
             if selection_params["importance_type"] == "permutation":
                 importance = NpPermutationImportanceEstimator()
@@ -277,11 +294,14 @@ class TabularAutoML(AutoMLPreset):
                 fit_on_holdout=selection_params["fit_on_holdout"],
             )
             if mode == 2:
-                time_score = self.get_time_score(n_level, "lgb", False)
+                time_score = self.get_time_score(n_level, model_name, False)
 
-                sel_timer_1 = self.timer.get_task_timer("lgb", time_score)
+                sel_timer_1 = self.timer.get_task_timer(model_name, time_score)
                 selection_feats = LGBSimpleFeatures()
-                selection_gbm = BoostLGBM(timer=sel_timer_1, **lgb_params)
+                if (self.task.name == "multi:reg") or (self.task.name == "multilabel"):
+                    selection_gbm = BoostCB(timer=sel_timer_1, **cb_params)
+                else:
+                    selection_gbm = BoostLGBM(timer=sel_timer_1, **lgb_params)
                 selection_gbm.set_prefix("Selector")
 
                 # TODO: Check about reusing permutation importance
@@ -356,6 +376,37 @@ class TabularAutoML(AutoMLPreset):
 
         return gbm_pipe
 
+    def get_rfs(self, keys: Sequence[str], n_level: int = 1, pre_selector: Optional[SelectionPipeline] = None):
+
+        rf_feats = LGBAdvancedPipeline(**self.gbm_pipeline_params, fill_na=True)
+
+        ml_algos = []
+        force_calc = []
+        for key, force in zip(keys, [True, False]):
+            tuned = "_tuned" in key
+            algo_key = key.split("_")[0]
+            time_score = self.get_time_score(n_level, key)
+            rf_timer = self.timer.get_task_timer(algo_key, time_score)
+
+            rf_model = RandomForestSklearn(timer=rf_timer, **self.rf_params)
+
+            if tuned:
+                rf_model.set_prefix("Tuned")
+                rf_tuner = OptunaTuner(
+                    n_trials=self.tuning_params["max_tuning_iter"],
+                    timeout=self.tuning_params["max_tuning_time"],
+                    fit_on_holdout=self.tuning_params["fit_on_holdout"],
+                )
+                rf_model = (rf_model, rf_tuner)
+            ml_algos.append(rf_model)
+            force_calc.append(force)
+
+        rf_pipe = NestedTabularMLPipeline(
+            ml_algos, force_calc, pre_selection=pre_selector, features_pipeline=rf_feats, **self.nested_cv_params
+        )
+
+        return rf_pipe
+
     def create_automl(self, **fit_args):
         """Create basic automl instance.
 
@@ -376,6 +427,14 @@ class TabularAutoML(AutoMLPreset):
         for n, names in enumerate(self.general_params["use_algos"]):
             lvl = []
             # regs
+            rf_models = [x for x in ["rf", "rf_tuned"] if x in names]
+
+            if len(rf_models) > 0:
+                selector = None
+                if "rf" in self.selection_params["select_algos"] and (self.general_params["skip_conn"] or n == 0):
+                    selector = pre_selector
+                lvl.append(self.get_rfs(rf_models, n + 1, selector))
+
             if "linear_l2" in names:
                 selector = None
                 if "linear_l2" in self.selection_params["select_algos"] and (

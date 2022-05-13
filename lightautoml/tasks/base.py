@@ -13,13 +13,12 @@ from typing import Union
 
 import numpy as np
 
-from lightautoml.tasks.losses import CBLoss
-from lightautoml.tasks.losses import LGBLoss
-from lightautoml.tasks.losses import SKLoss
-from lightautoml.tasks.losses import TORCHLoss
-
 from .common_metric import _valid_metric_args
 from .common_metric import _valid_str_metric_names
+from .losses import CBLoss
+from .losses import LGBLoss
+from .losses import SKLoss
+from .losses import TORCHLoss
 from .utils import infer_gib
 from .utils import infer_gib_multiclass
 
@@ -33,12 +32,24 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_valid_task_names = ["binary", "reg", "multiclass"]
+_valid_task_names = ["binary", "reg", "multiclass", "multi:reg", "multilabel"]
 _one_dim_output_tasks = ["binary", "reg"]
 
-_default_losses = {"binary": "logloss", "reg": "mse", "multiclass": "crossentropy"}
+_default_losses = {
+    "binary": "logloss",
+    "reg": "mse",
+    "multiclass": "crossentropy",
+    "multi:reg": "mae",
+    "multilabel": "logloss",
+}
 
-_default_metrics = {"binary": "auc", "reg": "mse", "multiclass": "crossentropy"}
+_default_metrics = {
+    "binary": "auc",
+    "reg": "mse",
+    "multiclass": "crossentropy",
+    "multi:reg": "mae",
+    "multilabel": "logloss",
+}
 
 _valid_loss_types = ["lgb", "sklearn", "torch", "cb"]
 
@@ -46,6 +57,8 @@ _valid_str_loss_names = {
     "binary": ["logloss"],
     "reg": ["mse", "mae", "mape", "rmsle", "quantile", "huber", "fair"],
     "multiclass": ["crossentropy", "f1"],
+    "multi:reg": ["mae", "mse"],
+    "multilabel": ["logloss"],
 }
 
 
@@ -150,7 +163,7 @@ class SkMetric(LAMLMetric):
         name: Optional[str] = None,
         greater_is_better: bool = True,
         one_dim: bool = True,
-        **kwargs: Any
+        **kwargs: Any,
     ):
         self._metric = metric
         self._name = name
@@ -374,13 +387,16 @@ class Task:
             self.metric_name = None
 
         if greater_is_better is None:
-            infer_gib_fn = infer_gib_multiclass if name == "multiclass" else infer_gib
+            infer_gib_fn = infer_gib_multiclass if (name == "multiclass" or name == "multilabel") else infer_gib
             greater_is_better = infer_gib_fn(self.metric_func)
 
         self.greater_is_better = greater_is_better
 
         for loss_key in self.losses:
-            self.losses[loss_key].set_callback_metric(metric, greater_is_better, self.metric_params, self.name)
+            try:
+                self.losses[loss_key].set_callback_metric(metric, greater_is_better, self.metric_params, self.name)
+            except:
+                print(f"{self.name} isn`t supported in {loss_key}")
 
     def get_dataset_metric(self) -> LAMLMetric:
         """Create metric for dataset.

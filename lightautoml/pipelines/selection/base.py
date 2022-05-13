@@ -275,7 +275,7 @@ class PredefinedSelector(SelectionPipeline):
         assert len(self.columns_to_select) == len(
             self.columns_to_select.intersection(set(train_valid.features))
         ), "Columns to select not match with dataset features"
-        self._selected_features = list(self.columns_to_select)
+        self._selected_features = sorted(list(self.columns_to_select))
 
 
 class ComposedSelector(SelectionPipeline):

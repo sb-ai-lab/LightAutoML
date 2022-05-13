@@ -69,7 +69,7 @@ class BoostCB(TabularMLAlgo, ImportanceEstimator):
         "feature_border_type": "GreedyLogSum",
         "nan_mode": "Min",
         # "silent": False,
-        "verbose": True,
+        "verbose": 100,
         "allow_writing_files": False,
     }
 
@@ -162,7 +162,7 @@ class BoostCB(TabularMLAlgo, ImportanceEstimator):
                 init_lr = 0.05
                 ntrees = 3000
 
-        elif self.task.name == "multiclass":
+        elif (self.task.name == "multiclass") or (self.task.name == "multi:reg") or (self.task.name == "multilabel"):
             init_lr = 0.03
             ntrees = 4000
 
@@ -299,6 +299,9 @@ class BoostCB(TabularMLAlgo, ImportanceEstimator):
                     "objective": fobj,
                     "eval_metric": feval,
                     "od_wait": early_stopping_rounds,
+                    "task_type": "CPU"
+                    if self.task.name in ["multilabel", "multi:reg"]
+                    else params["task_type"],  # warning in TabularAutoML?
                 },
             }
         )
@@ -361,11 +364,11 @@ class BoostCB(TabularMLAlgo, ImportanceEstimator):
 
     def _predict(self, model: cb.CatBoost, pool: cb.Pool, params):
         pred = None
-        if self.task.name == "multiclass":
+        if (self.task.name == "multiclass") or (self.task.name == "multilabel"):
             pred = model.predict(pool, prediction_type="Probability", thread_count=params["thread_count"])
         elif self.task.name == "binary":
             pred = model.predict(pool, prediction_type="Probability", thread_count=params["thread_count"])[..., 1]
-        elif self.task.name == "reg":
+        elif (self.task.name == "reg") or (self.task.name == "multi:reg"):
             pred = model.predict(pool, thread_count=params["thread_count"])
 
         pred = self.task.losses["cb"].bw_func(pred)

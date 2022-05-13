@@ -29,6 +29,7 @@ from ...transformers.categorical import CatIntersectstions
 from ...transformers.categorical import FreqEncoder
 from ...transformers.categorical import LabelEncoder
 from ...transformers.categorical import MultiClassTargetEncoder
+from ...transformers.categorical import MultioutputTargetEncoder
 from ...transformers.categorical import OrdinalEncoder
 from ...transformers.categorical import TargetEncoder
 from ...transformers.datetime import BaseDiff
@@ -421,6 +422,11 @@ class TabularDataFeatures:
         if train.folds is not None:
             if train.task.name in ["binary", "reg"]:
                 target_encoder = TargetEncoder
+            elif (train.task.name == "multi:reg") or (train.task.name == "multilabel"):
+                n_classes = train.target.shape[1]
+                if n_classes <= self.multiclass_te_co:
+                    target_encoder = MultioutputTargetEncoder
+
             else:
                 n_classes = train.target.max() + 1
                 if n_classes <= self.multiclass_te_co:

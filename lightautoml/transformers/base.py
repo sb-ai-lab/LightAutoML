@@ -552,3 +552,67 @@ class ChangeRoles(LAMLTransformer):
         dataset.set_data(data, features, self.roles)
 
         return dataset
+
+
+class SetAttribute(LAMLTransformer):
+    """Set data attribute."""
+
+    def __init__(self, attr, column):
+        """
+        Args:
+            attr: New attribute for dataset.
+            column: Name of column.
+
+        """
+        self.attr = attr
+        self.column = column
+
+    def transform(self, dataset: LAMLDataset) -> LAMLDataset:
+        """Paste new attributes into dataset.
+
+        Args:
+            dataset: Dataset to transform.
+
+        Returns:
+            Same dataset with new attributes.
+
+        """
+
+        val = dataset[:, self.column].data
+
+        if isinstance(val, pd.DataFrame):
+            val = val.iloc[:, 0]
+        elif len(val.shape) == 2:
+            val = val[:, 0]
+
+        if self.attr not in dataset.__dict__:
+            dataset.__dict__[self.attr] = val
+            dataset._array_like_attrs.append(self.attr)
+
+        return dataset
+
+
+class EmptyTransformer(LAMLTransformer):
+    """Set data attribute."""
+
+    def __init__(self):
+        """
+        Args:
+            attr: New attribute for dataset.
+            column: Name of column.
+
+        """
+
+    def transform(self, dataset: LAMLDataset) -> LAMLDataset:
+        """Paste new attributes into dataset.
+
+        Args:
+            dataset: Dataset to transform.
+
+        Returns:
+            Same dataset with new attributes.
+
+        """
+        print(dataset.__dict__)
+
+        return dataset

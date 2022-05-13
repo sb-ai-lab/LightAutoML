@@ -78,6 +78,9 @@ torchvision = [
     {platform = "*", version = "*", optional = true}
 ]
 
+# AFG
+featuretools = {version = "*", optional = true}
+
 # Report (pdf)
 weasyprint = {version = "^52.5", optional = true}
 cffi = {version = "^1.14.5", optional = true}
@@ -124,6 +127,10 @@ report = [
     "cffi",
     "weasyprint"
 ]
+
+afg = [
+    "featuretools"
+]
 all = [
     "albumentations",
     "efficientnet-pytorch",
@@ -135,7 +142,8 @@ all = [
     "nltk",
     "transformers",
     "cffi",
-    "weasyprint"
+    "weasyprint",
+    "featuretools"
 ]
 
 

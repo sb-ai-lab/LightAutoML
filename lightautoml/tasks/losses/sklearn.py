@@ -47,6 +47,7 @@ class SKLoss(Loss):
         assert loss in [
             "logloss",
             "mse",
+            "mae",
             "crossentropy",
             "rmsle",
         ], "Not supported in sklearn in general case."

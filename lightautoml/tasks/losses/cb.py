@@ -1,5 +1,7 @@
 """Metrics and loss functions for Catboost."""
 
+import logging
+
 from typing import Callable
 from typing import Dict
 from typing import Optional
@@ -9,6 +11,13 @@ import numpy as np
 
 from .base import Loss
 from .base import fw_rmsle
+
+
+logger = logging.getLogger(__name__)
+
+
+def bw_clipping(x):
+    return np.clip(x, 0, 1)
 
 
 def cb_str_loss_wrapper(name: str, **params: Optional[Dict]) -> str:
@@ -69,11 +78,20 @@ _cb_multiclass_metrics_dict = {
     "f1_micro": "TotalF1:average=Micro",
     "f1_weighted": "TotalF1:average=Weighted",
 }
+_cb_multireg_metric_dict = {
+    "rmse": "MultiRMSE",
+    "mse": "MultiRMSE",
+    "mae": "MultiRMSE",
+}
+
+_cb_multilabel_metric_dict = {"logloss": "MultiCrossEntropy"}
 
 _cb_metrics_dict = {
     "binary": _cb_binary_metrics_dict,
     "reg": _cb_reg_metrics_dict,
     "multiclass": _cb_multiclass_metrics_dict,
+    "multi:reg": _cb_multireg_metric_dict,
+    "multilabel": _cb_multilabel_metric_dict,
 }
 
 
@@ -162,11 +180,9 @@ class CBLoss(Loss):
         # TODO: for what cb_utils
         # How to say that this metric is special class if there any task type?
 
-        assert task_name in [
-            "binary",
-            "reg",
-            "multiclass",
-        ], "Unknown task name: {}".format(task_name)
+        assert task_name in ["binary", "reg", "multiclass", "multi:reg", "multilabel"], "Unknown task name: {}".format(
+            task_name
+        )
 
         self.metric_params = {}
         if metric_params is not None:
@@ -175,6 +191,15 @@ class CBLoss(Loss):
         if type(metric) is str:
             self.metric = None
             _metric_dict = _cb_metrics_dict[task_name]
+            if task_name == "multi:reg":
+                logger.info2("CatBoost supports only MultiRMSE metric and loss for multi:reg task.")
+                self.fobj = None
+                self.fobj_name = "MultiRMSE"
+            if task_name == "multilabel":
+                logger.info2("CatBoost uses as obj. MultiCrossEntropy.")
+                self.fobj = None
+                self.fobj_name = "MultiCrossEntropy"
+
             if metric in _cb_metric_params_mapping:
                 metric_params = {_cb_metric_params_mapping[metric][k]: v for (k, v) in self.metric_params.items()}
                 self.metric_name = cb_str_loss_wrapper(_metric_dict[metric], **metric_params)
