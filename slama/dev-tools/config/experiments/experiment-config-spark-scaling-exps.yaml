@@ -1,0 +1,111 @@
+---
+experiment_type: spark_quality
+calculation_scripts:
+  spark: dev-tools/experiments/spark_experiments.py
+  lama: dev-tools/experiments/lama_experiments.py
+state_file: 'delete'  # Available values are 'use|ignore|delete', use - skip experiments in state file, ignore - don`t skip experiments, delete - delete experiments in state file
+
+# Unique set of parameters for each experiment
+experiments:
+#  - name: "scaling"
+#    library: [ "spark" ]
+#    repeat_rate: 1
+#    params:
+#      func: [ "calculate_le_scaling" ]
+#      path: [ "/opt/spark_data/data_for_LE_TE_tests/10M_rows_1000_columns_id.json" ]
+#    spark_config:
+#      spark.executor.instances: [ '8']
+#      spark.executor.cores: [ '8' ]
+#      spark.executor.memory: [ '64g' ]
+
+#  - name: "scaling-te"
+#    library: [ "spark" ]
+#    repeat_rate: 1
+#    params:
+#      func: [ "calculate_le_te_scaling" ]
+#      path: [ "/opt/spark_data/data_for_LE_TE_tests/1000000_rows_1000_columns_id.json" ]
+#      checkpoint_path: [ "/tmp/results/scaling-te/scaling_te-1M_1000_100.dump" ]
+#    spark_config:
+#      spark.executor.instances: [ '8' ]
+#      spark.executor.cores: [ '8' ]
+#      spark.executor.memory: [ '32g' ]
+
+#  - name: "scaling-te"
+#    library: [ "spark" ]
+#    repeat_rate: 1
+#    params:
+#      func: [ "calculate_le_model_scaling" ]
+#      model_type: [ "lgb" ]
+#      path: [ "/opt/spark_data/data_for_LE_TE_tests/1000000_rows_100_columns_id.json" ]
+#      checkpoint_path: [ "/tmp/results/scaling-te/scaling_te-10M_100_100.dump" ]
+#    spark_config:
+#      spark.executor.instances: [ '4', '8', '16' ]
+#      spark.executor.cores: [ '8']
+#      spark.executor.memory: [ '64g' ]
+
+#  - name: "scaling-lgb"
+#    library: [ "spark" ]
+#    repeat_rate: 1
+#    params:
+#      func: [ "calculate_lgbadv_boostlgb" ]
+#      dataset: [ "used_cars_dataset_4x" ]
+#      seed: [ 42 ]
+#      cv: [ 2 ]
+#      checkpoint_path: [ "/tmp/results/lgbadv_chkp_scaling/lgbadv_used_cars_dataset_4x/" ]
+#    spark_config:
+#      spark.executor.instances: ['16']
+#      spark.executor.cores: [ '8' ]
+#      spark.executor.memory: [ '64g' ]
+#
+#  - name: "scaling-automl-lgb"
+#    library: [ "spark" ]
+#    repeat_rate: 1
+#    params:
+#      func: [ "calculate_automl" ]
+#      dataset: [ "used_cars_dataset_1x" ]
+#      seed: [ 42 ]
+#      cv: [ 2 ]
+#      use_algos:
+#        - [ [ "lgb" ] ]
+#    spark_config:
+#      spark.executor.instances: [ '1' ]
+#      spark.executor.cores: [ '8' ]
+#      spark.executor.memory: [ '64g' ]
+  - name: "scaling-linear-l2"
+    library: [ "spark" ]
+    repeat_rate: 1
+    params:
+      func: [ "calculate_linear_l2" ]
+      dataset: [ "used_cars_dataset_4x" ]
+      seed: [ 42 ]
+      cv: [ 2 ]
+      checkpoint_path: [ "/tmp/results/linear_chkp_scaling/linear_used_cars_dataset_4x/" ]
+    spark_config:
+      spark.executor.instances: [ '16' ]
+      spark.executor.cores: [ '8' ]
+      spark.executor.memory: [ '64g' ]
+#  - name: "scaling-chkp"
+#    library: [ "spark" ]
+#    repeat_rate: 1
+#    params:
+#      func: [ "calculate_chkp" ]
+#      dataset: [ "used_cars_dataset_4x" ]
+#    spark_config:
+#      spark.executor.instances: [ '2' ]
+#      spark.executor.cores: [ '8' ]
+#      spark.executor.memory: [ '64g' ]
+
+#  - name: "scaling-automl-lgb"
+#    library: [ "spark" ]
+#    repeat_rate: 1
+#    params:
+#      func: [ "calculate_automl" ]
+#      dataset: [ "used_cars_dataset_4x" ]
+#      seed: [ 42 ]
+#      cv: [ 2 ]
+#      use_algos:
+#        - [ [ "lgb" ] ]
+#    spark_config:
+#      spark.executor.instances: [ '4' ]
+#      spark.executor.cores: [ '8' ]
+#      spark.executor.memory: [ '64g' ]

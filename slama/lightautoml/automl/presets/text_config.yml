@@ -1,0 +1,312 @@
+general_params:
+  # possible values are list of lists, that describes levels
+  # possible values are ['lgb', 'lgb_tuned', 'linear_l2', 'cb', 'cb_tuned']. List will be extended later
+  # or 'auto' - configuration will be infered from data
+  # ex.[['lgb', 'lgb_tuned', 'linear_l2', 'cb', 'cb_tuned'], ['lgb', 'linear_l2']] is 3 algos on 1 level, 2 algos on 2 level and blender on 3 level
+  # to define more than 1 level nested_cv_params.cv should be > 1
+  use_algos: 'auto'
+  # nested_cv - True/False. If true, check nested_cv params. Use folds-in-folds cross-validation scheme
+  # May performs better but take much more time to run (train and inference)
+  nested_cv: False
+  # skip connections
+  skip_conn: True
+
+reader_params:
+  # sample of data to perform analisys
+  samples: 100000
+  # minimum nan_rate in feature to keep feature
+  max_nan_rate: 0.999
+  # maximum frequency of top frequent value to keep feature
+  max_constant_rate: 0.999
+  # create validation folds. Folds will be created even if valid samples or custom validation will be passed
+  # it will be used for feature generation
+  cv: 3
+  # random state for folds creation
+  random_state: 42
+  # default roles params.
+  # Ex if {'numeric': {'force_input': True}} will be passed, all numeric features will pass all selectors,
+  # if another will not be passed in roles argument of .fit_predict
+  roles_params:
+  # n_jobs for advanced roles guess and reading csv files (more RAM needed due to multiprocessing)
+  n_jobs: 8
+  # If to turn on advanced roles guess. Slower, but shows better quality
+  # If role of feature is not defined, reader will guess role in 2 ways:
+  #   - simple (numbers as numbers, object as categories or dates if dateformat inferred)
+  #   - advanced, based on some statistic calculation
+  # Advanced also searches to best processing type for defined roles, and in most cases is better, but slower
+  advanced_roles: True
+  # advanced roles parsing params
+  # defaults are ok in general case, don't touch it if you don't know it's meanings
+  numeric_unique_rate: 0.999
+  max_to_3rd_rate: 1.1
+  binning_enc_rate: 2
+  raw_decr_rate: 1.1
+  max_score_rate: 0.2
+  abs_score_val: 0.04
+  drop_score_co: 0.00
+
+read_csv_params:
+  # params for pandas.read_csv func
+  decimal: '.'
+  sep: ','
+  # another params from pandas read_csv docs can be added...
+
+nested_cv_params:
+  # params describe how to use inner cross validation (folds-in-folds) to get unbiased oof prediction
+  # cv defines how many folds we split dataset to perform nested cross validation. 1 means no nested cv
+  cv: 5
+  # n_folds defines how many cv loops to perform. None for all or int < cv
+  n_folds:
+  # how to perform params tuning. If True - we tune params on inner cv loops, False - on outer validation
+  inner_tune: False
+  # should we refit tuner each inner cv loop or just take first
+  refit_tuner: True
+
+selection_params:
+  # selection mode 0/1/2
+  # 0 for no selection, 1 - cutoff selection, 2 - iterative selection
+  # harder features selection means increasing train time, but much smaller and faster for inference model
+  mode: 0
+  # importance type permutation/gain
+  importance_type: 'gain'
+  # pretrain selector on holdout set. True - fast/ False - accurate
+  fit_on_holdout: True
+  # cutoff value for permutation or gain (mode 1/2)
+  cutoff: 0
+  # group features add size for iterative algo (mode 2)
+  feature_group_size: 1
+  # max features count (mode2)
+  max_features_cnt_in_result:
+  # list of algos to apply selector. Possible values - 'gbm', 'linear_l2'. gbm stands for both catboost and lgb
+  select_algos: [ 'gbm' ]
+
+tuning_params:
+  # pretrain tuner on holdout set. True - fast/ False - accurate
+  # Ex. if you have 5-fold cv, validate tuner only on 1 fold
+  fit_on_holdout: True
+  # max tuning iter for lightgbm. Auto - depends on dataset
+  # smaller dataset gets more iters (int or 'auto')
+  max_tuning_iter: 101
+  # max tuning time. Tuning time might be set lower during train by automl's timer, but cannot be higher
+  max_tuning_time: 300
+
+# params for BoostLGBM MLAlgo. Note - params are default and may be changed during train if not freeze_defaults
+lgb_params:
+  # Look for lightgbm train params here. (num_threads will be rewrited by global preset's cpu limit)
+  default_params:
+    num_threads: 100
+  freeze_defaults: False
+
+# params for BoostCB MLAlgo. Note - params are default and may be changed during train if not freeze_defaults
+cb_params:
+  # Look for lightgbm train params here. (thread_count will be rewrited by global preset's cpu limit)
+  default_params:
+    # task type - auto based on gpu available
+    task_type: 'CPU'
+    thread_count: 100
+  freeze_defaults: False
+
+# params for LinearLBFGS MLAlgo
+# no tuner needed for this algo - regularization params are found during fit
+linear_l2_params:
+  default_params: { }
+  freeze_defaults: False
+
+# params for NN model
+nn_params:
+  random_state: 42
+  # training and inference batch size
+  bs: 16
+  num_workers: 4
+  # maximum length of text sequence
+  max_length: 256
+  # path to save model state
+  # if None: stay in memory (CPU)
+  path_to_save: null
+  # params of Adam optimizer
+  opt_params: { 'lr': 0.00001 }
+  # params of ReduceLROnPlateau scheduler
+  scheduler_params: { 'patience': 5, 'factor': 0.5, 'verbose': True }
+  # using snapshot ensembles
+  # https://arxiv.org/abs/1704.00109
+  is_snap: False
+  # params of snapshots:
+  # k - number of best snapshots (in terms of loss)
+  # early_stopping - use early stopping
+  # patience - early_stopping patience
+  # swa - stochastic weight average - averaging of snapshots weights and replace base model
+  # https://pytorch.org/blog/stochastic-weight-averaging-in-pytorch/ for idea details (different implementation)
+  # use swa with disabled is_snap
+  snap_params: { 'k': 1, 'early_stopping': True, 'patience': 1, 'swa': False }
+  # init last linear layer:
+  # zeros for weights, mean value for bias in regression, inverse sigmoid mean for binary, argmax for multiclass
+  init_bias: True
+  # verbose and create snapshots inside one training epoch every k steps
+  verbose_inside: null
+  # verbose every k epochs
+  verbose: 1
+  n_epochs: 20
+  input_bn: False
+  emb_dropout: 0.1
+  emb_ratio: 3
+  max_emb_size: 50
+  # null to use default bert for this language
+  bert_name: null
+  # pooling: cls, mean, max, sum
+  pooling: 'cls'
+  use_cont: True
+  use_cat: True
+  use_text: True
+  lang: null
+  #set cudnn backend
+  deterministic: False
+  # use DP for model training
+  # currently, must be set to FALSE value
+  multigpu: False
+
+nn_pipeline_params:
+  # text_features in NN feature pipeline. bert, embed or tfidf
+  text_features: "bert"
+
+gbm_pipeline_params:
+  # max number of categories to generate intersections
+  top_intersections: 4
+  # max depth of cat intersection
+  max_intersection_depth: 3
+  # subsample to calc data statistics
+  subsample: 100000
+  auto_unique_co: 10
+  # n_classes to use target encoding for multiclass task
+  multiclass_te_co: 3
+  # text_features in gbm feature pipeline. embed or tfidf
+  text_features: "embed"
+
+linear_pipeline_params:
+  # max number of categories to generate intersections
+  top_intersections: 4
+  # max depth of cat intersection
+  max_intersection_depth: 3
+  # subsample to calc data statistics
+  subsample: 100000
+  auto_unique_co: 50
+  # n_classes to use target encoding for multiclass task
+  multiclass_te_co: 3
+  # text_features in linear feature pipeline. embed or tfidf
+  text_features: "tfidf"
+
+timing_params:
+  # select timing mode:
+  # 0: no limits - use time limits to create algo's settings but if automl run out of time - let it finish
+  # 1: soft - approximate time limits - tasks will finished after timeout
+  # 2: hard - hard time limits - stop all tasks before timeout to be exactly in time
+  # Any time limitation mode will start working after at least single fold of single model will be computed
+  mode: 1
+  overhead: 0.1
+  # we assume than each algo takes same amount of time to calc (adjusted with some timing score).
+  # So each algo gets TIME/N_ALGOS.
+  # tuning_rate of that time can be given to the params tuner
+  # 0 - means no tuning
+  # 'auto' - means infer depends on dataset size
+  tuning_rate: 0.7
+
+text_params:
+  # select language:
+  # 'en', 'ru', 'multi' - multilanguage or different language (in this case one should specify bert model name)
+  lang: 'ru'
+  # name of bert model from haggingface library or path to automodel compatible model
+  # none for default value:
+  # 'en' - 'bert-base-cased',
+  # 'ru' - 'DeepPavlov/rubert-base-cased-conversational',
+  # 'multi' - 'bert-base-multilingual-cased'
+  bert_model: null
+  # progress bar for embedding model and prints during dl models
+  verbose: True
+  random_state: 42
+  # if is_tokenize_autonlp is True or in tfidf
+  # use SnowballStemmer in tfidf or autonlp if tokenizer is enabled
+  use_stem: False
+  # if is_tokenize_autonlp is True or in tfidf
+  # stopwords: if True use nltk stopwords for ru or en
+  # if list, tuple or set - use this values as stopwords
+  stopwords: False
+
+tfidf_params:
+  # use svd for tfidf dim. reduction
+  svd: True
+  n_components: 100
+  # tfidf vectorizer params:
+  # if None - default values
+  # {'min_df': 5, 'max_df': 1.0, 'max_features': 30_000, 'ngram_range': (1, 1), 'analyzer': 'word', 'dtype': np.float32}
+  tfidf_params: null
+
+autonlp_params:
+  # different text embeddings
+  # 'random_lstm' - random lstm on top of word embeddings
+  # 'random_lstm_bert' - random lstm on top of bert word embeddings
+  # 'borep' - bag of random embedding projections
+  # 'pooled_bert' - embeddings from pooled bert output
+  # 'wat' - weighted average transformers
+  # borep and random_lstm: https://arxiv.org/abs/1901.10444
+  model_name: 'random_lstm_bert'
+
+  # dict with params of random_lstm, bert_embedder, borep or wat
+  # check corresponding classes for details
+  # default values: model_by_name in text.text
+  # for random_lstm_bert:
+  #transformer_params:
+  #  model_params: { 'embed_size': 768, 'hidden_size': 256, 'pooling': 'mean', 'num_layers': 1 } # random lstm params
+  #  dataset_params: { 'max_length': 256, 'model_name': 'bert-base-cased' } # torch dataset params
+  #  loader_params: { 'batch_size': 320, 'shuffle': False, 'num_workers': 4 } # torch loader params
+  #  embedding_model_params: { 'model_name': 'bert-base-cased', 'pooling': 'none' } # BertEmbedder params
+  # !!! bert name replaced by bert_model params from text_params
+
+  # for random_lstm:
+  #transformer_params:
+  #  model_params: { 'embed_size': 768, 'hidden_size': 256, 'pooling': 'mean', 'num_layers': 1 } # random lstm params
+  #  dataset_params: {'embedding_model': None, 'max_length': 200, 'embed_size': 300} # torch dataset params
+  #  loader_params: { 'batch_size': 320, 'shuffle': False, 'num_workers': 4 } # torch loader params
+  #  embedding_model_params: { } # BertEmbedder params
+  # !!! embedding_model replaced by embedding_model params
+
+  # for borep:
+  #transformer_params:
+  #  model_params: {'embed_size': 300, 'proj_size': 300, 'pooling': 'mean', 'max_length': 200,
+  #                                            'init': 'orthogonal', 'pos_encoding': False} # borep params
+  #  dataset_params: {'embedding_model': None, 'max_length': 200, 'embed_size': 300} # torch dataset params
+  #  loader_params: {'batch_size': 1024, 'shuffle': False, 'num_workers': 4} # torch loader params
+  #  embedding_model_params: { } # BertEmbedder params
+  # !!! embedding_model replaced by embedding_model params
+
+  # for pooled_bert:
+  #transformer_params:
+  #  model_params: {'model_name': 'bert-base-cased', 'pooling': 'mean'} # bert params
+  #  dataset_params: {'max_length': 256, 'model_name': 'bert-base-cased'} # torch dataset params
+  #  loader_params: {'batch_size': 1024, 'shuffle': False, 'num_workers': 4} # torch loader params
+  #  embedding_model_params: { }
+  # !!! bert name replaced by bert_model params from text_params
+
+  # for wat:
+  #transformer_params: {'embedding_model': None, 'embed_size': 300, 'weight_type': 'idf', 'use_svd': True}
+  # !!! embedding_model replaced by embedding_model params
+  transformer_params: null
+
+  # path to fasttext model or model with dict interface
+  # for RU: can be downloaded from: https://rusvectores.org/ru/models/
+  # only for 'random_lstm', 'borep', 'wat'
+  embedding_model: null
+  # concat all text columns to one with <SEP>
+  is_concat: True
+  # train new fasstext model
+  # only for 'random_lstm', 'borep', 'wat'
+  train_fasttext: False
+  # dict with fasttext params if train_fasttext:True
+  # if None - use {'vector_size': 64, 'window': 3, 'min_count': 1}
+  fasttext_params: null
+  # epochs to train fasttext if train_fasttext:True
+  fasttext_epochs: 2
+  # preprocess text before autonlp module
+  is_tokenize_autonlp: False
+  # path to save cached preprocessed text for faster experiments or None to disable
+  cache_dir: null
+  # forcing using custom transformer if gpu is not avaliable
+  force: False

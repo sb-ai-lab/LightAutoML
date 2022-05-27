@@ -1,0 +1,27 @@
+---
+experiment_type: spark_quality
+calculation_scripts:
+  spark: dev-tools/experiments/spark_experiments.py
+  lama: dev-tools/experiments/lama_experiments.py
+state_file: 'delete'  # Available values are 'use|ignore|delete', use - skip experiments in state file, ignore - don`t skip experiments, delete - delete experiments in state file
+
+# Unique set of parameters for each experiment
+experiments:
+  - name: "automl_lgb_2M_4e_128g"
+    library: [ "spark" ]
+    repeat_rate: 1
+    params:
+      func: [ "calculate_automl" ]
+      dataset: [ "used_cars_dataset_1x" ]
+      seed: [ 42 ]
+      cv: [ 5 ]
+      use_algos:
+        - [ ["lgb", "linear_l2"], [ "lgb" ] ]
+      lgb_num_iterations: [ 500 ]
+      linear_l2_reg_param:
+        - [ 0.00001, 0.00005 ]
+      dataset_increase_factor: [ 40 ]
+    spark_config:
+      spark.executor.instances: [ '16', '8', '4' ]
+      spark.executor.cores: [ '8' ]
+      spark.executor.memory: [ '64g' ]

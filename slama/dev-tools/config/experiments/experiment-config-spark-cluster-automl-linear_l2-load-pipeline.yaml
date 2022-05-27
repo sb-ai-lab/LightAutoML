@@ -1,0 +1,23 @@
+---
+experiment_type: spark_quality
+calculation_scripts:
+  spark: dev-tools/experiments/spark_experiments.py
+  lama: dev-tools/experiments/lama_experiments.py
+state_file: 'delete'  # Available values are 'use|ignore|delete', use - skip experiments in state file, ignore - don`t skip experiments, delete - delete experiments in state file
+
+# Unique set of parameters for each experiment
+experiments:
+  - name: "infer_linear_l2_10M_16e_64g" # automl_linear_l2_96M_4e_128g
+    library: [ "spark" ]
+    repeat_rate: 1
+    params:
+      func: [ "load_and_predict_automl" ]
+      dataset: [ "used_cars_dataset_1x" ] # used_cars_dataset_1x
+      seed: [ 42 ]
+      dataset_increase_factor: [ 17 ] # 17    x17 - 10.2M
+      automl_model_path: [ '/mnt/nfs/spark-lama-pipelines/automl_linear_l2_pipeline' ] # 'hdfs://node21.bdcl:9000/automl_linear_l2_pipeline'
+      test_data_dump_path: [ "/mnt/nfs/spark-lama-dumps/test_data.parquet" ] # "/tmp/results/againetdinov/test_data.parquet"  'hdfs://node21.bdcl:9000/test_data.parquet'
+    spark_config:
+      spark.executor.instances: [ '16' ] # '1', '2', '4', '8', '16', '32'
+      spark.executor.cores: [ '8' ]
+      spark.executor.memory: [ '64g' ]

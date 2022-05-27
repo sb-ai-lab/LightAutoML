@@ -1,0 +1,51 @@
+version: '3'
+services:
+  lama-spark-master:
+    container_name: lama-spark-master
+    network_mode: "host"
+    image: node2.bdcl:5000/spark-lama:42014ed
+    hostname: ${HOSTNAME}
+    command: ["/spark/sbin/start-master.sh"]
+#    ports:
+#      - "7077:7077"
+#      - "8181:8181"
+#      - "6066:6066"
+    environment:
+      - SPARK_NO_DAEMONIZE=true
+      - SPARK_PUBLIC_DNS=${HOSTNAME}
+      - SPARK_DAEMON_MEMORY=5g
+      - SPARK_MASTER_WEBUI_PORT=8181
+
+  lama-spark-worker:
+    container_name: lama-spark-worker
+    image: node2.bdcl:5000/spark-lama:42014ed
+    command: ["sh", "-c", "/spark/sbin/start-worker.sh spark://10.32.15.5:7077"]
+    network_mode: "host"
+#    ports:
+#      - "8081:8081"
+    environment:
+      - SPARK_NO_DAEMONIZE=true
+      - SPARK_WORKER_MEMORY=128g
+      - SPARK_WORKER_CORES=24
+      - SPARK_PUBLIC_DNS=${HOSTNAME}
+      - SPARK_DAEMON_MEMORY=5g
+      - PYTHONPATH=/lama
+    volumes:
+      - /mnt/ess_storage/DN_1/storage/SLAMA/kaggle_used_cars_dataset:/spark_data:ro
+      - /mnt/ess_storage/DN_1/storage/SLAMA/code:/lama:ro
+      - /mnt/ess_storage/DN_1/storage/SLAMA/jars/ivy2_jars:/root/.ivy2/jars:ro
+      - /mnt/ess_storage/DN_1/storage/SLAMA/spark_output:/spark_output:z
+
+  lama-spark-shell:
+    container_name: lama-spark-shell
+    image: node2.bdcl:5000/spark-lama:42014ed
+    command: ["bash"]
+    network_mode: "host"
+    environment:
+      - PYTHONPATH=/lama
+    volumes:
+      - /mnt/ess_storage/DN_1/storage/SLAMA/kaggle_used_cars_dataset:/spark_data:ro
+      - /mnt/ess_storage/DN_1/storage/SLAMA/code:/lama:ro
+      - /mnt/ess_storage/DN_1/storage/SLAMA/jars/ivy2_jars:/root/.ivy2/jars:ro
+      - /mnt/ess_storage/DN_1/storage/SLAMA/spark_output:/spark_output:z
+      - /mnt/ess_storage/DN_1/storage/SLAMA/scripts:/scripts:z

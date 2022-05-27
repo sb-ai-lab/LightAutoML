@@ -1,0 +1,59 @@
+<li>
+    <h2 class="caret caret-down" id="section2">Data overview</h2>
+    <ul class="nested active">
+        <li>
+            <h3 class="caret" id="section2_1">Train data summary</h3>
+            <ul class="nested">
+                {{ train_data_overview }}
+            </ul>
+        </li>
+        <li>
+            <h3 class="caret" id="section2_2">Train data details</h3>
+            <ul class="nested">
+                <li>
+                    <h4 class="caret" id="section2_2_1">Numerical features</h4>
+                    <ul class="nested">
+                        {% if numerical_features_table is not none %}
+                        {{ numerical_features_table }}
+                        {% else %}
+                        <p>No numerical features.</p>
+                        {% endif %}
+                    </ul>
+                </li>
+                <li>
+                    <h4 class="caret" id="section2_2_2">Categorical features</h4>
+                    <ul class="nested">
+                        {% if categorical_features_table is not none %}
+                        {{ categorical_features_table }}
+                        {% else %}
+                        <p>No categorical features.</p>
+                        {% endif %}
+                    </ul>
+                </li>
+                <li>
+                    <h4 class="caret" id="section2_2_3">Datetime features</h4>
+                    <ul class="nested">
+                        {% if datetime_features_table is not none %}
+                        {{ datetime_features_table }}
+                        {% else %}
+                        <p>No datetime features.</p>
+                        {% endif %}
+                    </ul>
+                </li>
+                <li>
+                    <h4 class="caret" id="section2_2_4">Dropped features</h4>
+                    <ul class="nested">
+                        {% if dropped_features_table is not none %}
+                        <p>Some features were excluded from the training set.</p>
+                        <p>Except {{ target }} variable which was used as target, also there were excluded variables, in which NaN rate exceeds <i>max_nan_rate</i> = {{ max_nan_rate }}. In addition to this, the variables with <i>max_constant_rate</i> > {{ max_constant_rate }} excluded:</p>
+                        {{ dropped_features_table }}
+                        {% else %}
+                        <p>No dropped features.</p>
+                        {% endif %}
+
+                    </ul>
+                </li>
+            </ul>
+        </li>
+    </ul>
+</li>
