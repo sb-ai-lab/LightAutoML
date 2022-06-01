@@ -1,0 +1,13 @@
+<li>
+    <h3 class="caret" id="section3">{{ title }}</h3>
+    <ul class="nested">
+        {% if psi_shift_graph is not none %}
+            <p><img src={{psi_shift_graph}} alt="psi_shift_graph"></p>
+        {% else %}
+        {% endif %}
+        {% if null_shift_graph is not none %}
+            <p><img src={{null_shift_graph}} alt="null_shift_graph"></p>
+        {% else %}
+        {% endif %}
+    </ul>
+</li>
