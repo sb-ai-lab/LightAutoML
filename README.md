@@ -24,7 +24,7 @@ Multitable datasets and sequences are a work in progress :)
 # (New features) GPU and Spark pipelines
 Full GPU and Spark pipelines for LightAutoML currently available for developers testing (still in progress). The code and tutorials for:
 - GPU pipeline is [available here](https://github.com/Rishat-skoltech/LightAutoML_GPU)
-- Spark pipeline is [available here](https://github.com/fonhorst/LightAutoML_Spark)
+- Spark pipeline is [available here](https://github.com/sb-ai-lab/SLAMA)
 
 <a name="toc"></a>
 # Table of Contents
