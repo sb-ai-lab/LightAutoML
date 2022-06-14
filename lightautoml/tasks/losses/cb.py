@@ -8,11 +8,10 @@ from typing import Union
 import numpy as np
 
 from .base import Loss
-from .base import fw_rmsle
 
 
-def cb_str_loss_wrapper(name: str, **params: Optional[Dict]) -> str:
-    """CatBoost loss name wrapper, if it has keyword args.  # noqa D403
+def cb_str_loss_wrapper(name: str, **params: Optional[Dict]):
+    """CatBoost loss name wrapper, if it has keyword args.
 
     Args:
         name: One of CatBoost loss names.
@@ -23,6 +22,10 @@ def cb_str_loss_wrapper(name: str, **params: Optional[Dict]) -> str:
 
     """
     return name + ":" + ";".join([k + "=" + str(v) for (k, v) in params.items()])
+
+
+def fw_rmsle(x, y):
+    return np.log1p(x), y
 
 
 _cb_loss_mapping = {
@@ -85,18 +88,7 @@ _cb_metric_params_mapping = {
 
 
 class CBLoss(Loss):
-    """Loss used for CatBoost.
-
-    Args:
-        loss: String with one of default losses.
-        loss_params: additional loss parameters.
-            Format like in :mod:`lightautoml.tasks.custom_metrics`.
-        fw_func: Forward transformation.
-            Used for transformation of target and item weights.
-        bw_func: Backward transformation.
-            Used for predict values transformation.
-
-    """
+    """Loss used for CatBoost."""
 
     def __init__(
         self,
@@ -105,6 +97,18 @@ class CBLoss(Loss):
         fw_func: Optional[Callable] = None,
         bw_func: Optional[Callable] = None,
     ):
+        """
+
+        Args:
+            loss: String with one of default losses.
+            loss_params: additional loss parameters.
+              Format like in :mod:`lightautoml.tasks.custom_metrics`.
+            fw_func: Forward transformation.
+              Used for transformation of target and item weights.
+            bw_func: Backward transformation.
+              Used for predict values transformation.
+
+        """
         self.loss_params = {}
         if loss_params is not None:
             self.loss_params = loss_params
@@ -150,7 +154,8 @@ class CBLoss(Loss):
         metric_params: Optional[Dict] = None,
         task_name: str = None,
     ):
-        """Callback metric setter.
+        """
+        Callback metric setter.
 
         Args:
             metric: Callback metric.

@@ -31,11 +31,6 @@ class TrainValidIterator:
     Train/valid iterator:
     should implement `__iter__` and `__next__` for using in ml_pipeline.
 
-
-    Args:
-        train: Train dataset.
-        **kwargs: Key-word parameters.
-
     """
 
     @property
@@ -49,12 +44,19 @@ class TrainValidIterator:
         return self.train.features
 
     def __init__(self, train: Dataset, **kwargs: Any):
+        """
+
+        Args:
+            train: Train dataset.
+            **kwargs: Key-word parameters.
+
+        """
         self.train = train
         for k in kwargs:
             self.__dict__[k] = kwargs[k]
 
     def __iter__(self) -> Iterable:
-        """Abstract method. Creates iterator."""
+        """ Abstract method. Creates iterator."""
         raise NotImplementedError
 
     def __len__(self) -> Optional[int]:
@@ -133,7 +135,7 @@ class DummyIterator(TrainValidIterator):
             Iterable object for dataset, where for validation also uses train.
 
         """
-        return iter([(None, self.train, self.train)])
+        return [(None, self.train, self.train)]
 
     def get_validation_data(self) -> Dataset:
         """Just get validation sample.
@@ -260,6 +262,7 @@ class CustomIterator(TrainValidIterator):
             None.
 
         """
+
         return len(self.iterator)
 
     def __iter__(self) -> Generator:

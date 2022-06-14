@@ -42,14 +42,7 @@ def convert_scipy_sparse_to_torch_float(matrix: sparse.spmatrix) -> torch.Tensor
 
 
 class CatLinear(nn.Module):
-    """Simple linear model to handle numeric and categorical features.
-
-    Args:
-        numeric_size: Number of numeric features.
-        embed_sizes: Embedding sizes.
-        output_size: Size of output layer.
-
-    """
+    """Simple linear model to handle numeric and categorical features."""
 
     def __init__(
         self,
@@ -57,6 +50,13 @@ class CatLinear(nn.Module):
         embed_sizes: Sequence[int] = (),
         output_size: int = 1,
     ):
+        """
+        Args:
+            numeric_size: Number of numeric features.
+            embed_sizes: Embedding sizes.
+            output_size: Size of output layer.
+
+        """
         super().__init__()
         self.bias = nn.Parameter(torch.zeros(output_size))
         # add numeric if it is defined
@@ -81,9 +81,6 @@ class CatLinear(nn.Module):
         Args:
             numbers: Input numeric features.
             categories: Input categorical features.
-
-        Returns:
-            Linear prediction.
 
         """
         x = self.bias
@@ -115,9 +112,6 @@ class CatLogisticRegression(CatLinear):
             numbers: Input numeric features.
             categories: Input categorical features.
 
-        Returns:
-            Probabilitics.
-
         """
         x = super().forward(numbers, categories)
         x = torch.clamp(x, -50, 50)
@@ -145,16 +139,6 @@ class CatMulticlass(CatLinear):
         numbers: Optional[torch.Tensor] = None,
         categories: Optional[torch.Tensor] = None,
     ):
-        """Forward-pass.
-
-        Args:
-            numbers: Input numeric features.
-            categories: Input categorical features.
-
-        Returns:
-            Linear prediction.
-
-        """
         x = super().forward(numbers, categories)
         x = torch.clamp(x, -50, 50)
         x = self.softmax(x)
@@ -166,19 +150,6 @@ class TorchBasedLinearEstimator:
     """Linear model based on torch L-BFGS solver.
 
     Accepts Numeric + Label Encoded categories or Numeric sparse input.
-
-    Args:
-        data_size: Not used.
-        categorical_idx: Indices of categorical features.
-        embed_sizes: Categorical embedding sizes.
-        output_size: Size of output layer.
-        cs: Regularization coefficients.
-        max_iter: Maximum iterations of L-BFGS.
-        tol: Tolerance for the stopping criteria.
-        early_stopping: Maximum rounds without improving.
-        loss: Loss function. Format: loss(preds, true) -> loss_arr, assume ```reduction='none'```.
-        metric: Metric function. Format: metric(y_true, y_preds, sample_weight = None) -> float (greater_is_better).
-
     """
 
     def __init__(
@@ -211,6 +182,20 @@ class TorchBasedLinearEstimator:
         loss=Optional[Callable],
         metric=Optional[Callable],
     ):
+        """
+        Args:
+            data_size: Not used.
+            categorical_idx: Indices of categorical features.
+            embed_sizes: Categorical embedding sizes.
+            output_size: Size of output layer.
+            cs: Regularization coefficients.
+            max_iter: Maximum iterations of L-BFGS.
+            tol: Tolerance for the stopping criteria.
+            early_stopping: Maximum rounds without improving.
+            loss: Loss function. Format: loss(preds, true) -> loss_arr, assume ```reduction='none'```.
+            metric: Metric function. Format: metric(y_true, y_preds, sample_weight = None) -> float (greater_is_better).
+
+        """
         self.data_size = data_size
         self.categorical_idx = categorical_idx
         self.embed_sizes = embed_sizes
@@ -452,21 +437,7 @@ class TorchBasedLinearEstimator:
 
 
 class TorchBasedLogisticRegression(TorchBasedLinearEstimator):
-    """Linear binary classifier.
-
-    Args:
-        data_size: not used.
-        categorical_idx: indices of categorical features.
-        embed_sizes: categorical embedding sizes.
-        output_size: size of output layer.
-        cs: regularization coefficients.
-        max_iter: maximum iterations of L-BFGS.
-        tol: the tolerance for the stopping criteria.
-        early_stopping: maximum rounds without improving.
-        loss: loss function. Format: loss(preds, true) -> loss_arr, assume reduction='none'.
-        metric: metric function. Format: metric(y_true, y_preds, sample_weight = None) -> float (greater_is_better).
-
-    """
+    """Linear binary classifier."""
 
     def __init__(
         self,
@@ -498,6 +469,20 @@ class TorchBasedLogisticRegression(TorchBasedLinearEstimator):
         loss=Optional[Callable],
         metric=Optional[Callable],
     ):
+        """
+        Args:
+            data_size: not used.
+            categorical_idx: indices of categorical features.
+            embed_sizes: categorical embedding sizes.
+            output_size: size of output layer.
+            cs: regularization coefficients.
+            max_iter: maximum iterations of L-BFGS.
+            tol: the tolerance for the stopping criteria.
+            early_stopping: maximum rounds without improving.
+            loss: loss function. Format: loss(preds, true) -> loss_arr, assume reduction='none'.
+            metric: metric function. Format: metric(y_true, y_preds, sample_weight = None) -> float (greater_is_better).
+
+        """
         if output_size == 1:
             _loss = nn.BCELoss
             _model = CatLogisticRegression
@@ -545,21 +530,7 @@ class TorchBasedLogisticRegression(TorchBasedLinearEstimator):
 
 
 class TorchBasedLinearRegression(TorchBasedLinearEstimator):
-    """Torch-based linear regressor optimized by L-BFGS.
-
-    Args:
-        data_size: used only for super function.
-        categorical_idx: indices of categorical features.
-        embed_sizes: categorical embedding sizes
-        output_size: size of output layer.
-        cs: regularization coefficients.
-        max_iter: maximum iterations of L-BFGS.
-        tol: the tolerance for the stopping criteria.
-        early_stopping: maximum rounds without improving.
-        loss: loss function. Format: loss(preds, true) -> loss_arr, assume reduction='none'.
-        metric: metric function. Format: metric(y_true, y_preds, sample_weight = None) -> float (greater_is_better).
-
-    """
+    """Torch-based linear regressor optimized by L-BFGS."""
 
     def __init__(
         self,
@@ -591,6 +562,20 @@ class TorchBasedLinearRegression(TorchBasedLinearEstimator):
         loss=Optional[Callable],
         metric=Optional[Callable],
     ):
+        """
+        Args:
+            data_size: used only for super function.
+            categorical_idx: indices of categorical features.
+            embed_sizes: categorical embedding sizes
+            output_size: size of output layer.
+            cs: regularization coefficients.
+            max_iter: maximum iterations of L-BFGS.
+            tol: the tolerance for the stopping criteria.
+            early_stopping: maximum rounds without improving.
+            loss: loss function. Format: loss(preds, true) -> loss_arr, assume reduction='none'.
+            metric: metric function. Format: metric(y_true, y_preds, sample_weight = None) -> float (greater_is_better).
+
+        """
         if loss is None:
             loss = TorchLossWrapper(nn.MSELoss)
         super().__init__(

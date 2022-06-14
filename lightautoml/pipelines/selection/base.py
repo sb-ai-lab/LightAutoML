@@ -23,14 +23,15 @@ from ..utils import map_pipeline_names
 
 
 class ImportanceEstimator:
-    """Abstract class, that estimates feature importances."""
+    """
+    Abstract class, that estimates feature importances.
+    """
 
     def __init__(self):
         self.raw_importances = None
 
     # Change signature here to be compatible with MLAlgo
     def fit(self, *args: Any, **kwargs: Any):
-        """Calculate feature importance."""
         raise NotImplementedError
 
     def get_features_score(self) -> Series:
@@ -44,16 +45,9 @@ class ImportanceEstimator:
 
 
 class SelectionPipeline:
-    """Abstract class, performing feature selection.
-
+    """
+    Abstract class, performing feature selection.
     Instance should accept train/valid datasets and select features.
-
-    Args:
-        features_pipeline: Composition of feature transforms.
-        ml_algo: Tuple (MlAlgo, ParamsTuner).
-        imp_estimator: Feature importance estimator.
-        fit_on_holdout: If use the holdout iterator.
-        **kwargs: Not used.
 
     """
 
@@ -120,6 +114,16 @@ class SelectionPipeline:
         fit_on_holdout: bool = False,
         **kwargs: Any
     ):
+        """Create features selection pipeline.
+
+        Args:
+            features_pipeline: Composition of feature transforms.
+            ml_algo: Tuple (MlAlgo, ParamsTuner).
+            imp_estimator: Feature importance estimator.
+            fit_on_holdout: If use the holdout iterator.
+            **kwargs: Not used.
+
+        """
         self.features_pipeline = features_pipeline
         self._fit_on_holdout = fit_on_holdout
 
@@ -145,9 +149,6 @@ class SelectionPipeline:
         Method is used to perform selection based
         on features pipeline and ml model.
         Should save ``_selected_features`` attribute in the end of working.
-
-        Args:
-            train_valid: Classical cv-iterator.
 
         Raises:
             NotImplementedError.
@@ -211,13 +212,10 @@ class SelectionPipeline:
 
     def map_raw_feature_importances(self, raw_importances: Series):
         """Calculate input feature importances.
-
         Calculated as sum of importances on different levels of pipeline.
 
         Args:
             raw_importances: Importances of output features.
-
-        # noqa: DAR201
 
         """
         if self.features_pipeline is None:
@@ -254,14 +252,15 @@ class EmptySelector(SelectionPipeline):
 
 
 class PredefinedSelector(SelectionPipeline):
-    """Predefined selector - selects columns specified by user.
-
-    Args:
-        columns_to_select: Columns will be selected.
-
-    """
+    """Predefined selector - selects columns specified by user."""
 
     def __init__(self, columns_to_select: Sequence[str]):
+        """
+
+        Args:
+            columns_to_select: Columns will be selected.
+
+        """
         super().__init__()
         self.columns_to_select = set(columns_to_select)
 
@@ -279,14 +278,15 @@ class PredefinedSelector(SelectionPipeline):
 
 
 class ComposedSelector(SelectionPipeline):
-    """Composed selector - perform composition of selections.
-
-    Args:
-        selectors: Sequence of selectors.
-
-    """
+    """Composed selector - perform composition of selections."""
 
     def __init__(self, selectors: Sequence[SelectionPipeline]):
+        """
+
+        Args:
+            selectors: Sequence of selectors.
+
+        """
         super().__init__()
         self.selectors = selectors
 

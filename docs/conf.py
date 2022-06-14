@@ -21,8 +21,8 @@ LIB_PATH = os.path.join(CURR_PATH, os.path.pardir)
 sys.path.insert(0, LIB_PATH)
 
 project = "LightAutoML"
-copyright = "%s, AI Lab ML Tools" % str(datetime.datetime.now().year)
-author = "AI Lab ML Tools"
+copyright = "%s, Sber AI Lab" % str(datetime.datetime.now().year)
+author = "Sber AI Lab"
 
 os.environ["DOCUMENTATION_ENV"] = "True"
 
@@ -33,7 +33,7 @@ extensions = [
     "sphinx.ext.napoleon",  # structure
     "sphinx.ext.viewcode",  # for [source] button
     "nbsphinx",
-    "nbsphinx_link",
+    # 'nbsphinx_link',
     "sphinx_autodoc_typehints",
 ]
 

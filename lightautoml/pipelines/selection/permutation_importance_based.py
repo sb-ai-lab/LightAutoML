@@ -30,9 +30,6 @@ def _create_chunks_from_list(lst, n):
         lst: List of elements.
         n: Size of chunk.
 
-    Returns:
-        Sequential chunks.
-
     """
     chunks = []
     for i in range(0, len(lst), n):
@@ -46,12 +43,14 @@ class NpPermutationImportanceEstimator(ImportanceEstimator):
     Importance calculate, using random permutation
     of items in single column for each feature.
 
-    Args:
-        random_state: seed for random generation of features permutation.
-
     """
 
     def __init__(self, random_state: int = 42):
+        """
+        Args:
+            random_state: seed for random generation of features permutation.
+
+        """
         super().__init__()
         self.random_state = random_state
 
@@ -69,6 +68,7 @@ class NpPermutationImportanceEstimator(ImportanceEstimator):
             preds: Predicted target values for validation dataset.
 
         """
+
         normal_score = ml_algo.score(preds)
         logger.debug("Normal score = {}".format(normal_score))
 
@@ -115,16 +115,6 @@ class NpIterativeFeatureSelector(SelectionPipeline):
     check groups of features ordered by feature importances and
     if the quality of the model becomes better,
     we select such group, if not - ignore group.
-
-    Args:
-        feature_pipeline: Composition of feature transforms.
-        ml_algo: Tuple (MlAlgo, ParamsTuner).
-        imp_estimator: Feature importance estimator.
-        fit_on_holdout: If use the holdout iterator.
-        feature_group_size: Chunk size.
-        max_features_cnt_in_result: Lower bound of features after selection,
-            if it is reached, it will stop.
-
     """
 
     def __init__(
@@ -136,6 +126,18 @@ class NpIterativeFeatureSelector(SelectionPipeline):
         feature_group_size: Optional[int] = 5,
         max_features_cnt_in_result: Optional[int] = None,
     ):
+        """
+
+        Args:
+            feature_pipeline: Composition of feature transforms.
+            ml_algo: Tuple (MlAlgo, ParamsTuner).
+            imp_estimator: Feature importance estimator.
+            fit_on_holdout: If use the holdout iterator.
+            feature_group_size: Chunk size.
+            max_features_cnt_in_result: Lower bound of features after selection,
+              if it is reached, it will stop.
+
+        """
         if not fit_on_holdout:
             logger.info2("This selector only for holdout training. fit_on_holout argument added just to be compatible")
 
@@ -151,6 +153,7 @@ class NpIterativeFeatureSelector(SelectionPipeline):
             train_valid: Iterator for dataset.
 
         """
+
         # Calculate or receive permutation importances scores
         imp = self.imp_estimator.get_features_score()
 

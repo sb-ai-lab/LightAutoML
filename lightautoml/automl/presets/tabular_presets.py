@@ -59,8 +59,8 @@ logger = logging.getLogger(__name__)
 
 
 class TabularAutoML(AutoMLPreset):
-    """Classic preset - work with tabular data.
-
+    """
+    Classic preset - work with tabular data.
     Supported data roles - numbers, dates, categories.
     Limitations:
 
@@ -68,39 +68,6 @@ class TabularAutoML(AutoMLPreset):
         - No text support
 
     GPU support in catboost/lightgbm (if installed for GPU) training.
-
-    Commonly _params kwargs (ex. timing_params) set via
-    config file (config_path argument).
-    If you need to change just few params, it's possible
-    to pass it as dict of dicts, like json.
-    To get available params please look on default config template.
-    Also you can find there param description.
-    To generate config template call
-    :meth:`TabularAutoML.get_config('config_path.yml')`.
-
-    Args:
-        task: Task to solve.
-        timeout: Timeout in seconds.
-        memory_limit: Memory limit that are passed to each automl.
-        cpu_limit: CPU limit that that are passed to each automl.
-        gpu_ids: GPU IDs that are passed to each automl.
-        timing_params: Timing param dict. Optional.
-        config_path: Path to config file.
-        general_params: General param dict.
-        reader_params: Reader param dict.
-        read_csv_params: Params to pass ``pandas.read_csv``
-            (case of train/predict from file).
-        nested_cv_params: Param dict for nested cross-validation.
-        tuning_params: Params of Optuna tuner.
-        selection_params: Params of feature selection.
-        lgb_params: Params of lightgbm model.
-        cb_params: Params of catboost model.
-        linear_l2_params: Params of linear model.
-        gbm_pipeline_params: Params of feature generation
-            for boosting models.
-        linear_pipeline_params: Params of feature generation
-            for linear models.
-
     """
 
     _default_config_path = "tabular_config.yml"
@@ -135,6 +102,42 @@ class TabularAutoML(AutoMLPreset):
         gbm_pipeline_params: Optional[dict] = None,
         linear_pipeline_params: Optional[dict] = None,
     ):
+
+        """
+
+        Commonly _params kwargs (ex. timing_params) set via
+        config file (config_path argument).
+        If you need to change just few params, it's possible
+        to pass it as dict of dicts, like json.
+        To get available params please look on default config template.
+        Also you can find there param description.
+        To generate config template call
+        :meth:`TabularAutoML.get_config('config_path.yml')`.
+
+        Args:
+            task: Task to solve.
+            timeout: Timeout in seconds.
+            memory_limit: Memory limit that are passed to each automl.
+            cpu_limit: CPU limit that that are passed to each automl.
+            gpu_ids: GPU IDs that are passed to each automl.
+            timing_params: Timing param dict. Optional.
+            config_path: Path to config file.
+            general_params: General param dict.
+            reader_params: Reader param dict.
+            read_csv_params: Params to pass ``pandas.read_csv``
+              (case of train/predict from file).
+            nested_cv_params: Param dict for nested cross-validation.
+            tuning_params: Params of Optuna tuner.
+            selection_params: Params of feature selection.
+            lgb_params: Params of lightgbm model.
+            cb_params: Params of catboost model.
+            linear_l2_params: Params of linear model.
+            gbm_pipeline_params: Params of feature generation
+              for boosting models.
+            linear_pipeline_params: Params of feature generation
+              for linear models.
+
+        """
         super().__init__(task, timeout, memory_limit, cpu_limit, gpu_ids, timing_params, config_path)
 
         # upd manual params
@@ -458,10 +461,13 @@ class TabularAutoML(AutoMLPreset):
         Args:
             train_data: Dataset to train.
             roles: Roles dict.
-            train_features: Optional features names, if can't be inferred from `train_data`.
-            cv_iter: Custom cv-iterator. For example, :class:`~lightautoml.validation.np_iterators.TimeSeriesIterator`.
+            train_features: Optional features names, if can't
+              be inferred from `train_data`.
+            cv_iter: Custom cv-iterator. For example,
+              :class:`~lightautoml.validation.np_iterators.TimeSeriesIterator`.
             valid_data: Optional validation dataset.
-            valid_features: Optional validation dataset features if cannot be inferred from `valid_data`.
+            valid_features: Optional validation dataset features
+              if cannot be inferred from `valid_data`.
             verbose: Controls the verbosity: the higher, the more messages.
                 <1  : messages are not displayed;
                 >=1 : the computation process for layers is displayed;
@@ -469,7 +475,7 @@ class TabularAutoML(AutoMLPreset):
                 >=3 : the hyperparameters optimization process is also displayed;
                 >=4 : the training process for every algorithm is displayed;
             log_file: Filename for writing logging messages. If log_file is specified,
-                the messages will be saved in a the file. If the file exists, it will be overwritten.
+            the messages will be saved in a the file. If the file exists, it will be overwritten.
 
         Returns:
             Dataset with predictions. Call ``.data`` to get predictions array.
@@ -521,16 +527,17 @@ class TabularAutoML(AutoMLPreset):
         Args:
             data: Dataset to perform inference.
             features_names: Optional features names,
-                if cannot be inferred from `train_data`.
+              if cannot be inferred from `train_data`.
             batch_size: Batch size or ``None``.
             n_jobs: Number of jobs.
             return_all_predictions: if True,
-                returns all model predictions from last level
+              returns all model predictions from last level
 
         Returns:
             Dataset with predictions.
 
         """
+
         read_csv_params = self._get_read_csv_params()
 
         if batch_size is None and n_jobs == 1:
@@ -703,26 +710,7 @@ class TabularAutoML(AutoMLPreset):
 
 
 class TabularUtilizedAutoML(TimeUtilization):
-    """Template to make TimeUtilization from TabularAutoML.
-
-    Simplifies using ``TimeUtilization`` module for ``TabularAutoMLPreset``.
-
-    Args:
-        task: Task to solve.
-        timeout: Timeout in seconds.
-        memory_limit: Memory limit that are passed to each automl.
-        cpu_limit: CPU limit that that are passed to each automl.
-        gpu_ids: GPU IDs that are passed to each automl.
-        timing_params: Timing params level that are passed to each automl.
-        configs_list: List of str path to configs files.
-        drop_last: Usually last automl will be stopped with timeout.
-            Flag that defines if we should drop it from ensemble.
-        return_all_predictions: skip blending phase
-        max_runs_per_config: Maximum number of multistart loops.
-        random_state: Initial random seed that will be set
-            in case of search in config.
-
-    """
+    """Template to make TimeUtilization from TabularAutoML."""
 
     def __init__(
         self,
@@ -740,6 +728,24 @@ class TabularUtilizedAutoML(TimeUtilization):
         outer_blender_max_nonzero_coef: float = 0.05,
         **kwargs
     ):
+        """Simplifies using ``TimeUtilization`` module for ``TabularAutoMLPreset``.
+
+        Args:
+            task: Task to solve.
+            timeout: Timeout in seconds.
+            memory_limit: Memory limit that are passed to each automl.
+            cpu_limit: CPU limit that that are passed to each automl.
+            gpu_ids: GPU IDs that are passed to each automl.
+            timing_params: Timing params level that are passed to each automl.
+            configs_list: List of str path to configs files.
+            drop_last: Usually last automl will be stopped with timeout.
+              Flag that defines if we should drop it from ensemble.
+            return_all_predictions: skip blending phase
+            max_runs_per_config: Maximum number of multistart loops.
+            random_state: Initial random seed that will be set
+              in case of search in config.
+
+        """
         if configs_list is None:
             configs_list = [
                 os.path.join(_base_dir, "tabular_configs", x)

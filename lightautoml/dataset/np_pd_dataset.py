@@ -265,7 +265,8 @@ class NumpyDataset(LAMLDataset):
         data[:, k] = val
 
     def to_numpy(self) -> "NumpyDataset":
-        """Empty method to convert to numpy.
+        """
+        Empty method to convert to numpy.
 
         Returns:
             Same NumpyDataset.
@@ -274,7 +275,8 @@ class NumpyDataset(LAMLDataset):
         return self
 
     def to_csr(self) -> "CSRSparseDataset":
-        """Convert to csr.
+        """
+        Convert to csr.
 
         Returns:
             Same dataset in CSRSparseDatatset format.
@@ -313,11 +315,8 @@ class NumpyDataset(LAMLDataset):
     def from_dataset(dataset: Dataset) -> "NumpyDataset":
         """Convert random dataset to numpy.
 
-        Args:
-            dataset: Dataset.
-
         Returns:
-            Numpy dataset.
+            numpy dataset.
 
         """
         return dataset.to_numpy()
@@ -458,9 +457,6 @@ class CSRSparseDataset(NumpyDataset):
     def from_dataset(dataset: Dataset) -> "CSRSparseDataset":
         """Convert dataset to sparse dataset.
 
-        Args:
-            dataset: Dataset.
-
         Returns:
             Dataset in sparse form.
 
@@ -469,16 +465,7 @@ class CSRSparseDataset(NumpyDataset):
 
 
 class PandasDataset(LAMLDataset):
-    """Dataset that contains `pd.DataFrame` features and `pd.Series` targets.
-
-    Args:
-        data: Table with features.
-        features: features names.
-        roles: Roles specifier.
-        task: Task specifier.
-        **kwargs: Series, array like attrs target, group etc...
-
-    """
+    """Dataset that contains `pd.DataFrame` features and `pd.Series` targets."""
 
     _init_checks = ()
     _data_checks = ()
@@ -512,6 +499,16 @@ class PandasDataset(LAMLDataset):
         task: Optional[Task] = None,
         **kwargs: Series
     ):
+        """Create dataset from `pd.DataFrame` and `pd.Series`.
+
+        Args:
+            data: Table with features.
+            features: features names.
+            roles: Roles specifier.
+            task: Task specifier.
+            **kwargs: Series, array like attrs target, group etc...
+
+        """
         if roles is None:
             roles = {}
         # parse parameters
@@ -620,10 +617,10 @@ class PandasDataset(LAMLDataset):
 
         Args:
             data: Table with data.
-            k: Sequence of `int` indexes or `int`.
+            k: Sequence of `int` indexes or `int`
 
         Returns:
-            Sliced cols.
+           Sliced cols.
 
         """
         return data.iloc[:, k]
@@ -685,9 +682,6 @@ class PandasDataset(LAMLDataset):
     @staticmethod
     def from_dataset(dataset: Dataset) -> "PandasDataset":
         """Convert random dataset to pandas dataset.
-
-        Args:
-            dataset: Dataset.
 
         Returns:
             Converted to pandas dataset.

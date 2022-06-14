@@ -113,10 +113,7 @@ class LAMLDataset:
 
         Args:
             k: First element optional integer columns indexes,
-                second - optional feature name or list of features names.
-
-        Returns:
-            Subdataset.
+              second - optional feature name or list of features names.
 
         """
         # TODO: Maybe refactor this part?
@@ -162,7 +159,7 @@ class LAMLDataset:
         Args:
             k: Feature name.
             val: :class:`~lightautoml.dataset.base.LAMLColumn`
-                or 1d array like.
+              or 1d array like.
 
         """
         assert k in self.features, "Can only replace existed columns in default implementations."
@@ -238,6 +235,7 @@ class LAMLDataset:
             Dict of feature roles.
 
         """
+
         return copy(self._roles)
 
     @roles.setter
@@ -372,7 +370,7 @@ class LAMLDataset:
         Args:
             datasets: Sequence of feature arrays.
 
-        Returns:  # noqa DAR202
+        Returns:
             Single feature array.
 
         """
@@ -386,7 +384,7 @@ class LAMLDataset:
             data: 2d feature array.
             k: Sequence of int indexes or int.
 
-        Returns:  # noqa DAR202
+        Returns:
             2d feature array.
 
         """
@@ -400,7 +398,7 @@ class LAMLDataset:
             data: 2d feature array.
             k: Sequence indexes or single index.
 
-        Returns:  # noqa DAR202
+        Returns:
             2d feature array.
 
         """
@@ -488,7 +486,7 @@ class LAMLDataset:
         Args:
             dataset: Original type dataset.
 
-        Returns:  # noqa DAR202
+        Returns:
             Converted type dataset.
 
         """
@@ -496,5 +494,4 @@ class LAMLDataset:
 
     @property
     def dataset_type(self):
-        """Get type of dataset."""
         return self._dataset_type

@@ -32,6 +32,7 @@ def tune_and_fit_predict(
         Tuple (BestMlAlgo, predictions).
 
     """
+
     timer = ml_algo.timer
     timer.start()
     single_fold_time = timer.estimate_folds_time(1)
@@ -41,7 +42,7 @@ def tune_and_fit_predict(
         (single_fold_time is not None and single_fold_time > timer.time_left) or timer.time_limit_exceeded()
     ):
         return None, None
-
+    
     if params_tuner.best_params is None:
         # this try/except clause was added because catboost died for some unexpected reason
         try:
@@ -58,7 +59,7 @@ def tune_and_fit_predict(
         (single_fold_time is not None and single_fold_time > timer.time_left) or timer.time_limit_exceeded()
     ):
         return None, None
-
+    
     ml_algo.params = params_tuner.best_params
     # this try/except clause was added because catboost died for some unexpected reason
     try:

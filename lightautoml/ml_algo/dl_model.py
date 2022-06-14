@@ -12,12 +12,16 @@ import os
 import uuid
 
 from copy import copy
+from typing import Dict
 
 import numpy as np
 import torch
-
+import torch.nn as nn
 from torch.optim import lr_scheduler
 from transformers import AutoTokenizer
+from .nn_models import DenseLightModel, DenseModel, ResNetModel, MLP, LinearLayer, SNN
+from ..utils.timer import TaskTimer
+from typing import Optional
 
 from ..ml_algo.base import TabularDataset
 from ..ml_algo.base import TabularMLAlgo
@@ -36,8 +40,16 @@ from ..text.utils import is_shuffle
 from ..text.utils import parse_devices
 from ..text.utils import seed_everything
 
+from torch.optim.lr_scheduler import StepLR, ReduceLROnPlateau, CosineAnnealingLR
+from lightautoml.tasks.losses.torch import TorchLossWrapper
+
+from lightautoml.validation.base import TrainValidIterator
+from lightautoml.dataset.np_pd_dataset import NumpyDataset
 
 logger = logging.getLogger(__name__)
+
+model_by_name = {'dense_light': DenseLightModel, 'dense': DenseModel, 'resnet': ResNetModel,
+                 'mlp': MLP, 'dense_layer': LinearLayer, 'snn': SNN}
 
 
 class TorchModel(TabularMLAlgo):
@@ -82,40 +94,129 @@ class TorchModel(TabularMLAlgo):
     timer: :class:`~lightautoml.utils.timer.Timer` instance or ``None``.
 
     """
-
-    _name: str = "TorchNN"
-
-    _default_params = {
-        "bs": 16,
-        "num_workers": 4,
-        "max_length": 256,
-        "opt_params": {
-            "lr": 1e-4,
-        },
-        "scheduler_params": {"patience": 5, "factor": 0.5, "verbose": True},
-        "is_snap": False,
-        "snap_params": {"k": 1, "early_stopping": True, "patience": 1, "swa": False},
-        "init_bias": True,
-        "n_epochs": 20,
-        "input_bn": False,
-        "emb_dropout": 0.1,
-        "emb_ratio": 3,
-        "max_emb_size": 50,
-        "bert_name": None,
-        "pooling": "cls",
-        "device": [0],
-        "use_cont": True,
-        "use_cat": True,
-        "use_text": True,
-        "lang": "en",
-        "deterministic": True,
-        "multigpu": False,
-        "random_state": 42,
-        "path_to_save": os.path.join("./models/", "model"),
-        "verbose_inside": None,
-        "verbose": 1,
-        "stop_by_metric": False,
+    _name: str = 'TorchNN'
+    _params: Dict = None
+    
+    _default_models_params = {
+        'use_noise': False,
+        'use_bn': True,
+        'use_dropout': True,
+        
+        'act_fun': nn.ReLU,
+        'drop_rate_base': 0.1,
+        
+        'num_layers': 3,
+        'hidden_size_base': 512,
+        'num_blocks': 2,
+        'block_size_base': 2,
+        'growth_size': 256,
+        'bn_factor': 2,
+        'compression': 0.5,
+        'efficient': False,
+        'hid_factor_base': 2,
+        'drop_rate_base_1': 0.1,
+        'drop_rate_base_2': 0.2,
+        'hidden_size': 512,
+        'drop_rate': 0.1
     }
+    
+    _default_params = {
+        'num_workers': 4,
+        'max_length': 256,
+        'is_snap': False,
+        'input_bn': False,
+        'max_emb_size': 256,
+        'bert_name': None,
+        'pooling': 'cls',
+        'device': torch.device('cuda:0'),
+        'use_cont': True,
+        'use_cat': True,
+        'use_text': True,
+        'lang': 'en',
+        'deterministic': True,
+        'multigpu': False,
+        'random_state': 42,
+        'model': 'dense',
+        'path_to_save': os.path.join('./models/', 'model'),
+        'verbose_inside': None,
+        'verbose': 1,
+
+        'n_epochs': 20,
+        'snap_params': {'k': 3, 'early_stopping': True, 'patience': 16, 'swa': True},
+        'bs': 512,
+        'drop_last_batch': True,
+        'emb_dropout': 0.1,
+        'emb_ratio': 3,
+        'opt': torch.optim.Adam,
+        'opt_params': {
+            'weight_decay': 0,
+            'lr': 3e-4
+        },
+        'sch': ReduceLROnPlateau,
+        'scheduler_params': {
+            'patience': 10,
+            'factor': 1e-2,
+            'min_lr': 1e-5
+        },
+        'init_bias': True,
+        **_default_models_params
+    }
+
+    _task_to_loss = {
+        'binary': nn.BCEWithLogitsLoss(),
+        'multiclass': TorchLossWrapper(nn.CrossEntropyLoss, True, False),
+        'reg': nn.MSELoss()
+    }
+
+    def __init__(
+        self,
+        default_params: Optional[dict] = None,
+        timer: Optional[TaskTimer] = None,
+        optimization_search_space: Optional[dict] = {},
+    ):
+        super().__init__(default_params, False, timer, optimization_search_space)
+        if not self.optimization_search_space:
+            self.optimization_search_space = TorchModel._default_sample
+
+    def _default_sample(optimization_search_space, trial, suggested_params):
+        trial_values = copy(suggested_params)
+
+        trial_values["lr"] = trial.suggest_loguniform(
+            "lr", low=1e-5, high=1e-1
+        )
+        trial_values["bs"] = trial.suggest_categorical(
+            "bs", [2 ** i for i in range(6, 11)]
+        )
+        weight_decay_bin = trial.suggest_categorical(
+            "weight_decay_bin", [0, 1]
+        )
+
+        if weight_decay_bin == 0:
+            trial_values["weight_decay"] = 0
+        else:
+            trial_values["weight_decay"] = trial.suggest_loguniform(
+                "weight_decay", low=1e-6, high=1e-2
+            )
+
+        trial_values["opt_params"] = {
+            "lr": trial_values["lr"],
+            "weight_decay": trial_values["weight_decay"]
+        }
+        return trial_values
+
+
+    @property
+    def params(self) -> dict:
+        """Get model's params dict."""
+        if self._params is None:
+            self._params = copy(self.default_params)
+        return self._params
+
+    @params.setter
+    def params(self, new_params: dict):
+        assert isinstance(new_params, dict)
+        self._params = {**self.params, **new_params}
+        self._params = {**self._params, **self._construct_tune_params(self._params)}
 
     def _infer_params(self):
         if self.params["path_to_save"] is not None:
@@ -129,12 +230,35 @@ class TorchModel(TabularMLAlgo):
         if params["bert_name"] is None:
             params["bert_name"] = _model_name_by_lang[params["lang"]]
 
-        params["loss"] = self.task.losses["torch"].loss
+        if self.params.get("loss", False):
+            self.custom_loss = True
+            params["loss"] = self.params["loss"]
+        else:
+            self.custom_loss = False
+            if self.task._name in self._task_to_loss:
+                params["loss"] = self._task_to_loss[self.task._name]
+                self.custom_loss = True
+            else:
+                params["loss"] = self.task.losses["torch"]
+
+        params["custom_loss"] = self.custom_loss
         params["metric"] = self.task.losses["torch"].metric_func
 
         is_text = (len(params["text_features"]) > 0) and (params["use_text"]) and (params["device"].type == "cuda")
         is_cat = (len(params["cat_features"]) > 0) and (params["use_cat"])
         is_cont = (len(params["cont_features"]) > 0) and (params["use_cont"])
+
+        torch_model = params["model"]
+
+        if isinstance(torch_model, str):
+            assert torch_model in model_by_name, "Wrong model name"
+            torch_model = model_by_name[torch_model]
+        else:
+            for k in self._default_models_params.keys():
+                if k in params:
+                    del params[k]
+
+        assert issubclass(torch_model, nn.Module), "Wrong model format, only support torch models"
 
         model = Trainer(
             net=TorchUniversalModel,
@@ -155,6 +279,7 @@ class TorchModel(TabularMLAlgo):
                     "emb_dropout": params["emb_dropout"],
                     "emb_ratio": params["emb_ratio"],
                     "max_emb_size": params["max_emb_size"],
+                    "device": params["device"]
                 }
                 if is_cat
                 else None,
@@ -166,26 +291,17 @@ class TorchModel(TabularMLAlgo):
                 if is_text
                 else None,
                 "bias": params["bias"],
+                "torch_model": torch_model,
+                **params
             },
-            opt=torch.optim.Adam,
-            opt_params=params["opt_params"],
-            n_epochs=params["n_epochs"],
-            device=params["device"],
-            device_ids=params["device_ids"],
-            is_snap=params["is_snap"],
-            snap_params=params["snap_params"],
-            sch=lr_scheduler.ReduceLROnPlateau,
-            scheduler_params=params["scheduler_params"],
-            verbose=params["verbose"],
-            verbose_inside=params["verbose_inside"],
-            metric=params["metric"],
-            stop_by_metric=params["stop_by_metric"],
             apex=False,
+            **params
         )
 
         self.train_params = {
             "dataset": UniversalDataset,
             "bs": params["bs"],
+            "drop_last": params["drop_last_batch"],
             "num_workers": params["num_workers"],
             "tokenizer": AutoTokenizer.from_pretrained(params["bert_name"], use_fast=False) if is_text else None,
             "max_length": params["max_length"],
@@ -194,7 +310,7 @@ class TorchModel(TabularMLAlgo):
         return model
 
     @staticmethod
-    def get_mean_target(target, task_name):  # noqa: D102
+    def get_mean_target(target, task_name):
         bias = (
             np.array(target.mean(axis=0)).reshape(1, -1).astype(float)
             if (task_name != "multiclass")
@@ -224,6 +340,7 @@ class TorchModel(TabularMLAlgo):
             Parameters of model.
 
         """
+
         suggested_params = copy(self.default_params)
         suggested_params["device"], suggested_params["device_ids"] = parse_devices(
             suggested_params["device"], suggested_params["multigpu"]
@@ -235,8 +352,11 @@ class TorchModel(TabularMLAlgo):
 
         cat_dims = []
         suggested_params["cat_features"] = get_columns_by_role(train_valid_iterator.train, "Category")
+
+        # Cat_features are needed to be preprocessed with LE, where 0 = not known category
+        valid = train_valid_iterator.get_validation_data()
         for cat_feature in suggested_params["cat_features"]:
-            num_unique_categories = max(train_valid_iterator.train[:, cat_feature].data) + 1
+            num_unique_categories = max(max(train_valid_iterator.train[:, cat_feature].data), max(valid[:, cat_feature].data)) + 1
             cat_dims.append(num_unique_categories)
         suggested_params["cat_dims"] = cat_dims
 
@@ -248,7 +368,7 @@ class TorchModel(TabularMLAlgo):
 
         return suggested_params
 
-    def get_dataloaders_from_dicts(self, data_dict):  # noqa: D102
+    def get_dataloaders_from_dicts(self, data_dict):
         logger.debug(f'number of text features: {len(self.params["text_features"])} ')
         logger.debug(f'number of categorical features: {len(self.params["cat_features"])} ')
         logger.debug(f'number of continuous features: {self.params["cont_dim"]} ')
@@ -276,6 +396,8 @@ class TorchModel(TabularMLAlgo):
                 max_length=self.train_params["max_length"],
                 stage=stage,
             )
+        
+        print(self.train_params)
 
         dataloaders = {
             stage: torch.utils.data.DataLoader(
@@ -283,12 +405,19 @@ class TorchModel(TabularMLAlgo):
                 batch_size=self.train_params["bs"],
                 shuffle=is_shuffle(stage),
                 num_workers=self.train_params["num_workers"],
+                drop_last=self.train_params["drop_last"] if stage == "train" else False,
                 collate_fn=collate_dict,
                 pin_memory=False,
             )
             for stage, value in data_dict.items()
         }
         return dataloaders
+
+    def fit_predict(self, train_valid_iterator: TrainValidIterator) -> NumpyDataset:
+        if "cont_features" not in self.params:
+            self.params = self.init_params_on_input(train_valid_iterator)
+
+        return super().fit_predict(train_valid_iterator)
 
     def fit_predict_single_fold(self, train, valid):
         """Implements training and prediction on single fold.
@@ -302,13 +431,17 @@ class TorchModel(TabularMLAlgo):
 
         """
         seed_everything(self.params["random_state"], self.params["deterministic"])
+        task_name = train.task.name
+        target = train.target
+        self.params['bias'] = self.get_mean_target(target, task_name) if self.params['init_bias'] else None
+
         model = self._infer_params()
 
         model_path = (
             os.path.join(self.path_to_save, f"{uuid.uuid4()}.pickle") if self.path_to_save is not None else None
         )
         # init datasets
-        dataloaders = self.get_dataloaders_from_dicts({"train": train, "val": valid})
+        dataloaders = self.get_dataloaders_from_dicts({"train": train.to_pandas(), "val": valid.to_pandas()})
 
         val_pred = model.fit(dataloaders)
 
@@ -330,12 +463,13 @@ class TorchModel(TabularMLAlgo):
             model: Neural net object or dict or str.
             dataset: Test dataset.
 
-        Returns:
+        Return:
             Predicted target values.
 
         """
+
         seed_everything(self.params["random_state"], self.params["deterministic"])
-        dataloaders = self.get_dataloaders_from_dicts({"test": dataset})
+        dataloaders = self.get_dataloaders_from_dicts({"test": dataset.to_pandas()})
 
         if isinstance(model, (str, dict)):
             model = self._infer_params().load_state(model)
@@ -348,3 +482,104 @@ class TorchModel(TabularMLAlgo):
         torch.cuda.empty_cache()
 
         return pred
+
+    def _construct_tune_params(self, params):
+        new_params = {}
+
+        new_params["opt_params"] = params.get("opt_params", dict())
+        if "lr" in params:
+            new_params["opt_params"]["lr"] = params["lr"]
+        if "weight_decay" in params:
+            new_params["opt_params"]["weight_decay"] = params["weight_decay"]
+        elif params.get("weight_decay_bin", -1) == 0:
+            new_params["opt_params"]["weight_decay"] = 0
+
+        new_params["scheduler_params"] = params.get("scheduler_params", dict())
+        if params["sch"] == StepLR:
+            if "step_size" in params:
+                new_params["scheduler_params"]["step_size"] = params["step_size"]
+            if "gamma" in params:
+                new_params["scheduler_params"]["gamma"] = params["gamma"]
+
+            new_params["scheduler_params"] = {
+                "step_size": new_params["scheduler_params"]["step_size"],
+                "gamma": new_params["scheduler_params"]["gamma"],
+            }
+
+        elif params["sch"] == ReduceLROnPlateau:
+            if "patience" in params:
+                new_params["scheduler_params"]["patience"] = params["patience"]
+            if "factor" in params:
+                new_params["scheduler_params"]["factor"] = params["factor"]
+
+            new_params["scheduler_params"] = {
+                "patience": new_params["scheduler_params"]["patience"],
+                "factor": new_params["scheduler_params"]["factor"],
+                'min_lr': 1e-6,
+            }
+
+        elif params["sch"] == CosineAnnealingLR:
+            if "T_max" in params:
+                new_params["scheduler_params"]["T_max"] = params["T_max"]
+            if "eta_min" in params:
+                new_params["scheduler_params"]["eta_min"] = params["eta_min"]
+            elif params.get("eta_min_bin", -1) == 0:
+                new_params["scheduler_params"]["eta_min"] = 0
+
+            new_params["scheduler_params"] = {
+                "T_max": new_params["scheduler_params"]["T_max"],
+                "eta_min": new_params["scheduler_params"]["eta_min"],
+            }
+
+        elif params["sch"] is not None:
+            raise ValueError("Worng sch")
+
+        if self.params["model"] == "dense_light" or self.params["model"] == "mlp":
+            hidden_size = ()
+            drop_rate = ()
+
+            for layer in range(int(params["num_layers"])):
+                hidden_name = "hidden_size_base"
+                drop_name = "drop_rate_base"
+
+                hidden_size = hidden_size + (params[hidden_name],)
+                if self.params["use_dropout"]:
+                    drop_rate = drop_rate + (params[drop_name],)
+
+            new_params["hidden_size"] = hidden_size
+            if self.params["use_dropout"]:
+                new_params["drop_rate"] = drop_rate
+
+        elif self.params["model"] == "dense":
+            block_config = ()
+            drop_rate = ()
+
+            for layer in range(int(params["num_blocks"])):
+                block_name = "block_size_base"
+                drop_name = "drop_rate_base"
+
+                block_config = block_config + (params[block_name],)
+                if self.params["use_dropout"]:
+                    drop_rate = drop_rate + (params[drop_name],)
+
+            new_params["block_config"] = block_config
+            if self.params["use_dropout"]:
+                new_params["drop_rate"] = drop_rate
+
+        elif self.params["model"] == "resnet":
+            hidden_factor = ()
+            drop_rate = ()
+
+            for layer in range(int(params['num_layers'])):
+                hidden_name = "hid_factor_base"
+                drop_name = "drop_rate_base"
+
+                hidden_factor = hidden_factor + (params[hidden_name],)
+                if self.params["use_dropout"]:
+                    drop_rate = drop_rate + ((params[drop_name + '_1'], params[drop_name + '_2']),)
+
+            new_params['hid_factor'] = hidden_factor
+            if self.params["use_dropout"]:
+                new_params["drop_rate"] = drop_rate
+
+        return new_params

@@ -92,17 +92,6 @@ class LGBAdvancedPipeline(FeaturesPipeline, TabularDataFeatures):
         - Dates handling - extracting seasons and create datediffs.
         - Create categorical intersections.
 
-
-    Args:
-        feats_imp: Features importances mapping.
-        top_intersections: Max number of categories
-            to generate intersections.
-        max_intersection_depth: Max depth of cat intersection.
-        subsample: Subsample to calc data statistics.
-        multiclass_te_co: Cutoff if use target encoding in cat
-            handling on multiclass task if number of classes is high.
-        auto_unique_co: Switch to target encoding if high cardinality.
-
     """
 
     def __init__(
@@ -116,6 +105,19 @@ class LGBAdvancedPipeline(FeaturesPipeline, TabularDataFeatures):
         output_categories: bool = False,
         **kwargs
     ):
+        """
+
+        Args:
+            feats_imp: Features importances mapping.
+            top_intersections: Max number of categories
+              to generate intersections.
+            max_intersection_depth: Max depth of cat intersection.
+            subsample: Subsample to calc data statistics.
+            multiclass_te_co: Cutoff if use target encoding in cat
+              handling on multiclass task if number of classes is high.
+            auto_unique_co: Switch to target encoding if high cardinality.
+
+        """
         super().__init__(
             multiclass_te_co=multiclass_te_co,
             top_intersections=top_intersections,
@@ -137,6 +139,7 @@ class LGBAdvancedPipeline(FeaturesPipeline, TabularDataFeatures):
             Transformer.
 
         """
+
         transformer_list = []
         target_encoder = self.get_target_encoder(train)
 
@@ -194,6 +197,119 @@ class LGBAdvancedPipeline(FeaturesPipeline, TabularDataFeatures):
 
         # get intersection of top categories
         intersections = self.get_categorical_intersections(train)
+        if intersections is not None:
+            if target_encoder is not None:
+                ints_part = SequentialTransformer([intersections, target_encoder()])
+            else:
+                ints_part = SequentialTransformer([intersections, ChangeRoles(output_category_role)])
+
+            transformer_list.append(ints_part)
+
+        # add numeric pipeline
+        transformer_list.append(self.get_numeric_data(train))
+        transformer_list.append(self.get_ordinal_encoding(train, ordinal))
+        # add difference with base date
+        transformer_list.append(self.get_datetime_diffs(train))
+        # add datetime seasonality
+        transformer_list.append(self.get_datetime_seasons(train, NumericRole(np.float32)))
+
+        # final pipeline
+        union_all = UnionTransformer([x for x in transformer_list if x is not None])
+
+        return union_all
+
+
+class LGBAdvancedPipeline_no_te_no_int(FeaturesPipeline, TabularDataFeatures):
+    def __init__(
+        self,
+        feats_imp: Optional[ImportanceEstimator] = None,
+        top_intersections: int = 0,
+        max_intersection_depth: int = 0,
+        subsample: Optional[Union[int, float]] = None,
+        multiclass_te_co: int = 0,
+        auto_unique_co: int = 10,
+        output_categories: bool = False,
+        **kwargs
+    ):
+        super().__init__(
+            multiclass_te_co=multiclass_te_co,
+            top_intersections=top_intersections,
+            max_intersection_depth=max_intersection_depth,
+            subsample=subsample,
+            feats_imp=feats_imp,
+            auto_unique_co=auto_unique_co,
+            output_categories=output_categories,
+            ascending_by_cardinality=False,
+        )
+
+    def create_pipeline(self, train: NumpyOrPandas) -> LAMLTransformer:
+        """Create tree pipeline.
+
+        Args:
+            train: Dataset with train features.
+
+        Returns:
+            Transformer.
+
+        """
+
+        transformer_list = []
+        target_encoder = None
+
+        output_category_role = (
+            CategoryRole(np.float32, label_encoded=True) if self.output_categories else NumericRole(np.float32)
+        )
+
+        # handle categorical feats
+        # split categories by handling type. This pipe use 3 encodings - freq/label/target/ordinal
+        # 1 - separate freqs. It does not need label encoding
+        transformer_list.append(self.get_freq_encoding(train))
+
+        # 2 - check different target encoding parts and split (ohe is the same as auto - no ohe in gbm)
+        auto = get_columns_by_role(train, "Category", encoding_type="auto") + get_columns_by_role(
+            train, "Category", encoding_type="ohe"
+        )
+
+        if self.output_categories:
+            le = (
+                auto
+                + get_columns_by_role(train, "Category", encoding_type="oof")
+                + get_columns_by_role(train, "Category", encoding_type="int")
+            )
+            te = []
+            ordinal = None
+
+        else:
+            le = get_columns_by_role(train, "Category", encoding_type="int")
+            ordinal = get_columns_by_role(train, "Category", ordinal=True)
+
+            if target_encoder is not None:
+                te = get_columns_by_role(train, "Category", encoding_type="oof")
+                # split auto categories by unique values cnt
+                un_values = self.get_uniques_cnt(train, auto)
+                te = te + [x for x in un_values.index if un_values[x] > self.auto_unique_co]
+                ordinal = ordinal + list(set(auto) - set(te))
+
+            else:
+                te = []
+                ordinal = ordinal + auto + get_columns_by_role(train, "Category", encoding_type="oof")
+
+            ordinal = sorted(list(set(ordinal)))
+
+        # get label encoded categories
+        le_part = self.get_categorical_raw(train, le)
+        if le_part is not None:
+            le_part = SequentialTransformer([le_part, ChangeRoles(output_category_role)])
+            transformer_list.append(le_part)
+
+        # get target encoded part
+        te_part = None
+        if te_part is not None:
+            te_part = SequentialTransformer([te_part, target_encoder()])
+            transformer_list.append(te_part)
+
+        # get intersection of top categories
+        intersections = None
         if intersections is not None:
             if target_encoder is not None:
                 ints_part = SequentialTransformer([intersections, target_encoder()])

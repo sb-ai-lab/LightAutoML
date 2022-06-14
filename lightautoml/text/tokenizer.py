@@ -34,22 +34,20 @@ def tokenizer_func(arr, tokenizer):
 
 
 class BaseTokenizer:
-    """Base class for tokenizer method.
-
-    Tokenization with simple text cleaning and preprocessing.
-
-    Args:
-        n_jobs: Number of threads for multiprocessing.
-        to_string: Return string or list of tokens.
-        **kwargs: Ignore.
-
-    """
+    """Base class for tokenizer method."""
 
     _fname_prefix = None
     _fit_checks = ()
     _transform_checks = ()
 
     def __init__(self, n_jobs: int = 4, to_string: bool = True, **kwargs: Any):
+        """Tokenization with simple text cleaning and preprocessing.
+
+        Args:
+            n_jobs: Number of threads for multiprocessing.
+            to_string: Return string or list of tokens.
+
+        """
         self.n_jobs = n_jobs
         self.to_string = to_string
 
@@ -187,19 +185,7 @@ class BaseTokenizer:
 
 
 class SimpleRuTokenizer(BaseTokenizer):
-    """Russian tokenizer.
-
-    Include numeric, punctuation and short word filtering.
-    Use stemmer by default and do lowercase.
-
-    Args:
-        n_jobs: Number of threads for multiprocessing.
-        to_string: Return string or list of tokens.
-        stopwords: Use stopwords or not.
-        is_stemmer: Use stemmer.
-        kwargs: Ignore.
-
-    """
+    """Russian tokenizer."""
 
     def __init__(
         self,
@@ -209,6 +195,19 @@ class SimpleRuTokenizer(BaseTokenizer):
         is_stemmer: bool = True,
         **kwargs: Any
     ):
+        """Tokenizer for Russian language.
+
+        Include numeric, punctuation and short word filtering.
+        Use stemmer by default and do lowercase.
+
+        Args:
+            n_jobs: Number of threads for multiprocessing.
+            to_string: Return string or list of tokens.
+            stopwords: Use stopwords or not.
+            is_stemmer: Use stemmer.
+
+        """
+
         super().__init__(n_jobs, **kwargs)
         self.n_jobs = n_jobs
         self.to_string = to_string
@@ -224,6 +223,7 @@ class SimpleRuTokenizer(BaseTokenizer):
     @staticmethod
     def _is_abbr(word: str) -> bool:
         """Check if the word is an abbreviation."""
+
         return sum([x.isupper() and x.isalpha() for x in word]) > 1 and len(word) <= 5
 
     def preprocess_sentence(self, snt: str) -> str:
@@ -264,6 +264,7 @@ class SimpleRuTokenizer(BaseTokenizer):
             Resulting list of filtered tokens.
 
         """
+
         filtered_s = []
         for w in snt:
 
@@ -312,16 +313,7 @@ class SimpleRuTokenizer(BaseTokenizer):
 
 
 class SimpleEnTokenizer(BaseTokenizer):
-    """English tokenizer.
-
-    Args:
-        n_jobs: Number of threads for multiprocessing.
-        to_string: Return string or list of tokens.
-        stopwords: Use stopwords or not.
-        is_stemmer: Use stemmer.
-        kwargs: Ignore.
-
-    """
+    """English tokenizer."""
 
     def __init__(
         self,
@@ -331,6 +323,16 @@ class SimpleEnTokenizer(BaseTokenizer):
         is_stemmer: bool = True,
         **kwargs: Any
     ):
+        """Tokenizer for English language.
+
+        Args:
+            n_jobs: Number of threads for multiprocessing.
+            to_string: Return string or list of tokens.
+            stopwords: Use stopwords or not.
+            is_stemmer: Use stemmer.
+
+        """
+
         super().__init__(n_jobs, **kwargs)
         self.n_jobs = n_jobs
         self.to_string = to_string

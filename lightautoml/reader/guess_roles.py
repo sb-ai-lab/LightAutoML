@@ -141,7 +141,7 @@ def get_target_and_encoder(train: NumpyOrPandas) -> Tuple[Any, type]:
 
 
 def calc_ginis(data: np.ndarray, target: np.ndarray, empty_slice: Optional[np.ndarray] = None):
-    """Calculate ginis for array of preditions.
+    """
 
     Args:
         data: np.ndarray.
@@ -152,6 +152,7 @@ def calc_ginis(data: np.ndarray, target: np.ndarray, empty_slice: Optional[np.nd
         gini.
 
     """
+
     scores = np.zeros(data.shape[1])
     for n in range(data.shape[1]):
         sl = None
@@ -181,6 +182,7 @@ def _get_score_from_pipe(
         np.ndarray.
 
     """
+
     shape = train.shape
 
     if pipe is not None:
@@ -212,6 +214,7 @@ def get_score_from_pipe(
         np.ndarray.
 
     """
+
     shape = train.shape
     if n_jobs == 1:
         return _get_score_from_pipe(train, target, pipe, empty_slice)
@@ -474,6 +477,7 @@ def get_category_roles_stat(
         result.
 
     """
+
     roles_to_identify = []
 
     dtypes = []

@@ -53,22 +53,24 @@ UserRolesDefinition = Optional[Union[UserDefinedRole, UserDefinedRolesDict, User
 
 
 class Reader:
-    """Abstract Reader class.
-
+    """
     Abstract class for analyzing input data and creating inner
     :class:`~lightautoml.dataset.base.LAMLDataset` from raw data.
     Takes data in different formats as input,
     drop obviously useless features,
     estimates avaliable size and returns dataset.
 
-    Args:
-        task: Task object
-        *args: Not used.
-        *kwargs: Not used.
-
     """
 
     def __init__(self, task: Task, *args: Any, **kwargs: Any):
+        """
+
+        Args:
+            task: Task object
+            *args: Not used.
+            *kwargs: Not used.
+
+        """
         self.task = task
         self._roles = {}
         self._dropped_features = []
@@ -169,8 +171,7 @@ class Reader:
 
 
 class PandasToPandasReader(Reader):
-    """Pandas Reader.
-
+    """
     Reader to convert :class:`~pandas.DataFrame` to AutoML's :class:`~lightautoml.dataset.np_pd_dataset.PandasDataset`.
     Stages:
 
@@ -180,28 +181,6 @@ class PandasToPandasReader(Reader):
         - Create cv folds.
         - Create initial PandasDataset.
         - Optional: advanced guessing of role and handling types.
-
-
-    Args:
-        task: Task object.
-        samples: Number of elements used when checking role type.
-        max_nan_rate: Maximum nan-rate.
-        max_constant_rate: Maximum constant rate.
-        cv: CV Folds.
-        random_state: Random seed.
-        roles_params: dict of params of features roles. \
-            Ex. {'numeric': {'dtype': np.float32}, 'datetime': {'date_format': '%Y-%m-%d'}}
-            It's optional and commonly comes from config
-        n_jobs: Int number of processes.
-        advanced_roles: Param of roles guess (experimental, do not change).
-        numeric_unique_rate: Param of roles guess (experimental, do not change).
-        max_to_3rd_rate: Param of roles guess (experimental, do not change).
-        binning_enc_rate: Param of roles guess (experimental, do not change).
-        raw_decr_rate: Param of roles guess (experimental, do not change).
-        max_score_rate: Param of roles guess (experimental, do not change).
-        abs_score_val: Param of roles guess (experimental, do not change).
-        drop_score_co: Param of roles guess (experimental, do not change).
-        **kwargs: For now not used.
 
     """
 
@@ -226,6 +205,30 @@ class PandasToPandasReader(Reader):
         drop_score_co: float = 0.01,
         **kwargs: Any
     ):
+        """
+
+        Args:
+            task: Task object.
+            samples: Number of elements used when checking role type.
+            max_nan_rate: Maximum nan-rate.
+            max_constant_rate: Maximum constant rate.
+            cv: CV Folds.
+            random_state: Random seed.
+            roles_params: dict of params of features roles. \
+                Ex. {'numeric': {'dtype': np.float32}, 'datetime': {'date_format': '%Y-%m-%d'}}
+                It's optional and commonly comes from config
+            n_jobs: Int number of processes.
+            advanced_roles: Param of roles guess (experimental, do not change).
+            numeric_unqiue_rate: Param of roles guess (experimental, do not change).
+            max_to_3rd_rate: Param of roles guess (experimental, do not change).
+            binning_enc_rate: Param of roles guess (experimental, do not change).
+            raw_decr_rate: Param of roles guess (experimental, do not change).
+            max_score_rate: Param of roles guess (experimental, do not change).
+            abs_score_val: Param of roles guess (experimental, do not change).
+            drop_score_co: Param of roles guess (experimental, do not change).
+            **kwargs: For now not used.
+
+        """
         super().__init__(task)
         self.samples = samples
         self.max_nan_rate = max_nan_rate
@@ -260,7 +263,8 @@ class PandasToPandasReader(Reader):
         Args:
             train_data: Input data.
             features_names: Ignored. Just to keep signature.
-            roles: Dict of features roles in format ``{RoleX: ['feat0', 'feat1', ...], RoleY: 'TARGET', ....}``.
+            roles: Dict of features roles in format
+              ``{RoleX: ['feat0', 'feat1', ...], RoleY: 'TARGET', ....}``.
             **kwargs: Can be used for target/group/weights.
 
         Returns:
@@ -384,7 +388,7 @@ class PandasToPandasReader(Reader):
         return dataset
 
     def _create_target(self, target: Series):
-        """Validate target column and create class mapping is needed.
+        """Validate target column and create class mapping is needed
 
         Args:
             target: Column with target values.
@@ -465,21 +469,15 @@ class PandasToPandasReader(Reader):
         # check if default format is defined
         date_format = self._get_default_role_from_str("datetime").format
         # check if it's datetime
-        dt_role = DatetimeRole(np.datetime64, date_format=date_format)
         try:
             # TODO: check all notnans and set coerce errors
-            t = cast(pd.Series, pd.to_datetime(feature, infer_datetime_format=False, format=date_format))
+            _ = cast(
+                pd.Series,
+                pd.to_datetime(feature, infer_datetime_format=False, format=date_format),
+            ).dt.tz_localize("UTC")
+            return DatetimeRole(np.datetime64, date_format=date_format)
         except (ValueError, AttributeError):
             # else category
-            return CategoryRole(object)
-
-        try:
-            _ = t.dt.tz_localize("UTC")
-            return dt_role
-        except TypeError:
-            # The exception is raised when TimeSeries is tz-aware and tz is not None
-            return dt_role
-        except:
             return CategoryRole(object)
 
     def _is_ok_feature(self, feature) -> bool:
@@ -505,7 +503,7 @@ class PandasToPandasReader(Reader):
             data: Data.
             features_names: Not used.
             add_array_attrs: Additional attributes, like
-                target/group/weights/folds.
+              target/group/weights/folds.
 
         Returns:
             Dataset with new columns.

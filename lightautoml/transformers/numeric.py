@@ -11,6 +11,7 @@ from ..dataset.roles import CategoryRole
 from ..dataset.roles import NumericRole
 from .base import LAMLTransformer
 
+from sklearn.preprocessing import QuantileTransformer as SklQntTr
 
 # type - something that can be converted to pandas dataset
 NumpyTransformable = Union[NumpyDataset, PandasDataset]
@@ -33,18 +34,19 @@ def numeric_check(dataset: LAMLDataset):
 
 
 class NaNFlags(LAMLTransformer):
-    """Create NaN flags.
-
-    Args:
-        nan_rate: Nan rate cutoff.
-
-    """
+    """Create NaN flags."""
 
     _fit_checks = (numeric_check,)
     _transform_checks = ()
     _fname_prefix = "nanflg"
 
     def __init__(self, nan_rate: float = 0.005):
+        """
+
+        Args:
+            nan_rate: Nan rate cutoff.
+
+        """
         self.nan_rate = nan_rate
 
     def fit(self, dataset: NumpyTransformable):
@@ -94,6 +96,61 @@ class NaNFlags(LAMLTransformer):
         # create resulted
         output = dataset.empty().to_numpy()
         output.set_data(new_arr, self.features, NumericRole(np.float32))
+
+        return output
+
+
+class FillnaMean(LAMLTransformer):
+    """Fillna with median."""
+
+    _fit_checks = (numeric_check,)
+    _transform_checks = ()
+    _fname_prefix = "fillnamed"
+
+    def fit(self, dataset: NumpyTransformable):
+        """Estimate means.
+
+        Args:
+            dataset: Pandas or Numpy dataset of categorical features.
+
+        Returns:
+            self.
+
+        """
+        # set transformer names and add checks
+        super().fit(dataset)
+        # set transformer features
+
+        # convert to accepted dtype and get attributes
+        dataset = dataset.to_numpy()
+        data = dataset.data
+
+        self.means = np.nanmean(data, axis=0)
+        self.means[np.isnan(self.means)] = 0
+
+        return self
+
+    def transform(self, dataset: NumpyTransformable) -> NumpyDataset:
+        """Transform - fillna with means.
+
+        Args:
+            dataset: Pandas or Numpy dataset of categorical features.
+
+        Returns:
+            Numpy dataset with encoded labels.
+
+        """
+        # checks here
+        super().transform(dataset)
+        # convert to accepted dtype and get attributes
+        dataset = dataset.to_numpy()
+        data = dataset.data
+        # transform
+        data = np.where(np.isnan(data), self.means, data)
+
+        # create resulted
+        output = dataset.empty().to_numpy()
+        output.set_data(data, self.features, NumericRole(np.float32))
 
         return output
 
@@ -279,18 +336,19 @@ class StandardScaler(LAMLTransformer):
 
 
 class QuantileBinning(LAMLTransformer):
-    """Discretization of numeric features by quantiles.
-
-    Args:
-        nbins: maximum number of bins.
-
-    """
+    """Discretization of numeric features by quantiles."""
 
     _fit_checks = (numeric_check,)
     _transform_checks = ()
     _fname_prefix = "qntl"
 
     def __init__(self, nbins: int = 10):
+        """
+
+        Args:
+            nbins: maximum number of bins.
+
+        """
         self.nbins = nbins
 
     def fit(self, dataset: NumpyTransformable):
@@ -352,5 +410,59 @@ class QuantileBinning(LAMLTransformer):
         # create resulted
         output = dataset.empty().to_numpy()
         output.set_data(new_data, self.features, CategoryRole(np.int32, label_encoded=True))
+
+        return output
+
+
+class QuantileTransformer(LAMLTransformer):
+    _fit_checks = (numeric_check,)
+    _transform_checks = ()
+    _fname_prefix = 'qntl_tr'
+    # TODO: Make normal docs
+
+    def __init__(self, n_quantiles=None, subsample=1e9, output_distribution='normal',
+                 noise: float = 1e-3, qnt_factor=30):
+        self.params = {
+            'n_quantiles': n_quantiles,
+            'subsample': subsample,
+            'copy': False,
+            'output_distribution': output_distribution,
+            'noise': noise,
+        }
+        self.qnt_factor = qnt_factor
+        self.transformer = None
+
+    def fit(self, dataset: NumpyTransformable):
+        for check_func in self._fit_checks:
+            check_func(dataset)
+
+        np_dataset = dataset.to_numpy().data
+        if self.params['noise'] is not None:
+            stds = np.std(np_dataset, axis=0, keepdims=True)
+            noise_std = self.params['noise'] / np.maximum(stds, self.params['noise'])
+            np_dataset += noise_std * np.random.randn(*np_dataset.shape)
+
+        if self.params['n_quantiles'] is None:
+            self.params['n_quantiles'] = max(min(np_dataset.shape[0] // self.qnt_factor, 1000), 10)
+
+        skl_params = self.params
+        del skl_params['noise']
+        self.transformer = SklQntTr(**skl_params)
+        self.transformer.fit(np_dataset)
+        self._features = dataset.features
+        return self
+
+    def transform(self, dataset: NumpyTransformable) -> NumpyDataset:
+        # checks here
+        super().transform(dataset)
+        # convert to accepted dtype and get attributes
+        dataset = dataset.to_numpy()
+
+        # transform
+        new_arr = self.transformer.transform(dataset.data)
+
+        # create resulted
+        output = dataset.empty().to_numpy()
+        output.set_data(new_arr, self.features, NumericRole(np.float32))
 
         return output

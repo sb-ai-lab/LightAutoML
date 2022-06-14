@@ -13,7 +13,7 @@ from torch._utils import ExceptionWrapper
 from torch.cuda._utils import _get_device_index
 
 
-def get_a_var(obj):  # noqa: D103
+def get_a_var(obj):
     if isinstance(obj, torch.Tensor):
         return obj
 
@@ -29,19 +29,14 @@ def get_a_var(obj):  # noqa: D103
 
 
 def parallel_apply_predict(modules, inputs, kwargs_tup=None, devices=None):
-    """Applies each `module` predict method in `modules` in parallel on arguments.
-
+    """Applies each `module` predict method in `modules` in parallel on arguments
     contained in `inputs` (positional) and `kwargs_tup` (keyword)
     on each of `devices`.
 
     Args:
         modules: modules to be parallelized.
         inputs: inputs to the modules.
-        kwargs_tup: Arguments for each modules.
         devices: CUDA devices.
-
-    Returns:
-        Predictions.
 
     """
     assert len(modules) == len(inputs)
@@ -113,7 +108,6 @@ class CustomDataParallel(nn.DataParallel):
             pass
 
     def predict(self, *inputs, **kwargs):
-        """Predict."""
         if not self.device_ids:
             return self.module(*inputs, **kwargs)
 
@@ -133,5 +127,4 @@ class CustomDataParallel(nn.DataParallel):
         return self.gather(outputs, self.output_device)
 
     def parallel_apply_predict(self, replicas, inputs, kwargs):
-        """Parrallel prediction."""
         return parallel_apply_predict(replicas, inputs, kwargs, self.device_ids[: len(replicas)])

@@ -32,19 +32,10 @@ TabularDataset = Union[NumpyDataset, CSRSparseDataset, PandasDataset]
 
 
 class MLAlgo(ABC):
-    """Abstract class for machine learning algorithm.
-
+    """
+    Abstract class for machine learning algorithm.
     Assume that features are already selected,
     but parameters my be tuned and set before training.
-
-    Args:
-        default_params: Algo hyperparams.
-        freeze_defaults:
-            - ``True`` :  params may be rewrited depending on dataset.
-            - ``False``:  params may be changed only manually
-                or with tuning.
-        timer: Timer for Algo.
-
     """
 
     _default_params: Dict = {}
@@ -107,6 +98,17 @@ class MLAlgo(ABC):
         timer: Optional[TaskTimer] = None,
         optimization_search_space: Optional[dict] = {},
     ):
+        """
+
+        Args:
+            default_params: Algo hyperparams.
+            freeze_defaults:
+                - ``True`` :  params may be rewrited depending on dataset.
+                - ``False``:  params may be changed only manually
+                  or with tuning.
+            timer: Timer for Algo.
+
+        """
         self.task = None
         self.optimization_search_space = optimization_search_space
 
@@ -196,6 +198,7 @@ class TabularMLAlgo(MLAlgo):
             Transformed dataset.
 
         """
+
         prefix = "{0}_prediction".format(self._name)
         prob = self.task.name in ["binary", "multiclass"]
         dataset.set_data(preds_arr, prefix, NumericRole(np.float32, force_input=True, prob=prob))
@@ -209,7 +212,7 @@ class TabularMLAlgo(MLAlgo):
             train: Train Dataset.
             valid: Validation Dataset.
 
-        Returns:  # noqa: DAR202
+        Returns:
             Target predictions for valid dataset.
 
         """
@@ -300,7 +303,7 @@ class TabularMLAlgo(MLAlgo):
             model: Model uses to predict.
             dataset: Dataset used for prediction.
 
-        Returns:  # noqa: DAR202
+        Returns:
             Predictions for input dataset.
 
         """
