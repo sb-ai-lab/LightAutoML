@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "LightAutoML"
-version = "0.3.4"
+version = "0.3.5"
 description = "Fast and customizable framework for automatic ML model creation (AutoML)"
 authors = [
     "Alexander Ryzhkov <alexmryzhkov@gmail.com>",
@@ -78,6 +78,9 @@ torchvision = [
     {platform = "*", version = "*", optional = true}
 ]
 
+# AFG
+featuretools = {version = "*", optional = true}
+
 # Report (pdf)
 weasyprint = {version = "^52.5", optional = true}
 cffi = {version = "^1.14.5", optional = true}
@@ -124,6 +127,10 @@ report = [
     "cffi",
     "weasyprint"
 ]
+
+afg = [
+    "featuretools"
+]
 all = [
     "albumentations",
     "efficientnet-pytorch",
@@ -135,7 +142,8 @@ all = [
     "nltk",
     "transformers",
     "cffi",
-    "weasyprint"
+    "weasyprint",
+    "featuretools"
 ]
 
 
@@ -199,4 +207,3 @@ whitelist_externals = poetry
 commands =
     poetry run pytest tests -v
 """
-

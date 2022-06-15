@@ -621,4 +621,7 @@ class TorchBasedLinearRegression(TorchBasedLinearEstimator):
             predicted target values.
 
         """
-        return super().predict(data)[:, 0]
+        if self.output_size == 1:
+            return super().predict(data)[:, 0]
+        else:
+            return super().predict(data)

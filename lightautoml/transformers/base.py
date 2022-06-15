@@ -8,6 +8,7 @@ from typing import Type
 from typing import Union
 
 import numpy as np
+import pandas as pd
 
 from ..dataset.base import LAMLDataset
 from ..dataset.base import RolesDict
@@ -550,5 +551,65 @@ class ChangeRoles(LAMLTransformer):
         data, features, _ = dataset.data, dataset.features, dataset.roles
         dataset = dataset.empty()
         dataset.set_data(data, features, self.roles)
+
+        return dataset
+
+
+class SetAttribute(LAMLTransformer):
+    """Set data attribute.
+
+    Args:
+        attr: New attribute for dataset.
+        column: Name of column.
+
+    """
+
+    def __init__(self, attr, column):
+
+        self.attr = attr
+        self.column = column
+
+    def transform(self, dataset: LAMLDataset) -> LAMLDataset:
+        """Paste new attributes into dataset.
+
+        Args:
+            dataset: Dataset to transform.
+
+        Returns:
+            Same dataset with new attributes.
+
+        """
+
+        val = dataset[:, self.column].data
+
+        if isinstance(val, pd.DataFrame):
+            val = val.iloc[:, 0]
+        elif len(val.shape) == 2:
+            val = val[:, 0]
+
+        if self.attr not in dataset.__dict__:
+            dataset.__dict__[self.attr] = val
+            dataset._array_like_attrs.append(self.attr)
+
+        return dataset
+
+
+class EmptyTransformer(LAMLTransformer):
+    """Set data attribute."""
+
+    def __init__(self):
+        pass
+
+    def transform(self, dataset: LAMLDataset) -> LAMLDataset:
+        """Paste new attributes into dataset.
+
+        Args:
+            dataset: Dataset to transform.
+
+        Returns:
+            Same dataset with new attributes.
+
+        """
+        print(dataset.__dict__)
 
         return dataset
