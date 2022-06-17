@@ -18,7 +18,7 @@ Steps to reproduce the behavior:
 1. Run '....'
 3. ...
 
-<!-- If you have a code sample, error messages, stack traces, please provide it here as well --> 
+<!-- If you have a code sample, error messages, stack traces, please provide it here as well -->
 
 
 
