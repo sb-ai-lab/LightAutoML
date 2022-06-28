@@ -93,7 +93,6 @@ class TabularNLPAutoML(TabularAutoML):
         nn_params: Params of neural network model.
         lgb_params: Params of lightgbm model.
         cb_params: Params of catboost model.
-        rf_params: Params of Sklearn Random Forest model.
         linear_l2_params: Params of linear model.
         nn_pipeline_params: Params of feature generation
             for neural network models.

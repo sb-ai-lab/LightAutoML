@@ -44,6 +44,8 @@ _time_scores = {
     "cb": 2,
     "cb_tuned": 6,
     "nn": 1,
+    "rf": 5,
+    "rf_tuned": 10
 }
 
 
@@ -100,6 +102,8 @@ class TabularCVAutoML(TabularAutoML):
         "linear_l2": 0.7,
         "cb": 2,
         "cb_tuned": 6,
+        "rf": 5,
+        "rf_tuned": 10
     }
 
     def __init__(
@@ -120,6 +124,7 @@ class TabularCVAutoML(TabularAutoML):
         selection_params: Optional[dict] = None,
         lgb_params: Optional[dict] = None,
         cb_params: Optional[dict] = None,
+        rf_params: Optional[dict] = None,
         linear_l2_params: Optional[dict] = None,
         gbm_pipeline_params: Optional[dict] = None,
         linear_pipeline_params: Optional[dict] = None,
@@ -148,6 +153,7 @@ class TabularCVAutoML(TabularAutoML):
                 "selection_params",
                 "lgb_params",
                 "cb_params",
+                "rf_params",
                 "linear_l2_params",
                 "gbm_pipeline_params",
                 "linear_pipeline_params",
@@ -163,6 +169,7 @@ class TabularCVAutoML(TabularAutoML):
                 selection_params,
                 lgb_params,
                 cb_params,
+                rf_params,
                 linear_l2_params,
                 gbm_pipeline_params,
                 linear_pipeline_params,
