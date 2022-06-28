@@ -50,6 +50,8 @@ _time_scores = {
     "cb": 2,
     "cb_tuned": 6,
     "nn": 1,
+    "rf": 5,
+    "rf_tuned": 10
 }
 
 
@@ -91,6 +93,7 @@ class TabularNLPAutoML(TabularAutoML):
         nn_params: Params of neural network model.
         lgb_params: Params of lightgbm model.
         cb_params: Params of catboost model.
+        rf_params: Params of Sklearn Random Forest model.
         linear_l2_params: Params of linear model.
         nn_pipeline_params: Params of feature generation
             for neural network models.
@@ -113,6 +116,8 @@ class TabularNLPAutoML(TabularAutoML):
         "cb": 2,
         "cb_tuned": 6,
         "nn": 1,
+        "rf": 5,
+        "rf_tuned": 10
     }
 
     def __init__(
@@ -133,6 +138,7 @@ class TabularNLPAutoML(TabularAutoML):
         nn_params: Optional[dict] = None,
         lgb_params: Optional[dict] = None,
         cb_params: Optional[dict] = None,
+        rf_params: Optional[dict] = None,
         linear_l2_params: Optional[dict] = None,
         nn_pipeline_params: Optional[dict] = None,
         gbm_pipeline_params: Optional[dict] = None,
@@ -163,6 +169,7 @@ class TabularNLPAutoML(TabularAutoML):
                 "nn_params",
                 "lgb_params",
                 "cb_params",
+                "rf_params",
                 "linear_l2_params",
                 "nn_pipeline_params",
                 "gbm_pipeline_params",
@@ -181,6 +188,7 @@ class TabularNLPAutoML(TabularAutoML):
                 nn_params,
                 lgb_params,
                 cb_params,
+                rf_params,
                 linear_l2_params,
                 nn_pipeline_params,
                 gbm_pipeline_params,
