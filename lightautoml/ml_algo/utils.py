@@ -1,6 +1,7 @@
 """Tools for model training."""
 
 import logging
+import traceback
 
 from typing import Optional
 from typing import Tuple
@@ -65,6 +66,7 @@ def tune_and_fit_predict(
         preds = ml_algo.fit_predict(train_valid)
     except Exception as e:
         logger.info2("Model {0} failed during ml_algo.fit_predict call.\n\n{1}".format(ml_algo.name, e))
+        logger.info3(traceback.format_exc())
         return None, None
 
     return ml_algo, preds
