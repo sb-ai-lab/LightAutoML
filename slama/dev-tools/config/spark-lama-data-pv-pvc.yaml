@@ -1,0 +1,145 @@
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-spark-lama-data-againetdinov
+spec:
+  capacity:
+    storage: '1000Gi'
+  volumeMode: Filesystem
+  accessModes:
+    - ReadOnlyMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: local-hdd
+  hostPath:
+    path: /mnt/ess_storage/DN_1/storage/SLAMA/kaggle_used_cars_dataset
+    type: Directory
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: spark-lama-data
+spec:
+  volumeName: pv-spark-lama-data-againetdinov
+  storageClassName: local-hdd
+  accessModes:
+    - ReadOnlyMany
+  resources:
+    requests:
+      storage: '1000Gi'
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mnt-nfs
+spec:
+  volumeName: pv-mnt-nfs-againetdinov
+  storageClassName: nfs
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: '100Gi'
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-mnt-nfs-againetdinov
+spec:
+  capacity:
+    storage: '100Gi'
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: nfs
+  hostPath:
+    path: /mnt/nfs
+    type: Directory
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-tmp-againetdinov
+spec:
+  capacity:
+    storage: '10Gi'
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: local-hdd
+  hostPath:
+    path: /mnt/ess_storage/DN_1/storage/SLAMA/tmp
+    type: Directory
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-tmp
+spec:
+  volumeName: pv-tmp-againetdinov
+  storageClassName: local-hdd
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: '10Gi'
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-spark-tmp-dir-againetdinov
+spec:
+  capacity:
+    storage: '1000Gi'
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: local-hdd
+  hostPath:
+    path: /data/sdd/tmp/
+    type: Directory
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: spark-tmp-dir
+spec:
+  volumeName: pv-spark-tmp-dir-againetdinov
+  storageClassName: local-hdd
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: '1000Gi'
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-spark-lama-exp-results-vol-againetdinov
+spec:
+  capacity:
+    storage: '1000Gi'
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: local-hdd
+  hostPath:
+    path: /mnt/ess_storage/DN_1/storage/SLAMA/exp-results/
+    type: Directory
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: exp-results-vol
+spec:
+  volumeName: pv-spark-lama-exp-results-vol-againetdinov
+  storageClassName: local-hdd
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: '1000Gi'

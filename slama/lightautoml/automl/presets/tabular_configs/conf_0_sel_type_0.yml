@@ -1,0 +1,120 @@
+general_params:
+  # possible values are list of lists, that describes levels
+  # possible values are ['lgb', 'lgb_tuned', 'linear_l2', 'cb', 'cb_tuned']. List will be extended later
+  # or 'auto' - configuration will be infered from data
+  # ex.[['lgb', 'lgb_tuned', 'linear_l2', 'cb', 'cb_tuned'], ['lgb', 'linear_l2']] is 3 algos on 1 level, 2 algos on 2 level and blender on 3 level
+  # to define more than 1 level nested_cv_params.cv should be > 1
+  use_algos: 'auto'
+  # nested_cv - True/False. If true, check nested_cv params
+  nested_cv: False
+  # skip connections
+  skip_conn: True
+  return_all_predictions: False
+  weighted_blender_max_nonzero_coef: 0.05
+
+reader_params:
+  samples: 100000
+  max_nan_rate: 0.999
+  max_constant_rate: 0.999
+  cv: 5
+  random_state: 42
+  roles_params:
+  n_jobs: 8
+  advanced_roles: True
+  # advanced roles parsing params
+  # defaults are ok in general case, don't touch it if you don't know it's meanings
+  numeric_unique_rate: 0.999
+  max_to_3rd_rate: 1.1
+  binning_enc_rate: 2
+  raw_decr_rate: 1.1
+  max_score_rate: 0.2
+  abs_score_val: 0.04
+  drop_score_co: 0.00
+
+read_csv_params:
+  # params for pandas.read_csv func
+  decimal: '.'
+  sep: ','
+  # another params from pandas read_csv docs can be added...
+
+nested_cv_params:
+  # params describe how to use inner cross validation (folds-in-folds) to get unbiased oof prediction
+  # cv defines how many folds we split dataset to perform nested cross validation. 1 means no nested cv
+  cv: 5
+  # n_folds defines how many cv loops to perform. None for all or int < cv
+  n_folds:
+  # how to perform params tuning. If True - we tune params on inner cv loops, False - on outer validation
+  inner_tune: False
+  # should we refit tuner each inner cv loop or just take first
+  refit_tuner: True
+
+selection_params:
+  # selection mode 0/1/2
+  # 0 for no selection, 1 - cutoff selection, 2 - iterative selection
+  # harder features selection means increasing train time
+  mode: 0
+  # importance type permutation/gain
+  importance_type: 'gain'
+  # pretrain selector on holdout set. True - fast/ False - accurate
+  fit_on_holdout: True
+  cutoff: 0
+  feature_group_size: 1
+  max_features_cnt_in_result:
+  # list of algos to apply selector. Possible values - 'gbm', 'linear_l2'. gbm stands for both catboost and lgb
+  select_algos: [ 'gbm' ]
+
+tuning_params:
+  # pretrain tuner on holdout set. True - fast/ False - accurate
+  fit_on_holdout: True
+  # max tuning iter for lightgbm. Auto - depends on dataset
+  # smaller dataset gets more iters
+  max_tuning_iter: 101 # 'auto'
+  # max tuning time. Tuning time might be set lower depending on timer, but cannot be higher
+  max_tuning_time: 300
+
+# params for BoostLGBM MLAlgo
+lgb_params:
+  default_params:
+    num_threads: 100
+  freeze_defaults: False
+
+cb_params:
+  default_params:
+    task_type: 'CPU'
+    thread_count: 100
+  freeze_defaults: False
+
+# params for LinearLBFGS MLAlgo
+# no tuner needed for this algo - regularization params are found during fit
+linear_l2_params:
+  default_params: { }
+  freeze_defaults: False
+
+gbm_pipeline_params:
+  top_intersections: 4
+  max_intersection_depth: 3
+  subsample: 100000
+  auto_unique_co: 10
+  multiclass_te_co: 3
+  output_categories: False
+
+linear_pipeline_params:
+  top_intersections: 4
+  max_intersection_depth: 3
+  subsample: 100000
+  auto_unique_co: 50
+  multiclass_te_co: 3
+
+timing_params:
+  # select timing mode:
+  # 0: no limits - use time limits to create algo's settings but if automl run out of time - let it finish
+  # 1: soft - approximate time limits - tasks will finished after timeout
+  # 2: hard - hard time limits - stop all tasks before timeout to be exactly in time
+  # Any time limitation mode will start working after at least single fold of single model will be computed
+  mode: 1
+  overhead: 0.1
+  # we assume than each algo takes same amount of time to calc. So each algo gets TIME/N_ALGOS.
+  # tuning_rate of that time can be given to the params tuner
+  # 0 - means no tuning
+  # 'auto' - means infer depends on dataset size
+  tuning_rate: 0.7

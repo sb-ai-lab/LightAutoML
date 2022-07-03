@@ -1,0 +1,24 @@
+---
+experiment_type: spark_quality
+calculation_scripts:
+  spark: dev-tools/experiments/spark_experiments.py
+  lama: dev-tools/experiments/lama_experiments.py
+state_file: 'delete'  # Available values are 'use|ignore|delete', use - skip experiments in state file, ignore - don`t skip experiments, delete - delete experiments in state file
+
+# Unique set of parameters for each experiment
+experiments:
+  - name: "cmp-all-0125x"
+    library: [ "spark" ]
+    repeat_rate: 1
+    params:
+      func: [ "calculate_automl" ]
+      dataset: [ "used_cars_dataset_1x" ]
+      seed: [ 42 ]
+      cv: [ 2 ]
+      use_algos:
+        - [ [ "linear_l2" ] ]
+    checkpoint_path: [ "/tmp/results/linear_chkp_cmp_all/linear_fp_used_cars_dataset_1x/" ]
+    spark_config:
+      spark.executor.instances: [ '4' ]
+      spark.executor.cores: [ '8' ]
+      spark.executor.memory: [ '32g' ]

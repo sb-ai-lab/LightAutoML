@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimal-ui">
+    <title>LAMA report</title>
+</head>
+<style>
+    table,
+    th,
+    td {
+        border: 1px solid black;
+        border-collapse: collapse;
+        padding: 5px;
+    }
+
+    /* Remove default bullets */
+    ul,
+    #myUL {
+        list-style-type: none;
+    }
+
+    /* Remove margins and padding from the parent ul */
+    #myUL {
+        margin: 0;
+        padding: 0;
+    }
+
+    /* Style the caret/arrow */
+    .caret {
+        cursor: pointer;
+        user-select: none;
+        /* Prevent text selection */
+    }
+
+    /* Create the caret/arrow with a unicode, and style it */
+    .caret::before {
+        content: "\25B6";
+        color: black;
+        display: inline-block;
+        margin-right: 6px;
+    }
+
+    /* Rotate the caret/arrow icon when clicked on (using JavaScript) */
+    .caret-down::before {
+        transform: rotate(90deg);
+    }
+
+    /* Hide the nested list */
+    .nested {
+        display: none;
+    }
+
+    /* Show the nested list when the user clicks on the caret/arrow (with JavaScript) */
+    .active {
+        display: block;
+    }
+    {% if pdf %}
+    /* For WeasyPrint */
+    @media print {
+        @page {
+            size: A4 landscape;
+        }
+        * {
+            font-family: Arial, Helvetica, sans-serif;
+        }
+        td, th {
+            font-size: 10px;
+            padding: 3px;
+        }
+        img {
+            max-height: 500px;
+            max-width: 800px;
+        }
+        .nested {
+            display: block;
+        }
+        .caret::before {
+            transform: rotate(90deg);
+        }
+    }
+    {% endif %}
+</style>
+<!--
+<script src="shap.js"></script>
+
+-->
+
+<body>
+    <div>
+        <h1>LAMA report</h1>
+    </div>
+    <ul id="myUL">
+        {% for section in sections %}
+            {{ section }}
+        {% endfor %}
+    </ul>
+    <script type="text/javascript">
+        var toggler = document.getElementsByClassName("caret");
+        var i;
+
+        for (i = 0; i < toggler.length; i++) {
+            toggler[i].addEventListener("click", function () {
+                this.parentElement.querySelector(".nested").classList.toggle("active");
+                this.classList.toggle("caret-down");
+            });
+        }
+    </script>
+</body>
+
+</html>

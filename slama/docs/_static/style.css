@@ -1,0 +1,13 @@
+.wy-nav-content {
+    max-width: none;
+}
+
+.rst-content code.xref {
+    /* !important prevents the common CSS stylesheets from overriding
+         this as on RTD they are loaded after this stylesheet */
+    color: #E74C3C
+}
+
+html.writer-html4 .rst-content dl:not(.docutils) dl:not(.field-list)>dt, html.writer-html5 .rst-content dl[class]:not(.option-list):not(.field-list):not(.footnote):not(.glossary):not(.simple) dl:not(.field-list)>dt {
+    border-left-color: rgb(9, 183, 14)
+}

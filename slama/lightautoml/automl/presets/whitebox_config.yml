@@ -1,0 +1,169 @@
+general_params:
+  # calc whitebox with additional whitebox report part (takes more time)
+  report: False
+
+reader_params:
+  # sample of data to perform analisys
+  samples: 100000
+  # minimum nan_rate in feature to keep feature
+  max_nan_rate: 0.999
+  # maximum frequency of top frequent value to keep feature
+  max_constant_rate: 0.999
+  # create validation folds. Folds will be created even if valid samples or custom validation will be passed
+  # it will be used for feature generation
+  cv: 5
+  # random state for folds creation
+  random_state: 42
+  # default roles params.
+  # Ex if {'numeric': {'force_input': True}} will be passed, all numeric features will pass all selectors,
+  # if another will not be passed in roles argument of .fit_predict
+  roles_params:
+  # n_jobs for advanced roles guess and reading csv files (more RAM needed due to multiprocessing)
+  n_jobs: 8
+  # If to turn on advanced roles guess. Slower, but shows better quality
+  # If role of feature is not defined, reader will guess role in 2 ways:
+  #   - simple (numbers as numbers, object as categories or dates if dateformat inferred)
+  #   - advanced, based on some statistic calculation
+  # Advanced also searches to best processing type for defined roles, and in most cases is better, but slower
+  advanced_roles: True
+  # advanced roles parsing params
+  # defaults are ok in general case, don't touch it if you don't know it's meanings
+  numeric_unique_rate: 0.999
+  max_to_3rd_rate: 1.1
+  binning_enc_rate: 2
+  raw_decr_rate: 1.1
+  max_score_rate: 0.2
+  abs_score_val: 0.04
+  drop_score_co: 0.00
+
+read_csv_params:
+  # params for pandas.read_csv func
+  decimal: '.'
+  sep: ','
+  # another params from pandas read_csv docs can be added...
+
+
+whitebox_params:
+  default_params:
+    monotonic: False
+    max_bin_count: 5
+    select_type: None
+    pearson_th: 0.9
+    auc_th: .505
+    vif_th: 10.
+    imp_th: 0
+    th_const: 32
+    force_single_split: True
+    th_nan: 0.01
+    th_cat: 0.005
+    woe_diff_th: 0.01
+    min_bin_size: 0.01
+    cat_alpha: 100
+    cat_merge_to: "to_woe_0"
+    nan_merge_to: "to_woe_0"
+    oof_woe: True
+    n_folds: 6
+    n_jobs: 4
+    l1_grid_size: 20
+    l1_exp_scale: 6
+    imp_type: "feature_imp"
+    regularized_refit: False
+    p_val: 0.05
+    verbose: 2
+  #        Params description
+  #        ----------
+  #        monotonic: bool
+  #            Global condition for monotonic constraints. If "True", then only
+  #            monotonic binnings will be built. You can pass values to the .fit
+  #            method that change this condition separately for each feature.
+  #        max_bin_count: int
+  #            Global limit for the number of bins. Can be specified for every
+  #            feature in .fit
+  #        select_type: None or int
+  #            The type to specify the primary feature selection. If the type is an integer,
+  #            then we select the number of features indicated by this number (with the best feature_importance).
+  #            If the value is "None", we leave only features with feature_importance greater than 0.
+  #        pearson_th:  0 < pearson_th < 1
+  #            Threshold for feature selection by correlation. All features with
+  #            the absolute value of correlation coefficient greater then
+  #            pearson_th will be discarded.
+  #        auc_th: .5 < auc_th < 1
+  #            Threshold for feature selection by one-dimensional AUC. WoE with AUC < auc_th will
+  #            be discarded.
+  #        vif_th: vif_th > 0
+  #            Threshold for feature selection by VIF. Features with VIF > vif_th
+  #            are iteratively discarded one by one, then VIF is recalculated
+  #            until all VIFs are less than vif_th.
+  #        imp_th: real >= 0
+  #            Threshold for feature selection by feature importance
+  #        th_const:
+  #            Threshold, which determines that the feature is constant.
+  #            If the number of valid values is greater than the threshold, then
+  #            the column is not constant. For float, the number of
+  #            valid values will be calculated as the sample size * th_const
+  #        force_single_split: bool
+  #            In the tree parameters, you can set the minimum number of
+  #            observations in the leaf. Thus, for some features, splitting for 2 beans at least will be impossible. If you specify that
+  #            force_single_split = True, it means that 1 split will be created for the feature, if the minimum bin size is greater than th_const.
+  #        th_nan: int >= 0
+  #            Threshold, which determines that WoE values are calculated to NaN.
+  #        th_cat: int >= 0
+  #            Threshold, which determines which categories are small.
+  #        woe_diff_th: float = 0.01
+  #            The option to merge NaNs and rare categories with another bin,
+  #            if the difference in WoE is less than woe_diff_th
+  #        min_bin_size: int > 1, 0 < float < 1
+  #            Minimum bin size when splitting.
+  #        min_bin_mults: list of floats > 1
+  #            If minimum bin size is specified, you can specify a list to check
+  #            if large values work better, for example: [2, 4]
+  #        min_gains_to_split: list of floats >= 0
+  #            min_gain_to_split values that will be iterated to find the best split.
+  #        auc_tol: 1e-5 <= auc_tol <=1e-2
+  #            AUC tolerance. You can lower the auc_tol value from the maximum
+  #            to make the model simpler.
+  #        cat_alpha: float > 0
+  #            Regularizer for category encoding.
+  #        cat_merge_to: str
+  #            The way of WoE values filling in the test sample for categories
+  #            that are not in the training sample.
+  #            Values - 'to_nan', 'to_woe_0', 'to_maxfreq', 'to_maxp', 'to_minp'
+  #        nan_merge_to: str
+  #            The way of WoE values filling on the test sample for real NaNs,
+  #            if they are not included in their group.
+  #            Values - 'to_woe_0', 'to_maxfreq', 'to_maxp', 'to_minp'
+  #        oof_woe: bool
+  #            Use OOF or standard encoding for WOE.
+  #        n_folds: int
+  #            Number of folds for feature selection / encoding, etc.
+  #        n_jobs: int > 0
+  #            Number of CPU cores to run in parallel.
+  #        l1_base_step: real > 0
+  #            Grid size in l1 regularization
+  #        l1_exp_step: real > 1
+  #            Grid scale in l1 regularization
+  #        population_size: None, int > 0
+  #            Feature selection type in the selector. If the value is "None" then L1 boost is used.
+  #            If "int" is specified, then a standard step will be used for
+  #            the number of random subsamples indicated by this value.
+  #            Can be generalized to genetic algorithm.
+  #        feature_groups_count: int > 0
+  #            The number of groups in the genetic algorithm. Its effect is visible only when
+  #            population_size > 0
+  #        imp_type: str
+  #            Feature importances type. Feature_imp and perm_imp are available.
+  #            It is used to sort the features at the first and at the final
+  #            stage of feature selection.
+  #        regularized_refit: bool
+  #            Use regularization at the time of model refit. Otherwise, we have
+  #            a statistical model.
+  #        p_val: 0 < p_val <= 1
+  #            When training a statistical model, do backward selection
+  #            until all p-values of the model's coefficient are
+  #        verbose: int 0-3
+  #            Verbosity level
+
+  freeze_defaults: False
+
+timing_params:
+  mode: 0
