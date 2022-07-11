@@ -64,7 +64,7 @@ def get_valid_tutorials_paths(exe_tutorials: Tuple[int], exclude_tutorials: Tupl
 
 
 def clean_tutorials_dir():
-    """Cleaning."""
+    """Clean generated files after runs."""
 
     def _rm_tree(pth):
         pth = Path(pth)

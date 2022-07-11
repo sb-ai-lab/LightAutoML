@@ -10,6 +10,19 @@
 
     ```
 
-**Warning**: You must set the default version before publishing the library to PyPI.
+    **Warning**: You must set the default version before publishing the library to PyPI.
 
 2. ```run_tutorials.py``` ...
+
+    ```bash
+
+    # Run all tutorials except those excluded by default.
+    poetry run python run_tutorials.py
+
+    # Run tutorials (1, 2)
+    poetry run python run_tutorials -t 1 -t 2
+
+    # Clean useless files (execute after running tutorials, by default)
+    poetry run python run_tutorials --clean
+
+    ```
