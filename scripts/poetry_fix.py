@@ -16,7 +16,7 @@ PYTHON_DEPS_PATTERN = '^python = ".*"$'
 
 
 def _set_version(py_version: Optional[int] = None):
-    for line in fileinput.input(PYPROJECT_TOML, inplace=1):
+    for line in fileinput.input(PYPROJECT_TOML.name, inplace=1):
         if re.search(PYTHON_DEPS_PATTERN, line):
             if py_version is None:
                 version = DEFAULT_PYTHON_DEPS
@@ -31,17 +31,17 @@ def main():
     """Cli."""
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "version",
+        "-v",
+        "--version",
         nargs="?",
-        const=1,
         type=int,
         choices=list(PYTHON_DEPS.keys()),
+        required=False,
         default=None,
         help="Set python restriction in `pyproject.toml`",
     )
 
     args = parser.parse_args()
-
     _set_version(args.version)
 
 

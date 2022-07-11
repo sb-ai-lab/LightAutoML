@@ -34,3 +34,12 @@ repos:
     rev: 3f92957478422df87bd730abde66f089cc1ee19b
     hooks:
       - id: rstcheck
+
+  - repo: local
+    hooks:
+      - id: set-py-versions
+        name: set python versions
+        description: set python versions := [3.6.1, 3.10) to `pyproject.toml`
+        language: python
+        entry: python scripts/poetry_fix.py
+        pass_filenames: false

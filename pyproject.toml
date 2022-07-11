@@ -188,7 +188,7 @@ filter_files = true
 legacy_tox_ini = """
 [tox]
 isolated_build = True
-envlist = py{38}
+envlist = py{36, 37, 38, 39}
 
 [gh-actions]
 python =
