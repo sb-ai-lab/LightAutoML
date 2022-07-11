@@ -4,25 +4,22 @@
 
     ```bash
 
-    poetry run python poetry_fix.py [PYTHON_VERSION]  # Set single python version := {6, 7, 8, 9}
+    poetry run python scripts/poetry_fix.py [PYTHON_VERSION]  # Set single python version := {6, 7, 8, 9}
 
-    poetry run python poetry_fix.py  # Set default version - all necessary pythons for library
+    poetry run python scripts/poetry_fix.py  # Set default version - all necessary pythons for library
 
     ```
 
     **Warning**: You must set the default version before publishing the library to PyPI.
 
-2. ```run_tutorials.py``` ...
+2. ```run_tutorials.py``` - execute tutorials in CLI. The execution drops in case of an any error. More information in `help`.
 
     ```bash
 
     # Run all tutorials except those excluded by default.
-    poetry run python run_tutorials.py
+    poetry run python scripts/run_tutorials.py
 
     # Run tutorials (1, 2)
-    poetry run python run_tutorials -t 1 -t 2
-
-    # Clean useless files (execute after running tutorials, by default)
-    poetry run python run_tutorials --clean
+    poetry run python scripts/run_tutorials -t 1 -t 2
 
     ```
