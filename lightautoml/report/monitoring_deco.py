@@ -7,6 +7,7 @@ from typing import Any
 from typing import Optional
 from typing import Union
 
+import json
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
@@ -296,7 +297,8 @@ class DataShiftDetector:
             # null values: update alert
             if np.any(self.data_info[field_name]["null_detector"].get_results().ravel()):
                 self.alerts[field_name]["null_values"] = (
-                    self.data_info[field_name]["null_detector"].get_values().ravel()
+                    # self.data_info[field_name]["null_detector"].get_values().ravel()
+                    [i.item() for i in self.data_info[field_name]["null_detector"].get_values().ravel()]
                 )
             # drop null
             field_series = field_series.dropna()
@@ -338,7 +340,8 @@ class DataShiftDetector:
             # psi: update alerts
             if np.any(self.data_info[field_name]["shift_detector"].get_results().ravel()):
                 self.alerts[field_name]["psi_values"] = (
-                    self.data_info[field_name]["shift_detector"].get_values().ravel()
+                    # self.data_info[field_name]["shift_detector"].get_values().ravel()
+                    [i.item() for i in self.data_info[field_name]["shift_detector"].get_values().ravel()]
                 )
         self.n_epoch += 1
 
@@ -416,7 +419,14 @@ class ModelShiftDetector(DataShiftDetector):
         self.model_info["mean_shift_detector"].update(np.mean(epoch_preds))
 
     def get_results(self):
-        return self.model_info["shift_detector"].get_values().ravel()
+        results = dict()
+        results['mean_shift_detector'] = {
+            'mean_shift': [i.item() for i in self.model_info["mean_shift_detector"].get_values().ravel()]
+        }
+        results['psi_shift_detector'] = {
+            'mean_shift': [i.item() for i in self.model_info["psi_shift_detector"].get_values().ravel()]
+        }
+        return results
 
 
 def plot_psi_shift_detector(psi_values, thres, path):
@@ -604,3 +614,11 @@ class MonitoringDeco(ReportDeco):
         env = Environment(loader=FileSystemLoader(searchpath=self.template_path))
         model_shift_section = env.get_template(self._model_shift_path).render(model_shift_info)
         self._sections["model_shift"] = model_shift_section
+        
+    def save_data_json(self, file_name):
+        data_json = dict()
+        data_json["n_epoch"] = [i for i in range(self._n_epoch)]
+        data_json["model_shift_section"] = self.MSD.get_results()
+        data_json["data_shift_section"] = self.DSD.get_alerts()
+        with open(file_name, "w") as ff:
+            json.dump(data_json, ff, indent=2)
