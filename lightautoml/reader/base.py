@@ -6,8 +6,10 @@ from copy import deepcopy
 from typing import Any
 from typing import Dict
 from typing import List
+from typing import Mapping
 from typing import Optional
 from typing import Sequence
+from typing import Tuple
 from typing import TypeVar
 from typing import Union
 from typing import cast
@@ -256,6 +258,7 @@ class PandasToPandasReader(Reader):
         }
 
         self.params = kwargs
+        self.class_mapping: Optional[Union[Mapping, Dict[str, Mapping]]]
 
     def fit_read(
         self, train_data: DataFrame, features_names: Any = None, roles: UserDefinedRolesDict = None, **kwargs: Any
@@ -425,7 +428,7 @@ class PandasToPandasReader(Reader):
             assert not np.isnan(target.values).any(), "Nan in target detected"
         return target
 
-    def check_class_target(self, target):
+    def check_class_target(self, target) -> Tuple[pd.Series, Optional[Union[Mapping, Dict[str, Mapping]]]]:
         """Validate target values."""
         target = pd.Series(target)
         cnts = target.value_counts(dropna=False)
@@ -438,7 +441,7 @@ class PandasToPandasReader(Reader):
             assert srtd.shape[0] > 1, "Less than 2 unique values in target"
             if (self.task.name == "binary") or (self.task.name == "multilabel"):
                 assert srtd.shape[0] == 2, "Binary task and more than 2 values in target"
-                return target, {}
+                return target, None
 
         # case - create mapping
         class_mapping = {n: x for (x, n) in enumerate(unqiues)}
@@ -555,7 +558,8 @@ class PandasToPandasReader(Reader):
                         )
                     else:
                         for col in val.columns:
-                            val.loc[:, col] = val.loc[:, col].map(self.class_mapping[col])
+                            if self.class_mapping[col] is not None:
+                                val.loc[:, col] = val.loc[:, col].map(self.class_mapping[col])
 
                 kwargs[array_attr] = val
 
