@@ -21,10 +21,11 @@ before implementing anything inside the project.
 - If you need more details, please ask we will provide them ASAP.
 
 Once you implement and test your feature or bug-fix, please submit
-a Pull Request to https://github.com/AILab-MLTools/LightAutoML.
+a Pull Request to <https://github.com/AILab-MLTools/LightAutoML>.
 
 When adding functionality, please add examples that will fully explain it.
 Examples can be added in several ways:
+
 - [Inside the documentation](#writing-documentation)
 - [Jupyter notebooks](#adding-tutorials)
 - [Your own tests](#testing)
@@ -36,22 +37,21 @@ Examples can be added in several ways:
   - [Tutorials](docs/tutorials) - Notebooks with tutorials.
 
 - [lightautoml](lightautoml) - The code of LightAutoML library.
-    - [addons](lightautoml/addons) - Extensions of core functionality.
-    - [automl](lightautoml/automl) - The main module, which includes the AutoML class,
+  - [addons](lightautoml/addons) - Extensions of core functionality.
+  - [automl](lightautoml/automl) - The main module, which includes the AutoML class,
       blenders and ready-made presets.
-    - [dataset](lightautoml/dataset) - The internal interface for working with data.
-    - [image](lightautoml/image) - The internal interface for working with image data.
-    - [ml_algo](lightautoml/ml_algo) - Modules with machine learning algorithms
+  - [dataset](lightautoml/dataset) - The internal interface for working with data.
+  - [image](lightautoml/image) - The internal interface for working with image data.
+  - [ml_algo](lightautoml/ml_algo) - Modules with machine learning algorithms
       and hyperparameters tuning tools.
-    - [pipelines](lightautoml/pipelines) - Pipelines for different tasks (feature processing & selection).
-    - [reader](lightautoml/reader) - Utils for training and analysing data.
-    - [report](lightautoml/report) - Report generators and templates.
-    - [tasks](lightautoml/tasks) - Define the task to solve its loss, metric.
-    - [text](lightautoml/text) - The internal interface for working with text data.
-    - [transformers](lightautoml/transformers) - Feature transformations.
-    - [utils](lightautoml/utils) - Common util tools (Timer, Profiler, Logging).
-    - [validation](lightautoml/validation) - Validation module.
-
+  - [pipelines](lightautoml/pipelines) - Pipelines for different tasks (feature processing & selection).
+  - [reader](lightautoml/reader) - Utils for training and analysing data.
+  - [report](lightautoml/report) - Report generators and templates.
+  - [tasks](lightautoml/tasks) - Define the task to solve its loss, metric.
+  - [text](lightautoml/text) - The internal interface for working with text data.
+  - [transformers](lightautoml/transformers) - Feature transformations.
+  - [utils](lightautoml/utils) - Common util tools (Timer, Profiler, Logging).
+  - [validation](lightautoml/validation) - Validation module.
 
 ## Developing LightAutoML
 
@@ -61,24 +61,30 @@ If you are installing from the source, you will need Python 3.6.12 or later.
 We recommend you install an [Anaconda](https://www.anaconda.com/products/individual#download-section)
 to work with environments.
 
-
 1. Install poetry using [the poetry installation guide](https://python-poetry.org/docs/#installation).
 
 2. Clone the project to your own local machine:
-```bash
-git clone git@github.com:AILab-MLTools/LightAutoML.git
-cd LightAutoML
-```
 
-3. Install LightAutoML:
-```bash
-poetry install
-```
+    ```bash
+    git clone git@github.com:AILab-MLTools/LightAutoML.git
+    cd LightAutoML
+    ```
+
+3. **Optional**: specify python for poetry
+
+    ```bash
+    poetry env use PYTHON_PATH
+    ```
+
+4. Install LightAutoML (**warning**: it may take a long time, check the ```script/poetry_fix.py``` to shorten the installation time.):
+
+    ```bash
+    poetry install
+    ```
 
 After that, there is virtual environment, where you can test and implement your own code.
 So, you don't need to rebuild the full project every time.
 Each change in the code will be reflected in the library inside the environment.
-
 
 ### Style Guide
 
@@ -89,10 +95,13 @@ We follow [the standard python PEP8](https://www.python.org/dev/peps/pep-0008/) 
 In order to automate checking of the code quality, we use
 [pre-commit](https://pre-commit.com/). For more details, see the documentation,
 here we will give a quick-start guide:
+
 1. Install and configure:
+
 ```console
 poetry run pre-commit install
 ```
+
 2. Now, when you run `$ git commit`, there will be a pre-commit check.
    This is going to search for issues in your code: spelling, formatting, etc.
    In some cases, it will automatically fix the code, in other cases, it will
@@ -111,19 +120,20 @@ usual help channels.
 ### Testing
 
 Before making a pull request (despite changing only the documentation or writing new code), please check your code on tests:
+
 ```bash
 poetry run pytest tests
 ```
 
 To run tests with different Python versions, run tox
+
 ```bash
 poetry run tox
 ```
+
 Also if you develop new functionality, please add your own tests.
 
-
 ## Documentation
-
 
 Before writing the documentation, you should collect it to make sure that the code
 you wrote doesn't break the rest of the documentation. The library might work,
@@ -134,23 +144,25 @@ the documentation more lightweight.
 
 By default, functions, that have no description will be mock from overall documentation.
 
-### Building Documentation:
+### Building Documentation
 
 To build the documentation:
 
 1. Clone repository to your device.
+
 ```
 git clone https://github.com/AILab-MLTools/LightAutoML
 cd LightAutoML
 ```
 
-
 2. Make environment and install requirements.
+
 ```bash
 poetry install -E cv -E nlp
 ```
 
 3. Remove existing html files:
+
 ```bash
 cd docs
 poetry run make clean html
@@ -158,10 +170,10 @@ cd ..
 ```
 
 4. Generate HTML documentation files. The generated files will be in `docs/_build/html`.
+
 ```bash
 poetry run python check_docs.py
 ```
-
 
 ### Writing Documentation
 
@@ -183,7 +195,7 @@ There are some rules, that docstrings should fit.
    (it is usefull for Sphinx's autosummary).
 
 4. Please use references to other submodules. You can do it by Sphinx directives.
-   For more information: https://www.sphinx-doc.org/en/master/usage/restructuredtext/domains.html
+   For more information: <https://www.sphinx-doc.org/en/master/usage/restructuredtext/domains.html>
 5. There is an example for documenting standalone functions.
 
 ```python3
@@ -243,6 +255,7 @@ def typical_function(a: int, b: Union['np.ndarray', None] = None) -> List[int]:
 ```
 
 6. Docstring for generator function.
+
 ```python3
 def generator_func(n: int):
     """Generator have a ``Yields`` section instead of ``Returns``.
@@ -265,7 +278,9 @@ def generator_func(n: int):
         yield x
         x += 1
 ```
+
 7. Documenting classes.
+
 ```python3
 from typing import List, Union
 import numpy as np
@@ -439,9 +454,6 @@ class A:
             attr2 = random.randint(0, 100)
 ```
 
-
-
-
 ### Adding new submodules
 
 If you add your own directory to LightAutoML, you should add a corresponding module as new `.rst`
@@ -449,7 +461,6 @@ file to the `docs/`.  And also mention it in `docs/index.rst`.
 
 If you add your own module, class or function, then you will need
 to add it description to the corresponding `.rst` in `docs`.
-
 
 ### Adding Tutorials
 
