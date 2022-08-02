@@ -1,12 +1,15 @@
 # Usefull scripts
 
-1. ```poetry_fix.py``` fixes problem with too long time of poetry lock command. It installs a single python version in the ```pyproject.toml```, which helps resolve all dependencies in a short time.
+1. ```poetry_fix.py``` fixes problem: too long time of poetry lock command. It re-writes a single python version in the ```pyproject.toml```, which helps resolve all dependencies in a short time.
 
     ```bash
 
-    poetry run python scripts/poetry_fix.py [PYTHON_VERSION]  # Set single python version := {6, 7, 8, 9}
+    # Set single python version := {6, 7, 8, 9}
+    # After that you can easily run command: `poetry lock`
+    poetry run python poetry_fix.py [PYTHON_VERSION]
 
-    poetry run python scripts/poetry_fix.py  # Set default version - all necessary pythons for library
+    # Set all default versions before `git push` or `poetry publish`
+    poetry run python poetry_fix.py
 
     ```
 

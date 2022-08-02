@@ -33,12 +33,11 @@ classifiers = [
 python = ">=3.6.1, <3.10"
 
 poetry-core = "^1.0.0"
-numpy = [
-    {version = "<=1.19.5", python = "<3.7"},
-    {version = ">=1.2;<=1.21.5", python = ">=3.7"}
+pandas = [
+  {version = "<=1.1.5", python = ">=3.6.1, <3.7.1"},
+  {version = "<=1.3.5", python = ">=3.7.1, <3.8"},
+  {version = "<=1.4.3", python = ">=3.8"}
 ]
-scipy = "<=1.5.4"
-pandas = "1.1.5"
 scikit-learn = ">=0.22"
 lightgbm = "^2.3"
 catboost = ">=0.26.1"
@@ -47,7 +46,7 @@ torch = [
     {platform = "win32", python = "3.6.1", version = "1.7.0"},
     {platform = "*", version = "<1.9"}
 ]
-dataclasses = "0.6"
+dataclasses = {version = "0.6", python = "<3.7"}
 holidays = "*"
 networkx = "*"
 cmaes = "*"
@@ -68,22 +67,24 @@ nltk = {version = "*", optional = true}
 transformers = {version = ">=4", optional = true}
 
 # CV
-albumentations = {version = "1.0.3", optional = true}
+albumentations = {version = "<=1.0.3", optional = true}
 efficientnet-pytorch = {version = "*", optional = true}
-opencv-python = {version = "4.5.2.52", optional = true}
+opencv-python = {version = "<=4.5.2.52", optional = true}
 PyWavelets = {version = "*", optional = true}
-scikit-image = {version = "^0.17", optional = true}
 torchvision = [
     {platform = "win32", python = "3.6.1", version = "0.8.0", optional = true},
     {platform = "*", version = "*", optional = true}
 ]
 
 # AFG
-featuretools = {version = "*", optional = true}
+featuretools = [
+    {version = "<=0.23.3", python = "<3.7", optional = true},
+    {version = "<=1.11.1", python = ">=3.7", optional = true},
+]
 
 # Report (pdf)
-weasyprint = {version = "^52.5", optional = true}
-cffi = {version = "^1.14.5", optional = true}
+weasyprint = {version = "52.5", optional = true}
+cffi = {version = "1.14.5", optional = true}
 
 
 [tool.poetry.dev-dependencies]
