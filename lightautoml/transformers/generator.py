@@ -30,7 +30,6 @@ from ..pipelines.selection.permutation_importance_based import (
 )
 from ..pipelines.utils import get_columns_by_role
 from ..reader.utils import set_sklearn_folds
-from ..validation.np_iterators import get_numpy_iterator
 from ..validation.utils import create_validation_iterator
 from .base import LAMLTransformer
 
@@ -178,7 +177,7 @@ class FeatureGeneratorTransformer(LAMLTransformer, TabularDataFeatures):
         self.feature_dict = None
 
     def _create_entities(self, dataset: LAMLDataset):
-        """Create entities"""
+        """Create entities."""
         # An entity of the main table
         self.es = self.es.add_dataframe(
             dataframe_name="plain",
@@ -205,7 +204,8 @@ class FeatureGeneratorTransformer(LAMLTransformer, TabularDataFeatures):
         plain_i_id = dict()
         for unique_id in plain_unique_ids:
             plain_i_id[unique_id] = f"plain_{plain_id}"
-        plain_i_id_inv = dict((v, k) for k, v in plain_i_id.items())
+        # TODO: check unused variable 'plain_i_id_inv'
+        # plain_i_id_inv = dict((v, k) for k, v in plain_i_id.items())
 
         # Update defined params for scheme
         for seq_table_name in self.seq_table_names:
@@ -224,14 +224,13 @@ class FeatureGeneratorTransformer(LAMLTransformer, TabularDataFeatures):
             )
 
     def _add_relationships(self):
-        """Add in the defined relationships"""
-        relationships = list()
+        """Add in the defined relationships."""
         for seq_table_name in sorted(list(self.seq_params.keys())):
             scheme = self.seq_params[seq_table_name]["scheme"]
             self.es.add_relationships([(scheme["to"], scheme["to_id"], seq_table_name, scheme["from_id"])])
 
     def _set_interesting_values(self):
-        """Add interesting values if any"""
+        """Add interesting values if any."""
         for seq_table_name in self.seq_table_names and sorted(list(self.interesting_values.keys())):
             columns = sorted(list(self.interesting_values[seq_table_name].keys()))
             for column in columns:
@@ -239,7 +238,7 @@ class FeatureGeneratorTransformer(LAMLTransformer, TabularDataFeatures):
                 self.es[seq_table_name][column].interesting_values = values
 
     def _get_new_feature_names(self):
-        """DFS with specified primitives"""
+        """DFS with specified primitives."""
         return ft.dfs(
             entityset=self.es,
             target_dataframe_name="plain",
@@ -252,7 +251,7 @@ class FeatureGeneratorTransformer(LAMLTransformer, TabularDataFeatures):
             ignore_columns={"plain": self._ignore_columns},
         )
 
-    def fit(self, dataset: LAMLDataset) -> "FeatureToolsTransformer":
+    def fit(self, dataset: LAMLDataset) -> "FeatureGeneratorTransformer":
         """Extract nan flags.
 
         Args:

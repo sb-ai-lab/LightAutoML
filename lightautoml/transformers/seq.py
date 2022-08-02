@@ -46,8 +46,10 @@ class SeqLagTransformer(LAMLTransformer):
         Args:
             dataset: NumpyDataset.
 
-        """
+        Returns:
+            Fitted transformer.
 
+        """
         sample_data = dataset.to_sequence([0]).data
 
         # convert to accepted dtype and get attributes
@@ -110,6 +112,9 @@ class SeqNumCountsTransformer(LAMLTransformer):
         Args:
             dataset: NumpyDataset.
 
+        Returns:
+            Self.
+
         """
         # set transformer names and add checks
         # for check_func in self._fit_checks:
@@ -164,8 +169,10 @@ class SeqStatisticsTransformer(LAMLTransformer):
         Args:
             dataset: NumpyDataset.
 
-        """
+        Returns:
+            Self.
 
+        """
         feats = []
         for feat in dataset.features:
             feats.extend([self._fname_prefix + "__" + dataset.name + "__" + feat])
@@ -222,6 +229,9 @@ class GetSeqTransformer(LAMLTransformer):
 
         Args:
             dataset: NumpyDataset.
+
+        Returns:
+            Self.
 
         """
         # set transformer names and add checks

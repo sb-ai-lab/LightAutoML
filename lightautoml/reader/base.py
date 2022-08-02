@@ -426,7 +426,7 @@ class PandasToPandasReader(Reader):
         return target
 
     def check_class_target(self, target):
-
+        """Validate target values."""
         target = pd.Series(target)
         cnts = target.value_counts(dropna=False)
         assert np.nan not in cnts.index, "Nan in target detected"
@@ -638,8 +638,8 @@ class PandasToPandasReader(Reader):
 
 
 class DictToPandasSeqReader(PandasToPandasReader):
-    """
-    Reader with sequential support to convert :class:`~pandas.DataFrame` to AutoML's :class:`~lightautoml.dataset.np_pd_dataset.PandasDataset`.
+    """Reader with sequential support to convert :class:`~pandas.DataFrame` to AutoML's :class:`~lightautoml.dataset.np_pd_dataset.PandasDataset`.
+
     Stages:
 
         - Same function for plain dataset as PandasToPandasReader.
@@ -727,7 +727,6 @@ class DictToPandasSeqReader(PandasToPandasReader):
 
     def create_ids(self, seq_data, plain_data, dataset_name):
         """Calculate ids for different seq tasks."""
-
         if self.seq_params[dataset_name]["case"] == "next_values":
             self.ti[dataset_name] = TopInd(
                 scheme=self.seq_params[dataset_name].get("scheme", None),
@@ -744,7 +743,6 @@ class DictToPandasSeqReader(PandasToPandasReader):
 
     def parse_seq(self, seq_dataset, plain_data, dataset_name, parsed_roles, roles):
         """Method to read sequential data."""
-
         subsample = seq_dataset
         if self.samples is not None and self.samples < subsample.shape[0]:
             subsample = subsample.sample(self.samples, axis=0, random_state=42)
@@ -859,8 +857,7 @@ class DictToPandasSeqReader(PandasToPandasReader):
         Args:
             train_data: Input data in dict format.
             features_names: Ignored. Just to keep signature.
-            roles: Dict of features roles in format
-              ``{RoleX: ['feat0', 'feat1', ...], RoleY: 'TARGET', ....}``.
+            roles: Dict of features roles in format ``{RoleX: ['feat0', 'feat1', ...], RoleY: 'TARGET', ....}``.
             **kwargs: Can be used for target/group/weights.
 
         Returns:
@@ -1039,8 +1036,7 @@ class DictToPandasSeqReader(PandasToPandasReader):
         Args:
             data: Data.
             features_names: Not used.
-            add_array_attrs: Additional attributes, like
-              target/group/weights/folds.
+            add_array_attrs: Additional attributes, like target/group/weights/folds.
 
         Returns:
             Dataset with new columns.

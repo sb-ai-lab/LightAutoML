@@ -126,7 +126,6 @@ class RandomForestSklearn(TabularMLAlgo, ImportanceEstimator):
         """Sample hyperparameters from suggested.
 
         Args:
-            trial: Optuna trial object.
             suggested_params: Dict with parameters.
             estimated_n_trials: Maximum number of hyperparameter estimations.
 
@@ -190,8 +189,9 @@ class RandomForestSklearn(TabularMLAlgo, ImportanceEstimator):
             model: Lightgbm object.
             dataset: Test Dataset.
 
-        Return:
+        Returns:
             Predicted target values.
+
         """
         task = self.task.name
         if (task == "reg") or (task == "multi:reg"):
