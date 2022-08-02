@@ -728,7 +728,6 @@ class MultioutputTargetEncoder(LAMLTransformer):
             index of best encoder.
 
         """
-
         target = target[:, :, np.newaxis]
         scores = -(target * np.log(candidates) + (1 - target) * np.log(1 - candidates)).mean(axis=0)
         idx = scores[0].argmin()

@@ -37,16 +37,7 @@ from .tabular_presets import TabularAutoML
 
 _base_dir = os.path.dirname(__file__)
 # set initial runtime rate guess for first level models
-_time_scores = {
-    "lgb": 1,
-    "lgb_tuned": 3,
-    "linear_l2": 0.7,
-    "cb": 2,
-    "cb_tuned": 6,
-    "nn": 1,
-    "rf": 5,
-    "rf_tuned": 10
-}
+_time_scores = {"lgb": 1, "lgb_tuned": 3, "linear_l2": 0.7, "cb": 2, "cb_tuned": 6, "nn": 1, "rf": 5, "rf_tuned": 10}
 
 
 # TODO: add text feature selection
@@ -96,15 +87,7 @@ class TabularCVAutoML(TabularAutoML):
 
     _default_config_path = "image_config.yml"
 
-    _time_scores = {
-        "lgb": 1,
-        "lgb_tuned": 3,
-        "linear_l2": 0.7,
-        "cb": 2,
-        "cb_tuned": 6,
-        "rf": 5,
-        "rf_tuned": 10
-    }
+    _time_scores = {"lgb": 1, "lgb_tuned": 3, "linear_l2": 0.7, "cb": 2, "cb_tuned": 6, "rf": 5, "rf_tuned": 10}
 
     def __init__(
         self,

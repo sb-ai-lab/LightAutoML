@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 def bw_clipping(x):
+    """Clip to [0, 1]."""
     return np.clip(x, 0, 1)
 
 

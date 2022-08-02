@@ -6,8 +6,10 @@ from copy import deepcopy
 from typing import Any
 from typing import Dict
 from typing import List
+from typing import Mapping
 from typing import Optional
 from typing import Sequence
+from typing import Tuple
 from typing import TypeVar
 from typing import Union
 from typing import cast
@@ -256,6 +258,7 @@ class PandasToPandasReader(Reader):
         }
 
         self.params = kwargs
+        self.class_mapping: Optional[Union[Mapping, Dict[str, Mapping]]]
 
     def fit_read(
         self, train_data: DataFrame, features_names: Any = None, roles: UserDefinedRolesDict = None, **kwargs: Any
@@ -425,8 +428,8 @@ class PandasToPandasReader(Reader):
             assert not np.isnan(target.values).any(), "Nan in target detected"
         return target
 
-    def check_class_target(self, target):
-
+    def check_class_target(self, target) -> Tuple[pd.Series, Optional[Union[Mapping, Dict[str, Mapping]]]]:
+        """Validate target values."""
         target = pd.Series(target)
         cnts = target.value_counts(dropna=False)
         assert np.nan not in cnts.index, "Nan in target detected"
@@ -438,7 +441,7 @@ class PandasToPandasReader(Reader):
             assert srtd.shape[0] > 1, "Less than 2 unique values in target"
             if (self.task.name == "binary") or (self.task.name == "multilabel"):
                 assert srtd.shape[0] == 2, "Binary task and more than 2 values in target"
-                return target, {}
+                return target, None
 
         # case - create mapping
         class_mapping = {n: x for (x, n) in enumerate(unqiues)}
@@ -555,7 +558,8 @@ class PandasToPandasReader(Reader):
                         )
                     else:
                         for col in val.columns:
-                            val.loc[:, col] = val.loc[:, col].map(self.class_mapping[col])
+                            if self.class_mapping[col] is not None:
+                                val.loc[:, col] = val.loc[:, col].map(self.class_mapping[col])
 
                 kwargs[array_attr] = val
 
@@ -638,8 +642,8 @@ class PandasToPandasReader(Reader):
 
 
 class DictToPandasSeqReader(PandasToPandasReader):
-    """
-    Reader with sequential support to convert :class:`~pandas.DataFrame` to AutoML's :class:`~lightautoml.dataset.np_pd_dataset.PandasDataset`.
+    """Reader with sequential support to convert :class:`~pandas.DataFrame` to AutoML's :class:`~lightautoml.dataset.np_pd_dataset.PandasDataset`.
+
     Stages:
 
         - Same function for plain dataset as PandasToPandasReader.
@@ -727,7 +731,6 @@ class DictToPandasSeqReader(PandasToPandasReader):
 
     def create_ids(self, seq_data, plain_data, dataset_name):
         """Calculate ids for different seq tasks."""
-
         if self.seq_params[dataset_name]["case"] == "next_values":
             self.ti[dataset_name] = TopInd(
                 scheme=self.seq_params[dataset_name].get("scheme", None),
@@ -744,7 +747,6 @@ class DictToPandasSeqReader(PandasToPandasReader):
 
     def parse_seq(self, seq_dataset, plain_data, dataset_name, parsed_roles, roles):
         """Method to read sequential data."""
-
         subsample = seq_dataset
         if self.samples is not None and self.samples < subsample.shape[0]:
             subsample = subsample.sample(self.samples, axis=0, random_state=42)
@@ -859,8 +861,7 @@ class DictToPandasSeqReader(PandasToPandasReader):
         Args:
             train_data: Input data in dict format.
             features_names: Ignored. Just to keep signature.
-            roles: Dict of features roles in format
-              ``{RoleX: ['feat0', 'feat1', ...], RoleY: 'TARGET', ....}``.
+            roles: Dict of features roles in format ``{RoleX: ['feat0', 'feat1', ...], RoleY: 'TARGET', ....}``.
             **kwargs: Can be used for target/group/weights.
 
         Returns:
@@ -1039,8 +1040,7 @@ class DictToPandasSeqReader(PandasToPandasReader):
         Args:
             data: Data.
             features_names: Not used.
-            add_array_attrs: Additional attributes, like
-              target/group/weights/folds.
+            add_array_attrs: Additional attributes, like target/group/weights/folds.
 
         Returns:
             Dataset with new columns.

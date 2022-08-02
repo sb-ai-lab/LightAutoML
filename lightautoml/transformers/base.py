@@ -579,7 +579,6 @@ class SetAttribute(LAMLTransformer):
             Same dataset with new attributes.
 
         """
-
         val = dataset[:, self.column].data
 
         if isinstance(val, pd.DataFrame):
