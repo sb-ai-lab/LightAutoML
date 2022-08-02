@@ -13,4 +13,16 @@
 
     ```
 
-**Warning**: You must set the default version before publishing the library to PyPI.
+    **Warning**: You must set the default version before publishing the library to PyPI.
+
+2. ```run_tutorials.py``` - execute tutorials in CLI. The execution drops in case of an any error. More information in `help`.
+
+    ```bash
+
+    # Run all tutorials except those excluded by default.
+    poetry run python scripts/run_tutorials.py
+
+    # Run tutorials (1, 2)
+    poetry run python scripts/run_tutorials -t 1 -t 2
+
+    ```
