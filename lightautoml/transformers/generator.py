@@ -14,9 +14,14 @@ from typing import Tuple
 try:
     import featuretools as ft
 except:
+    import sys
     import warnings
 
-    warnings.warn("'featuretools' - package isn't installed")
+    if sys.version_info.minor >= 7:
+        warnings.warn("Library 'featuretools' - package isn't installed")
+    else:
+        warnings.warn("Library 'featuretools' isn't provided for python_version < 3.7")
+
 import pandas as pd
 
 from ..dataset.base import LAMLDataset
@@ -232,10 +237,9 @@ class FeatureGeneratorTransformer(LAMLTransformer, TabularDataFeatures):
     def _set_interesting_values(self):
         """Add interesting values if any."""
         for seq_table_name in self.seq_table_names and sorted(list(self.interesting_values.keys())):
-            columns = sorted(list(self.interesting_values[seq_table_name].keys()))
-            for column in columns:
-                values = self.interesting_values[seq_table_name][column]
-                self.es[seq_table_name][column].interesting_values = values
+            self.es.add_interesting_values(
+                dataframe_name=seq_table_name, values=self.interesting_values[seq_table_name]
+            )
 
     def _get_new_feature_names(self):
         """DFS with specified primitives."""

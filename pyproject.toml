@@ -77,10 +77,7 @@ torchvision = [
 ]
 
 # AFG
-featuretools = [
-    {version = "<=0.23.3", python = "<3.7", optional = true},
-    {version = "<=1.11.1", python = ">=3.7", optional = true},
-]
+featuretools = {version = ">=1.11.1", python = ">=3.7", optional = true}
 
 # Report (pdf)
 weasyprint = {version = "52.5", optional = true}
