@@ -258,7 +258,8 @@ class PandasToPandasReader(Reader):
         }
 
         self.params = kwargs
-        self.class_mapping: Optional[Union[Mapping, Dict[str, Mapping]]]
+        self.class_mapping: Optional[Union[Mapping, Dict[str, Mapping]]] = None
+        self._n_classes: Optional[int] = None
 
     def fit_read(
         self, train_data: DataFrame, features_names: Any = None, roles: UserDefinedRolesDict = None, **kwargs: Any
@@ -419,10 +420,14 @@ class PandasToPandasReader(Reader):
             target, self.class_mapping = self.check_class_target(target)
         elif self.task.name == "multilabel":
             self.class_mapping = {}
+
             for col in target.columns:
                 target_col, class_mapping = self.check_class_target(target[col])
                 self.class_mapping[col] = class_mapping
                 target.loc[:, col] = target_col.values
+
+            self._n_classes = len(target.columns) * 2
+            # TODO: interpretation
 
         else:
             assert not np.isnan(target.values).any(), "Nan in target detected"
@@ -435,6 +440,8 @@ class PandasToPandasReader(Reader):
         assert np.nan not in cnts.index, "Nan in target detected"
         unqiues = cnts.index.values
         srtd = np.sort(unqiues)
+        # WARNING: Multilabel task
+        self._n_classes = len(unqiues)
 
         # case - target correctly defined and no mapping
         if (np.arange(srtd.shape[0]) == srtd).all():
@@ -1085,7 +1092,8 @@ class DictToPandasSeqReader(PandasToPandasReader):
                         val = Series(val.map(self.class_mapping).values, index=plain_data.index, name=col_name)
                     else:
                         for col in val.columns:
-                            val.loc[:, col] = val.loc[:, col].map(self.class_mapping[col])
+                            if self.class_mapping[col] is not None:
+                                val.loc[:, col] = val.loc[:, col].map(self.class_mapping[col])
                 kwargs[array_attr] = val
 
         dataset = PandasDataset(
