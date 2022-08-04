@@ -4,12 +4,12 @@
 
     ```bash
 
-    # Set single python version := {6, 7, 8, 9}
+    # Set current python version from poetry env
     # After that you can easily run command: `poetry lock`
-    poetry run python poetry_fix.py [PYTHON_VERSION]
+    poetry run python poetry_fix.py -c
 
-    # Set all default versions before `git push` or `poetry publish`
-    poetry run python poetry_fix.py
+    # Set all python versions before `git push` or `poetry publish`
+    poetry run python poetry_fix.py -f
 
     ```
 

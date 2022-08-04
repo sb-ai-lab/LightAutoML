@@ -41,5 +41,5 @@ repos:
         name: set python versions
         description: set python versions := [3.6.1, 3.10) to `pyproject.toml`
         language: python
-        entry: python scripts/poetry_fix.py
+        entry: python scripts/poetry_fix.py -f
         pass_filenames: false
