@@ -152,3 +152,5 @@ lama_venv/
 *.db
 
 temp/
+
+poetry.lock
