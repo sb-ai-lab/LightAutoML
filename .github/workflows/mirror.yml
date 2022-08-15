@@ -19,9 +19,9 @@ jobs:
         env:
           SOURCE_REPO: "https://github.com/${{ github.repository }}.git"
           DESTINATION_REPO: "${{ secrets.DESTINATION_REPO }}"
-          BASE_REPO: "${{ github.repository }}"
+          BASE_REPO: "https://github.com/${{ github.repository }}"
         run: |
-          git clone "$SOURCE_REPO"
+          git clone "$SOURCE_REPO" && cd `basename "$BASE_REPO"`
           cd "$REPO_NAME"
 
           git config --global user.name "${{ github.actor }}"
