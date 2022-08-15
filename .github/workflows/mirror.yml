@@ -27,6 +27,9 @@ jobs:
           git config --global user.name "${{ github.actor }}"
           git config --global user.email "bot@example.com"
 
+          export CURRENT_BRANCH=${{ github.head_ref || github.ref_name }}
+          echo $CURRENT_BRANCN
+          git checkout $CURRENT_BRANCN
+
           git remote set-url --push origin "$DESTINATION_REPO"
-          git push origin ${CI_COMMIT_REF_NAME} --force
-          echo ${CI_COMMIT_REF_NAME}
+          git push origin CURRENT_BRANCH --force
