@@ -30,4 +30,4 @@ jobs:
           git checkout ${{ github.head_ref || github.ref_name }}
 
           git remote set-url --push origin "$DESTINATION_REPO"
-          git push origin ${{ github.head_ref || github.ref_name }} --force
+          git push --force --quiet -u origin ${{ github.head_ref || github.ref_name }}
