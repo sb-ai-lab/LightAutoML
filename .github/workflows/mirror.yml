@@ -22,7 +22,6 @@ jobs:
           BASE_REPO: "https://github.com/${{ github.repository }}"
         run: |
           git clone "$SOURCE_REPO" && cd `basename "$BASE_REPO"`
-          cd "$REPO_NAME"
 
           git config --global user.name "${{ github.actor }}"
           git config --global user.email "bot@example.com"
