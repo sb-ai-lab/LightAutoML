@@ -28,4 +28,4 @@ jobs:
           git config --global user.email "bot@example.com"
 
           git remote set-url --push origin "$DESTINATION_REPO"
-          git push origin HEAD:${CI_COMMIT_REF_NAME} --force
+          git push origin ${CI_COMMIT_REF_NAME} --force
