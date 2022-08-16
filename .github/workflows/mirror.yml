@@ -18,7 +18,6 @@ jobs:
           echo "CheckHostIP no" >> ~/.ssh/config
           echo "LogLevel ERROR" >> ~/.ssh/config
           echo "UserKnownHostsFile /dev/null" >> ~/.ssh/config
-          cat ~/.ssh/config
 
       - name: Push mirror
         env:
@@ -34,4 +33,4 @@ jobs:
           git checkout ${{ github.head_ref || github.ref_name }}
 
           git remote set-url --push origin "$DESTINATION_REPO"
-          git push --force --quiet -u origin ${{ github.head_ref || github.ref_name }} 2>&1 >/dev/null
+          git push --force --quiet -u origin ${{ github.head_ref || github.ref_name }}
