@@ -5,11 +5,13 @@ on:
     paths-ignore:
       - "docs/**"
       - "*.md"
+      - ".github/workflows/mirror.yml"
 
   pull_request:
     paths-ignore:
       - "docs/**"
       - "*.md"
+      - ".github/workflows/mirror.yml"
 
 jobs:
   pre-commit:
