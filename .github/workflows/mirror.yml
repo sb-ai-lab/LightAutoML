@@ -29,6 +29,8 @@ jobs:
 
           git config --global user.name "${{ github.actor }}"
           git config --global user.email "bot@example.com"
+          
+          git branch
       
           BRANCH=${{ github.head_ref || github.ref_name }}
           if [[ "$branch" == "master" ]] || [[ $branch == "developer" ]]
@@ -37,8 +39,11 @@ jobs:
           else
               FORCE_FLAG=""
           fi
+          echo $FORCE_FLAG
           
           git checkout --quiet $BRANCH
+  
+          git branch
 
           git remote set-url --push origin "$DESTINATION_REPO"
           git push $FORCE_FLAG --quiet -u origin $BRANCH
