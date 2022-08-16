@@ -14,10 +14,10 @@ jobs:
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           echo "Host *" >> ~/.ssh/config
-          echo "StrictHostKeyChecking no" >> ~/.ssh/config
-          echo "CheckHostIP no" >> ~/.ssh/config
-          echo "LogLevel ERROR" >> ~/.ssh/config
-          echo "UserKnownHostsFile /dev/null" >> ~/.ssh/config
+          echo "  StrictHostKeyChecking no" >> ~/.ssh/config
+          echo "  CheckHostIP no" >> ~/.ssh/config
+          echo "  LogLevel ERROR" >> ~/.ssh/config
+          echo "  UserKnownHostsFile /dev/null" >> ~/.ssh/config
 
       - name: Push mirror
         env:
