@@ -13,10 +13,6 @@ jobs:
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          echo "Host *" >> ~/.ssh/config
-          echo "StrictHostKeyChecking no" >> ~/.ssh/config
-          echo "CheckHostIP no" >> ~/.ssh/config
-          cat ~/.ssh/config
 
       - name: Push mirror
         env:
@@ -32,4 +28,4 @@ jobs:
           git checkout ${{ github.head_ref || github.ref_name }}
 
           git remote set-url --push origin "$DESTINATION_REPO"
-          git push --force --quiet -u origin ${{ github.head_ref || github.ref_name }}
+          git push --force --quiet -u origin ${{ github.head_ref || github.ref_name }} 2>&1 > /dev/null
