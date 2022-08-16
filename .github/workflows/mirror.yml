@@ -14,6 +14,7 @@ jobs:
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           echo "StrictHostKeyChecking no" >> ~/.ssh/config
+          echo "UserKnownHostsFile ~/.ssh/known_hosts" >> ~/.ssh/config
 
       - name: Push mirror
         env:
