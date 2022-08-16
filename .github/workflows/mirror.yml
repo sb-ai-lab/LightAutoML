@@ -13,6 +13,7 @@ jobs:
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
+          echo "Host *"
           echo "StrictHostKeyChecking no" >> ~/.ssh/config
           echo "CheckHostIP no" >> ~/.ssh/config
           cat ~/.ssh/config
