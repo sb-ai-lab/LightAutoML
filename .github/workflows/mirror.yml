@@ -15,6 +15,7 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           echo "StrictHostKeyChecking no" >> ~/.ssh/config
           echo "CheckHostIP no" >> ~/.ssh/config
+          cat ~/.ssh/config
 
       - name: Push mirror
         env:
