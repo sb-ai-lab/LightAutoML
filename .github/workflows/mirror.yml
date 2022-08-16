@@ -29,8 +29,16 @@ jobs:
 
           git config --global user.name "${{ github.actor }}"
           git config --global user.email "bot@example.com"
-
-          git checkout --quiet ${{ github.head_ref || github.ref_name }}
+      
+          BRANCH=${{ github.head_ref || github.ref_name }}
+          if [[ "$branch" == "master" ]] || [[ $branch == "developer" ]]
+          then
+              FORCE_FLAG="--force"
+          else
+              FORCE_FLAG=""
+          fi
+          
+          git checkout --quiet $BRANCH
 
           git remote set-url --push origin "$DESTINATION_REPO"
-          git push --force --quiet -u origin ${{ github.head_ref || github.ref_name }}
+          git push $FORCE_FLAG --quiet -u origin $BRANCH
