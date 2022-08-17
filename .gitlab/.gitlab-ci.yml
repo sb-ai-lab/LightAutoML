@@ -20,9 +20,6 @@ mirror-code:
   <<: *ssh_key_configuration
   stage: mirror
   script: |
-    git config --global user.name   gitlab-bot
-    git config --global user.email "bot@example.com"
-
     if [[ "${CI_COMMIT_REF_NAME}" == experiment* ]]
     then
         :
