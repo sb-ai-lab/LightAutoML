@@ -25,6 +25,6 @@ mirror-code:
         :
     else
       git branch -f ${CI_COMMIT_REF_NAME}
-      git remote add github "$DESTINATION_REPO"
+      git config remote.github.url >&- || git remote add github "$DESTINATION_REPO"
       git push -u github "${CI_COMMIT_REF_NAME}"
     fi
