@@ -6,12 +6,14 @@ on:
       - "docs/**"
       - "*.md"
       - ".github/workflows/mirror.yml"
+      - ".gitlab/.gitlab-ci.yml"
 
   pull_request:
     paths-ignore:
       - "docs/**"
       - "*.md"
       - ".github/workflows/mirror.yml"
+      - ".gitlab/.gitlab-ci.yml"
 
 jobs:
   pre-commit:
