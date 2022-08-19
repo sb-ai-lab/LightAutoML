@@ -177,7 +177,6 @@ This project is licensed under the Apache License, Version 2.0. See [LICENSE](ht
 First of all you need to install [git](https://git-scm.com/downloads) and [poetry](https://python-poetry.org/docs/#installation).
 
 ```bash
-
 # Load LAMA source code
 git clone https://github.com/AILab-MLTools/LightAutoML.git
 
