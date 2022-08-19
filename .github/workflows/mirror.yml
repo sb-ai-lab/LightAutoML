@@ -37,8 +37,8 @@ jobs:
           else
               FORCE_FLAG=""
           fi
-          
+
           git checkout --quiet $BRANCH
-  
+
           git remote set-url --push origin "$DESTINATION_REPO"
           git push $FORCE_FLAG --quiet -u origin $BRANCH
