@@ -1,6 +1,9 @@
 name: CI
 
 on:
+  # Manually triggerable in github
+  workflow_dispatch:
+
   push:
     paths-ignore:
       - "docs/**"
@@ -24,6 +27,7 @@ jobs:
   tests:
     needs: pre-commit
     runs-on: ${{matrix.os}}
+    if: (github.event_name == 'pull_request') && ( needs.pre-commit.result == 'success' )
     strategy:
       fail-fast: false
       matrix:
