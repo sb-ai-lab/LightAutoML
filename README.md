@@ -9,7 +9,7 @@
 
 LightAutoML (LAMA) is an AutoML framework which provides automatic model creation for the following tasks:
 - binary classification
-- multiclass classification
+- multiclass  classification
 - regression
 
 Current version of the package handles datasets that have independent samples in each row. I.e. **each row is an object with its specific features and target**.
@@ -177,7 +177,6 @@ This project is licensed under the Apache License, Version 2.0. See [LICENSE](ht
 First of all you need to install [git](https://git-scm.com/downloads) and [poetry](https://python-poetry.org/docs/#installation).
 
 ```bash
-
 # Load LAMA source code
 git clone https://github.com/AILab-MLTools/LightAutoML.git
 
