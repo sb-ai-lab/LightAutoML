@@ -29,7 +29,7 @@ jobs:
 
           git config --global user.name "${{ github.actor }}"
           git config --global user.email "bot@example.com"
-      
+
           BRANCH=${{ github.head_ref || github.ref_name }}
           if [[ "$branch" == "master" ]] || [[ $branch == "developer" ]]
           then
