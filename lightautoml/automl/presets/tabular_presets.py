@@ -429,12 +429,6 @@ class TabularAutoML(AutoMLPreset):
             # regs
             rf_models = [x for x in ["rf", "rf_tuned"] if x in names]
 
-            if len(rf_models) > 0:
-                selector = None
-                if "rf" in self.selection_params["select_algos"] and (self.general_params["skip_conn"] or n == 0):
-                    selector = pre_selector
-                lvl.append(self.get_rfs(rf_models, n + 1, selector))
-
             if "linear_l2" in names:
                 selector = None
                 if "linear_l2" in self.selection_params["select_algos"] and (
@@ -453,6 +447,13 @@ class TabularAutoML(AutoMLPreset):
                     selector = pre_selector
                 lvl.append(self.get_gbms(gbm_models, n + 1, selector))
 
+            if len(rf_models) > 0:
+                selector = None
+                if "rf" in self.selection_params["select_algos"] and (self.general_params["skip_conn"] or n == 0):
+                    selector = pre_selector
+                lvl.append(self.get_rfs(rf_models, n + 1, selector))
+
+            
             levels.append(lvl)
 
         # blend everything
