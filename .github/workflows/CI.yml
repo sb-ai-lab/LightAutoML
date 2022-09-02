@@ -1,6 +1,9 @@
 name: CI
 
 on:
+  schedule:
+    - cron: 0 9 * * *
+
   # Manually triggerable in github
   workflow_dispatch:
 
