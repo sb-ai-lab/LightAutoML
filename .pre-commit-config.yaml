@@ -18,6 +18,7 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: debug-statements
+      - id: check-yaml
 
   - repo: https://gitlab.com/pycqa/flake8
     rev: 3.8.4
@@ -43,3 +44,8 @@ repos:
         language: python
         entry: python scripts/poetry_fix.py -f
         pass_filenames: false
+
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.18.2
+    hooks:
+      - id: check-github-workflows
