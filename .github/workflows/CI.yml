@@ -37,7 +37,7 @@ jobs:
     if: |
       ( github.event_name == 'pull_request' ) && ( needs.pre-commit.result == 'success' )
       ||
-      ( github.event_nam == 'schedule' ) && ( needs.pre-commit.result == 'success' )
+      ( github.event_name == 'schedule' ) && ( needs.pre-commit.result == 'success' )
     strategy:
       fail-fast: false
       matrix:
