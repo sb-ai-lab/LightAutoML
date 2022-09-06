@@ -34,11 +34,28 @@ class TopInd:
         self.test_last = test_last
         self.roles = roles
 
+    @staticmethod
+    def _timedelta(x):
+        delta = pd.to_datetime(x).diff().iloc[-1]
+        if delta <= pd.Timedelta(days=1):
+            return pd.to_datetime(x).diff().fillna(delta).values, delta
+
+        if delta > pd.Timedelta(days=360):
+            d = pd.to_datetime(x).dt.year.diff()
+            delta = d.iloc[-1]
+            return d.fillna(delta).values, delta
+        elif delta > pd.Timedelta(days=27):
+            d = pd.to_datetime(x).dt.month.diff() + 12 * pd.to_datetime(x).dt.year.diff()
+            delta = d.iloc[-1]
+            return d.fillna(delta).values, delta
+        else:
+            return pd.to_datetime(x).diff().fillna(delta).values, delta
+
     def read(self, data, plain_data=None):
         self.len_data = len(data)
         self.date_col = [col for col, role in self.roles.items() if isinstance(role, DatetimeRole)][0]
-        self.time_delta = pd.to_datetime(data[self.date_col]).diff().iloc[1]
-
+        self.time_delta = self._timedelta(data[self.date_col])[1]
+        return self
         # TODO: add asserts
 
     def _create_test(self, data=None, plain_data=None):
@@ -66,8 +83,8 @@ class TopInd:
 
     def _get_ids(self, data=None, plain_data=None, func=None, cond=None):
         date_col = pd.to_datetime(data[self.date_col])
-        vals = pd.to_datetime(data[self.date_col]).diff().fillna(self.time_delta).values
-        ids = list(np.argwhere(vals != self.time_delta).flatten())
+        vals, time_delta = self._timedelta(data[self.date_col])
+        ids = list(np.argwhere(vals != time_delta).flatten())
         prev = 0
         inds = []
         for split in ids + [len(date_col)]:
