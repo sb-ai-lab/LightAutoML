@@ -1,4 +1,4 @@
-"""Classes to implement hyperparameter tuning using Optuna."""
+""""Classes to implement hyperparameter tuning using Optuna."""
 
 import logging
 
@@ -37,18 +37,7 @@ OPTUNA_DISTRIBUTIONS_MAP = {
 
 
 class OptunaTuner(ParamsTuner):
-    """Wrapper for optuna tuner.
-
-    Args:
-        timeout: Maximum learning time.
-        n_trials: Maximum number of trials.
-        direction: Direction of optimization.
-            Set ``minimize`` for minimization
-            and ``maximize`` for maximization.
-        fit_on_holdout: Will be used holdout cv-iterator.
-        random_state: Seed for optuna sampler.
-
-    """
+    """Wrapper for optuna tuner."""
 
     _name: str = "OptunaTuner"
 
@@ -65,6 +54,19 @@ class OptunaTuner(ParamsTuner):
         fit_on_holdout: bool = True,
         random_state: int = 42,
     ):
+        """
+
+        Args:
+            timeout: Maximum learning time.
+            n_trials: Maximum number of trials.
+            direction: Direction of optimization.
+              Set ``minimize`` for minimization
+              and ``maximize`` for maximization.
+            fit_on_holdout: Will be used holdout cv-iterator.
+            random_state: Seed for optuna sampler.
+
+        """
+
         self.timeout = timeout
         self.n_trials = n_trials
         self.estimated_n_trials = n_trials
@@ -146,7 +148,6 @@ class OptunaTuner(ParamsTuner):
                 callbacks=[update_trial_time],
                 # show_progress_bar=True,
             )
-
             # need to update best params here
             self._best_params = self.study.best_params
             ml_algo.params = self._best_params
@@ -175,10 +176,9 @@ class OptunaTuner(ParamsTuner):
         """Get objective.
 
         Args:
-            ml_algo: Tunable algorithm.
             estimated_n_trials: Maximum number of hyperparameter estimations.
             train_valid_iterator: Used for getting parameters
-                depending on dataset.
+              depending on dataset.
 
         Returns:
             Callable objective.
@@ -188,7 +188,6 @@ class OptunaTuner(ParamsTuner):
 
         def objective(trial: optuna.trial.Trial) -> float:
             _ml_algo = deepcopy(ml_algo)
-
             optimization_search_space = _ml_algo.optimization_search_space
 
             if not optimization_search_space:
@@ -211,7 +210,6 @@ class OptunaTuner(ParamsTuner):
                 )
 
             output_dataset = _ml_algo.fit_predict(train_valid_iterator=train_valid_iterator)
-
             return _ml_algo.score(output_dataset)
 
         return objective

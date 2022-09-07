@@ -17,19 +17,17 @@ except:
 
 
 class BertDataset:
-    """Dataset class with transformers tokenization.
-
-    Class for preparing transformers input.
-
-    Args:
-        sentences: List of tokenized sentences.
-        max_length: Max sentence length.
-        model_name: Name of transformer model.
-        **kwargs: Other.
-
-    """
+    """Dataset class with transformers tokenization."""
 
     def __init__(self, sentences: Sequence[str], max_length: int, model_name: str, **kwargs: Any):
+        """Class for preparing transformers input.
+
+        Args:
+            sentences: List of tokenized sentences.
+            max_length: Max sentence length.
+            model_name: Name of transformer model.
+
+        """
         self.sentences = sentences
         self.max_length = max_length
         self.tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False)
@@ -48,21 +46,20 @@ class BertDataset:
 
 
 class EmbedDataset:
-    """Dataset class for extracting word embeddings.
-
-    Class for transforming list of tokens to dict of embeddings and sentence length.
-
-    Args:
-        sentences: List of tokenized sentences.
-        embedding_model: word2vec, fasstext, etc.
-            Should have dict interface {<word>: <embedding>}.
-        max_length: Max sentence length.
-        embed_size: Size of embedding.
-        **kwargs: Not used.
-
-    """
+    """Dataset class for extracting word embeddings."""
 
     def __init__(self, sentences: Sequence[str], embedding_model: Dict, max_length: int, embed_size: int, **kwargs):
+        """Class for transforming list of tokens to dict of embeddings and sentence length.
+
+        Args:
+            sentences: List of tokenized sentences.
+            embedding_model: word2vec, fasstext, etc.
+              Should have dict interface {<word>: <embedding>}.
+            max_length: Max sentence length.
+            embed_size: Size of embedding.
+            **kwargs: Not used.
+
+        """
         self.sentences = sentences
         self.embedding_model = embedding_model
         self.max_length = max_length

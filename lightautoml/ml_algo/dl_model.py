@@ -114,7 +114,6 @@ class TorchModel(TabularMLAlgo):
         "path_to_save": os.path.join("./models/", "model"),
         "verbose_inside": None,
         "verbose": 1,
-        "stop_by_metric": False,
     }
 
     def _infer_params(self):
@@ -179,7 +178,6 @@ class TorchModel(TabularMLAlgo):
             verbose=params["verbose"],
             verbose_inside=params["verbose_inside"],
             metric=params["metric"],
-            stop_by_metric=params["stop_by_metric"],
             apex=False,
         )
 
@@ -194,7 +192,7 @@ class TorchModel(TabularMLAlgo):
         return model
 
     @staticmethod
-    def get_mean_target(target, task_name):  # noqa: D102
+    def get_mean_target(target, task_name):
         bias = (
             np.array(target.mean(axis=0)).reshape(1, -1).astype(float)
             if (task_name != "multiclass")
@@ -224,6 +222,7 @@ class TorchModel(TabularMLAlgo):
             Parameters of model.
 
         """
+
         suggested_params = copy(self.default_params)
         suggested_params["device"], suggested_params["device_ids"] = parse_devices(
             suggested_params["device"], suggested_params["multigpu"]
@@ -248,7 +247,7 @@ class TorchModel(TabularMLAlgo):
 
         return suggested_params
 
-    def get_dataloaders_from_dicts(self, data_dict):  # noqa: D102
+    def get_dataloaders_from_dicts(self, data_dict):
         logger.debug(f'number of text features: {len(self.params["text_features"])} ')
         logger.debug(f'number of categorical features: {len(self.params["cat_features"])} ')
         logger.debug(f'number of continuous features: {self.params["cont_dim"]} ')
@@ -330,10 +329,11 @@ class TorchModel(TabularMLAlgo):
             model: Neural net object or dict or str.
             dataset: Test dataset.
 
-        Returns:
+        Return:
             Predicted target values.
 
         """
+
         seed_everything(self.params["random_state"], self.params["deterministic"])
         dataloaders = self.get_dataloaders_from_dicts({"test": dataset})
 

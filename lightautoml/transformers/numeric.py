@@ -33,18 +33,19 @@ def numeric_check(dataset: LAMLDataset):
 
 
 class NaNFlags(LAMLTransformer):
-    """Create NaN flags.
-
-    Args:
-        nan_rate: Nan rate cutoff.
-
-    """
+    """Create NaN flags."""
 
     _fit_checks = (numeric_check,)
     _transform_checks = ()
     _fname_prefix = "nanflg"
 
     def __init__(self, nan_rate: float = 0.005):
+        """
+
+        Args:
+            nan_rate: Nan rate cutoff.
+
+        """
         self.nan_rate = nan_rate
 
     def fit(self, dataset: NumpyTransformable):
@@ -279,18 +280,19 @@ class StandardScaler(LAMLTransformer):
 
 
 class QuantileBinning(LAMLTransformer):
-    """Discretization of numeric features by quantiles.
-
-    Args:
-        nbins: maximum number of bins.
-
-    """
+    """Discretization of numeric features by quantiles."""
 
     _fit_checks = (numeric_check,)
     _transform_checks = ()
     _fname_prefix = "qntl"
 
     def __init__(self, nbins: int = 10):
+        """
+
+        Args:
+            nbins: maximum number of bins.
+
+        """
         self.nbins = nbins
 
     def fit(self, dataset: NumpyTransformable):

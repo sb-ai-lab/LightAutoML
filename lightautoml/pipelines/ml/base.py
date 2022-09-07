@@ -42,20 +42,10 @@ class MLPipeline:
           Performed by :class:`~lightautoml.ml_algo.base.MLAlgo`.
           This step is the only required for at least 1 model.
 
-    Args:
-        ml_algos: Sequence of MLAlgo's or Pair - (MlAlgo, ParamsTuner).
-        force_calc: Flag if single fold of ml_algo
-            should be calculated anyway.
-        pre_selection: Initial feature selection.
-            If ``None`` there is no initial selection.
-        features_pipeline: Composition of feature transforms.
-        post_selection: Post feature selection.
-            If ``None`` there is no post selection.
-
     """
 
     @property
-    def used_features(self) -> List[str]:  # noqa D102
+    def used_features(self) -> List[str]:
         return self.pre_selection.selected_features
 
     def __init__(
@@ -66,6 +56,20 @@ class MLPipeline:
         features_pipeline: Optional[FeaturesPipeline] = None,
         post_selection: Optional[SelectionPipeline] = None,
     ):
+
+        """
+
+        Args:
+            ml_algos: Sequence of MLAlgo's or Pair - (MlAlgo, ParamsTuner).
+            force_calc: Flag if single fold of ml_algo
+              should be calculated anyway.
+            pre_selection: Initial feature selection.
+              If ``None`` there is no initial selection.
+            features_pipeline: Composition of feature transforms.
+            post_selection: Post feature selection.
+              If ``None`` there is no post selection.
+
+        """
         if pre_selection is None:
             pre_selection = EmptySelector()
 
@@ -115,13 +119,10 @@ class MLPipeline:
         self.ml_algos = []
         # train and apply pre selection
         train_valid = train_valid.apply_selector(self.pre_selection)
-
         # apply features pipeline
         train_valid = train_valid.apply_feature_pipeline(self.features_pipeline)
-
         # train and apply post selection
         train_valid = train_valid.apply_selector(self.post_selection)
-
         predictions = []
 
         for ml_algo, param_tuner, force_calc in zip(self._ml_algos, self.params_tuners, self.force_calc):

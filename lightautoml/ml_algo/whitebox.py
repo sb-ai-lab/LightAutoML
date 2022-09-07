@@ -25,7 +25,7 @@ WbModel = Union[autowoe.AutoWoE, autowoe.ReportDeco]
 class WbMLAlgo(TabularMLAlgo):
     """WhiteBox - scorecard model.
 
-    https://github.com/AILab-MLTools/AutoMLWhitebox
+    https://github.com/sberbank-ai-lab/AutoMLWhitebox
 
     default_params:
 
@@ -179,7 +179,7 @@ class WbMLAlgo(TabularMLAlgo):
         self._report_on_inference = report
         return params, report, fit_params
 
-    def fit_predict(self, train_valid_iterator: TrainValidIterator, **kwargs) -> NumpyDataset:  # noqa: D102
+    def fit_predict(self, train_valid_iterator: TrainValidIterator, **kwargs) -> NumpyDataset:
 
         self._dataset_fit_params = kwargs
 
@@ -253,7 +253,7 @@ class WbMLAlgo(TabularMLAlgo):
             model: WhiteBox model
             dataset: Test dataset.
 
-        Returns:
+        Return:
             Predicted target values.
 
         """

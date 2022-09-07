@@ -96,40 +96,6 @@ class TimeUtilization:
         Then ``.fit_predict`` and predict can be
         called like usual :class:`~lightautoml.automl.base.AutoML` class.
 
-
-    Args:
-        automl_factory: One of presets.
-        task: Task to solve.
-        timeout: Timeout in seconds.
-        memory_limit: Memory limit that are passed to each automl.
-        cpu_limit: Cpu limit that that are passed to each automl.
-        gpu_ids: Gpu_ids that are passed to each automl.
-        verbose: Controls the verbosity: the higher, the more messages.
-            <1  : messages are not displayed;
-            >=1 : the computation process for layers is displayed;
-            >=2 : the information about folds processing is also displayed;
-            >=3 : the hyperparameters optimization process is also displayed;
-            >=4 : the training process for every algorithm is displayed;
-        timing_params: Timing_params level that are passed to each automl.
-        configs_list: List of str path to configs files.
-        inner_blend: Blender instance to blend automl's with same configs
-            and different random state.
-        outer_blend: Blender instance to blend averaged by random_state
-            automl's with different configs.
-        drop_last: Usually last automl will be stopped with timeout.
-            Flag that defines if we should drop it from ensemble
-        return_all_predictions: Skip blend and return all model predictions
-        max_runs_per_config: Maximum number of multistart loops.
-        random_state_keys: Params of config that used as
-            random state with initial values. If ``None`` - search for
-            `random_state` key in default config of preset.
-            If not found - assume, that seeds are not fixed
-            and each run is random by default. For example
-            ``{'reader_params': {'random_state': 42}, 'gbm_params': {'default_params': {'seed': 42}}}``
-        random_state: initial random seed, that will be
-            set in case of search in config.
-        **kwargs: Additional params.
-
     """
 
     def __init__(
@@ -151,6 +117,43 @@ class TimeUtilization:
         random_state: int = 42,
         **kwargs,
     ):
+        """
+
+        Args:
+            automl_factory: One of presets.
+            task: Task to solve.
+            timeout: Timeout in seconds.
+            memory_limit: Memory limit that are passed to each automl.
+            cpu_limit: Cpu limit that that are passed to each automl.
+            gpu_ids: Gpu_ids that are passed to each automl.
+            verbose: Controls the verbosity: the higher, the more messages.
+                <1  : messages are not displayed;
+                >=1 : the computation process for layers is displayed;
+                >=2 : the information about folds processing is also displayed;
+                >=3 : the hyperparameters optimization process is also displayed;
+                >=4 : the training process for every algorithm is displayed;
+            timing_params: Timing_params level that are passed to each automl.
+            configs_list: List of str path to configs files.
+            inner_blend: Blender instance to blend automl's with same configs
+              and different random state.
+            outer_blend: Blender instance to blend averaged by random_state
+              automl's with different configs.
+            drop_last: Usually last automl will be stopped with timeout.
+              Flag that defines if we should drop it from ensemble
+            return_all_predictions: Skip blend and return all model predictions
+            max_runs_per_config: Maximum number of multistart loops.
+            random_state_keys: Params of config that used as
+              random state with initial values. If ``None`` - search for
+              `random_state` key in default config of preset.
+              If not found - assume, that seeds are not fixed
+              and each run is random by default. For example
+              ``{'reader_params': {'random_state': 42}, 'gbm_params': {'default_params': {'seed': 42}}}``
+            random_state: initial random seed, that will be
+              set in case of search in config.
+            **kwargs: Additional params.
+
+        """
+
         self.automl_factory = automl_factory
         self.task = task
         self.timeout = timeout
@@ -245,14 +248,12 @@ class TimeUtilization:
             train_data: Dataset to train.
             roles: Roles dict.
             train_features: Optional features names, if can't
-                be inferred from `train_data`.
+              be inferred from `train_data`.
             cv_iter: Custom cv-iterator. For example,
-                :class:`~lightautoml.validation.np_iterators.TimeSeriesIterator`.
+              :class:`~lightautoml.validation.np_iterators.TimeSeriesIterator`.
             valid_data: Optional validation dataset.
             valid_features: Optional validation dataset features
-                if cannot be inferred from `valid_data`.
-            verbose: Verbose.
-            log_file: Log filename.
+              if cannot be inferred from `valid_data`.
 
         Returns:
             Dataset with predictions. Call ``.data`` to get predictions array.
@@ -308,17 +309,30 @@ class TimeUtilization:
                     **random_states,
                     **cur_kwargs,
                 )
-
-                val_pred = automl.fit_predict(
-                    train_data,
-                    roles,
-                    train_features,
-                    cv_iter,
-                    valid_data,
-                    valid_features,
-                    verbose=verbose,
-                    log_file=log_file,
-                )
+                # TODO: return_numpy works only with GPU datasets
+                if self.task.device != 'cpu':
+                    val_pred = automl.fit_predict(
+                        train_data,
+                        roles,
+                        train_features,
+                        cv_iter,
+                        valid_data,
+                        valid_features,
+                        verbose=verbose,
+                        log_file=log_file,
+                        return_numpy=False
+                    )
+                else:
+                    val_pred = automl.fit_predict(
+                        train_data,
+                        roles,
+                        train_features,
+                        cv_iter,
+                        valid_data,
+                        valid_features,
+                        verbose=verbose,
+                        log_file=log_file,
+                    )
 
                 logger.info("=" * 50)
 
@@ -387,14 +401,14 @@ class TimeUtilization:
         Args:
             data: Dataset to perform inference.
             features_names: Optional features names,
-                if cannot be inferred from `train_data`.
+              if cannot be inferred from `train_data`.
             return_all_predictions: bool - skip blending phase
-            **kwargs: Other params.
 
         Returns:
             Dataset with predictions.
 
         """
+
         if return_all_predictions is None or self.return_all_predictions:
             return_all_predictions = self.return_all_predictions
 
@@ -405,6 +419,9 @@ class TimeUtilization:
             inner_preds = []
             # TODO: Maybe refactor?
             for automl in amls_pipe.ml_algos[0].models[0]:
+                #if self.task.device != 'cpu':
+                #    inner_pred = automl.predict(data, features_names, return_numpy=False, **kwargs)
+                #else:
                 inner_pred = automl.predict(data, features_names, **kwargs)
                 inner_preds.append(inner_pred)
 
@@ -418,4 +435,4 @@ class TimeUtilization:
         else:
             pred = concatenate(outer_preds)
 
-        return pred
+        return pred.to_numpy()

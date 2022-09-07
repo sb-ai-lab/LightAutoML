@@ -34,7 +34,6 @@ from lightautoml.addons.uplift import metrics as uplift_metrics
 from lightautoml.addons.uplift.metalearners import TLearner
 from lightautoml.addons.uplift.metalearners import XLearner
 from lightautoml.addons.uplift.utils import _get_treatment_role
-from lightautoml.dataset import roles as laml_roles
 
 
 logger = logging.getLogger(__name__)
@@ -372,25 +371,6 @@ def plot_feature_importance(feat_imp, path, features_max=100):
     plt.close()
 
 
-def list2table(feature_list: list, html_params: dict = {}) -> str:
-    """Creates HTML table with feature description from list of converts list of items.
-
-    Args:
-        feature_list: list of dictionaries with features' properties (e.g. name, length, stat. properties, etc.);
-        html_params: extra parameters for pandas.DataFrame().to_html() function;
-
-    Returns:
-        String representation of HTML table.
-
-    """
-    default_html_params = {"index": False, "justify": "left"}
-    default_html_params.update(html_params)
-    if len(feature_list) == 0:
-        return None
-    else:
-        return pd.DataFrame(feature_list).to_html(**default_html_params)
-
-
 class ReportDeco:
     """
     Decorator to wrap :class:`~lightautoml.automl.base.AutoML` class to generate html report on ``fit_predict`` and ``predict``.
@@ -455,7 +435,7 @@ class ReportDeco:
         self.interpretation_params = {
             "top_n_features": 5,
             "top_n_categories": 10,
-            "top_n_classes": 10,
+            "ton_n_classes": 10,
             "n_bins": 30,
             "datetime_level": "year",
             "n_sample": 100_000,
@@ -983,7 +963,6 @@ class ReportDeco:
         numerical_features = [feat_name for feat_name in roles if roles[feat_name].name == "Numeric"]
         categorical_features = [feat_name for feat_name in roles if roles[feat_name].name == "Category"]
         datetime_features = [feat_name for feat_name in roles if roles[feat_name].name == "Datetime"]
-        text_features = [feat_name for feat_name in roles if roles[feat_name].name == "Text"]
 
         # numerical roles
         numerical_features_df = []
@@ -998,8 +977,12 @@ class ReportDeco:
             item["quantile_75"] = np.quantile(values, 0.75)
             item["max"] = np.max(values)
             numerical_features_df.append(item)
-        self._numerical_features_table = list2table(numerical_features_df, {"float_format": "{:.2f}".format})
-
+        if numerical_features_df == []:
+            self._numerical_features_table = None
+        else:
+            self._numerical_features_table = pd.DataFrame(numerical_features_df).to_html(
+                index=False, float_format="{:.2f}".format, justify="left"
+            )
         # categorical roles
         categorical_features_df = []
         for feature_name in categorical_features:
@@ -1014,8 +997,12 @@ class ReportDeco:
             item["Least frequent value"] = values[-1]
             item["Occurance of least frequent"] = "{:.1f}%".format(100 * counts[-1])
             categorical_features_df.append(item)
-        self._categorical_features_table = list2table(categorical_features_df)
-
+        if categorical_features_df == []:
+            self._categorical_features_table = None
+        else:
+            self._categorical_features_table = pd.DataFrame(categorical_features_df).to_html(
+                index=False, justify="left"
+            )
         # datetime roles
         datetime_features_df = []
         for feature_name in datetime_features:
@@ -1026,18 +1013,10 @@ class ReportDeco:
             item["max"] = np.max(values)
             item["base_date"] = self._model.reader._roles[feature_name].base_date
             datetime_features_df.append(item)
-        self._datetime_features_table = list2table(datetime_features_df)
-
-        # text roles
-        text_features_df = []
-        for feature_name in text_features:
-            item = {"Feature name": feature_name}
-            feature_length = train_data[feature_name].str.len()
-            item["Amount of empty records"] = (feature_length == 0).sum(axis=0)
-            item["Length of the shortest sentence"] = feature_length.min()
-            item["Length of the longest sentence"] = feature_length.max()
-            text_features_df.append(item)
-        self._text_features_table = list2table(text_features_df)
+        if datetime_features_df == []:
+            self._datetime_features_table = None
+        else:
+            self._datetime_features_table = pd.DataFrame(datetime_features_df).to_html(index=False, justify="left")
 
     def _describe_dropped_features(self, train_data):
         self._max_nan_rate = self._model.reader.max_nan_rate
@@ -1087,7 +1066,6 @@ class ReportDeco:
             numerical_features_table=self._numerical_features_table,
             categorical_features_table=self._categorical_features_table,
             datetime_features_table=self._datetime_features_table,
-            text_features_table=self._text_features_table,
             target=self._target,
             max_nan_rate=self._max_nan_rate,
             max_constant_rate=self._max_constant_rate,
@@ -1354,8 +1332,7 @@ class ReportDecoNLP(ReportDeco):
         train_data = kwargs["train_data"] if "train_data" in kwargs else args[0]
         roles = kwargs["roles"] if "roles" in kwargs else args[1]
 
-        self._text_fields = self._get_text_fields(roles)
-        train_data[self._text_fields] = train_data[self._text_fields].fillna("")
+        self._text_fields = roles["text"]
         for text_field in self._text_fields:
             content = {}
             content["title"] = "Text field: " + text_field
@@ -1409,26 +1386,6 @@ class ReportDecoNLP(ReportDeco):
             env = Environment(loader=FileSystemLoader(searchpath=self.template_path))
             nlp_section = env.get_template(self._nlp_section_path).render(nlp_subsections=self._nlp_subsections)
             self._sections["nlp"] = nlp_section
-
-    @staticmethod
-    def _get_text_fields(roles: dict) -> list:
-        """Returns all text fields, mentioned in roles.
-
-        Args:
-            roles: Roles.
-
-        Returns:
-            List of text fields.
-
-        """
-        text_roles = roles.get("text", [])
-        for role_type, role_name in roles.items():
-            if isinstance(role_type, laml_roles.TextRole):
-                if isinstance(role_name, str):
-                    text_roles.append(role_name)
-                elif isinstance(role_name, list):
-                    text_roles.extend(role_name)
-        return text_roles
 
 
 def get_uplift_data(test_target, uplift_pred, test_treatment, mode):
@@ -1538,13 +1495,12 @@ class ReportDecoUplift(ReportDeco):
 
     def fit(self, *args, **kwargs):
         """Wrapped automl.fit_predict method.
-
         Valid args, kwargs are the same as wrapped automl.
-
         Args:
             *args: arguments.
             **kwargs: additional parameters.
-
+        Returns:
+            oof predictions.
         """
         train_data = kwargs["train_data"] if "train_data" in kwargs else args[0]
         input_roles = kwargs["roles"] if "roles" in kwargs else args[1]
@@ -1563,16 +1519,13 @@ class ReportDecoUplift(ReportDeco):
         self.generate_report()
 
     def predict(self, test_data):
+
         """Wrapped tlearner.predict method.
-
         Valid args, kwargs are the same as wrapped automl.
-
         Args:
             test_data: Dataset to perform inference.
-
         Returns:
             predictions.
-
         """
         self._n_test_sample += 1
 
@@ -1597,7 +1550,7 @@ class ReportDecoUplift(ReportDeco):
         data["bin"] = (np.arange(data.shape[0]) / data.shape[0] * self.n_bins).astype(int)
         data = data[~data["y_pred"].isnull()]
         self._generate_test_subsection(data, "treatment", treatment_title)
-        self._generate_inference_section()
+        self._generate_inference_section(data)
 
         # control data
         data = pd.DataFrame({"y_true": test_target[test_treatment == 0]})
@@ -1606,7 +1559,7 @@ class ReportDecoUplift(ReportDeco):
         data["bin"] = (np.arange(data.shape[0]) / data.shape[0] * self.n_bins).astype(int)
         data = data[~data["y_pred"].isnull()]
         self._generate_test_subsection(data, "control", control_title)
-        self._generate_inference_section()
+        self._generate_inference_section(data)
 
         # update model section
         self._generate_model_section()
@@ -1728,11 +1681,11 @@ class ReportDecoUplift(ReportDeco):
         # treatment model
         treatment_data = self._collect_data(treatment_preds, treatment_target)
         self._generate_training_subsection(treatment_data, "treatment", "Treatment train")
-        self._generate_inference_section()
+        self._generate_inference_section(treatment_data)
 
         control_data = self._collect_data(control_preds, control_target)
         self._generate_training_subsection(control_data, "control", "Control train")
-        self._generate_inference_section()
+        self._generate_inference_section(control_data)
 
     def _collect_data(self, preds, target):
         data = pd.DataFrame({"y_true": target})
@@ -1838,7 +1791,6 @@ class ReportDecoUplift(ReportDeco):
         numerical_features = [feat_name for feat_name in roles if roles[feat_name].name == "Numeric"]
         categorical_features = [feat_name for feat_name in roles if roles[feat_name].name == "Category"]
         datetime_features = [feat_name for feat_name in roles if roles[feat_name].name == "Datetime"]
-        text_features = [feat_name for feat_name in roles if roles[feat_name].name == "Text"]
 
         # numerical roles
         numerical_features_df = []
@@ -1893,16 +1845,6 @@ class ReportDecoUplift(ReportDeco):
             self._datetime_features_table = None
         else:
             self._datetime_features_table = pd.DataFrame(datetime_features_df).to_html(index=False, justify="left")
-        # text roles
-        text_features_df = []
-        for feature_name in text_features:
-            item = {"Feature name": feature_name}
-            feature_length = train_data[feature_name].str.len()
-            item["Amount of empty records"] = (feature_length == 0).sum(axis=0)
-            item["Length of the shortest sentence"] = feature_length.min()
-            item["Length of the longest sentence"] = feature_length.max()
-            text_features_df.append(item)
-        self._text_features_table = list2table(text_features_df)
 
     def _describe_dropped_features(self, train_data):
         self._max_nan_rate = self.reader.max_nan_rate
@@ -1927,20 +1869,6 @@ class ReportDecoUplift(ReportDeco):
                 .rename(columns={"index": "Название переменной"})
                 .to_html(index=False, justify="left")
             )
-
-    def _generate_train_set_section(self):
-        env = Environment(loader=FileSystemLoader(searchpath=self.template_path))
-        train_set_section = env.get_template(self._train_set_section_path).render(
-            train_data_overview=self._train_data_overview,
-            numerical_features_table=self._numerical_features_table,
-            categorical_features_table=self._categorical_features_table,
-            datetime_features_table=self._datetime_features_table,
-            target=self._target,
-            max_nan_rate=self._max_nan_rate,
-            max_constant_rate=self._max_constant_rate,
-            dropped_features_table=self._dropped_features_table,
-        )
-        self._sections["train_set"] = train_set_section
 
     def _generate_uplift_subsection(self):
         env = Environment(loader=FileSystemLoader(searchpath=self.template_path))

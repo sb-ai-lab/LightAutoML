@@ -1,7 +1,6 @@
 """Tools for model training."""
 
 import logging
-import traceback
 
 from typing import Optional
 from typing import Tuple
@@ -33,6 +32,7 @@ def tune_and_fit_predict(
         Tuple (BestMlAlgo, predictions).
 
     """
+
     timer = ml_algo.timer
     timer.start()
     single_fold_time = timer.estimate_folds_time(1)
@@ -45,12 +45,12 @@ def tune_and_fit_predict(
 
     if params_tuner.best_params is None:
         # this try/except clause was added because catboost died for some unexpected reason
-        try:
-            # TODO: Set some conditions to the tuner
-            new_algo, preds = params_tuner.fit(ml_algo, train_valid)
-        except Exception as e:
-            logger.info2("Model {0} failed during params_tuner.fit call.\n\n{1}".format(ml_algo.name, e))
-            return None, None
+        #try:
+        #    # TODO: Set some conditions to the tuner
+        new_algo, preds = params_tuner.fit(ml_algo, train_valid)
+        #except Exception as e:
+        #    logger.info2("Model {0} failed during params_tuner.fit call.\n\n{1}".format(ml_algo.name, e))
+        #    return None, None
 
         if preds is not None:
             return new_algo, preds
@@ -62,11 +62,10 @@ def tune_and_fit_predict(
 
     ml_algo.params = params_tuner.best_params
     # this try/except clause was added because catboost died for some unexpected reason
-    try:
-        preds = ml_algo.fit_predict(train_valid)
-    except Exception as e:
-        logger.info2("Model {0} failed during ml_algo.fit_predict call.\n\n{1}".format(ml_algo.name, e))
-        logger.info3(traceback.format_exc())
-        return None, None
+    #try:
+    preds = ml_algo.fit_predict(train_valid)
+    #except Exception as e:
+    #    logger.info2("Model {0} failed during ml_algo.fit_predict call.\n\n{1}".format(ml_algo.name, e))
+    #    return None, None
 
     return ml_algo, preds

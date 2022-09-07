@@ -15,22 +15,21 @@ from joblib import delayed
 from pandas import DataFrame
 from pandas import Series
 
-from ..dataset.np_pd_dataset import NumpyDataset
-from ..dataset.np_pd_dataset import PandasDataset
-from ..dataset.roles import CategoryRole
-from ..dataset.roles import ColumnRole
-from ..dataset.roles import NumericRole
-from ..reader.utils import set_sklearn_folds
-from ..transformers.base import ChangeRoles
-from ..transformers.base import LAMLTransformer
-from ..transformers.base import SequentialTransformer
-from ..transformers.categorical import FreqEncoder
-from ..transformers.categorical import LabelEncoder
-from ..transformers.categorical import MultiClassTargetEncoder
-from ..transformers.categorical import MultioutputTargetEncoder
-from ..transformers.categorical import OrdinalEncoder
-from ..transformers.categorical import TargetEncoder
-from ..transformers.numeric import QuantileBinning
+from lightautoml.dataset.np_pd_dataset import NumpyDataset
+from lightautoml.dataset.np_pd_dataset import PandasDataset
+from lightautoml.dataset.roles import CategoryRole
+from lightautoml.dataset.roles import ColumnRole
+from lightautoml.dataset.roles import NumericRole
+from lightautoml.reader.utils import set_sklearn_folds
+from lightautoml.transformers.base import ChangeRoles
+from lightautoml.transformers.base import LAMLTransformer
+from lightautoml.transformers.base import SequentialTransformer
+from lightautoml.transformers.categorical import FreqEncoder
+from lightautoml.transformers.categorical import LabelEncoder
+from lightautoml.transformers.categorical import MultiClassTargetEncoder
+from lightautoml.transformers.categorical import OrdinalEncoder
+from lightautoml.transformers.categorical import TargetEncoder
+from lightautoml.transformers.numeric import QuantileBinning
 
 
 NumpyOrPandas = Union[NumpyDataset, PandasDataset]
@@ -135,10 +134,6 @@ def get_target_and_encoder(train: NumpyOrPandas) -> Tuple[Any, type]:
         target = target[:, np.newaxis] == np.arange(n_out)[np.newaxis, :]
         target = cast(np.ndarray, target).astype(np.float32)
         encoder = MultiClassTargetEncoder
-
-    elif (train.task.name == "multi:reg") or (train.task.name == "multilabel"):
-        target = cast(np.ndarray, target).astype(np.float32)
-        encoder = MultioutputTargetEncoder
     else:
         encoder = TargetEncoder
 
@@ -146,7 +141,7 @@ def get_target_and_encoder(train: NumpyOrPandas) -> Tuple[Any, type]:
 
 
 def calc_ginis(data: np.ndarray, target: np.ndarray, empty_slice: Optional[np.ndarray] = None):
-    """Calculate ginis for array of preditions.
+    """
 
     Args:
         data: np.ndarray.
@@ -157,6 +152,7 @@ def calc_ginis(data: np.ndarray, target: np.ndarray, empty_slice: Optional[np.nd
         gini.
 
     """
+
     scores = np.zeros(data.shape[1])
     for n in range(data.shape[1]):
         sl = None
@@ -186,6 +182,7 @@ def _get_score_from_pipe(
         np.ndarray.
 
     """
+
     shape = train.shape
 
     if pipe is not None:
@@ -217,6 +214,7 @@ def get_score_from_pipe(
         np.ndarray.
 
     """
+
     shape = train.shape
     if n_jobs == 1:
         return _get_score_from_pipe(train, target, pipe, empty_slice)
@@ -479,6 +477,7 @@ def get_category_roles_stat(
         result.
 
     """
+
     roles_to_identify = []
 
     dtypes = []
@@ -569,7 +568,7 @@ def calc_category_rules(
     return stat
 
 
-def rule_based_cat_handler_guess(stat: DataFrame) -> Dict[str, ColumnRole]:
+def rule_based_cat_handler_guess(stat: DataFrame, dtypes=None) -> Dict[str, ColumnRole]:
     """Create roles dict based on stats.
 
     Args:
@@ -593,9 +592,13 @@ def rule_based_cat_handler_guess(stat: DataFrame) -> Dict[str, ColumnRole]:
         if enc_type == "ord":
             enc_type = "auto"
             ordinal = True
+        try:
+            feats = list(st.index)
+        except:
+            feats = list(st.index.to_pandas())
+        if dtypes is None:
+            dtypes = list(st["dtype"])
 
-        feats = list(st.index)
-        dtypes = list(st["dtype"])
         roles_dict = {
             **roles_dict,
             **{x: CategoryRole(dtype=d, encoding_type=enc_type, ordinal=ordinal) for x, d in zip(feats, dtypes)},

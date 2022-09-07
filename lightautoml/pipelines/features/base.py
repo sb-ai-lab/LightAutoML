@@ -29,7 +29,6 @@ from ...transformers.categorical import CatIntersectstions
 from ...transformers.categorical import FreqEncoder
 from ...transformers.categorical import LabelEncoder
 from ...transformers.categorical import MultiClassTargetEncoder
-from ...transformers.categorical import MultioutputTargetEncoder
 from ...transformers.categorical import OrdinalEncoder
 from ...transformers.categorical import TargetEncoder
 from ...transformers.datetime import BaseDiff
@@ -96,7 +95,7 @@ class FeaturesPipeline:
         Args:
             train: Dataset with train data.
 
-        Returns:  # noqa DAR202
+        Returns:
             Composite transformer (pipeline).
 
         """
@@ -114,6 +113,7 @@ class FeaturesPipeline:
         """
         # TODO: Think about input/output features attributes
         self._input_features = train.features
+        
         self._pipeline = self._merge_seq(train) if self.sequential else self._merge(train)
 
         return self._pipeline.fit_transform(train)
@@ -128,13 +128,14 @@ class FeaturesPipeline:
             Dataset with new features.
 
         """
-        return self._pipeline.transform(test)
+        out = self._pipeline.transform(test)
+        return out
 
-    def set_sequential(self, val: bool = True):  # noqa D102
+    def set_sequential(self, val: bool = True):
         self.sequential = val
         return self
 
-    def append(self, pipeline):  # noqa D102
+    def append(self, pipeline):
         if isinstance(pipeline, FeaturesPipeline):
             pipeline = [pipeline]
 
@@ -143,7 +144,7 @@ class FeaturesPipeline:
 
         return self
 
-    def prepend(self, pipeline):  # noqa D102
+    def prepend(self, pipeline):
         if isinstance(pipeline, FeaturesPipeline):
             pipeline = [pipeline]
 
@@ -152,7 +153,7 @@ class FeaturesPipeline:
 
         return self
 
-    def pop(self, i: int = -1) -> Optional[Callable[[LAMLDataset], LAMLTransformer]]:  # noqa D102
+    def pop(self, i: int = -1) -> Optional[Callable[[LAMLDataset], LAMLTransformer]]:
         if len(self.pipes) > 1:
             return self.pipes.pop(i)
 
@@ -393,6 +394,7 @@ class TabularDataFeatures:
             Transformer.
 
         """
+
         if feats_to_select is None:
             feats_to_select = []
             for i in ["auto", "oof", "int", "ohe"]:
@@ -422,11 +424,6 @@ class TabularDataFeatures:
         if train.folds is not None:
             if train.task.name in ["binary", "reg"]:
                 target_encoder = TargetEncoder
-            elif (train.task.name == "multi:reg") or (train.task.name == "multilabel"):
-                n_classes = train.target.shape[1]
-                if n_classes <= self.multiclass_te_co:
-                    target_encoder = MultioutputTargetEncoder
-
             else:
                 n_classes = train.target.max() + 1
                 if n_classes <= self.multiclass_te_co:
@@ -474,6 +471,7 @@ class TabularDataFeatures:
             Transformer.
 
         """
+
         if feats_to_select is None:
 
             categories = get_columns_by_role(train, "Category")
@@ -511,6 +509,7 @@ class TabularDataFeatures:
             Series.
 
         """
+
         uns = []
         for col in feats:
             feat = Series(train[:, col].data)

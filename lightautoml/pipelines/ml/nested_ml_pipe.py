@@ -36,10 +36,9 @@ logger = logging.getLogger(__name__)
 
 
 class NestedTabularMLAlgo(TabularMLAlgo, ImportanceEstimator):
-    """Wrapper for MLAlgo to make it trainable over nested folds.
-
+    """
+    Wrapper for MLAlgo to make it trainable over nested folds.
     Limitations - only for ``TabularMLAlgo``.
-
     """
 
     @property
@@ -57,9 +56,6 @@ class NestedTabularMLAlgo(TabularMLAlgo, ImportanceEstimator):
 
     def init_params_on_input(self, train_valid_iterator: TrainValidIterator) -> dict:
         """Init params depending on input data.
-
-        Args:
-            train_valid_iterator: Iterator over input data.
 
         Returns:
             dict with model hyperparameters.
@@ -94,7 +90,8 @@ class NestedTabularMLAlgo(TabularMLAlgo, ImportanceEstimator):
         self.nested_cv = cv
         self.n_folds = n_folds
 
-    def fit_predict(self, train_valid_iterator: TrainValidIterator) -> NumpyDataset:  # noqa DAR102
+    def fit_predict(self, train_valid_iterator: TrainValidIterator) -> NumpyDataset:
+
         self.timer.start()
         div = len(train_valid_iterator) if self.n_folds is None else self.n_folds
         self._per_task_timer = self.timer.time_left / div
@@ -157,16 +154,6 @@ class NestedTabularMLAlgo(TabularMLAlgo, ImportanceEstimator):
         return model, val_pred
 
     def predict_single_fold(self, model: Any, dataset: TabularDataset) -> np.ndarray:
-        """Model prediction on a dataset.
-
-        Args:
-            model: Model.
-            dataset: Dataset.
-
-        Returns:
-            Predictions.
-
-        """
         pred = model.predict(dataset).data
 
         return pred
@@ -175,7 +162,6 @@ class NestedTabularMLAlgo(TabularMLAlgo, ImportanceEstimator):
         return self._ml_algo._get_search_spaces(suggested_params, estimated_n_trials)
 
     def get_features_score(self) -> Series:
-        """Score of each features."""
         scores = pd.concat([x.get_features_score() for x in self.models], axis=1).mean(axis=1)
 
         return scores
@@ -191,30 +177,14 @@ class NestedTabularMLAlgo(TabularMLAlgo, ImportanceEstimator):
 
 
 class NestedTabularMLPipeline(MLPipeline):
-    """Wrapper for MLPipeline to make it trainable over nested folds.
+    """
+    Wrapper for MLPipeline to make it trainable over nested folds.
 
     Limitations:
 
         - Only for TabularMLAlgo
         - Nested trained only MLAlgo. FeaturesPipelines and
           SelectionPipelines are trained as usual.
-
-    Args:
-        ml_algos: Sequence of MLAlgo's or Pair - (MlAlgo, ParamsTuner).
-        force_calc: Flag if single fold of
-            :class:`~lightautoml.ml_algo.base.MlAlgo`
-            should be calculated anyway.
-        pre_selection: Initial feature selection.
-            If ``None`` there is no initial selection.
-        features_pipeline: Composition of feature transforms.
-        post_selection: Post feature selection.
-            If ``None`` there is no post selection.
-        cv: Nested folds cv split.
-        n_folds: Limit of valid iterations from cv.
-        inner_tune: Should we refit tuner each inner
-            cv run or tune ones on outer cv.
-        refit_tuner: Should we refit tuner each inner
-            loop with ``inner_tune==True``.
 
     """
 
@@ -230,6 +200,26 @@ class NestedTabularMLPipeline(MLPipeline):
         inner_tune: bool = False,
         refit_tuner: bool = False,
     ):
+        """
+
+        Args:
+            ml_algos: Sequence of MLAlgo's or Pair - (MlAlgo, ParamsTuner).
+            force_calc: Flag if single fold of
+              :class:`~lightautoml.ml_algo.base.MlAlgo`
+              should be calculated anyway.
+            pre_selection: Initial feature selection.
+              If ``None`` there is no initial selection.
+            features_pipeline: Composition of feature transforms.
+            post_selection: Post feature selection.
+              If ``None`` there is no post selection.
+            cv: Nested folds cv split.
+            n_folds: Limit of valid iterations from cv.
+            inner_tune: Should we refit tuner each inner
+              cv run or tune ones on outer cv.
+            refit_tuner: Should we refit tuner each inner
+              loop with ``inner_tune==True``.
+
+        """
         if cv > 1:
             new_ml_algos = []
 

@@ -7,12 +7,18 @@ from typing import Sequence
 from typing import Tuple
 from typing import Union
 
-from .base import LAMLDataset
-from .np_pd_dataset import CSRSparseDataset
-from .np_pd_dataset import NumpyDataset
-from .np_pd_dataset import PandasDataset
-from .roles import ColumnRole
-from .seq_np_pd_dataset import SeqNumpyPandasDataset
+from lightautoml.dataset.base import LAMLDataset
+from lightautoml.dataset.np_pd_dataset import CSRSparseDataset
+from lightautoml.dataset.np_pd_dataset import NumpyDataset
+from lightautoml.dataset.np_pd_dataset import PandasDataset
+try:
+    from lightautoml.dataset.gpu.gpu_dataset import CupyDataset
+    from lightautoml.dataset.gpu.gpu_dataset import CudfDataset
+    from lightautoml.dataset.gpu.gpu_dataset import DaskCudfDataset
+except:
+    print("No GPUs detected. Switching  to CPU...")
+
+from lightautoml.dataset.roles import ColumnRole
 
 
 # RoleType = TypeVar("RoleType", bound=ColumnRole)
@@ -76,12 +82,51 @@ def get_common_concat(
     elif dataset_types == {NumpyDataset, PandasDataset}:
         return numpy_and_pandas_concat, None
 
-    elif (dataset_types == {NumpyDataset, SeqNumpyPandasDataset}) or (
-        dataset_types == {PandasDataset, SeqNumpyPandasDataset}
-    ):
-        return numpy_or_pandas_and_seq_concat, None
+    elif dataset_types == {CudfDataset, CupyDataset}:
+        return cupy_and_cudf_concat, None
+
+    #elif dataset_types == {DaskCudfDataset, CupyDataset}:
+    #    return daskcudf_and_cupy_concat, None
 
     raise TypeError("Unable to concatenate dataset types {0}".format(list(dataset_types)))
+
+
+def cupy_and_cudf_concat(datasets: Sequence[Union[CupyDataset, CudfDataset]]) -> CudfDataset:
+    """Concat of cupy and cudf dataset.
+
+    Args:
+        datasets: Sequence of datasets to concatenate.
+
+    Returns:
+        Concatenated dataset.
+
+    """
+
+    #is it better to convert to cudf?
+    #concating to cudf made problem with convert_to_holdout_iterator (shape difference)
+    datasets = [x.to_cupy() for x in datasets]
+
+    return CupyDataset.concat(datasets)
+
+
+def daskcudf_and_cupy_concat(datasets: Sequence[Union[DaskCudfDataset, CupyDataset]]) -> CudfDataset:
+    """Concat of daskcudf and cupy dataset.
+
+        Args:
+            datasets: Sequence of datasets to concatenate.
+
+        Returns:
+            Concatenated dataset.
+
+        """
+    #raise ValueError("TestException")
+    for x in datasets:
+        if type(x) is DaskCudfDataset:
+            n_parts = len(x.data._divisions) - 1
+    datasets = [x.to_daskcudf(n_parts) for x in datasets]
+    
+    out = DaskCudfDataset.concat(datasets)
+    return out
 
 
 def numpy_and_pandas_concat(datasets: Sequence[Union[NumpyDataset, PandasDataset]]) -> PandasDataset:
@@ -97,39 +142,6 @@ def numpy_and_pandas_concat(datasets: Sequence[Union[NumpyDataset, PandasDataset
     datasets = [x.to_pandas() for x in datasets]
 
     return PandasDataset.concat(datasets)
-
-
-def numpy_or_pandas_and_seq_concat(
-    datasets: Sequence[Union[NumpyDataset, PandasDataset, SeqNumpyPandasDataset]]
-) -> Union[NumpyDataset, PandasDataset]:
-    """Concat plain and sequential dataset.
-
-    If both datasets have same size then concat them as plain, otherwise include seq dataset inside plain one.
-
-    Args:
-        datasets: one plain and one seq dataset.
-
-    Returns:
-        Concatenated dataset.
-
-    """
-    assert len(datasets) == 2, "should be 1 sequential and 1 plain dataset"
-    # get 1 numpy / pandas dataset
-    for n, dataset in enumerate(datasets):
-        if type(dataset) == SeqNumpyPandasDataset:
-            seq_dataset = dataset
-        else:
-            plain_dataset = dataset
-
-    if len(seq_dataset.data) == len(plain_dataset):
-        return SeqNumpyPandasDataset.concat([seq_dataset, plain_dataset.to_pandas()])
-    else:
-        if hasattr(plain_dataset, "seq_data"):
-            plain_dataset.seq_data[seq_dataset.name] = seq_dataset
-        else:
-            plain_dataset.seq_data = {seq_dataset.name: seq_dataset}
-
-        return plain_dataset
 
 
 def concatenate(datasets: Sequence[LAMLDataset]) -> LAMLDataset:
@@ -156,5 +168,5 @@ def concatenate(datasets: Sequence[LAMLDataset]) -> LAMLDataset:
                 break
 
         datasets = [datasets[n]] + [x for (y, x) in enumerate(datasets) if n != y]
-
-    return conc(datasets)
+    out = conc(datasets)
+    return out

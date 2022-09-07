@@ -1,6 +1,6 @@
 """Contains base classes for internal dataset interface."""
 
-from copy import copy  # , deepcopy
+from copy import copy, deepcopy
 from typing import Any
 from typing import Dict
 from typing import List
@@ -13,8 +13,8 @@ from ..tasks.base import Task
 from .roles import ColumnRole
 
 
-valid_array_attributes = ("target", "group", "folds", "weights", "date", "id", "treatment")
-array_attr_roles = ("Target", "Group", "Folds", "Weights", "Date", "Id", "Treatment")
+valid_array_attributes = ("target", "group", "folds", "weights", "treatment")
+array_attr_roles = ("Target", "Group", "Folds", "Weights", "Treatment")
 # valid_tasks = ('reg', 'binary', 'multiclass') # TODO: Add multiclass and multilabel. Refactor for some dataset and pipes needed
 # valid_tasks = ('reg', 'binary')
 
@@ -113,10 +113,7 @@ class LAMLDataset:
 
         Args:
             k: First element optional integer columns indexes,
-                second - optional feature name or list of features names.
-
-        Returns:
-            Subdataset.
+              second - optional feature name or list of features names.
 
         """
         # TODO: Maybe refactor this part?
@@ -162,7 +159,7 @@ class LAMLDataset:
         Args:
             k: Feature name.
             val: :class:`~lightautoml.dataset.base.LAMLColumn`
-                or 1d array like.
+              or 1d array like.
 
         """
         assert k in self.features, "Can only replace existed columns in default implementations."
@@ -238,6 +235,7 @@ class LAMLDataset:
             Dict of feature roles.
 
         """
+
         return copy(self._roles)
 
     @roles.setter
@@ -372,7 +370,7 @@ class LAMLDataset:
         Args:
             datasets: Sequence of feature arrays.
 
-        Returns:  # noqa DAR202
+        Returns:
             Single feature array.
 
         """
@@ -386,7 +384,7 @@ class LAMLDataset:
             data: 2d feature array.
             k: Sequence of int indexes or int.
 
-        Returns:  # noqa DAR202
+        Returns:
             2d feature array.
 
         """
@@ -400,7 +398,7 @@ class LAMLDataset:
             data: 2d feature array.
             k: Sequence indexes or single index.
 
-        Returns:  # noqa DAR202
+        Returns:
             2d feature array.
 
         """
@@ -457,20 +455,13 @@ class LAMLDataset:
         features = []
         roles = {}
 
-        atrs = set(dataset._array_like_attrs)
         for ds in datasets:
             data.append(ds.data)
             features.extend(ds.features)
             roles = {**roles, **ds.roles}
-            for atr in ds._array_like_attrs:
-                if atr not in atrs:
-                    dataset._array_like_attrs.append(atr)
-                    dataset.__dict__[atr] = ds.__dict__[atr]
-                    atrs.update({atr})
 
         data = cls._hstack(data)
         dataset.set_data(data, features, roles)
-
         return dataset
 
     def drop_features(self, droplist: Sequence[str]):
@@ -494,7 +485,7 @@ class LAMLDataset:
         Args:
             dataset: Original type dataset.
 
-        Returns:  # noqa DAR202
+        Returns:
             Converted type dataset.
 
         """
@@ -502,5 +493,4 @@ class LAMLDataset:
 
     @property
     def dataset_type(self):
-        """Get type of dataset."""
         return self._dataset_type

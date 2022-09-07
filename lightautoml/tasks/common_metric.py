@@ -134,6 +134,7 @@ def roc_auc_ovr(y_true: np.ndarray, y_pred: np.ndarray, sample_weight: Optional[
         Metric values.
 
     """
+
     return roc_auc_score(y_true, y_pred, sample_weight=sample_weight, multi_class="ovr")
 
 
@@ -182,6 +183,7 @@ def auc_mu(
         Code was refactored from https://github.com/kleimanr/auc_mu/blob/master/auc_mu.py
 
     """
+
     if not isinstance(y_pred, np.ndarray):
         raise TypeError("Expected y_pred to be np.ndarray, got: {}".format(type(y_pred)))
     if not y_pred.ndim == 2:
@@ -235,14 +237,17 @@ def auc_mu(
 
 
 class F1Factory:
-    """Wrapper for :func:`~sklearn.metrics.f1_score` function.
-
-    Args:
-        average: Averaging type ('micro', 'macro', 'weighted').
-
+    """
+    Wrapper for :func:`~sklearn.metrics.f1_score` function.
     """
 
     def __init__(self, average: str = "micro"):
+        """
+
+        Args:
+            average: Averaging type ('micro', 'macro', 'weighted').
+
+        """
         self.average = average
 
     def __call__(
@@ -268,42 +273,46 @@ class F1Factory:
 
 
 class BestClassBinaryWrapper:
-    r"""Metric wrapper to get best class prediction instead of probs.
+    """Metric wrapper to get best class prediction instead of probs.
 
     There is cut-off for prediction by ``0.5``.
-
-    Args:
-        func: Metric function. Function format:
-            func(y_pred, y_true, weights, \*\*kwargs).
 
     """
 
     def __init__(self, func: Callable):
+        """
+
+        Args:
+            func: Metric function. Function format:
+               func(y_pred, y_true, weights, \*\*kwargs).
+
+        """
         self.func = func
 
     def __call__(self, y_true: np.ndarray, y_pred: np.ndarray, sample_weight: Optional[np.ndarray] = None, **kwargs):
-        """Calculate metric."""
         y_pred = (y_pred > 0.5).astype(np.float32)
 
         return self.func(y_true, y_pred, sample_weight=sample_weight, **kwargs)
 
 
 class BestClassMulticlassWrapper:
-    r"""Metric wrapper to get best class prediction instead of probs for multiclass.
+    """Metric wrapper to get best class prediction instead of probs for multiclass.
 
     Prediction provides by argmax.
-
-    Args:
-        func: Metric function. Function format:
-            func(y_pred, y_true, weights, \*\*kwargs)
 
     """
 
     def __init__(self, func):
+        """
+
+        Args:
+            func: Metric function. Function format:
+               func(y_pred, y_true, weights, \*\*kwargs)
+
+        """
         self.func = func
 
     def __call__(self, y_true: np.ndarray, y_pred: np.ndarray, sample_weight: Optional[np.ndarray] = None, **kwargs):
-        """Calculate metric."""
         y_pred = (y_pred.argmax(axis=1)).astype(np.float32)
 
         return self.func(y_true, y_pred, sample_weight=sample_weight, **kwargs)
@@ -339,16 +348,11 @@ _valid_str_multiclass_metric_names = {
     "f1_micro": BestClassMulticlassWrapper(F1Factory("micro")),
     "f1_weighted": BestClassMulticlassWrapper(F1Factory("weighted")),
 }
-_valid_str_multireg_metric_names = {"mse": mean_squared_error, "mae": mean_absolute_error}
-
-_valid_str_multilabel_metric_names = {"logloss": partial(log_loss, eps=1e-7)}
 
 _valid_str_metric_names = {
     "binary": _valid_str_binary_metric_names,
     "reg": _valid_str_reg_metric_names,
     "multiclass": _valid_str_multiclass_metric_names,
-    "multi:reg": _valid_str_multireg_metric_names,
-    "multilabel": _valid_str_multilabel_metric_names,
 }
 
 _valid_metric_args = {"quantile": ["q"], "huber": ["a"], "fair": ["c"]}

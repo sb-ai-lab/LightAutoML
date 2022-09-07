@@ -18,15 +18,19 @@ class HighCorrRemoval(SelectionPipeline):
     For sparse data cosine will be used.
     It's not exact, but ok for remove very high correlations.
 
-    Args:
-        corr_co: Similarity threshold.
-        subsample: Number (int) of samples, or frac (float) from full dataset.
-        random_state: Random seed for subsample.
-        **kwargs: Addtional parameters. Used for initialiation of parent class.
-
     """
 
     def __init__(self, corr_co: float = 0.98, subsample: Union[int, float] = 100000, random_state: int = 42, **kwargs):
+        """
+
+        Args:
+            corr_co: Similarity threshold.
+            subsample: Number (int) of samples, or frac (float) from full dataset.
+            random_state: Random seed for subsample.
+            **kwargs: Addtional parameters. Used for initialiation of parent class.
+
+        """
+
         super().__init__(**kwargs)
         self.corr_co = corr_co
         self.subsample = subsample

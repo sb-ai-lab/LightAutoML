@@ -44,29 +44,6 @@ class WhiteBoxPreset(AutoMLPreset):
     Common usecase - fit lightweight interpretable model
     for binary classification task.
 
-    Commonly _params kwargs (ex. timing_params) set via
-    config file (config_path argument).
-    If you need to change just few params, it's possible to pass it
-    as dict of dicts, like json.
-    To get available params please look on default config template.
-    Also you can find there param description
-    To generate config template call
-    :func:`WhiteBoxPreset.get_config('config_path.yml')`.
-
-    Args:
-        task: Task to solve.
-        timeout: Timeout in seconds.
-        memory_limit: Memory limit that are passed to each automl.
-        cpu_limit: CPU limit that that are passed to each automl.
-        gpu_ids: GPU IDs that are passed to each automl.
-        timing_params: Timing param dict.
-        config_path: Path to config file.
-        general_params: General param dict.
-        reader_params: Reader param dict.
-        read_csv_params: Params to pass :func:`pandas.read_csv`
-            (case of train/predict from file).
-        whitebox_params: Params of WhiteBox algo (look at config file).
-
     """
 
     _default_config_path = "whitebox_config.yml"
@@ -95,6 +72,32 @@ class WhiteBoxPreset(AutoMLPreset):
         read_csv_params: Optional[dict] = None,
         whitebox_params: Optional[dict] = None,
     ):
+        """
+
+        Commonly _params kwargs (ex. timing_params) set via
+        config file (config_path argument).
+        If you need to change just few params, it's possible to pass it
+        as dict of dicts, like json.
+        To get available params please look on default config template.
+        Also you can find there param description
+        To generate config template call
+        :func:`WhiteBoxPreset.get_config('config_path.yml')`.
+
+        Args:
+            task: Task to solve.
+            timeout: Timeout in seconds.
+            memory_limit: Memory limit that are passed to each automl.
+            cpu_limit: CPU limit that that are passed to each automl.
+            gpu_ids: GPU IDs that are passed to each automl.
+            timing_params: Timing param dict.
+            config_path: Path to config file.
+            general_params: General param dict.
+            reader_params: Reader param dict.
+            read_csv_params: Params to pass :func:`pandas.read_csv`
+              (case of train/predict from file).
+            whitebox_params: Params of WhiteBox algo (look at config file).
+
+        """
         super().__init__(
             task,
             timeout,
@@ -125,7 +128,7 @@ class WhiteBoxPreset(AutoMLPreset):
             self.__dict__[name] = upd_params(self.__dict__[name], param)
 
     def infer_auto_params(self, **kwargs):
-        """Infer automatic parameters."""
+
         # check all n_jobs params
         cpu_cnt = min(os.cpu_count(), self.cpu_limit)
         self.whitebox_params["default_params"]["n_jobs"] = min(
@@ -185,17 +188,19 @@ class WhiteBoxPreset(AutoMLPreset):
         Args:
             train_data: Dataset to train.
             roles: Roles dict.
-            train_features: Optional features names, if can't be inferred from `train_data`.
-            cv_iter: Custom cv-iterator. For example, :class:`~lightautoml.validation.np_iterators.TimeSeriesIterator`.
+            train_features: Optional features names, if can't
+              be inferred from `train_data`.
+            cv_iter: Custom cv-iterator. For example,
+              :class:`~lightautoml.validation.np_iterators.TimeSeriesIterator`.
             valid_data: Optional validation dataset.
-            valid_features: Optional validation dataset features if cannot be inferred from `valid_data`.
+            valid_features: Optional validation dataset features
+              if cannot be inferred from `valid_data`.
             verbose: Controls the verbosity: the higher, the more messages.
                 <1  : messages are not displayed;
                 >=1 : the computation process for layers is displayed;
                 >=2 : the information about folds processing is also displayed;
                 >=3 : the hyperparameters optimization process is also displayed;
                 >=4 : the training process for every algorithm is displayed;
-            fit_params: Others.
 
         Returns:
             Dataset with predictions. Call ``.data`` to get predictions array.
@@ -227,18 +232,20 @@ class WhiteBoxPreset(AutoMLPreset):
 
         Args:
             data: Dataset to perform inference.
-            features_names: Optional features names, if can't be inferred from `train_data`.
-            report: Flag if we need inner WhiteBox report update (``True`` is slow). Only if ``general_params['report'] = True``.
+            features_names: Optional features names,
+              if can't be inferred from `train_data`.
+            report: Flag if we need inner WhiteBox report update
+              (``True`` is slow). Only if ``general_params['report'] = True``.
 
         Returns:
             Dataset with predictions.
 
         """
+
         dataset = self.reader.read(data, features_names, add_array_attrs=report)
         pred = self.levels[0][0].predict(dataset, report=report)
 
         return cast(NumpyDataset, pred)
 
     def create_model_str_desc(self) -> str:
-        """String description of model."""
         return ""
