@@ -309,13 +309,7 @@ class TabularCVAutoML(TabularAutoML):
         blender = WeightedBlender()
 
         # initialize
-        self._initialize(
-            reader,
-            levels,
-            skip_conn=self.general_params["skip_conn"],
-            blender=blender,
-            timer=self.timer
-        )
+        self._initialize(reader, levels, skip_conn=self.general_params["skip_conn"], blender=blender, timer=self.timer)
 
     def predict(
         self,
