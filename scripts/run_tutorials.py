@@ -14,7 +14,7 @@ from typing import Tuple
 import click
 
 
-DEFAULT_EXECLUDE_TUTORIALS = (2, 4)  # 2 -> spark, 4 - nlp(+gpu)
+DEFAULT_EXECLUDE_TUTORIALS = (2, 4, 8)  # 2 -> spark, 4 - nlp(+gpu), 8 - CV preset
 TUTORIALS_DIR = Path("examples/tutorials/")
 TUTORIAL_PREFIX = "Tutorial"
 JUPYTER_NBCONVERT_CMD_FMT = "jupyter nbconvert --config {CONFIG} --to notebook --execute --inplace {FILE}"
