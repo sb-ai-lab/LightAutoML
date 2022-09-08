@@ -174,31 +174,6 @@ This project is licensed under the Apache License, Version 2.0. See [LICENSE](ht
 <a name="developers"></a>
 # For developers
 
-## Installation from source code
-
-First of all you need to install [git](https://git-scm.com/downloads) and [poetry](https://python-poetry.org/docs/#installation).
-
-```bash
-# Load LAMA source code
-git clone https://github.com/AILab-MLTools/LightAutoML.git
-
-cd LightAutoML/
-
-# !!!Choose only one item!!!
-
-# 1. Global installation: Don't create virtual environment
-poetry config virtualenvs.create false --local
-
-# 2. Recommended: Create virtual environment inside your project directory
-poetry config virtualenvs.in-project true
-
-# For more information read poetry docs
-
-# Install LAMA
-poetry lock
-poetry install
-```
-
 ## Build your own custom pipeline:
 
 ```python
