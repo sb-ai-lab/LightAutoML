@@ -15,10 +15,12 @@ LightAutoML provides easy-to-use pipeline creation, that enables:
 
 .. toctree::
     :maxdepth: 1
-    :caption: Contents:
+    :caption: Contents
 
     Installation Guide <pages/Installation>
     Tutorials <pages/Tutorials>
+    Kaggle kernel examples of LightAutoML usage <pages/Kaggle_Kernels>
+    Courses, videos and papers <pages/Others>
     Python-API <pages/Python-API>
 
 
