@@ -31,7 +31,7 @@ Presets for end-to-end model training for special tasks.
     base.AutoMLPreset
     tabular_presets.TabularAutoML
     tabular_presets.TabularUtilizedAutoML
-    image_presets.TabularCVAutoML
+    .. image_presets.TabularCVAutoML
     text_presets.TabularNLPAutoML
     whitebox_presets.WhiteBoxPreset
 
