@@ -25,7 +25,6 @@ copyright = "%s, AI Lab ML Tools" % str(datetime.datetime.now().year)
 author = "AI Lab ML Tools"
 
 os.environ["DOCUMENTATION_ENV"] = "True"
-os.environ["LIGHTAUTOML_IGNORE_DEPS"] = "True"
 
 extensions = [
     "sphinx.ext.autodoc",

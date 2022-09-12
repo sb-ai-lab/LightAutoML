@@ -23,7 +23,7 @@ def __validate_extra_deps(extra_section: str, error: bool = False) -> None:
         error: How to process error
 
     """
-    ignore_deps = os.environ.get("LIGHTAUTOML_IGNORE_DEPS", False)
+    ignore_deps = os.environ.get("DOCUMENTATION_ENV", False)
 
     md = distribution("lightautoml").metadata
     extra_pattern = 'extra == "{}"'.format(extra_section)
