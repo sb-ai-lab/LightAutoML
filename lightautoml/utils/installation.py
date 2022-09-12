@@ -1,5 +1,8 @@
 """Tools for partial installation."""
 
+import os
+
+
 try:
     from importlib.metadata import PackageNotFoundError
     from importlib.metadata import distribution
@@ -20,6 +23,8 @@ def __validate_extra_deps(extra_section: str, error: bool = False) -> None:
         error: How to process error
 
     """
+    ignore_deps = os.environ.get("LIGHTAUTOML_IGNORE_DEPS", False)
+
     md = distribution("lightautoml").metadata
     extra_pattern = 'extra == "{}"'.format(extra_section)
     reqs_info = []
@@ -41,5 +46,6 @@ def __validate_extra_deps(extra_section: str, error: bool = False) -> None:
                 lib_name,
             )
 
-            if error:
-                raise e
+            if not ignore_deps:
+                if error:
+                    raise e
