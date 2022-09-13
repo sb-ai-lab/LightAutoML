@@ -1,3 +1,4 @@
+"""Data processing utils."""
 from collections import Counter
 from collections import defaultdict
 from random import shuffle
@@ -20,16 +21,15 @@ from torch.utils.data import Sampler
 
 
 class LengthDataset(Dataset):
-    """Default dict like PyTorch dataset, with additional info about lenght of sequence."""
+    """Default dict like PyTorch dataset, with additional info about lenght of sequence.
+
+    Args:
+        tokens: List of tokens number, numbering from zero to dictionary size.
+        targets: Array with targets.
+
+    """
 
     def __init__(self, tokens: List[List[int]], targets: np.ndarray):
-        """
-
-        Args:
-            tokens: List of tokens number, numbering from zero to dictionary size.
-            targets: Array with targets.
-
-        """
         self.tokens = tokens
         self.targets = targets
 
@@ -45,7 +45,21 @@ class LengthDataset(Dataset):
 
 
 class BySequenceLengthSampler(Sampler):
-    """PyTorch sampler with binning by sequnce length."""
+    """PyTorch sampler with binning by sequnce length.
+
+    Args:
+        data_source: Dataset in dict like format, with key `'len'`.
+            The values corresponding to this key should contain
+            the length of the sentence (i.e. number of tokens).
+        bucket_boundaries: Binning boundaries. The
+        batch_size: Number of elements from bin used for batching.
+        drop_last: Set to `True` to drop the last incomplete batch,
+            if the dataset size is not divisible by the batch size,
+            else leave the remaining part.
+        shuffle: Shuffle flag. If `True` the internally
+            and externally bins will be shuffled.
+
+    """
 
     def __init__(
         self,
@@ -55,21 +69,6 @@ class BySequenceLengthSampler(Sampler):
         drop_last: bool = True,
         shuffle: bool = True,
     ):
-        """
-
-        Args:
-            data_source: Dataset in dict like format, with key `'len'`.
-                The values corresponding to this key should contain
-                the length of the sentence (i.e. number of tokens).
-            bucket_boundaries: Binning boundaries. The
-            batch_size: Number of elements from bin used for batching.
-            drop_last: Set to `True` to drop the last incomplete batch,
-                if the dataset size is not divisible by the batch size,
-                else leave the remaining part.
-            shuffle: Shuffle flag. If `True` the internally
-                and externally bins will be shuffled.
-
-        """
         self.data_source = data_source
 
         ind_n_len = []
@@ -115,13 +114,14 @@ class BySequenceLengthSampler(Sampler):
     def __len__(self):
         return len(self.data_source) // self.batch_size + 1
 
-    def to_bucket(self, seq_length):
+    def to_bucket(self, seq_length):  # noqa D102
         valid_buckets = (seq_length >= self.buckets_min) * (seq_length < self.buckets_max)
         bucket_id = torch.nonzero(valid_buckets, as_tuple=True)[0].item()
 
         return bucket_id
 
     def shuffle_tensor(self, t):
+        """Shuffle tensor along lenght."""
         if self.shuffle:
             return t[torch.randperm(len(t))]
         else:
@@ -129,8 +129,7 @@ class BySequenceLengthSampler(Sampler):
 
 
 def pad_max_len(batch: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """
-    Collate function, that pads sequences to maximum length of text in batch.
+    """Collate function, that pads sequences to maximum length of text in batch.
 
     Args:
         batch: List of dictionaries from LengthDataset.
@@ -155,8 +154,7 @@ def pad_max_len(batch: List[Dict[str, Any]]) -> Dict[str, Any]:
 
 
 def get_tokenized(data: pd.DataFrame, tokenized_col: str, tokenizer: Callable) -> List[List[str]]:
-    """
-    Get tokenized column.
+    """Get tokenized column.
 
     Args:
         data: Dataset with text column.
@@ -175,12 +173,11 @@ def get_tokenized(data: pd.DataFrame, tokenized_col: str, tokenizer: Callable) -
 
 
 def get_vocab(tokenized: List[List[str]], max_len_vocab: int) -> Tuple[Dict[str, int], Dict[int, str]]:
-    """
-    Get vocabulary dataset.
+    """Get vocabulary dataset.
 
     Args:
         tokenized: Tokenized strings.
-        vocab_params: Vocabulary parameters.
+        max_len_vocab: Vocabulary size.
 
     Returns:
         Word to index, index to word.
@@ -255,8 +252,7 @@ def map_tokenized_to_id(
 
 
 def get_len_dataset(tokenized: List[List[str]], target: np.ndarray) -> LengthDataset:
-    """
-    Get length dataset.
+    """Get length dataset.
 
     Args:
         tokenized: Tokenized strings.
@@ -280,8 +276,7 @@ def get_len_dataloader(
     boundaries: Optional[List[int]] = None,
     mode: str = "train",
 ) -> torch.utils.data.DataLoader:
-    """
-    Get len dataloader.
+    """Get len dataloader.
 
     Args:
         dataset: Lenght dataset.
@@ -314,11 +309,10 @@ def create_emb_layer(weights_matrix=None, voc_size=None, embed_dim=None, trainab
         embed_dim: Size of embeddings.
         trainable_embeds: To optimize layer when training model.
 
-    Retruns:
+    Returns:
         Initialized embedding layer.
 
     """
-
     assert (weights_matrix is not None) or (
         voc_size is not None and embed_dim is not None
     ), "Please define anything: weights_matrix or voc_size & embed_dim"

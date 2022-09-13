@@ -124,10 +124,8 @@ def get_numpy_iterator(
     Args:
         train: ``LAMLDataset`` to train.
         valid: Optional ``LAMLDataset`` for validate.
-        n_folds: maximum number of folds to iterate.
-          If ``None`` - iterate through all folds.
-        iterator: Takes dataset as input and return an iterator
-          of indexes of train/valid for train dataset.
+        n_folds: maximum number of folds to iterate. If ``None`` - iterate through all folds.
+        iterator: Takes dataset as input and return an iterator of indexes of train/valid for train dataset.
 
     Returns:
         new train-validation iterator.
@@ -153,15 +151,13 @@ class TimeSeriesIterator:
         """Create indexes of folds splitted by thresholds.
 
         Args:
-            datetime_col: Column with value which can be interpreted
-              as time/ordinal value (ex: np.datetime64).
+            datetime_col: Column with value which can be interpreted as time/ordinal value (ex: np.datetime64).
             splitter: List of thresholds (same value as ).
 
         Returns:
             folds: Array of folds' indexes.
 
         """
-
         splitter = np.sort(splitter)
         folds = np.searchsorted(splitter, datetime_col)
 
@@ -172,15 +168,13 @@ class TimeSeriesIterator:
         """Create indexes of folds splitted into equal parts.
 
         Args:
-            datetime_col: Column with value which can be interpreted
-              as time/ordinal value (ex: np.datetime64).
+            datetime_col: Column with value which can be interpreted as time/ordinal value (ex: np.datetime64).
             n_splits: Number of splits(folds).
 
         Returns:
             folds: Array of folds' indexes.
 
         """
-
         idx = np.arange(datetime_col.shape[0])
         order = np.argsort(datetime_col)
         sorted_idx = idx[order]
@@ -202,8 +196,7 @@ class TimeSeriesIterator:
         """Generates time series data split. Sorter - include left, exclude right.
 
         Args:
-            datetime_col: Column with value which can be interpreted
-              as time/ordinal value (ex: np.datetime64).
+            datetime_col: Column with value which can be interpreted as time/ordinal value (ex: np.datetime64).
             n_splits: Number of splits.
             date_splits: List of thresholds.
             sorted_kfold: is sorted.
@@ -245,7 +238,6 @@ class TimeSeriesIterator:
             Tuple of train/validation indexes.
 
         """
-
         if item >= len(self):
             raise StopIteration
 
@@ -258,7 +250,18 @@ class TimeSeriesIterator:
 
 
 class UpliftIterator:
-    """Iterator for uplift modeling task"""
+    """Iterator for uplift modeling task.
+
+    Generates time series data split. Sorter - include left, exclude right.
+
+    Args:
+        treatment_col: Treatment column: 0 - control group, 1 - treatment group.
+        target: Target values.
+        mode: Flag.
+        task: Task.
+        n_folds: Number of folds.
+
+    """
 
     def __init__(
         self,
@@ -268,17 +271,6 @@ class UpliftIterator:
         task: Task,
         n_folds: int = 5,
     ):
-        """Generates time series data split. Sorter - include left, exclude right.
-
-        Args:
-            treatment_col: Treatment column: 0 - control group, 1 - treatment group
-            target: Target values
-            mode: Flag
-            task: Task
-            n_folds:
-
-        """
-
         self.task = task
         self.n_folds = n_folds
         self.mode = mode
@@ -310,6 +302,7 @@ class UpliftIterator:
 
         Returns:
             Tuple of train/validation indexes.
+
         """
         if item + 1 >= self.__len__():
             raise IndexError()

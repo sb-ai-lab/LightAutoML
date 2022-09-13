@@ -21,7 +21,7 @@ from .base import FeaturesPipeline
 
 
 _model_name_by_lang = {
-    "ru": "DeepPavlov/rubert-base-cased-conversational",  # "sberbank-ai/sbert_large_nlu_ru" - sberdevices
+    "ru": "DeepPavlov/rubert-base-cased-conversational",
     "en": "bert-base-cased",
     "multi": "bert-base-multilingual-cased",
 }
@@ -34,19 +34,11 @@ _tokenizer_by_lang = {
 
 
 class NLPDataFeatures:
-    """
-    Class contains basic features transformations for text data.
-    """
+    """Class contains basic features transformations for text data."""
 
     _lang = {"en", "ru", "multi"}
 
     def __init__(self, **kwargs: Any):
-        """Set default parameters for nlp pipeline constructor.
-
-        Args:
-            **kwargs: default params.
-
-        """
         if "lang" in kwargs:
             assert kwargs["lang"] in self._lang, f"Language must be one of: {self._lang}"
 
@@ -94,9 +86,7 @@ class NLPDataFeatures:
 
 
 class TextAutoFeatures(FeaturesPipeline, NLPDataFeatures):
-    """
-    Class contains embedding features for text data.
-    """
+    """Class contains embedding features for text data."""
 
     def create_pipeline(self, train: LAMLDataset) -> LAMLTransformer:
         """Create pipeline for textual data.
@@ -150,9 +140,7 @@ class TextAutoFeatures(FeaturesPipeline, NLPDataFeatures):
 
 
 class NLPTFiDFFeatures(FeaturesPipeline, NLPDataFeatures):
-    """
-    Class contains tfidf features for text data.
-    """
+    """Class contains tfidf features for text data."""
 
     def create_pipeline(self, train: LAMLDataset) -> LAMLTransformer:
         """Create pipeline for textual data.
@@ -188,9 +176,7 @@ class NLPTFiDFFeatures(FeaturesPipeline, NLPDataFeatures):
 
 
 class TextBertFeatures(FeaturesPipeline, NLPDataFeatures):
-    """
-    Features pipeline for BERT.
-    """
+    """Features pipeline for BERT."""
 
     def create_pipeline(self, train: LAMLDataset) -> LAMLTransformer:
         """Create pipeline for BERT.

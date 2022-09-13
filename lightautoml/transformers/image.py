@@ -5,6 +5,7 @@ import os
 import pickle
 
 from copy import deepcopy
+from typing import Any
 from typing import Callable
 from typing import List
 from typing import Optional
@@ -143,7 +144,21 @@ class ImageFeaturesTransformer(LAMLTransformer):
 
 
 class AutoCVWrap(LAMLTransformer):
-    """Calculate image embeddings."""
+    """Calculate image embeddings.
+
+    Args:
+        model: Name of effnet model.
+        weights_path: Path to saved weights.
+        cache_dir: Path to cache directory or None.
+        subs: Subsample to fit transformer. If ``None`` - full data.
+        device: Torch device.
+        n_jobs: Number of threads for dataloader.
+        random_state: Random state to take subsample and set torch seed.
+        is_advprop: Use adversarial training.
+        batch_size: Batch size for embedding model.
+        verbose: Verbose data processing.
+
+    """
 
     _fit_checks = (path_check,)
     _transform_checks = ()
@@ -165,7 +180,7 @@ class AutoCVWrap(LAMLTransformer):
         model="efficientnet-b0",
         weights_path: Optional[str] = None,
         cache_dir: str = "./cache_CV",
-        subs: Optional = None,
+        subs: Optional[Any] = None,
         device: torch.device = torch.device("cuda:0"),
         n_jobs: int = 4,
         random_state: int = 42,
@@ -173,21 +188,6 @@ class AutoCVWrap(LAMLTransformer):
         batch_size: int = 128,
         verbose: bool = True,
     ):
-        """
-
-        Args:
-            model: Name of effnet model.
-            weights_path: Path to saved weights.
-            cache_dir: Path to cache directory or None.
-            subs: Subsample to fit transformer. If ``None`` - full data.
-            device: Torch device.
-            n_jobs: Number of threads for dataloader.
-            random_state: Random state to take subsample and set torch seed.
-            is_advprop: Use adversarial training.
-            batch_size: Batch size for embedding model.
-            verbose: Verbose data processing.
-
-        """
         self.embed_model = model
         self.random_state = random_state
         self.subs = subs
@@ -212,6 +212,9 @@ class AutoCVWrap(LAMLTransformer):
 
         Args:
             dataset: Pandas or Numpy dataset of text features.
+
+        Returns:
+            self.
 
         """
         for check_func in self._fit_checks:

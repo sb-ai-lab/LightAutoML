@@ -93,6 +93,57 @@ class L2XTextExplainer:
         >>> explanations.get_all() # return list of (tokens_i, mask_i). The mask and tokens arrays have same sizes.
         >>> explanations[i].visualize_in_notebook() # produces the visualization of highlited tokens in document i.
 
+
+    Args:
+        automl: Automl object.
+        tokenizer: String with language ['ru', 'en'],
+            or callable function that take something,
+            that deal with sentence in string to list of tokens.
+            of list of strings. If None the lang
+            from automl's text_params will be used.
+        train_device: Device that will be used for traning L2X.
+            Name of device should be valid for torch.device.
+        inference_device: Device that will be used for inference L2X.
+            Name of device should be valid for torch.device.
+        verbose: Verbose training.
+        binning_mode: For dynamic batching we use binning sampler by number
+            of tokens in the tokenized document. This parameter specifies
+            the method for constructing the boundaries for binning.
+            Valid parameter values: 'linear' (min-max binning,
+            like linspace), 'hist' (histogram binning).
+        bins_number: Number of bins.
+        n_important: Number of imembeddportant tokens.
+        learning_rate: Learning rate of optimizer for traning L2X.
+        n_epochs: Number of epochs for training L2X.
+        optimizer: Should be optimizer in pytorch format.
+        optimizer_params: Additional params of optimizer,
+            exclude learning_rate.
+        patience: Number of epochs before reducing learning rate.
+        extreme_patience: Early stopping epochs.
+        train_batch_size: Size of batch for training process.
+        valid_batch_size: Size of batch for validation process.
+        temperature: Temperature of concrete distribution sampling.
+        temp_anneal_factor: Annealing temperature. The temperature will be
+            multiplied by this coefficient after every epoch.
+        conv_filters: Number of convolution kernels in model,
+            that produces important tokens.
+        conv_ksize: Size of convolution kernel.
+        hidden_dim: Size of fully connected layer in L2X.
+        drop_rate: Dropout rates in L2X.
+        importance_sampler: Specifices method of sampling importance.
+        embedder: Embedding dictionary or path to fasttext/dict of embeddings.
+        embedding_dim: Dimention of embeddings.
+        trainable_embeds: To train embeddings of L2X.
+        max_vocab_length: Maximum vocabulary length. If -1 then include all in train set.
+        gamma: Special coefficient, that encourage neighborhood of important tokens.
+        gamma_anneal_factor: Annealing gamma. The gamma will be
+            multiplied by this coefficient after every epoch.
+        random_seed: Random seed.
+        deterministic: Use cuda deterministic.
+        cache_dir: Directory used for checkpointing model for early stopping.
+            By default, it will infer from automl cache directory,
+            or './l2x_cache' in case there is no opportunity to infer.
+
     """
 
     def __init__(
@@ -130,57 +181,6 @@ class L2XTextExplainer:
         deterministic: bool = True,
         cache_dir: Optional[str] = None,
     ):
-        """
-
-        Args:
-            automl: Automl object.
-            tokenizer: String with language ['ru', 'en'],
-                or callable function that take something,
-                that deal with sentence in string to list of tokens.
-                of list of strings. If None the lang
-                from automl's text_params will be used.
-            train_device: Device that will be used for traning L2X.
-                Name of device should be valid for torch.device.
-            inference_device: Device that will be used for inference L2X.
-                Name of device should be valid for torch.device.
-            verbose: Verbose training.
-            binning_mode: For dynamic batching we use binning sampler by number
-                of tokens in the tokenized document. This parameter specifies
-                the method for constructing the boundaries for binning.
-                Valid parameter values: 'linear' (min-max binning,
-                like linspace), 'hist' (histogram binning).
-            bins_number: Number of bins.
-            n_important: Number of important tokens.
-            learning_rate: Learning rate of optimizer for traning L2X.
-            n_epochs: Number of epochs for training L2X.
-            optimizer: Should be optimizer in pytorch format.
-            optimizer_params: Additional params of optimizer,
-                exclude learning_rate.
-            patience: Number of epochs before reducing learning rate.
-            extreme_patience: Early stopping epochs.
-            train_batch_size: Size of batch for training process.
-            valid_batch_size: Size of batch for validation process.
-            temperature: Temperature of concrete distribution sampling.
-            temp_anneal_factor: Annealing temperature. The temperature will be
-                multiplied by this coefficient after every epoch.
-            conv_filters: Number of convolution kernels in model,
-                that produces important tokens.
-            conv_ksize: Size of convolution kernel.
-            hidden_dim: Size of fully connected layer in L2X.
-            drop_rate: Dropout rates in L2X.
-            importance_sampler: Specifices method of sampling importance.
-            embedder: Embedding dictionary or path to fasttext/dict of embeddings.
-            trainable_embeds: To train embeddings of L2X.
-            max_vocab_length: Maximum vocabulary length. If -1 then include all in train set.
-            gamma: Special coefficient, that encourage neighborhood of important tokens.
-            gamma_anneal_factor: Annealing gamma. The gamma will be
-                multiplied by this coefficient after every epoch.
-            random_seed: Random seed.
-            deterministic: Use cuda deterministic.
-            cache_dir: Directory used for checkpointing model for early stopping.
-                By default, it will infer from automl cache directory,
-                or './l2x_cache' in case there is no opportunity to infer.
-        """
         self.automl = automl
         self.reader = automl.reader
         self.task_name = automl.reader.task.name
@@ -345,8 +345,7 @@ class L2XTextExplainer:
         valid_data: Optional[pd.DataFrame] = None,
         cols_to_explain: Optional[Union[str, List[str]]] = None,
     ):
-        """
-        Fit model for all columns in cols_to_explain.
+        """Fit model for all columns in cols_to_explain.
 
         Target for L2X is the predictions of AutoML model. So, that you
         can pass any dataset there, but it recommend using training
@@ -369,8 +368,7 @@ class L2XTextExplainer:
             self.explainers[col] = self._fit_one(col, train_data, train_preds, valid_data, valid_preds)
 
     def _get_cols(self, cols_to_explain: Union[None, str, List[str]]) -> List[str]:
-        """
-        Handler for column names.
+        """Handler for column names.
 
         Args:
             cols_to_explain: Explaining columns.
@@ -472,13 +470,16 @@ class L2XTextExplainer:
         valid_dataloader: Optional[torch.utils.data.DataLoader] = None,
         valid_loss_logs: List[Union[float, None]] = None,
     ):
-        """
-        Trainer for L2X.
+        """Trainer for L2X.
 
         Args:
             model: Model to train.
             train_dataloader: Dataloader, used for training.
+            train_loss_logs: Train process logs.
+                Contains train loss list.
             valid_dataloader: Dataloader, used for validation.
+            valid_loss_logs: Train process logs.
+                Contains train loss list.
 
         """
         loss = self._loss
@@ -529,14 +530,18 @@ class L2XTextExplainer:
         device: torch.device,
         gamma: float,
     ) -> float:
-        """
-        Train only one epoch.
+        """Train only one epoch.
 
         Args:
             model: Trained L2X model.
             train_dataloader: Dataloader, used for training.
-            loss: Torch loss object. Unnormalized (biased) negative log-likelihood.
+            criterion: Torch loss object. Unnormalized (biased) negative log-likelihood.
             optimizer: Optimizer that should be one or nothing.
+            device: Device.
+            gamma: Gamma.
+
+        Returns:
+            Accumalated loss.
 
         """
         model.train()
@@ -647,7 +652,8 @@ class _L2XExplainer:
             col_to_explain: Explaining column.
             bins: Binning used for training.
             tokenizer: Tokenizer function.
-            embedder: Embedding dictionary (token->embedding).
+            word_to_id: Dictionary word to token-id.
+            id_to_word: Dictionary token-id to word.
             inference_device: Inference device.
             n_important: Number of important tokens.
             task_name: Task name.
@@ -686,13 +692,15 @@ class _L2XExplainer:
         return self.k
 
     def explain_instances(self, data: pd.DataFrame, batch_size: int = 1) -> "L2XExplanationsContainer":
-        """
-        Get explanations for data.
+        """Get explanations for data.
 
         Args:
             data: Data to explain.
             batch_size: Size of batch. Carefully, if batch_size > 0
                 every document will be padded to max size of documents in abstract.
+
+        Returns:
+            Explaner.
 
         """
         data_tokenized = get_tokenized(data, self.col_to_explain, self.tokenizer)
@@ -757,9 +765,7 @@ class L2XExplanation:
 
 
 class L2XExplanationsContainer:
-    """
-    Container of explanations.
-    """
+    """Container of explanations."""
 
     def __init__(self, docs: List[List[str]], masks: List[List[float]], task_name: str):
         """
@@ -767,6 +773,7 @@ class L2XExplanationsContainer:
         Args:
             docs: Tokenized documents.
             masks: Mask for importances.
+            task_name: Task name.
 
         """
         self.docs = docs

@@ -1,6 +1,5 @@
 """Different Pooling strategies for sequence data."""
 
-
 import torch
 import torch.nn as nn
 

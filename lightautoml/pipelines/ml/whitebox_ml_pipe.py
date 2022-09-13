@@ -25,6 +25,7 @@ class WBPipeline(MLPipeline):
 
     @property
     def whitebox(self) -> WbMLAlgo:
+        """Return first whitebox model."""
         if len(self.ml_algos[0].models) > 1:
             warnings.warn("More than 1 whitebox model is fitted during cross validation. Only first is returned")
 

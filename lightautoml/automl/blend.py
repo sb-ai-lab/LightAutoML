@@ -38,7 +38,7 @@ class Blender:
     _bypass = False
 
     @property
-    def outp_dim(self) -> int:
+    def outp_dim(self) -> int:  # noqa: D102
         return self._outp_dim
 
     def fit_predict(
@@ -74,7 +74,7 @@ class Blender:
             predictions: Sequence of datasets with predictions.
             pipes: Sequence of pipelines.
 
-        Returns:
+        Returns:  # noqa: DAR202
             Single prediction dataset and sequence of pruned ``MLPipelines``.
 
         """
@@ -101,7 +101,7 @@ class Blender:
         Args:
             predictions: Sequence of predictions from pruned datasets.
 
-        Returns:
+        Returns:  # noqa: DAR201
             Dataset with predictions.
 
         """
@@ -282,6 +282,12 @@ class WeightedBlender(Blender):
     even if some predictions are NaN (ex. timeout).
     Model with low weights will be pruned.
 
+    Args:
+        max_iters: Max number of coord desc loops.
+        max_inner_iters: Max number of iters to solve
+            inner scalar optimization task.
+        max_nonzero_coef: Maximum model weight value to stay in ensemble.
+
     """
 
     def __init__(
@@ -290,15 +296,6 @@ class WeightedBlender(Blender):
         max_inner_iters: int = 7,
         max_nonzero_coef: float = 0.05,
     ):
-        """
-
-        Args:
-            max_iters: Max number of coord desc loops.
-            max_inner_iters: Max number of iters to solve
-              inner scalar optimization task.
-            max_nonzero_coef: Maximum model weight value to stay in ensemble.
-
-        """
         self.max_iters = max_iters
         self.max_inner_iters = max_inner_iters
         self.max_nonzero_coef = max_nonzero_coef

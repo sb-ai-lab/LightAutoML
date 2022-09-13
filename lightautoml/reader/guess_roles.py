@@ -15,21 +15,22 @@ from joblib import delayed
 from pandas import DataFrame
 from pandas import Series
 
-from lightautoml.dataset.np_pd_dataset import NumpyDataset
-from lightautoml.dataset.np_pd_dataset import PandasDataset
-from lightautoml.dataset.roles import CategoryRole
-from lightautoml.dataset.roles import ColumnRole
-from lightautoml.dataset.roles import NumericRole
-from lightautoml.reader.utils import set_sklearn_folds
-from lightautoml.transformers.base import ChangeRoles
-from lightautoml.transformers.base import LAMLTransformer
-from lightautoml.transformers.base import SequentialTransformer
-from lightautoml.transformers.categorical import FreqEncoder
-from lightautoml.transformers.categorical import LabelEncoder
-from lightautoml.transformers.categorical import MultiClassTargetEncoder
-from lightautoml.transformers.categorical import OrdinalEncoder
-from lightautoml.transformers.categorical import TargetEncoder
-from lightautoml.transformers.numeric import QuantileBinning
+from ..dataset.np_pd_dataset import NumpyDataset
+from ..dataset.np_pd_dataset import PandasDataset
+from ..dataset.roles import CategoryRole
+from ..dataset.roles import ColumnRole
+from ..dataset.roles import NumericRole
+from ..reader.utils import set_sklearn_folds
+from ..transformers.base import ChangeRoles
+from ..transformers.base import LAMLTransformer
+from ..transformers.base import SequentialTransformer
+from ..transformers.categorical import FreqEncoder
+from ..transformers.categorical import LabelEncoder
+from ..transformers.categorical import MultiClassTargetEncoder
+from ..transformers.categorical import MultioutputTargetEncoder
+from ..transformers.categorical import OrdinalEncoder
+from ..transformers.categorical import TargetEncoder
+from ..transformers.numeric import QuantileBinning
 
 
 NumpyOrPandas = Union[NumpyDataset, PandasDataset]
@@ -134,6 +135,10 @@ def get_target_and_encoder(train: NumpyOrPandas) -> Tuple[Any, type]:
         target = target[:, np.newaxis] == np.arange(n_out)[np.newaxis, :]
         target = cast(np.ndarray, target).astype(np.float32)
         encoder = MultiClassTargetEncoder
+
+    elif (train.task.name == "multi:reg") or (train.task.name == "multilabel"):
+        target = cast(np.ndarray, target).astype(np.float32)
+        encoder = MultioutputTargetEncoder
     else:
         encoder = TargetEncoder
 
@@ -141,7 +146,7 @@ def get_target_and_encoder(train: NumpyOrPandas) -> Tuple[Any, type]:
 
 
 def calc_ginis(data: np.ndarray, target: np.ndarray, empty_slice: Optional[np.ndarray] = None):
-    """
+    """Calculate ginis for array of preditions.
 
     Args:
         data: np.ndarray.
@@ -152,7 +157,6 @@ def calc_ginis(data: np.ndarray, target: np.ndarray, empty_slice: Optional[np.nd
         gini.
 
     """
-
     scores = np.zeros(data.shape[1])
     for n in range(data.shape[1]):
         sl = None
@@ -182,7 +186,6 @@ def _get_score_from_pipe(
         np.ndarray.
 
     """
-
     shape = train.shape
 
     if pipe is not None:
@@ -214,7 +217,6 @@ def get_score_from_pipe(
         np.ndarray.
 
     """
-
     shape = train.shape
     if n_jobs == 1:
         return _get_score_from_pipe(train, target, pipe, empty_slice)
@@ -296,7 +298,7 @@ def get_numeric_roles_stat(
         train.folds = set_sklearn_folds(train.task, train.target, cv=5, random_state=42, group=train.group)
 
     if subsample is not None:
-        idx = np.random.RandomState(random_state).permutation(train.shape[0])[:subsample]
+        idx = np.random.RandomState(random_state + 1).permutation(train.shape[0])[:subsample]
         train = train[idx]
 
     data, target = train.data, train.target
@@ -477,7 +479,6 @@ def get_category_roles_stat(
         result.
 
     """
-
     roles_to_identify = []
 
     dtypes = []
@@ -512,7 +513,7 @@ def get_category_roles_stat(
         train.folds = set_sklearn_folds(train.task, train.target.values, cv=5, random_state=42, group=train.group)
 
     if subsample is not None:
-        idx = np.random.RandomState(random_state).permutation(train.shape[0])[:subsample]
+        idx = np.random.RandomState(random_state + 1).permutation(train.shape[0])[:subsample]
         train = train[idx]
 
     # check task specific
@@ -625,7 +626,7 @@ def get_null_scores(
         train = train[:, feats].to_pandas()
 
     if subsample is not None:
-        idx = np.random.RandomState(random_state).permutation(train.shape[0])[:subsample]
+        idx = np.random.RandomState(random_state + 1).permutation(train.shape[0])[:subsample]
         train = train[idx]
 
     # check task specific

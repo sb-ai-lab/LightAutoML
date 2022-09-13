@@ -47,7 +47,24 @@ pooling_by_name = {
 
 
 class DLTransformer(TransformerMixin):
-    """Deep Learning based sentence embeddings."""
+    """Deep Learning based sentence embeddings.
+
+    Args:
+        model: Torch model for aggregation word embeddings
+            into sentence embedding.
+        model_params: Dict with model parameters.
+        dataset: Torch dataset.
+        dataset_params: Dict with dataset params.
+        loader_params: Dict with params for torch dataloader.
+        device: String with torch device type or device ids. I.e: '0,2'.
+        random_state: Determines random number generation.
+        embedding_model: Torch word embedding model,
+            if dataset do not return embeddings.
+        embedding_model_params: Dict with embedding model params.
+        multigpu: Use data parallel for multiple GPU.
+        verbose: Show tqdm progress bar.
+
+    """
 
     _model_params = {
         "embed_size": 300,
@@ -74,29 +91,11 @@ class DLTransformer(TransformerMixin):
         loader_params: Dict,
         device: str = "cuda",
         random_state: int = 42,
-        embedding_model: Optional = None,
+        embedding_model: Optional[Any] = None,
         embedding_model_params: Dict[str, Dict] = None,
         multigpu: bool = False,
         verbose: bool = False,
     ):
-        """Class to compute sentence embeddings from words embeddings.
-
-        Args:
-            model: Torch model for aggregation word embeddings
-              into sentence embedding.
-            model_params: Dict with model parameters.
-            dataset: Torch dataset.
-            dataset_params: Dict with dataset params.
-            loader_params: Dict with params for torch dataloader.
-            device: String with torch device type or device ids. I.e: '0,2'.
-            random_state: Determines random number generation.
-            embedding_model: Torch word embedding model,
-              if dataset do not return embeddings.
-            embedding_model_params: Dict with embedding model params.
-            multigpu: Use data parallel for multiple GPU.
-            verbose: Show tqdm progress bar.
-
-        """
         super(DLTransformer, self).__init__()
         self._infer_params()
         self.device, self.device_ids = parse_devices(device, multigpu)
@@ -138,12 +137,12 @@ class DLTransformer(TransformerMixin):
         """
         return self.model.get_out_shape()
 
-    def fit(self, data: Any):
+    def fit(self, data: Any):  # noqa: D102
         return self
 
     @torch.no_grad()
     def transform(self, data: Sequence[str]) -> np.ndarray:
-
+        """Embedded sentece."""
         dataset = self.dataset(data, **self.dataset_params)
         loader = DataLoader(dataset, collate_fn=collate_dict, **self.loader_params)
 
@@ -220,7 +219,35 @@ def position_encoding_init(n_pos: int, embed_size: int) -> torch.Tensor:
 
 
 class BOREP(nn.Module):
-    """Class to compute Bag of Random Embedding Projections sentence embeddings from words embeddings."""
+    """Class to compute Bag of Random Embedding Projections sentence embeddings from words embeddings.
+
+    Bag of Random Embedding Projections sentence embeddings.
+
+    Args:
+        embed_size: Size of word embeddings.
+        proj_size: Size of output sentence embedding.
+        pooling: Pooling type.
+        max_length: Maximum length of sentence.
+        init: Type of weight initialization.
+        pos_encoding: Add positional embedding.
+        **kwargs: Ignored params.
+
+    Note:
+        There are several pooling types:
+
+            - `'max'`: Maximum on seq_len dimension for non masked inputs.
+            - `'mean'`: Mean on seq_len dimension for non masked inputs.
+            - `'sum'`: Sum on seq_len dimension for non masked inputs.
+
+        For init parameter there are several options:
+
+            - `'orthogonal'`: Orthogonal init.
+            - `'normal'`: Normal with std 0.1.
+            - `'uniform'`: Uniform from -0.1 to 0.1.
+            - `'kaiming'`: Uniform kaiming init.
+            - `'xavier'`: Uniform xavier init.
+
+    """
 
     name = "BOREP"
     _poolers = {"max", "mean", "sum"}
@@ -235,33 +262,6 @@ class BOREP(nn.Module):
         pos_encoding: bool = False,
         **kwargs: Any
     ):
-        """Bag of Random Embedding Projections sentence embeddings.
-
-        Args:
-            embed_size: Size of word embeddings.
-            proj_size: Size of output sentence embedding.
-            pooling: Pooling type.
-            max_length: Maximum length of sentence.
-            init: Type of weight initialization.
-            pos_encoding: Add positional embedding.
-            **kwargs: Ignored params.
-
-        Note:
-            There are several pooling types:
-
-                - `'max'`: Maximum on seq_len dimension for non masked inputs.
-                - `'mean'`: Mean on seq_len dimension for non masked inputs.
-                - `'sum'`: Sum on seq_len dimension for non masked inputs.
-
-            For init parameter there are several options:
-
-                - `'orthogonal'`: Orthogonal init.
-                - `'normal'`: Normal with std 0.1.
-                - `'uniform'`: Uniform from -0.1 to 0.1.
-                - `'kaiming'`: Uniform kaiming init.
-                - `'xavier'`: Uniform xavier init.
-
-        """
         super(BOREP, self).__init__()
         self.embed_size = embed_size
         self.proj_size = proj_size
@@ -305,6 +305,7 @@ class BOREP(nn.Module):
 
     @torch.no_grad()
     def forward(self, inp: Dict[str, torch.Tensor]) -> torch.Tensor:
+        """Forward-pass."""
         x = inp["text"]
         batch_size, batch_max_length = x.shape[0], x.shape[1]
         if self.pos_encoding:
@@ -319,7 +320,23 @@ class BOREP(nn.Module):
 
 
 class RandomLSTM(nn.Module):
-    """Class to compute Random LSTM sentence embeddings from words embeddings."""
+    """Class to compute Random LSTM sentence embeddings from words embeddings.
+
+    Args:
+        embed_size: Size of word embeddings.
+        hidden_size: Size of hidden dimensions of LSTM.
+        pooling: Pooling type.
+        num_layers: Number of lstm layers.
+        **kwargs: Ignored params.
+
+    Note:
+        There are several pooling types:
+
+            - `'max'`: Maximum on seq_len dimension for non masked inputs.
+            - `'mean'`: Mean on seq_len dimension for non masked inputs.
+            - `'sum'`: Sum on seq_len dimension for non masked inputs.
+
+    """
 
     name = "RandomLSTM"
     _poolers = ("max", "mean", "sum")
@@ -327,23 +344,6 @@ class RandomLSTM(nn.Module):
     def __init__(
         self, embed_size: int = 300, hidden_size: int = 256, pooling: str = "mean", num_layers: int = 1, **kwargs: Any
     ):
-        """Random LSTM sentence embeddings.
-
-        Args:
-            embed_size: Size of word embeddings.
-            hidden_size: Size of hidden dimensions of LSTM.
-            pooling: Pooling type.
-            num_layers: Number of lstm layers.
-            **kwargs: Ignored params.
-
-        Note:
-            There are several pooling types:
-
-                - `'max'`: Maximum on seq_len dimension for non masked inputs.
-                - `'mean'`: Mean on seq_len dimension for non masked inputs.
-                - `'sum'`: Sum on seq_len dimension for non masked inputs.
-
-        """
         super(RandomLSTM, self).__init__()
         if pooling not in self._poolers:
             raise ValueError("pooling - {} - not in the list of available types {}".format(pooling, self._poolers))
@@ -379,6 +379,7 @@ class RandomLSTM(nn.Module):
 
     @torch.no_grad()
     def forward(self, inp: Dict[str, torch.Tensor]) -> torch.Tensor:
+        """Forward-pass."""
         out, _ = self.lstm(inp["text"])
         x_length = (torch.arange(out.shape[1])[None, :].to(out.device) < inp["length"][:, None])[:, :, None]
         out = self.pooling(out, x_length)
@@ -386,33 +387,34 @@ class RandomLSTM(nn.Module):
 
 
 class BertEmbedder(nn.Module):
-    """Class to compute `HuggingFace <https://huggingface.co>`_ transformers words or sentence embeddings."""
+    """Class to compute `HuggingFace <https://huggingface.co>`_ transformers words or sentence embeddings.
+
+    Bert sentence or word embeddings.
+
+    Args:
+        model_name: Name of transformers model.
+        pooling: Pooling type.
+        **kwargs: Ignored params.
+
+    Note:
+        There are several pooling types:
+
+            - `'cls'`: Use CLS token for sentence embedding
+                from last hidden state.
+            - `'max'`: Maximum on seq_len dimension
+                for non masked inputs from last hidden state.
+            - `'mean'`: Mean on seq_len dimension for non masked
+                inputs from last hidden state.
+            - `'sum'`: Sum on seq_len dimension for non masked inputs
+                from last hidden state.
+            - `'none'`: Don't use pooling (for RandomLSTM pooling strategy).
+
+    """
 
     name = "BertEmb"
     _poolers = {"cls", "max", "mean", "sum", "none"}
 
     def __init__(self, model_name: str, pooling: str = "none", **kwargs: Any):
-        """Bert sentence or word embeddings.
-
-        Args:
-            model_name: Name of transformers model.
-            pooling: Pooling type.
-            **kwargs: Ignored params.
-
-        Note:
-            There are several pooling types:
-
-                - `'cls'`: Use CLS token for sentence embedding
-                  from last hidden state.
-                - `'max'`: Maximum on seq_len dimension
-                  for non masked inputs from last hidden state.
-                - `'mean'`: Mean on seq_len dimension for non masked
-                  inputs from last hidden state.
-                - `'sum'`: Sum on seq_len dimension for non masked inputs
-                  from last hidden state.
-                - `'none'`: Don't use pooling (for RandomLSTM pooling strategy).
-
-        """
         super(BertEmbedder, self).__init__()
         if pooling not in self._poolers:
             raise ValueError("pooling - {} - not in the list of available types {}".format(pooling, self._poolers))
@@ -423,6 +425,7 @@ class BertEmbedder(nn.Module):
         self.transformer = AutoModel.from_pretrained(model_name)
 
     def forward(self, inp: Dict[str, torch.Tensor]) -> torch.Tensor:
+        """Forward-pass."""
         encoded_layers, _ = self.transformer(
             input_ids=inp["input_ids"],
             attention_mask=inp["attention_mask"],
@@ -436,7 +439,6 @@ class BertEmbedder(nn.Module):
 
     def freeze(self):
         """Freeze module parameters."""
-
         for param in self.transformer.parameters():
             param.requires_grad = False
 

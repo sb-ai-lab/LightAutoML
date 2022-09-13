@@ -9,28 +9,28 @@ import numpy as np
 
 
 class CBCustomMetric:
-    """Metric wrapper class for CatBoost."""
+    """Metric wrapper class for CatBoost.
+
+    Args:
+        metric: Callable metric.
+        greater_is_better: Bool with metric direction.
+
+    """
 
     def __init__(self, metric: Callable, greater_is_better: bool = True, bw_func: Callable = None):
-        """
-
-        Args:
-            metric: Callable metric.
-            greater_is_better: Bool with metric direction.
-
-        """
         self.metric = metric
         self.greater_is_better = greater_is_better
         self._bw_func = bw_func
 
     @staticmethod
-    def get_final_error(error, weight):
+    def get_final_error(error, weight):  # noqa D102
         return error
 
-    def is_max_optimal(self):
+    def is_max_optimal(self):  # noqa D102
         return self.greater_is_better
 
     def evaluate(self, approxes, target, weight):
+        """Calculate metric."""
         raise NotImplementedError
 
     def _transform(self, approxes, target):
@@ -59,6 +59,7 @@ class CBRegressionMetric(CBCustomMetric):
     """Regression metric wrapper for CatBoost."""
 
     def evaluate(self, approxes, target, weight):
+        """Calculate metric."""
         assert len(approxes) == 1
         assert len(approxes[0]) == len(target)
         assert weight is None or len(target) == len(weight)
@@ -93,6 +94,7 @@ class CBClassificationMetric(CBCustomMetric):
             return np.round(pred), target
 
     def evaluate(self, approxes, target, weight):
+        """Calculate metric."""
         assert len(approxes) == 1
         assert len(approxes[0]) == len(target)
         assert weight is None or len(target) == len(weight)
@@ -127,6 +129,7 @@ class CBMulticlassMetric(CBCustomMetric):
             return np.argmax(pred, axis=0), target
 
     def evaluate(self, approxes, target, weight):
+        """Calculate metric."""
         assert len(approxes[0]) == len(target)
         assert weight is None or len(target) == len(weight)
 

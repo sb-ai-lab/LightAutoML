@@ -7,6 +7,7 @@ __all__ = [
     "boost_cb",
     "linear_sklearn",
     "dl_model",
+    "nn_models",
     "whitebox",
     "utils",
 ]

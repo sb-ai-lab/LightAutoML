@@ -114,6 +114,8 @@ linear_l2_params:
 
 # params for NN model
 nn_params:
+  # early stopping and scheduler use metric
+  stop_by_metric: False
   random_state: 42
   # training and inference batch size
   bs: 16

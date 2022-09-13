@@ -27,7 +27,7 @@ def calc_one_feat_imp(iters, feat, model, data, norm_score, target, metric, sile
 def calc_feats_permutation_imps(model, used_feats, data, target, metric, silent=False):
     n_used_feats = len(used_feats)
     if not silent:
-        logger.info3("LightAutoML used {} feats".format(n_used_feats))
+        logger.info3("LightAutoML ts master used {} feats".format(n_used_feats))
     data = data.reset_index(drop=True)
     preds = model.predict(data)
     preds.target = data[target].values

@@ -69,7 +69,7 @@ class BoostCB(TabularMLAlgo, ImportanceEstimator):
         "feature_border_type": "GreedyLogSum",
         "nan_mode": "Min",
         # "silent": False,
-        "verbose": True,
+        "verbose": 100,
         "allow_writing_files": False,
     }
 
@@ -80,7 +80,6 @@ class BoostCB(TabularMLAlgo, ImportanceEstimator):
             Tuple (params, num_trees, early_stopping_rounds, fobj, feval).
 
         """
-
         params = copy(self.params)
         early_stopping_rounds = params.pop("od_wait")
         num_trees = params.pop("num_trees")
@@ -106,7 +105,6 @@ class BoostCB(TabularMLAlgo, ImportanceEstimator):
             Parameters of model.
 
         """
-
         rows_num = len(train_valid_iterator.train)
         dataset = train_valid_iterator.train
         self.task = train_valid_iterator.train.task
@@ -164,7 +162,7 @@ class BoostCB(TabularMLAlgo, ImportanceEstimator):
                 init_lr = 0.05
                 ntrees = 3000
 
-        elif self.task.name == "multiclass":
+        elif (self.task.name == "multiclass") or (self.task.name == "multi:reg") or (self.task.name == "multilabel"):
             init_lr = 0.03
             ntrees = 4000
 
@@ -192,7 +190,6 @@ class BoostCB(TabularMLAlgo, ImportanceEstimator):
         """Sample hyperparameters from suggested.
 
         Args:
-            trial: Optuna trial object.
             suggested_params: Dict with parameters.
             estimated_n_trials: Maximum number of hyperparameter estimation.
 
@@ -200,7 +197,6 @@ class BoostCB(TabularMLAlgo, ImportanceEstimator):
             Dict with sampled hyperparameters.
 
         """
-
         optimization_search_space = {}
 
         try:
@@ -303,6 +299,9 @@ class BoostCB(TabularMLAlgo, ImportanceEstimator):
                     "objective": fobj,
                     "eval_metric": feval,
                     "od_wait": early_stopping_rounds,
+                    "task_type": "CPU"
+                    if self.task.name in ["multilabel", "multi:reg"]
+                    else params["task_type"],  # warning in TabularAutoML?
                 },
             }
         )
@@ -320,11 +319,10 @@ class BoostCB(TabularMLAlgo, ImportanceEstimator):
             model: CatBoost object.
             dataset: Test dataset.
 
-        Return:
+        Returns:
             Predicted target values.
 
         """
-
         params = self._infer_params()[0]
         cb_test = self._get_pool(dataset)
 
@@ -366,11 +364,11 @@ class BoostCB(TabularMLAlgo, ImportanceEstimator):
 
     def _predict(self, model: cb.CatBoost, pool: cb.Pool, params):
         pred = None
-        if self.task.name == "multiclass":
+        if (self.task.name == "multiclass") or (self.task.name == "multilabel"):
             pred = model.predict(pool, prediction_type="Probability", thread_count=params["thread_count"])
         elif self.task.name == "binary":
             pred = model.predict(pool, prediction_type="Probability", thread_count=params["thread_count"])[..., 1]
-        elif self.task.name == "reg":
+        elif (self.task.name == "reg") or (self.task.name == "multi:reg"):
             pred = model.predict(pool, thread_count=params["thread_count"])
 
         pred = self.task.losses["cb"].bw_func(pred)

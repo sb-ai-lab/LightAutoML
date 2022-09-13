@@ -4,7 +4,6 @@ from collections import OrderedDict
 from typing import List
 from typing import Optional
 from typing import Sequence
-from typing import Union
 
 import holidays
 import numpy as np
@@ -19,13 +18,14 @@ from .base import LAMLTransformer
 
 
 # type - dataset that is ok with datetime dtypes
-DatetimeCompatible = Union[PandasDataset]
+DatetimeCompatible = PandasDataset
 
 date_attrs = {
     "y": "year",
     "m": "month",
     "d": "day",
     "wd": "weekday",
+    "doy": "dayofyear",
     "hour": "hour",
     "min": "minute",
     "sec": "second",
@@ -51,10 +51,11 @@ def datetime_check(dataset: LAMLDataset):
 
 
 class TimeToNum(LAMLTransformer):
-    """
-    Basic conversion strategy, used in selection one-to-one transformers.
+    """Basic conversion strategy, used in selection one-to-one transformers.
+
     Datetime converted to difference
     with basic_date (``basic_date == '2020-01-01'``).
+
     """
 
     basic_time = "2020-01-01"
@@ -95,9 +96,14 @@ class TimeToNum(LAMLTransformer):
 
 
 class BaseDiff(LAMLTransformer):
-    """
-    Basic conversion strategy, used in selection one-to-one transformers.
+    """Basic conversion strategy, used in selection one-to-one transformers.
+
     Datetime converted to difference with basic_date.
+
+    Args:
+        base_names: Base date names.
+        diff_names: Difference date names.
+        basic_interval: Time unit.
 
     """
 
@@ -118,14 +124,6 @@ class BaseDiff(LAMLTransformer):
         diff_names: Sequence[str],
         basic_interval: Optional[str] = "D",
     ):
-        """
-
-        Args:
-            base_names: Base date names.
-            diff_names: Difference date names.
-            basic_interval: Time unit.
-
-        """
         self.base_names = base_names
         self.diff_names = diff_names
         self.basic_interval = basic_interval
@@ -182,9 +180,13 @@ class BaseDiff(LAMLTransformer):
 
 
 class DateSeasons(LAMLTransformer):
-    """
-    Basic conversion strategy, used in selection one-to-one transformers.
+    """Basic conversion strategy, used in selection one-to-one transformers.
+
     Datetime converted to difference with basic_date.
+
+    Args:
+        output_role: Which role to assign for input features.
+
     """
 
     _fname_prefix = "season"
@@ -197,12 +199,6 @@ class DateSeasons(LAMLTransformer):
         return self._features
 
     def __init__(self, output_role: Optional[ColumnRole] = None):
-        """
-
-        Args:
-            output_role: Which role to assign for input features.
-
-        """
         self.output_role = output_role
         if output_role is None:
             self.output_role = CategoryRole(np.int32)
@@ -269,7 +265,7 @@ class DateSeasons(LAMLTransformer):
                     prov=roles[col].prov,
                     state=roles[col].state,
                 )
-                new_arr[:, n] = df[col].isin(hol)
+                new_arr[:, n] = df[col].dt.date.isin(hol)
                 n += 1
 
         # create resulted

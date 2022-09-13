@@ -80,7 +80,7 @@ class BoostLGBM(TabularMLAlgo, ImportanceEstimator):
         early_stopping_rounds = params.pop("early_stopping_rounds")
         num_trees = params.pop("num_trees")
 
-        verbose_eval = True
+        verbose_eval = 100
 
         # get objective params
         loss = self.task.losses["lgb"]
@@ -107,7 +107,6 @@ class BoostLGBM(TabularMLAlgo, ImportanceEstimator):
             Parameters of model.
 
         """
-
         # TODO: use features_num
         # features_num = len(train_valid_iterator.features())
 
@@ -181,7 +180,6 @@ class BoostLGBM(TabularMLAlgo, ImportanceEstimator):
         """Sample hyperparameters from suggested.
 
         Args:
-            trial: Optuna trial object.
             suggested_params: Dict with parameters.
             estimated_n_trials: Maximum number of hyperparameter estimations.
 
@@ -241,7 +239,6 @@ class BoostLGBM(TabularMLAlgo, ImportanceEstimator):
             Tuple (model, predicted_values)
 
         """
-
         (
             params,
             num_trees,
@@ -282,7 +279,7 @@ class BoostLGBM(TabularMLAlgo, ImportanceEstimator):
             model: Lightgbm object.
             dataset: Test Dataset.
 
-        Return:
+        Returns:
             Predicted target values.
 
         """
@@ -297,7 +294,6 @@ class BoostLGBM(TabularMLAlgo, ImportanceEstimator):
             Series with feature importances.
 
         """
-
         imp = 0
         for model in self.models:
             imp = imp + model.feature_importance(importance_type="gain")

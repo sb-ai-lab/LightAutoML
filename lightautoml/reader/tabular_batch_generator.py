@@ -46,8 +46,8 @@ def get_batch_ids(arr, batch_size):
         arr: Sequense.
         batch_size: Batch size.
 
-    Returns:
-        Generator.
+    Yields:
+        Sequential batches.
 
     """
     n = 0
@@ -59,7 +59,7 @@ def get_batch_ids(arr, batch_size):
 def get_file_offsets(
     file: str, n_jobs: Optional[int] = None, batch_size: Optional[int] = None
 ) -> Tuple[List[int], List[int]]:
-    """
+    """Get file offsets.
 
     Args:
         file: File path.
@@ -97,7 +97,7 @@ def get_file_offsets(
 
 
 def _check_csv_params(**read_csv_params: dict):
-    """
+    """Validate parameters for func `read_csv`.
 
     Args:
         **read_csv_params: Read parameters.
@@ -180,9 +180,10 @@ def read_csv(file: str, n_jobs: int = 1, **read_csv_params) -> DataFrame:
 
 
 class Batch:
-    """
-    Class to wraps batch of data in different formats.
+    """Class to wraps batch of data in different formats.
+
     Default - batch of DataFrame.
+
     """
 
     @property
@@ -200,8 +201,14 @@ class Batch:
 
 
 class FileBatch(Batch):
-    """
-    Batch of csv file.
+    """Batch of csv file.
+
+    Args:
+        file: File path.
+        offset: File start.
+        cnt: Number of rows to read.
+        read_csv_params: Additional params to :func:`pandas.read_csv`.
+
     """
 
     @property
@@ -217,14 +224,6 @@ class FileBatch(Batch):
         return data_part
 
     def __init__(self, file, offset, cnt, read_csv_params):
-        """
-        Args:
-            file: File path.
-            offset: File start.
-            cnt: Number of rows to read.
-            read_csv_params: Additional params to :func:`pandas.read_csv`.
-
-        """
         self.file = file
         self.offset = offset
         self.cnt = cnt
@@ -232,18 +231,16 @@ class FileBatch(Batch):
 
 
 class BatchGenerator:
-    """
-    Abstract - generator of batches from data.
+    """Abstract - generator of batches from data.
+
+    Args:
+        batch_size: Batch size. Default is ``None``, split by `n_jobs`.
+        n_jobs: Number of processes to handle.
+
     """
 
     def __init__(self, batch_size, n_jobs):
-        """
 
-        Args:
-            n_jobs: Number of processes to handle.
-            batch_size: Batch size. Default is ``None``, split by `n_jobs`.
-
-        """
         if n_jobs == -1:
             n_jobs = os.cpu_count()
 
@@ -258,19 +255,16 @@ class BatchGenerator:
 
 
 class DfBatchGenerator(BatchGenerator):
-    """
-    Batch generator from :class:`~pandas.DataFrame`.
+    """Batch generator from :class:`~pandas.DataFrame`.
+
+    Args:
+        data: Data used for generator.
+        n_jobs: Number of processes to handle.
+        batch_size: Batch size. Default is ``None``, split by `n_jobs`.
+
     """
 
     def __init__(self, data: DataFrame, n_jobs: int = 1, batch_size: Optional[int] = None):
-        """
-
-        Args:
-            data: Data used for generator.
-            n_jobs: Number of processes to handle.
-            batch_size: Batch size. Default is ``None``, split by `n_jobs`.
-
-        """
         super().__init__(batch_size, n_jobs)
 
         self.data = data
@@ -293,8 +287,15 @@ class DfBatchGenerator(BatchGenerator):
 
 
 class FileBatchGenerator(BatchGenerator):
-    """
-    Generator of batches from file.
+    """Generator of batches from file.
+
+    Args:
+        file: File path.
+        n_jobs: Number of processes to handle.
+        batch_size: Batch size. Default is ``None``, split by `n_jobs`.
+        read_csv_params: Params of reading csv file.
+            Look for :func:`pandas.read_csv` params.
+
     """
 
     def __init__(
@@ -304,16 +305,6 @@ class FileBatchGenerator(BatchGenerator):
         batch_size: Optional[int] = None,
         read_csv_params: dict = None,
     ):
-        """
-
-        Args:
-            file: File path.
-            n_jobs: Number of processes to handle.
-            batch_size: Batch size. Default is ``None``, split by `n_jobs`.
-            read_csv_params: Params of reading csv file.
-              Look for :func:`pandas.read_csv` params.
-
-        """
         super().__init__(batch_size, n_jobs)
 
         self.file = file
@@ -332,22 +323,22 @@ class FileBatchGenerator(BatchGenerator):
 
 
 class SqlDataSource:
+    """Data wrapper for SQL connection.
+
+    Args:
+        connection_string: database url; for reference see
+            https://docs.sqlalchemy.org/en/13/core/engines.html#database-urls
+        query: SQL query to obtain data from
+        index: optional index column to be removed from the query result; can be None, str of List[str]
+
+    """
+
     def __init__(
         self,
         connection_string: str,
         query: str,
         index: Optional[Union[str, List[str]]] = None,
     ):
-        """
-
-        Data wrapper for SQL connection
-
-        Args:
-            connection_string: database url; for reference see
-            https://docs.sqlalchemy.org/en/13/core/engines.html#database-urls
-            query: SQL query to obtain data from
-            index: optional index column to be removed from the query result; can be None, str of List[str]
-        """
         self.engine = create_engine(connection_string)
         self.query = query
         self.index = index
@@ -355,8 +346,7 @@ class SqlDataSource:
 
     @property
     def data(self):
-        """
-        Get data associated with the query as :class:`~pandas.DataFrame`
+        """Get data associated with the query as :class:`~pandas.DataFrame`.
 
         Returns:
             :class:`~pandas.DataFrame`
@@ -367,8 +357,8 @@ class SqlDataSource:
         return self._data
 
     def get_batch_generator(self, n_jobs: int = 1, batch_size: int = None):
-        """
-        Access data with batch generator
+        """Access data with batch generator.
+
         Args:
             n_jobs: Number of processes to read file.
             batch_size: Number of entries in one batch.
@@ -461,7 +451,7 @@ def read_batch(
     batch_size: Optional[int] = None,
     read_csv_params: Optional[dict] = None,
 ) -> Iterable[BatchGenerator]:
-    """Read data for inference by batches for simple tabular data
+    """Read data for inference by batches for simple tabular data.
 
     Note:
         Supported now data formats:
@@ -477,6 +467,7 @@ def read_batch(
         data: Readable to DataFrame data.
         features_names: Optional features names if ``numpy.ndarray``.
         n_jobs: Number of processes to read file.
+        batch_size: Batch size.
         read_csv_params: Params to read csv file.
 
     Returns:

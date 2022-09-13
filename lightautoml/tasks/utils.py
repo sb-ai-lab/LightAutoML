@@ -33,8 +33,7 @@ def infer_gib_multiclass(metric: Callable) -> bool:
     """Infer greater is better from metric.
 
     Args:
-        metric: Metric function. It must take two
-          arguments y_true, y_pred.
+        metric: Metric function. It must take two arguments y_true, y_pred.
 
     Returns:
         ```True``` if grater is better.

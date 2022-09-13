@@ -15,15 +15,12 @@ import numpy as np
 from ..common_metric import _valid_str_multiclass_metric_names
 from ..utils import infer_gib
 from .base import Loss
+from .base import fw_rmsle
 from .lgb_custom import lgb_f1_loss_multiclass  # , F1Factory
 from .lgb_custom import softmax_ax1
 
 
 logger = logging.getLogger(__name__)
-
-
-def fw_rmsle(x, y):
-    return np.log1p(x), y
 
 
 _lgb_binary_metrics_dict = {
@@ -85,9 +82,7 @@ _lgb_force_metric = {
 
 
 class LGBFunc:
-    """
-    Wrapper of metric function for LightGBM.
-    """
+    """Wrapper of metric function for LightGBM."""
 
     def __init__(self, metric_func, greater_is_better, bw_func):
         self.metric_func = metric_func
@@ -95,7 +90,7 @@ class LGBFunc:
         self.bw_func = bw_func
 
     def __call__(self, pred: np.ndarray, dtrain: lgb.Dataset) -> Tuple[str, float, bool]:
-
+        """Calculate metric."""
         label = dtrain.get_label()
 
         weights = dtrain.get_weight()
@@ -119,7 +114,27 @@ class LGBFunc:
 
 
 class LGBLoss(Loss):
-    """Loss used for LightGBM."""
+    """Loss used for LightGBM.
+
+    Args:
+        loss: Objective to optimize.
+        loss_params: additional loss parameters.
+            Format like in :mod:`lightautoml.tasks.custom_metrics`.
+        fw_func: forward transformation.
+            Used for transformation of target and item weights.
+        bw_func: backward transformation.
+            Used for predict values transformation.
+
+    Note:
+        Loss can be one of the types:
+
+            - Str: one of default losses
+                ('auc', 'mse', 'mae', 'logloss', 'accuray', 'r2',
+                'rmsle', 'mape', 'quantile', 'huber', 'fair')
+                or another lightgbm objective.
+            - Callable: custom lightgbm style objective.
+
+    """
 
     def __init__(
         self,
@@ -128,27 +143,6 @@ class LGBLoss(Loss):
         fw_func: Optional[Callable] = None,
         bw_func: Optional[Callable] = None,
     ):
-        """
-
-        Args:
-            loss: Objective to optimize.
-            loss_params: additional loss parameters.
-              Format like in :mod:`lightautoml.tasks.custom_metrics`.
-            fw_func: forward transformation.
-              Used for transformation of target and item weights.
-            bw_func: backward transformation.
-              Used for predict values transformation.
-
-        Note:
-            Loss can be one of the types:
-
-                - Str: one of default losses
-                  ('auc', 'mse', 'mae', 'logloss', 'accuray', 'r2',
-                  'rmsle', 'mape', 'quantile', 'huber', 'fair')
-                  or another lightgbm objective.
-                - Callable: custom lightgbm style objective.
-
-        """
         if loss in _lgb_loss_mapping:
             fobj, fw_func, bw_func = _lgb_loss_mapping[loss]
             if type(fobj) is str:

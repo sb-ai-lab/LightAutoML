@@ -20,7 +20,22 @@ logger = logging.getLogger(__name__)
 
 
 class WeightedAverageTransformer(TransformerMixin):
-    """Weighted average of word embeddings."""
+    """Weighted average of word embeddings.
+
+    Calculate sentence embedding as weighted average of word embeddings.
+
+    Args:
+        embedding_model: word2vec, fasstext, etc.
+            Should have dict interface {<word>: <embedding>}.
+        embed_size: Size of embedding.
+        weight_type: 'idf' for idf weights, 'sif' for
+            smoothed inverse frequency weights, '1' for all weights are equal.
+        use_svd: Substract projection onto first singular vector.
+        alpha: Param for sif weights.
+        verbose: Add prints.
+        **kwargs: Unused arguments.
+
+    """
 
     name = "WAT"
 
@@ -34,20 +49,6 @@ class WeightedAverageTransformer(TransformerMixin):
         verbose: bool = False,
         **kwargs: Any,
     ):
-        """Calculate sentence embedding as weighted average of word embeddings.
-
-        Args:
-            embedding_model: word2vec, fasstext, etc.
-              Should have dict interface {<word>: <embedding>}.
-            embed_size: Size of embedding.
-            weight_type: 'idf' for idf weights, 'sif' for
-              smoothed inverse frequency weights, '1' for all weights are equal.
-            use_svd: Substract projection onto first singular vector.
-            alpha: Param for sif weights.
-            verbose: Add prints.
-            **kwargs: Unused arguments.
-
-        """
         super(WeightedAverageTransformer, self).__init__()
 
         if weight_type not in ["sif", "idf", "1"]:
@@ -84,16 +85,14 @@ class WeightedAverageTransformer(TransformerMixin):
 
     def reset_statistic(self):
         """Reset module statistics."""
-
         self.w_all = 0
         self.w_emb = 0
 
     def get_statistic(self):
         """Get module statistics."""
-
         logger.info3(f"N_words: {self.w_all}, N_emb: {self.w_emb}, coverage: {self.w_emb / self.w_all}.")
 
-    def get_embedding_(self, sentence: Sequence[str]) -> np.ndarray:
+    def get_embedding_(self, sentence: Sequence[str]) -> np.ndarray:  # noqa: D102
         result = np.zeros((self.embed_size,))
 
         for word in sentence:
@@ -107,7 +106,7 @@ class WeightedAverageTransformer(TransformerMixin):
 
         return result.reshape(1, -1)
 
-    def fit(self, sentences: Sequence[str]):
+    def fit(self, sentences: Sequence[str]):  # noqa: D102
         self.reset_statistic()
         dict_vec = DictVectorizer()
         occurances = dict_vec.fit_transform([dict(Counter(x)) for x in sentences])
@@ -135,7 +134,7 @@ class WeightedAverageTransformer(TransformerMixin):
 
         return self
 
-    def transform(self, sentences: Sequence[str]) -> np.ndarray:
+    def transform(self, sentences: Sequence[str]) -> np.ndarray:  # noqa: D102
         self.reset_statistic()
         sentence_embeddings = np.vstack([self.get_embedding_(x) for x in sentences])
 

@@ -16,9 +16,7 @@ INFO3 = 13
 
 
 def add_logging_level(levelName, levelNum, methodName=None):
-    """
-    Comprehensively adds a new logging level to the `logging` module and the
-    currently configured logging class.
+    """Comprehensively adds a new logging level to the `logging` module and the currently configured logging class.
 
     `levelName` becomes an attribute of the `logging` module with the value
     `levelNum`. `methodName` becomes a convenience method for both `logging`
@@ -30,7 +28,7 @@ def add_logging_level(levelName, levelNum, methodName=None):
     raise an `AttributeError` if the level name is already an attribute of the
     `logging` module or if the method name is already present
 
-    Example
+    Example:
     -------
     >>> addLoggingLevel('TRACE', logging.DEBUG - 5)
     >>> logging.getLogger(__name__).setLevel("TRACE")
@@ -38,6 +36,12 @@ def add_logging_level(levelName, levelNum, methodName=None):
     >>> logging.trace('so did this')
     >>> logging.TRACE
     5
+
+
+    Args:
+        levelName: Level name.
+        levelNum: Level number.
+        methodName: Method name.
 
     """
     assert (levelNum > 0) and (levelNum < 50)
@@ -91,17 +95,25 @@ class LoggerStream(io.IOBase):
             self.counter = 0
 
 
-def verbosity_to_loglevel(verbosity: int):
-    if verbosity <= 0:
-        log_level = logging.ERROR
-    elif verbosity == 1:
-        log_level = logging.INFO
-    elif verbosity == 2:
-        log_level = logging.INFO2
-    elif verbosity == 3:
-        log_level = logging.INFO3
+def verbosity_to_loglevel(verbosity: int, extended=True):
+    if extended:
+        if verbosity <= 0:
+            log_level = logging.ERROR
+        elif verbosity == 1:
+            log_level = logging.INFO
+        elif verbosity == 2:
+            log_level = logging.INFO2
+        elif verbosity == 3:
+            log_level = logging.INFO3
+        else:
+            log_level = logging.DEBUG
     else:
-        log_level = logging.DEBUG
+        if verbosity <= 0:
+            log_level = logging.ERROR
+        elif verbosity == 1:
+            log_level = logging.INFO
+        else:
+            log_level = logging.DEBUG
 
     return log_level
 

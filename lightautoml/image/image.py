@@ -187,7 +187,7 @@ class EffNetImageEmbedder(nn.Module):
             model_name: Name of effnet model.
             weights_path: Path to saved weights.
             is_advprop: Use adversarial training.
-            devices: Device to use.
+            device: Device to use.
 
         """
         super(EffNetImageEmbedder, self).__init__()
@@ -217,6 +217,7 @@ class EffNetImageEmbedder(nn.Module):
         return self.model(torch.randn(1, 3, 224, 224).to(self.device)).squeeze().shape[0]
 
     def forward(self, x) -> torch.Tensor:
+        """Forward pass."""
         out = self.model(x)
         return out[:, :, 0, 0]
 
@@ -299,6 +300,7 @@ class DeepImageEmbedder(TransformerMixin):
         self.model = EffNetImageEmbedder(model_name, weights_path, self.is_advprop, self.device)
 
     def fit(self, data: Any = None):
+        """Train model."""
         return self
 
     @torch.no_grad()
@@ -312,7 +314,6 @@ class DeepImageEmbedder(TransformerMixin):
             Array of embeddings.
 
         """
-
         data = ImageDataset(data, self.is_advprop)
         loader = DataLoader(data, batch_size=self.batch_size, shuffle=False, num_workers=self.n_jobs)
 

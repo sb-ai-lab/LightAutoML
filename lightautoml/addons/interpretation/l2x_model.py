@@ -272,6 +272,7 @@ class L2XModel(nn.Module):
         )
 
     def forward(self, x):
+        """Forward pass."""
         logits = self.ti_model(x)
         dsamples, csamples = self.sampler(logits)
         if self.training:
@@ -283,4 +284,5 @@ class L2XModel(nn.Module):
         return out, T
 
     def anneal(self):
+        """Temperature annealing."""
         self.sampler.T *= self.anneal_factor

@@ -44,6 +44,13 @@ class ImportanceCutoffSelector(SelectionPipeline):
     It is important that data which passed to ``.fit``
     should be ok to fit `ml_algo` or preprocessing pipeline should be defined.
 
+    Args:
+        feature_pipeline: Composition of feature transforms.
+        ml_algo: Tuple (MlAlgo, ParamsTuner).
+        imp_estimator: Feature importance estimator.
+        fit_on_holdout: If use the holdout iterator.
+        cutoff: Threshold to cut-off features.
+
     """
 
     def __init__(
@@ -54,16 +61,6 @@ class ImportanceCutoffSelector(SelectionPipeline):
         fit_on_holdout: bool = True,
         cutoff: float = 0.0,
     ):
-        """
-
-        Args:
-            feature_pipeline: Composition of feature transforms.
-            ml_algo: Tuple (MlAlgo, ParamsTuner).
-            imp_estimator: Feature importance estimator.
-            fit_on_holdout: If use the holdout iterator.
-            cutoff: Threshold to cut-off features.
-
-        """
         super().__init__(feature_pipeline, ml_algo, imp_estimator, fit_on_holdout)
         self.cutoff = cutoff
 

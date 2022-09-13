@@ -1,12 +1,14 @@
 """Neural Net modules for differen data types."""
 
 
+from typing import Any
 from typing import Callable
 from typing import Dict
 from typing import Optional
 from typing import Sequence
 
 import numpy as np
+from pyrsistent import v
 import torch
 import torch.nn as nn
 
@@ -18,35 +20,34 @@ except:
 
     warnings.warn("'transformers' - package isn't installed")
 
+from lightautoml.tasks.losses.torch import TorchLossWrapper
+
 from ..tasks.base import Task
 from .dl_transformers import pooling_by_name
 
-from lightautoml.tasks.losses.torch import TorchLossWrapper
-
 
 class UniversalDataset:
-    """Dataset class for mixed data."""
+    """Dataset class for mixed data.
+
+    Args:
+        data: Dict with data.
+        y: Array of target variable.
+        w: Optional array of observation weight.
+        tokenizer: Transformers tokenizer.
+        max_length: Max sentence length.
+        stage: Name of current training / inference stage.
+
+    """
 
     def __init__(
         self,
         data: Dict[str, np.ndarray],
         y: np.ndarray,
         w: Optional[np.ndarray] = None,
-        tokenizer: Optional = None,
+        tokenizer: Optional[Any] = None,
         max_length: int = 256,
         stage: str = "test",
     ):
-        """Class for preparing input for DL model with mixed data.
-
-        Args:
-            data: Dict with data.
-            y: Array of target variable.
-            w: Optional array of observation weight.
-            tokenizer: Transformers tokenizer.
-            max_length: Max sentence length.
-            stage: Name of current training / inference stage.
-
-        """
         self.data = data
         self.y = y
         self.w = w
@@ -59,13 +60,19 @@ class UniversalDataset:
 
     def __getitem__(self, index: int) -> Dict[str, np.ndarray]:
         res = {"label": self.y[index]}
-        res.update({key: value[index] for key, value in self.data.items() if key != "text"})
+        res.update(
+            {key: value[index] for key, value in self.data.items() if key != "text"}
+        )
         if (self.tokenizer is not None) and ("text" in self.data):
             sent = self.data["text"][index, 0]  # only one column
             _split = sent.split("[SEP]")
             sent = _split if len(_split) == 2 else (sent,)
             data = self.tokenizer.encode_plus(
-                *sent, add_special_tokens=True, max_length=self.max_length, padding="max_length", truncation=True
+                *sent,
+                add_special_tokens=True,
+                max_length=self.max_length,
+                padding="max_length",
+                truncation=True,
             )
 
             res.update({i: np.array(data[i]) for i in data.keys()})
@@ -76,55 +83,60 @@ class UniversalDataset:
 
 
 class Clump(nn.Module):
-    """Clipping input tensor."""
+    """Clipping input tensor.
+
+    Args:
+        min_v: Min value.
+        max_v: Max value.
+
+    """
 
     def __init__(self, min_v: int = -50, max_v: int = 50):
-        """Class for preparing input for DL model with mixed data.
-
-        Args:
-            min_v: Min value.
-            max_v: Max value.
-
-        """
         super(Clump, self).__init__()
 
         self.min_v = min_v
         self.max_v = max_v
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward-pass."""
         x = torch.clamp(x, self.min_v, self.max_v)
         return x
 
 
 class TextBert(nn.Module):
-    """Text data model."""
+    """Text data model.
+
+    Class for working with text data based on HuggingFace transformers.
+
+    Args:
+        model_name: Transformers model name.
+        pooling: Pooling type.
+
+    Note:
+        There are different pooling types:
+
+            - cls: Use CLS token for sentence embedding
+                from last hidden state.
+            - max: Maximum on seq_len dimension for non masked
+                inputs from last hidden state.
+            - mean: Mean on seq_len dimension for non masked
+                inputs from last hidden state.
+            - sum: Sum on seq_len dimension for non masked
+                inputs from last hidden state.
+            - none: Without pooling for seq2seq models.
+
+    """
 
     _poolers = {"cls", "max", "mean", "sum", "none"}
 
     def __init__(self, model_name: str = "bert-base-uncased", pooling: str = "cls"):
-        """Class for working with text data based on HuggingFace transformers.
-
-        Args:
-            model_name: Transformers model name.
-            pooling: Pooling type.
-
-        Note:
-            There are different pooling types:
-
-                - cls: Use CLS token for sentence embedding
-                  from last hidden state.
-                - max: Maximum on seq_len dimension for non masked
-                  inputs from last hidden state.
-                - mean: Mean on seq_len dimension for non masked
-                  inputs from last hidden state.
-                - sum: Sum on seq_len dimension for non masked
-                  inputs from last hidden state.
-                - none: Without pooling for seq2seq models.
-
-        """
         super(TextBert, self).__init__()
         if pooling not in self._poolers:
-            raise ValueError("pooling - {} - not in the list of available types {}".format(pooling, self._poolers))
+            raise ValueError(
+                "pooling - {} - not in the list of available types {}".format(
+                    pooling, self._poolers
+                )
+            )
 
         self.transformer = AutoModel.from_pretrained(model_name)
         self.n_out = self.transformer.config.hidden_size
@@ -142,6 +154,7 @@ class TextBert(nn.Module):
         return self.n_out
 
     def forward(self, inp: Dict[str, torch.Tensor]) -> torch.Tensor:
+        """Forward-pass."""
         # last hidden layer
         encoded_layers, _ = self.transformer(
             input_ids=inp["input_ids"],
@@ -151,14 +164,25 @@ class TextBert(nn.Module):
         )
 
         # pool the outputs into a vector
-        encoded_layers = self.pooling(encoded_layers, inp["attention_mask"].unsqueeze(-1).bool())
+        encoded_layers = self.pooling(
+            encoded_layers, inp["attention_mask"].unsqueeze(-1).bool()
+        )
         mean_last_hidden_state = self.activation(encoded_layers)
         mean_last_hidden_state = self.dropout(mean_last_hidden_state)
         return mean_last_hidden_state
 
 
 class CatEmbedder(nn.Module):
-    """Category data model."""
+    """Category data model.
+
+    Args:
+        cat_dims: Sequence with number of unique categories
+            for category features.
+        emb_dropout: Dropout probability.
+        emb_ratio: Ratio for embedding size = (x + 1) // emb_ratio.
+        max_emb_size: Max embedding size.
+
+    """
 
     def __init__(
         self,
@@ -166,18 +190,8 @@ class CatEmbedder(nn.Module):
         emb_dropout: bool = 0.1,
         emb_ratio: int = 3,
         max_emb_size: int = 50,
-        device=torch.device("cuda:0")
+        device=torch.device("cuda:0"),
     ):
-        """Class for working with category data using embedding layer.
-
-        Args:
-            cat_dims: Sequence with number of unique categories
-              for category features.
-            emb_dropout: Dropout probability.
-            emb_ratio: Ratio for embedding size = (x + 1) // emb_ratio.
-            max_emb_size: Max embedding size.
-
-        """
         super(CatEmbedder, self).__init__()
 
         emb_dims = [
@@ -201,8 +215,12 @@ class CatEmbedder(nn.Module):
         return self.no_of_embs
 
     def forward(self, inp: Dict[str, torch.Tensor]) -> torch.Tensor:
+        """Forward-pass."""
         output = torch.cat(
-            [emb_layer(inp["cat"][:, i]) for i, emb_layer in enumerate(self.emb_layers)],
+            [
+                emb_layer(inp["cat"][:, i])
+                for i, emb_layer in enumerate(self.emb_layers)
+            ],
             dim=1,
         )
         output = self.emb_dropout_layer(output)
@@ -210,16 +228,17 @@ class CatEmbedder(nn.Module):
 
 
 class ContEmbedder(nn.Module):
-    """Numeric data model."""
+    """Numeric data model.
+
+    Class for working with numeric data.
+
+    Args:
+        num_dims: Sequence with number of numeric features.
+        input_bn: Use 1d batch norm for input data.
+
+    """
 
     def __init__(self, num_dims: int, input_bn: bool = True):
-        """Class for working with numeric data.
-
-        Args:
-            num_dims: Sequence with number of numeric features.
-            input_bn: Use 1d batch norm for input data.
-
-        """
         super(ContEmbedder, self).__init__()
         self.n_out = num_dims
         self.bn = None
@@ -237,6 +256,7 @@ class ContEmbedder(nn.Module):
         return self.n_out
 
     def forward(self, inp: Dict[str, torch.Tensor]) -> torch.Tensor:
+        """Forward-pass."""
         output = inp["cont"]
         if self.bn is not None:
             output = self.bn(output)
@@ -252,36 +272,21 @@ class TorchUniversalModel(nn.Module):
         loss: Callable,
         task: Task,
         n_out: int = 1,
-        cont_embedder: Optional = None,
+        cont_embedder: Optional[Any] = None,
         cont_params: Optional[Dict] = None,
-        cat_embedder: Optional = None,
+        cat_embedder: Optional[Any] = None,
         cat_params: Optional[Dict] = None,
-        text_embedder: Optional = None,
+        text_embedder: Optional[Any] = None,
         text_params: Optional[Dict] = None,
-        custom_loss=False,
+        loss_on_logits=True,
         **kwargs,
     ):
-        """Class for preparing input for DL model with mixed data.
-
-        Args:
-            loss: Callable torch loss with order of arguments (y_true, y_pred).
-            task: Task object.
-            n_out: Number of output dimensions.
-            cont_embedder: Torch module for numeric data.
-            cont_params: Dict with numeric model params.
-            cat_embedder: Torch module for category data.
-            cat_params: Dict with category model params.
-            text_embedder: Torch module for text data.
-            text_params: Dict with text model params.
-            bias: Array with last hidden linear layer bias.
-
-        """
         super(TorchUniversalModel, self).__init__()
         self.n_out = n_out
         self.loss = loss
         self.task = task
-        self.custom_loss = custom_loss
-
+        self.loss_on_logits = loss_on_logits
+        
         self.cont_embedder = None
         self.cat_embedder = None
         self.text_embedder = None
@@ -297,17 +302,20 @@ class TorchUniversalModel(nn.Module):
             self.text_embedder = text_embedder(**text_params)
             n_in += self.text_embedder.get_out_shape()
 
-        self.torch_model = torch_model(**{**kwargs,
-                                          **{'n_in': n_in, 'n_out': self.n_out,
-                                             'loss': loss, 'task': task}})
+        self.torch_model = torch_model(
+            **{
+                **kwargs,
+                **{"n_in": n_in, "n_out": self.n_out, "loss": loss, "task": task},
+            }
+        )
 
         self.сlump = Clump()
         self.sig = nn.Sigmoid()
         self.softmax = nn.Softmax(dim=1)
-        
+
         self.is_wrapper_loss = True if isinstance(loss, TorchLossWrapper) else False
-
-    def forward(self, inp: Dict[str, torch.Tensor]) -> torch.Tensor:
+    
+    def get_logits(self, inp: Dict[str, torch.Tensor]) -> torch.Tensor:
         outputs = []
         if self.cont_embedder is not None:
             outputs.append(self.cont_embedder(inp))
@@ -322,44 +330,32 @@ class TorchUniversalModel(nn.Module):
             output = torch.cat(outputs, dim=1)
         else:
             output = outputs[0]
-
-        x = self.torch_model(output)
         
-        if self.is_wrapper_loss or not self.custom_loss:
-            loss = self.loss(
-                inp["label"].view(inp["label"].shape[0], -1), x, inp.get("weight", None)
-            )
-        else:
-            loss = self.loss(
-                x, inp["label"].view(inp["label"].shape[0], -1)
-            )
-           
-        return loss
-
-    def predict(self, inp: Dict[str, torch.Tensor]) -> torch.Tensor:
-        outputs = []
-        if self.cont_embedder is not None:
-            outputs.append(self.cont_embedder(inp))
-
-        if self.cat_embedder is not None:
-            outputs.append(self.cat_embedder(inp))
-
-        if self.text_embedder is not None:
-            outputs.append(self.text_embedder(inp))
-
-        if len(outputs) > 1:
-            output = torch.cat(outputs, dim=1)
-        else:
-            output = outputs[0]
-
         logits = self.torch_model(output)
-
-        if (self.task.name == "binary") or (self.task.name == "multilabel"):
+        return logits
+    
+    def get_preds_from_logits(self, logits : torch.Tensor):
+        if self.task.name in ["binary", "multilabel"]:
             out = self.sig(self.сlump(logits))
         elif self.task.name == "multiclass":
-            # cant find self.clump when predicting 
+            # cant find self.clump when predicting
             out = self.softmax(torch.clamp(logits, -50, 50))
         else:
             out = logits
         
         return out
+
+    def forward(self, inp: Dict[str, torch.Tensor]) -> torch.Tensor:
+        x = self.get_logits(inp)
+        if not self.loss_on_logits:
+            x = self.get_preds_from_logits(x)
+
+        loss = self.loss(
+            inp["label"].view(inp["label"].shape[0], -1), x, inp.get("weight", None)
+        )
+        return loss
+
+    def predict(self, inp: Dict[str, torch.Tensor]) -> torch.Tensor:
+        x = self.get_logits(inp)
+        x = self.get_preds_from_logits(x)
+        return x

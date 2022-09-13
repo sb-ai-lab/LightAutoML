@@ -38,6 +38,7 @@ class TorchLossWrapper(nn.Module):
         y_pred: torch.Tensor,
         sample_weight: Optional[torch.Tensor] = None,
     ):
+        """Forward-pass."""
         if self.flatten:
             y_true = y_true[:, 0].type(torch.int64)
 
@@ -266,16 +267,15 @@ _torch_loss_dict = {
 
 
 class TORCHLoss(Loss):
-    """Loss used for PyTorch."""
+    """Loss used for PyTorch.
+
+    Args:
+        loss: name or callable objective function.
+        loss_params: additional loss parameters.
+
+    """
 
     def __init__(self, loss: Union[str, Callable], loss_params: Optional[Dict] = None):
-        """
-
-        Args:
-            loss: name or callable objective function.
-            loss_params: additional loss parameters.
-
-        """
         self.loss_params = {}
         if loss_params is not None:
             self.loss_params = loss_params

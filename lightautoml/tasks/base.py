@@ -13,13 +13,12 @@ from typing import Union
 
 import numpy as np
 
-from lightautoml.tasks.losses import CBLoss
-from lightautoml.tasks.losses import LGBLoss
-from lightautoml.tasks.losses import SKLoss
-from lightautoml.tasks.losses import TORCHLoss
-
 from .common_metric import _valid_metric_args
 from .common_metric import _valid_str_metric_names
+from .losses import CBLoss
+from .losses import LGBLoss
+from .losses import SKLoss
+from .losses import TORCHLoss
 from .utils import infer_gib
 from .utils import infer_gib_multiclass
 
@@ -33,12 +32,24 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_valid_task_names = ["binary", "reg", "multiclass"]
+_valid_task_names = ["binary", "reg", "multiclass", "multi:reg", "multilabel"]
 _one_dim_output_tasks = ["binary", "reg"]
 
-_default_losses = {"binary": "logloss", "reg": "mse", "multiclass": "crossentropy"}
+_default_losses = {
+    "binary": "logloss",
+    "reg": "mse",
+    "multiclass": "crossentropy",
+    "multi:reg": "mae",
+    "multilabel": "logloss",
+}
 
-_default_metrics = {"binary": "auc", "reg": "mse", "multiclass": "crossentropy"}
+_default_metrics = {
+    "binary": "auc",
+    "reg": "mse",
+    "multiclass": "crossentropy",
+    "multi:reg": "mae",
+    "multilabel": "logloss",
+}
 
 _valid_loss_types = ["lgb", "sklearn", "torch", "cb"]
 
@@ -46,6 +57,8 @@ _valid_str_loss_names = {
     "binary": ["logloss"],
     "reg": ["mse", "mae", "mape", "rmsle", "quantile", "huber", "fair"],
     "multiclass": ["crossentropy", "f1"],
+    "multi:reg": ["mae", "mse"],
+    "multilabel": ["logloss"],
 }
 
 
@@ -53,9 +66,10 @@ _valid_loss_args = {"quantile": ["q"], "huber": ["a"], "fair": ["c"]}
 
 
 class LAMLMetric:
-    """
-    Abstract class for metric.
+    """Abstract class for metric.
+
     Metric should be called on dataset.
+
     """
 
     greater_is_better = True
@@ -67,7 +81,7 @@ class LAMLMetric:
             dataset: Table with data.
             dropna: To ignore NaN in metric calculation.
 
-        Returns:
+        Returns:  # noqa DAR202
             Metric value.
 
         Raises:
@@ -79,16 +93,15 @@ class LAMLMetric:
 
 
 class ArgsWrapper:
-    """Wrapper - ignore sample_weight if metric not accepts."""
+    """Wrapper - ignore sample_weight if metric not accepts.
+
+    Args:
+        func: Metric function.
+        metric_params: Additional metric parameters.
+
+    """
 
     def __init__(self, func: Callable, metric_params: dict):
-        """
-
-        Args:
-            func: Metric function.
-            metric_params: Additional metric parameters.
-
-        """
         keys = inspect.signature(func).parameters
         self.flg = "sample_weight" in keys
         self.func = partial(func, **metric_params)
@@ -103,6 +116,9 @@ class ArgsWrapper:
             y_pred: Estimated target values.
             sample_weight: Sample weights.
 
+        Returns:
+            Metric value.
+
         """
         if self.flg:
             return self.func(y_true, y_pred, sample_weight=sample_weight)
@@ -114,6 +130,16 @@ class SkMetric(LAMLMetric):
     """Abstract class for scikit-learn compatible metric.
 
     Implements metric calculation in sklearn format on numpy/pandas datasets.
+
+
+    Args:
+        metric: Specifies metric. Format:
+            ``func(y_true, y_false, Optional[sample_weight], **kwargs)`` -> `float`.
+        name: Name of metric.
+        greater_is_better: Whether or not higher metric value is better.
+        one_dim: `True` for single class, False for multiclass.
+        weighted: Weights of classes.
+        **kwargs: Other parameters for metric.
 
     """
 
@@ -137,20 +163,8 @@ class SkMetric(LAMLMetric):
         name: Optional[str] = None,
         greater_is_better: bool = True,
         one_dim: bool = True,
-        **kwargs: Any
+        **kwargs: Any,
     ):
-        """
-
-        Args:
-            metric: Specifies metric. Format:
-                ``func(y_true, y_false, Optional[sample_weight], **kwargs)`` -> `float`.
-            name: Name of metric.
-            greater_is_better: Whether or not higher metric value is better.
-            one_dim: `True` for single class, False for multiclass.
-            weighted: Weights of classes.
-            **kwargs: Other parameters for metric.
-
-        """
         self._metric = metric
         self._name = name
 
@@ -200,13 +214,86 @@ class SkMetric(LAMLMetric):
 
 
 class Task:
-    """
-    Specify task (binary classification, multiclass classification, regression), metrics, losses.
+    """Specify task (binary classification, multiclass classification, regression), metrics, losses.
+
+    Args:
+        name: Task name.
+        loss: Objective function or dict of functions.
+        loss_params: Additional loss parameters,
+            if dict there is no presence check for loss_params.
+        metric: String name or callable.
+        metric_params: Additional metric parameters.
+        greater_is_better: Whether or not higher value is better.
+
+    Note:
+        There is 3 different task types:
+
+            - `'binary'` - for binary classification.
+            - `'reg'` - for regression.
+            - `'multiclass'` - for multiclass classification.
+
+        Avaliable losses for binary task:
+
+            - `'logloss'` - (uses by default) Standard logistic loss.
+
+        Avaliable losses for regression task:
+
+            - `'mse'` - (uses by default) Mean Squared Error.
+            - `'mae'` - Mean Absolute Error.
+            - `'mape'` - Mean Absolute Percentage Error.
+            - `'rmsle'` - Root Mean Squared Log Error.
+            - `'huber'` - Huber loss, reqired params:
+                ``a`` - threshold between MAE and MSE losses.
+            - `'fair'` - Fair loss, required params:
+                ``c`` - sets smoothness.
+            - `'quantile'` - Quantile loss, required params:
+                ``q`` - sets quantile.
+
+        Avaliable losses for multi-classification task:
+
+            - `'crossentropy'` - (uses by default) Standard crossentropy function.
+            - `'f1'` - Optimizes F1-Macro Score, now avaliable for
+                LightGBM and NN models. Here we implicitly assume
+                that the prediction lies not in the set ``{0, 1}``,
+                but in the interval ``[0, 1]``.
+
+        Available metrics for binary task:
+
+            - `'auc'` - (uses by default) ROC-AUC score.
+            - `'accuracy'` - Accuracy score (uses argmax prediction).
+            - `'logloss'` - Standard logistic loss.
+
+        Avaliable metrics for regression task:
+
+            - `'mse'` - (uses by default) Mean Squared Error.
+            - `'mae'` - Mean Absolute Error.
+            - `'mape'` - Mean Absolute Percentage Error.
+            - `'rmsle'` - Root Mean Squared Log Error.
+            - `'huber'` - Huber loss, reqired params:
+                ``a`` - threshold between MAE and MSE losses.
+            - `'fair'` - Fair loss, required params:
+                ``c`` - sets smoothness.
+            - `'quantile'` - Quantile loss, required params:
+                ``q`` - sets quantile.
+
+        Avaliable metrics for multi-classification task:
+
+            - `'crossentropy'` - (uses by default) Standard cross-entropy loss.
+            - `'auc'` - ROC-AUC of each class against the rest.
+            - `'auc_mu'` - AUC-Mu. Multi-class extension of standard AUC
+                for binary classification. In short,
+                mean of n_classes * (n_classes - 1) / 2 binary AUCs.
+                More info on http://proceedings.mlr.press/v97/kleiman19a/kleiman19a.pdf
+
+
+    Example:
+        >>> task = Task('binary', metric='auc')
+
     """
 
     @property
     def name(self) -> str:
-        """ Name of task."""
+        """Name of task."""
         return self._name
 
     def __init__(
@@ -218,83 +305,6 @@ class Task:
         metric_params: Optional[Dict] = None,
         greater_is_better: Optional[bool] = None,
     ):
-        """
-
-        Args:
-            name: Task name.
-            loss: Objective function or dict of functions.
-            loss_params: Additional loss parameters,
-                if dict there is no presence check for loss_params.
-            metric: String name or callable.
-            metric_params: Additional metric parameters.
-            greater_is_better: Whether or not higher value is better.
-
-        Note:
-            There is 3 different task types:
-
-                - `'binary'` - for binary classification.
-                - `'reg'` - for regression.
-                - `'multiclass'` - for multiclass classification.
-
-            Avaliable losses for binary task:
-
-                - `'logloss'` - (uses by default) Standard logistic loss.
-
-            Avaliable losses for regression task:
-
-                - `'mse'` - (uses by default) Mean Squared Error.
-                - `'mae'` - Mean Absolute Error.
-                - `'mape'` - Mean Absolute Percentage Error.
-                - `'rmsle'` - Root Mean Squared Log Error.
-                - `'huber'` - Huber loss, reqired params:
-                  ``a`` - threshold between MAE and MSE losses.
-                - `'fair'` - Fair loss, required params:
-                  ``c`` - sets smoothness.
-                - `'quantile'` - Quantile loss, required params:
-                  ``q`` - sets quantile.
-
-            Avaliable losses for multi-classification task:
-
-                - `'crossentropy'` - (uses by default) Standard crossentropy function.
-                - `'f1'` - Optimizes F1-Macro Score, now avaliable for
-                  LightGBM and NN models. Here we implicitly assume
-                  that the prediction lies not in the set ``{0, 1}``,
-                  but in the interval ``[0, 1]``.
-
-            Available metrics for binary task:
-
-                - `'auc'` - (uses by default) ROC-AUC score.
-                - `'accuracy'` - Accuracy score (uses argmax prediction).
-                - `'logloss'` - Standard logistic loss.
-
-            Avaliable metrics for regression task:
-
-                - `'mse'` - (uses by default) Mean Squared Error.
-                - `'mae'` - Mean Absolute Error.
-                - `'mape'` - Mean Absolute Percentage Error.
-                - `'rmsle'` - Root Mean Squared Log Error.
-                - `'huber'` - Huber loss, reqired params:
-                  ``a`` - threshold between MAE and MSE losses.
-                - `'fair'` - Fair loss, required params:
-                  ``c`` - sets smoothness.
-                - `'quantile'` - Quantile loss, required params:
-                  ``q`` - sets quantile.
-
-            Avaliable metrics for multi-classification task:
-
-                - `'crossentropy'` - (uses by default) Standard cross-entropy loss.
-                - `'auc'` - ROC-AUC of each class against the rest.
-                - `'auc_mu'` - AUC-Mu. Multi-class extension of standard AUC
-                  for binary classification. In short,
-                  mean of n_classes * (n_classes - 1) / 2 binary AUCs.
-                  More info on http://proceedings.mlr.press/v97/kleiman19a/kleiman19a.pdf
-
-
-        Example:
-
-            >>> task = Task('binary', metric='auc')
-
-        """
 
         assert name in _valid_task_names, "Invalid task name: {}, allowed task names: {}".format(
             name, _valid_task_names
@@ -377,13 +387,16 @@ class Task:
             self.metric_name = None
 
         if greater_is_better is None:
-            infer_gib_fn = infer_gib_multiclass if name == "multiclass" else infer_gib
+            infer_gib_fn = infer_gib_multiclass if (name == "multiclass" or name == "multilabel") else infer_gib
             greater_is_better = infer_gib_fn(self.metric_func)
 
         self.greater_is_better = greater_is_better
 
         for loss_key in self.losses:
-            self.losses[loss_key].set_callback_metric(metric, greater_is_better, self.metric_params, self.name)
+            try:
+                self.losses[loss_key].set_callback_metric(metric, greater_is_better, self.metric_params, self.name)
+            except:
+                print(f"{self.name} isn`t supported in {loss_key}")
 
     def get_dataset_metric(self) -> LAMLMetric:
         """Create metric for dataset.

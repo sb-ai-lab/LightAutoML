@@ -1,3 +1,3 @@
 """Extensions of core functionality."""
 
-__all__ = ["interpretation", "uplift", "utilization"]
+__all__ = ["utilization", "uplift", "interpretation", "autots"]

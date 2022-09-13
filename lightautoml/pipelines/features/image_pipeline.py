@@ -20,15 +20,14 @@ from .base import FeaturesPipeline
 
 
 class ImageDataFeatures:
-    """Class contains basic features transformations for image data."""
+    """Class contains basic features transformations for image data.
+
+    Args:
+        **kwargs: Default parameters.
+
+    """
 
     def __init__(self, **kwargs: Any):
-        """Set default parameters for image pipeline constructor.
-
-        Args:
-            **kwargs: Default parameters.
-
-        """
         self.hist_size = 30
         self.is_hsv = True
         self.n_jobs = 4
@@ -53,6 +52,15 @@ class ImageSimpleFeatures(FeaturesPipeline, ImageDataFeatures):
     """Class contains simple color histogram features for image data."""
 
     def create_pipeline(self, train: LAMLDataset) -> LAMLTransformer:
+        """Create pipeline for images data.
+
+        Args:
+            train: Dataset with train features.
+
+        Returns:
+            Transformer.
+
+        """
         transformers_list = []
 
         # process texts
@@ -76,6 +84,15 @@ class ImageAutoFeatures(FeaturesPipeline, ImageDataFeatures):
     """Class contains efficient-net embeddings features for image data."""
 
     def create_pipeline(self, train: LAMLDataset) -> LAMLTransformer:
+        """Create pipeline for images data.
+
+        Args:
+            train: Dataset with train features.
+
+        Returns:
+            Transformer.
+
+        """
         transformers_list = []
         # process texts
         imgs = get_columns_by_role(train, "Path")

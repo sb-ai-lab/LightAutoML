@@ -44,14 +44,13 @@ def map_pipeline_names(input_names: Sequence[str], output_names: Sequence[str]) 
 
 
 def get_columns_by_role(dataset: LAMLDataset, role_name: str, **kwargs: Any) -> List[str]:
-    """
-    Search for columns with specific role and attributes when building pipeline.
+    """Search for columns with specific role and attributes when building pipeline.
 
     Args:
         dataset: Dataset to search.
         role_name: Name of features role.
         **kwargs: Specific parameters values to search.
-          Example: search for categories with OHE processing only.
+            Example: search for categories with OHE processing only.
 
     Returns:
         List of str features names.

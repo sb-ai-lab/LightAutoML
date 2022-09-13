@@ -8,29 +8,34 @@ from typing import Optional
 from typing import Tuple
 from typing import Union
 
+import numpy as np
+
 from ..common_metric import _valid_str_metric_names
 from ..utils import infer_gib
 
 
+def fw_rmsle(x, y):
+    """Function wrapper for rmsle."""
+    return np.log1p(x), y
+
+
 class MetricFunc:
-    """
-    Wrapper for metric.
+    """Wrapper for metric.
+
+    Args:
+        metric_func: Callable metric function.
+        m: Multiplier for metric value.
+        bw_func: Backward function.
+
     """
 
     def __init__(self, metric_func, m, bw_func):
-        """
-
-        Args:
-            metric_func: Callable metric function.
-            m: Multiplier for metric value.
-            bw_func: Backward function.
-
-        """
         self.metric_func = metric_func
         self.m = m
         self.bw_func = bw_func
 
     def __call__(self, y_true, y_pred, sample_weight=None) -> float:
+        """Calculate metric."""
         y_pred = self.bw_func(y_pred)
 
         try:
@@ -141,11 +146,12 @@ class Loss:
             - `'multiclass'`
 
         """
-
         assert task_name in [
             "binary",
             "reg",
+            "multi:reg",
             "multiclass",
+            "multilabel",
         ], "Incorrect task name: {}".format(task_name)
         self.metric = metric
 

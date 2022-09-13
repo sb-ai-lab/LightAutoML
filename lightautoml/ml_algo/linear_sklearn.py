@@ -31,7 +31,6 @@ LinearEstimator = Union[LogisticRegression, ElasticNet, Lasso]
 class LinearLBFGS(TabularMLAlgo):
     """LBFGS L2 regression based on torch.
 
-
     default_params:
 
         - cs: List of regularization coefficients.
@@ -84,16 +83,18 @@ class LinearLBFGS(TabularMLAlgo):
         params = copy(self.params)
         params["loss"] = self.task.losses["torch"].loss
         params["metric"] = self.task.losses["torch"].metric_func
-        if self.task.name in ["binary", "multiclass"]:
+        if self.task.name in ["binary", "multiclass", "multilabel"]:
             model = TorchBasedLogisticRegression(output_size=self.n_classes, **params)
         elif self.task.name == "reg":
             model = TorchBasedLinearRegression(output_size=1, **params)
+        elif self.task.name == "multi:reg":
+            model = TorchBasedLinearRegression(output_size=self.n_classes, **params)
         else:
             raise ValueError("Task not supported")
 
         return model
 
-    def init_params_on_input(self, train_valid_iterator: TrainValidIterator) -> dict:
+    def init_params_on_input(self, train_valid_iterator: TrainValidIterator) -> dict:  # noqa: D102
 
         suggested_params = copy(self.default_params)
         train = train_valid_iterator.train
@@ -211,7 +212,6 @@ class LinearL1CD(TabularMLAlgo):
             Parameters of model.
 
         """
-
         suggested_params = copy(self.default_params)
         task = train_valid_iterator.train.task
 
@@ -231,7 +231,7 @@ class LinearL1CD(TabularMLAlgo):
         elif self.task.name == "reg":
             pred = model.predict(data)
 
-        elif self.task.name == "multiclass":
+        elif (self.task.name == "multiclass") or (self.task.name == "multilabel"):
             pred = model.predict_proba(data)
 
         else:

@@ -1,3 +1,5 @@
+"""Interpretation utils."""
+
 import itertools
 
 from collections import defaultdict
@@ -33,6 +35,7 @@ class WrappedVocabulary:
         self.unk_token = word_to_id[unk_token]
 
     def __call__(self, x: str) -> int:
+        """Map word to token-id."""
         return self.word_to_id.get(x, self.unk_token)
 
     def __getitem__(self, val: str) -> int:
@@ -53,7 +56,7 @@ class WrappedTokenizer:
     def __init__(self, tokenizer: "lightautoml.text.tokenizer.BaseTokenizer"):  # noqa F821
         self._tokenizer = tokenizer
 
-    def __call__(self, x: str) -> List[str]:
+    def __call__(self, x: str) -> List[str]:  # noqa D102
         return self._tokenizer.tokenize_sentence(self._tokenizer._tokenize(x))
 
 
@@ -115,7 +118,7 @@ def untokenize(
     return untokenized
 
 
-def find_positions(arr: List[str], mask: List[bool]) -> List[int]:
+def find_positions(tokens: List[str], mask: List[bool]) -> List[int]:
     """Set positions and tokens.
 
     Args:
@@ -127,7 +130,7 @@ def find_positions(arr: List[str], mask: List[bool]) -> List[int]:
 
     """
     pos = []
-    for i, (token, istoken) in enumerate(zip(arr, mask)):
+    for i, (token, istoken) in enumerate(zip(tokens, mask)):
         if istoken:
             pos.append(i)
 
@@ -135,17 +138,17 @@ def find_positions(arr: List[str], mask: List[bool]) -> List[int]:
 
 
 class IndexedString:
-    """Indexed string."""
+    """Indexed string.
+
+    Args:
+        raw_string: Raw string.
+        tokenizer: Tokenizer class.
+        force_order: Save order, or use features as
+            bag-of-words.
+
+    """
 
     def __init__(self, raw_string: str, tokenizer: Any, force_order: bool = True):
-        """
-        Args:
-            raw_string: Raw string.
-            tokenizer: Tokenizer class.
-            force_order: Save order, or use features as
-                bag-of-words.
-
-        """
         self.raw = raw_string
         self.tokenizer = tokenizer
         self.force_order = force_order
@@ -199,7 +202,6 @@ class IndexedString:
             String without removed tokens.
 
         """
-
         # todo: this type of mapping will be not use order,
         # in case when we have not unique tokens.
         assert (not self.force_order) or (self.force_order and not by_tokens)
@@ -240,10 +242,15 @@ def draw_html(
 
     Args:
         tokens_and_weights: List of tokens.
+        task_name: Task name.
         cmap: ```matplotlib.colors.Colormap``` or single color string like (#FFFFFF).
             By default blue-white-red linear gradient is used.
-        positive_label: Positive label text.
-        negatvie_label: Negative label text.
+        grad_line: Grad line.
+        grad_positive_label: Positive label text.
+        grad_negative_label: Negative label text.
+        prediction: Prediction.
+        n_ticks: Number of ticks for plot.
+        draw_order: Draw order.
 
     Returns:
         HTML like string.
@@ -394,4 +401,5 @@ def draw_html(
 
 
 def cross_entropy_multiple_class(input: torch.FloatTensor, target: torch.FloatTensor) -> torch.Tensor:
+    """Cross entropy evaluation."""
     return torch.mean(torch.sum(-target * torch.log(clamp_probs(input)), dim=1))

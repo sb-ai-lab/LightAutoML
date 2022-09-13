@@ -61,6 +61,28 @@ class AutoML:
         >>> automl = AutoML(reader, levels, )
         >>> automl.fit_predict(data, roles={'target': 'TARGET'})
 
+    Args:
+        reader: Instance of Reader class object that
+            creates :class:`~lightautoml.dataset.base.LAMLDataset`
+            from input data.
+        levels: List of list
+            of :class:`~lightautoml.pipelines.ml..base.MLPipelines`.
+        timer: Timer instance of
+            :class:`~lightautoml.utils.timer.PipelineTimer`.
+            Default - unlimited timer.
+        blender: Instance of Blender.
+            Default - :class:`~lightautoml.automl.blend.BestModelSelector`.
+        skip_conn: True if we should pass first level
+            input features to next levels.
+
+    Note:
+        There are several verbosity levels:
+
+            - `0`: No messages.
+            - `1`: Warnings.
+            - `2`: Info.
+            - `3`: Debug.
+
     """
 
     def __init__(
@@ -72,31 +94,6 @@ class AutoML:
         skip_conn: bool = False,
         return_all_predictions: bool = False,
     ):
-        """
-
-        Args:
-            reader: Instance of Reader class object that
-              creates :class:`~lightautoml.dataset.base.LAMLDataset`
-              from input data.
-            levels: List of list
-              of :class:`~lightautoml.pipelines.ml..base.MLPipelines`.
-            timer: Timer instance of
-              :class:`~lightautoml.utils.timer.PipelineTimer`.
-              Default - unlimited timer.
-            blender: Instance of Blender.
-              Default - :class:`~lightautoml.automl.blend.BestModelSelector`.
-            skip_conn: True if we should pass first level
-              input features to next levels.
-
-        Note:
-            There are several verbosity levels:
-
-                - `0`: No messages.
-                - `1`: Warnings.
-                - `2`: Info.
-                - `3`: Debug.
-
-        """
         self._initialize(reader, levels, timer, blender, skip_conn, return_all_predictions)
 
     def _initialize(
@@ -112,25 +109,15 @@ class AutoML:
 
         Args:
             reader: Instance of Reader class object that
-              creates :class:`~lightautoml.dataset.base.LAMLDataset`
-              from input data.
-            levels: List of list
-              of :class:`~lightautoml.pipelines.ml..base.MLPipelines`.
-            timer: Timer instance of
-              :class:`~lightautoml.utils.timer.PipelineTimer`.
-              Default - unlimited timer.
-            blender: Instance of Blender.
-              Default - :class:`~lightautoml.automl.blend.BestModelSelector`.
+                creates :class:`~lightautoml.dataset.base.LAMLDataset` from input data.
+            levels: List of list of :class:`~lightautoml.pipelines.ml..base.MLPipelines`.
+            timer: Timer instance of :class:`~lightautoml.utils.timer.PipelineTimer`.
+                Default - unlimited timer.
+            blender: Instance of Blender. Default - :class:`~lightautoml.automl.blend.BestModelSelector`.
             skip_conn: True if we should pass first level
-              input features to next levels.
+                input features to next levels.
             return_all_predictions: True if we should return all predictions from last
-              level models.
-            verbose: Controls the verbosity: the higher, the more messages.
-                <1  : messages are not displayed;
-                >=1 : the computation process for layers is displayed;
-                >=2 : the information about folds processing is also displayed;
-                >=3 : the hyperparameters optimization process is also displayed;
-                >=4 : the training process for every algorithm is displayed;
+                level models.
 
         """
         assert len(levels) > 0, "At least 1 level should be defined"
@@ -171,12 +158,18 @@ class AutoML:
             train_data: Dataset to train.
             roles: Roles dict.
             train_features: Optional features names,
-              if cannot be inferred from train_data.
+                if cannot be inferred from train_data.
             cv_iter: Custom cv iterator. For example,
-              :class:`~lightautoml.validation.np_iterators.TimeSeriesIterator`.
+                :class:`~lightautoml.validation.np_iterators.TimeSeriesIterator`.
             valid_data: Optional validation dataset.
             valid_features: Optional validation dataset
-              features if can't be inferred from `valid_data`.
+                features if can't be inferred from `valid_data`.
+            verbose: Controls the verbosity: the higher, the more messages.
+                <1  : messages are not displayed;
+                >=1 : the computation process for layers is displayed;
+                >=2 : the information about folds processing is also displayed;
+                >=3 : the hyperparameters optimization process is also displayed;
+                >=4 : the training process for every algorithm is displayed.
 
         Returns:
             Predicted values.
@@ -282,9 +275,10 @@ class AutoML:
         Args:
             data: Dataset to perform inference.
             features_names: Optional features names,
-              if cannot be inferred from `train_data`.
+                if cannot be inferred from `train_data`.
             return_all_predictions: if True,
-              returns all model predictions from last level
+                returns all model predictions from last level
+
         Returns:
             Dataset with predictions.
 

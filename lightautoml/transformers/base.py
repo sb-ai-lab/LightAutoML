@@ -2,12 +2,13 @@
 
 from copy import deepcopy
 from typing import Callable
-from typing import ClassVar
 from typing import List
 from typing import Sequence
+from typing import Type
 from typing import Union
 
 import numpy as np
+import pandas as pd
 
 from ..dataset.base import LAMLDataset
 from ..dataset.base import RolesDict
@@ -104,17 +105,15 @@ class LAMLTransformer:
 
 
 class SequentialTransformer(LAMLTransformer):
-    """
-    Transformer that contains the list of transformers and apply one by one sequentially.
+    """Transformer that contains the list of transformers and apply one by one sequentially.
+
+    Args:
+        transformer_list: Sequence of transformers.
+
+
     """
 
     def __init__(self, transformer_list: Sequence[LAMLTransformer]):
-        """
-
-        Args:
-            transformer_list: Sequence of transformers.
-
-        """
         self.transformer_list = transformer_list
 
     def fit(self, dataset: LAMLDataset):
@@ -162,16 +161,15 @@ class SequentialTransformer(LAMLTransformer):
 
 
 class UnionTransformer(LAMLTransformer):
-    """Transformer that apply the sequence on transformers in parallel on dataset and concatenate the result."""
+    """Transformer that apply the sequence on transformers in parallel on dataset and concatenate the result.
+
+    Args:
+        transformer_list: Sequence of transformers.
+        n_jobs: Number of processes to run fit and transform.
+
+    """
 
     def __init__(self, transformer_list: Sequence[LAMLTransformer], n_jobs: int = 1):
-        """
-
-        Args:
-            transformer_list: Sequence of transformers.
-            n_jobs: Number of processes to run fit and transform.
-
-        """
         # TODO: Add multiprocessing version here
         self.transformer_list = [x for x in transformer_list if x is not None]
         self.n_jobs = n_jobs
@@ -202,7 +200,7 @@ class UnionTransformer(LAMLTransformer):
         Args:
             dataset: Datatset to fit on.
 
-        Returns:
+        Returns:  # noqa: DAR202
             self.
 
         """
@@ -268,6 +266,7 @@ class UnionTransformer(LAMLTransformer):
 
     def fit_transform(self, dataset: LAMLDataset) -> LAMLDataset:
         """Fit and transform transformers in parallel.
+
          Output names - concatenation of features names with no prefix.
 
         Args:
@@ -310,7 +309,7 @@ class UnionTransformer(LAMLTransformer):
         Args:
             dataset: Dataset to transform.
 
-        Returns:
+        Returns:  # noqa: DAR202
             List of datasets with new features.
 
         """
@@ -318,6 +317,7 @@ class UnionTransformer(LAMLTransformer):
 
     def transform(self, dataset: LAMLDataset) -> LAMLDataset:
         """Apply transformers in parallel.
+
          Output names - concatenation of features names with no prefix.
 
         Args:
@@ -338,17 +338,14 @@ class UnionTransformer(LAMLTransformer):
 
 
 class ColumnsSelector(LAMLTransformer):
-    """
-    Select columns to pass to another transformers (or feature selection).
+    """Select columns to pass to another transformers (or feature selection).
+
+    Args:
+        keys: Columns names.
+
     """
 
     def __init__(self, keys: Sequence[str]):
-        """
-
-        Args:
-            keys: Columns names.
-
-        """
         self.keys = keys
 
     def fit(self, dataset: LAMLDataset) -> "ColumnsSelector":
@@ -365,7 +362,7 @@ class ColumnsSelector(LAMLTransformer):
 
         return self
 
-    def transform(self, dataset: LAMLTransformer) -> LAMLTransformer:
+    def transform(self, dataset: LAMLDataset) -> LAMLDataset:
         """Select given keys from dataset.
 
         Args:
@@ -383,24 +380,22 @@ class ColumnsSelector(LAMLTransformer):
 
 class ColumnwiseUnion(UnionTransformer):
     # TODO: Union is not ABC !! NotImplemented - means not done right now
-    """
-    Apply 1 columns transformer to all columns.
+    """Apply 1 columns transformer to all columns.
+
     Example: encode all categories with single category encoders.
+
+    Args:
+        transformer: Dataset - base transformer.
+        n_jobs: Number of threads.
+
     """
 
     def __init__(self, transformer: LAMLTransformer, n_jobs: int = 1):
-        """
-        Create list of identical transformers from one.
-
-        Args:
-            transformer: Dataset - base transformer.
-        """
         self.base_transformer = transformer
         self.n_jobs = n_jobs
 
     def _create_transformers(self, dataset: LAMLDataset):
-        """
-        Make a copies of base transformer.
+        """Make a copies of base transformer.
 
         Args:
             dataset: Dataset with input features.
@@ -460,6 +455,7 @@ class BestOfTransformers(LAMLTransformer):
 
     def fit(self, dataset: LAMLDataset):
         """Empty method - raise error.
+
          This transformer supports only ``fit_transform``.
 
         Args:
@@ -508,15 +504,14 @@ class BestOfTransformers(LAMLTransformer):
 
 
 class ConvertDataset(LAMLTransformer):
-    """Convert dataset to given type."""
+    """Convert dataset to given type.
 
-    def __init__(self, dataset_type: ClassVar[LAMLDataset]):
-        """
+    Args:
+        dataset_type: Type to which to convert.
 
-        Args:
-            dataset_type: Type to which to convert.
+    """
 
-        """
+    def __init__(self, dataset_type: Type[LAMLDataset]):
         self.dataset_type = dataset_type
 
     def transform(self, dataset: LAMLDataset) -> LAMLDataset:
@@ -533,14 +528,14 @@ class ConvertDataset(LAMLTransformer):
 
 
 class ChangeRoles(LAMLTransformer):
-    """Change data roles (include dtypes etc)."""
+    """Change data roles (include dtypes etc).
+
+    Args:
+        roles: New roles for dataset.
+
+    """
 
     def __init__(self, roles: Roles):
-        """
-        Args:
-            roles: New roles for dataset.
-
-        """
         self.roles = roles
 
     def transform(self, dataset: LAMLDataset) -> LAMLDataset:
@@ -556,5 +551,65 @@ class ChangeRoles(LAMLTransformer):
         data, features, _ = dataset.data, dataset.features, dataset.roles
         dataset = dataset.empty()
         dataset.set_data(data, features, self.roles)
+
+        return dataset
+
+
+class SetAttribute(LAMLTransformer):
+    """Set data attribute.
+
+    Args:
+        attr: New attribute for dataset.
+        column: Name of column.
+
+    """
+
+    def __init__(self, attr, column):
+
+        self.attr = attr
+        self.column = column
+
+    def transform(self, dataset: LAMLDataset) -> LAMLDataset:
+        """Paste new attributes into dataset.
+
+        Args:
+            dataset: Dataset to transform.
+
+        Returns:
+            Same dataset with new attributes.
+
+        """
+
+        val = dataset[:, self.column].data
+
+        if isinstance(val, pd.DataFrame):
+            val = val.iloc[:, 0]
+        elif len(val.shape) == 2:
+            val = val[:, 0]
+
+        if self.attr not in dataset.__dict__:
+            dataset.__dict__[self.attr] = val
+            dataset._array_like_attrs.append(self.attr)
+
+        return dataset
+
+
+class EmptyTransformer(LAMLTransformer):
+    """Set data attribute."""
+
+    def __init__(self):
+        pass
+
+    def transform(self, dataset: LAMLDataset) -> LAMLDataset:
+        """Paste new attributes into dataset.
+
+        Args:
+            dataset: Dataset to transform.
+
+        Returns:
+            Same dataset with new attributes.
+
+        """
+        print(dataset.__dict__)
 
         return dataset

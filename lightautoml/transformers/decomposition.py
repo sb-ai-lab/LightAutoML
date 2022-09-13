@@ -41,7 +41,14 @@ def numeric_check(dataset: LAMLDataset):
 
 # TODO: merge into one transformer
 class PCATransformer(LAMLTransformer):
-    """PCA."""
+    """PCA.
+
+    Args:
+        subs: Subsample to fit algorithm. If None - full data.
+        random_state: Random state to take subsample.
+        n_components: Number of PCA components
+
+    """
 
     _fit_checks = (numeric_check,)
     _transform_checks = ()
@@ -58,14 +65,6 @@ class PCATransformer(LAMLTransformer):
         random_state: int = 42,
         n_components: int = 500,
     ):
-        """
-
-        Args:
-            subs: Subsample to fit algorithm. If None - full data.
-            random_state: Random state to take subsample.
-            n_components: Number of PCA components
-
-        """
         self.subs = subs
         self.random_state = random_state
         self.n_components = n_components
@@ -77,6 +76,9 @@ class PCATransformer(LAMLTransformer):
 
         Args:
             dataset: Sparse or Numpy dataset of text features.
+
+        Returns:
+            Self.
 
         """
         # set transformer names and add checks
@@ -127,7 +129,14 @@ class PCATransformer(LAMLTransformer):
 
 
 class SVDTransformer(LAMLTransformer):
-    """TruncatedSVD."""
+    """TruncatedSVD.
+
+    Args:
+        subs: Subsample to fit algorithm. If None - full data.
+        random_state: Random state to take subsample.
+        n_components: Number of SVD components.
+
+    """
 
     _fit_checks = (numeric_check,)
     _transform_checks = ()
@@ -144,14 +153,6 @@ class SVDTransformer(LAMLTransformer):
         random_state: int = 42,
         n_components: int = 100,
     ):
-        """
-
-        Args:
-            subs: Subsample to fit algorithm. If None - full data.
-            random_state: Random state to take subsample.
-            n_components: Number of SVD components.
-
-        """
         self.subs = subs
         self.random_state = random_state
         self.n_components = n_components
@@ -163,6 +164,9 @@ class SVDTransformer(LAMLTransformer):
 
         Args:
             dataset: Sparse or Numpy dataset of text features.
+
+        Returns:
+            self.
 
         """
         # set transformer names and add checks

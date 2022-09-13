@@ -139,7 +139,6 @@ def parse_devices(dvs, is_dp: bool = False) -> tuple:
 
 def custom_collate(batch: List[np.ndarray]) -> torch.Tensor:
     """Puts each data field into a tensor with outer dimension batch size."""
-
     elem = batch[0]
     if isinstance(elem, torch.Tensor):
         out = None
