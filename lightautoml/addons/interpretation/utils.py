@@ -7,6 +7,7 @@ import numpy as np
 import torch
 from matplotlib.colors import Colormap
 from torch.distributions.utils import clamp_probs
+from lightautoml.text.tokenizer import BaseTokenizer
 
 T_untokenized = Union[List[str], Tuple[List[str], List[Any]]]
 
@@ -43,7 +44,7 @@ class WrappedTokenizer:
     """
 
     def __init__(
-        self, tokenizer: "lightautoml.text.tokenizer.BaseTokenizer"
+        self, tokenizer: "BaseTokenizer"
     ):  # noqa F821
         self._tokenizer = tokenizer
 

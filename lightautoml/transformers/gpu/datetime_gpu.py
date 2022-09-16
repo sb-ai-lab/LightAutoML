@@ -106,8 +106,6 @@ class TimeToNum_gpu(LAMLTransformer):
         else:
             return self._transform_cupy(dataset)
 
-        return output
-
 
 class BaseDiff_gpu(LAMLTransformer):
     """
@@ -145,7 +143,7 @@ class BaseDiff_gpu(LAMLTransformer):
         self.diff_names = diff_names
         self.basic_interval = basic_interval
 
-    def fit(self, dataset: LAMLDataset) -> "LAMLTransformerGPU":
+    def fit(self, dataset: LAMLDataset) -> "LAMLTransformer":
         """Fit transformer and return it's instance (GPU version).
 
         Args:
@@ -270,7 +268,7 @@ class DateSeasons_gpu(LAMLTransformer):
         if output_role is None:
             self.output_role = CategoryRole(cp.int32)
 
-    def fit(self, dataset: LAMLDataset) -> "LAMLTransformerGPU":
+    def fit(self, dataset: LAMLDataset) -> "LAMLTransformer":
         """Fit transformer and return it's instance (GPU version).
 
         Args:

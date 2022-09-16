@@ -1068,7 +1068,7 @@ class AutoUpliftTX(BaseAutoUplift):
             metrics.append(metric)
 
         rating_table = DataFrame(
-            {"MetaLearner": metalearner_names, "Parameters": params, "Metrics": metrics,}
+            {"MetaLearner": metalearner_names, "Parameters": params, "Metrics": metrics}
         )
 
         rating_table["Rank"] = rating_table["Metrics"].rank(

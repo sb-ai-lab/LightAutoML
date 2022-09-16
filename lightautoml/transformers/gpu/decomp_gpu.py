@@ -6,14 +6,19 @@ import cupy as cp
 import numpy as np
 from cuml import PCA, TruncatedSVD
 
-from lightautoml.dataset.gpu.gpu_dataset import CudfDataset, CupyDataset, DaskCudfDataset
+from lightautoml.dataset.gpu.gpu_dataset import (
+    CudfDataset,
+    CupyDataset,
+    DaskCudfDataset,
+    CupySparseDataset
+)
 from lightautoml.dataset.roles import NumericRole
 from lightautoml.transformers.base import LAMLTransformer
 from lightautoml.transformers.decomposition import numeric_check
 
 # type - something that can be converted to pandas dataset
 CupyTransformable = Union[CupyDataset, CudfDataset]
-CupyCSR = Union[CupyDataset, CSRSparseDataset]
+CupyCSR = Union[CupyDataset, CupySparseDataset]
 GpuDataset = Union[CupyDataset, CudfDataset, DaskCudfDataset]
 
 

@@ -85,8 +85,6 @@ class TabularMLAlgo_gpu(TabularMLAlgo):
         if self.parallel_folds:
 
             def perform_iterations(fit_predict_single_fold, train_valid, ind, dev_id):
-                models = []
-                preds = []
                 (idx, train, valid) = train_valid[ind]
                 logger.info(
                     "===== Start working with \x1b[1mfold {}\x1b[0m for \x1b[1m{}\x1b[0m (par) =====".format(

@@ -13,6 +13,8 @@ from lightautoml.validation.base import (
     TrainValidIterator,
 )
 
+from lightautoml.validation.np_iterators import FoldsIterator
+
 GpuDataset = Union[CupyDataset, CudfDataset, DaskCudfDataset]
 
 

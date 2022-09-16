@@ -88,7 +88,7 @@ class TorchModel(TabularMLAlgo):
         "bs": 16,
         "num_workers": 4,
         "max_length": 256,
-        "opt_params": {"lr": 1e-4,},
+        "opt_params": {"lr": 1e-4, },
         "scheduler_params": {"patience": 5, "factor": 0.5, "verbose": True},
         "is_snap": False,
         "snap_params": {"k": 1, "early_stopping": True, "patience": 1, "swa": False},

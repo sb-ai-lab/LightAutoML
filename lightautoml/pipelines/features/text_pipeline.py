@@ -219,7 +219,7 @@ class TextBertFeatures(FeaturesPipeline, NLPDataFeatures):
         texts = get_columns_by_role(train, "Text")
         if len(texts) > 0:
             text_processing = SequentialTransformer(
-                [ColumnsSelector(keys=texts), ConcatTextTransformer(),]
+                [ColumnsSelector(keys=texts), ConcatTextTransformer()]
             )
             transformers_list.append(text_processing)
 

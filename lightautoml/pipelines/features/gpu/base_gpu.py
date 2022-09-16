@@ -101,7 +101,7 @@ class TabularDataFeatures_gpu(TabularDataFeatures):
             outp_role = NumericRole(np.float32)
 
         date_as_cat = SequentialTransformer(
-            [ColumnsSelector(keys=datetimes), DateSeasons_gpu(outp_role),]
+            [ColumnsSelector(keys=datetimes), DateSeasons_gpu(outp_role)]
         )
         return date_as_cat
 
@@ -166,7 +166,7 @@ class TabularDataFeatures_gpu(TabularDataFeatures):
             return
 
         cat_processing = SequentialTransformer(
-            [ColumnsSelector(keys=feats_to_select), FreqEncoder_gpu(),]
+            [ColumnsSelector(keys=feats_to_select), FreqEncoder_gpu()]
         )
         return cat_processing
 

@@ -3,16 +3,14 @@
 import logging
 import multiprocessing
 from contextlib import contextmanager
-from copy import copy, deepcopy
-from typing import Callable, Optional, Tuple, TypeVar, Union
+from copy import deepcopy
+from typing import Callable, Optional, Tuple, Union
 
 import optuna
 
 from lightautoml.dataset.base import LAMLDataset
 from lightautoml.ml_algo.base import MLAlgo
-from lightautoml.ml_algo.tuning.base import Distribution, ParamsTuner
 from lightautoml.ml_algo.tuning.optuna import (
-    OPTUNA_DISTRIBUTIONS_MAP,
     OptunaTuner,
     TunableAlgo,
 )

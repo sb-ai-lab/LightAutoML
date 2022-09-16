@@ -1,6 +1,6 @@
 """Contains base classes for internal dataset interface."""
 
-from copy import copy, deepcopy
+from copy import copy
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 from ..tasks.base import Task

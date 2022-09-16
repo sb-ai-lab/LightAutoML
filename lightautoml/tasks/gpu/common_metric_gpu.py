@@ -6,11 +6,9 @@ from typing import Callable, Optional
 import cudf
 import cupy as cp
 import dask.array as da
-import dask_cudf
 from cuml.metrics import accuracy_score, log_loss, roc_auc_score
 from cuml.metrics.regression import (
     mean_absolute_error,
-    mean_squared_error,
     mean_squared_log_error,
     r2_score,
 )
@@ -146,7 +144,7 @@ def mean_huber_error_gpu(y_true, y_pred, sample_weight=None, a: float = 0.9) -> 
     if isinstance(y_true, da.Array):
         err = y_pred - y_true
         s = da.where(err < 0, err > -a, err < a)
-        abs_err = da.where(err > 0, ebestclassmulticlassrr, -err)
+        abs_err = da.where(err > 0, err, -err)
         err = da.where(s, 0.5 * (err ** 2), a * abs_err - 0.5 * (a ** 2))
         if sample_weight is not None:
             return ((err * sample_weight).mean() / sample_weight.mean()).compute()

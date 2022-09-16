@@ -4,7 +4,6 @@ import logging
 from copy import deepcopy
 from typing import Callable, Optional, Sequence, Union
 
-import cudf
 import cupy as cp
 import numpy as np
 import torch
@@ -241,12 +240,12 @@ class TorchBasedLinearEstimator:
 
     def _prepare_data_sparse(self, data: sparse_cupy.spmatrix, dev_id: int = 0):
         """Prepare sparse matrix.
-    
+
         Only supports numeric features.
-    
+
         Args:
             data: data to prepare.
-    
+
         Returns:
             Tuple (numeric_features, `None`).
 

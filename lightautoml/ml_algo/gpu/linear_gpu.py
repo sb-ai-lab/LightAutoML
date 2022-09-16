@@ -676,7 +676,7 @@ class LinearL1CD_mgpu(LinearL1CD_gpu):
                 logger.info("Time limit exceeded")
                 break
 
-        best_model = _model_class(**c_best_params, client=self.client)
+        best_model = _model_class(**best_params, client=self.client)
         best_model.fit(X, y)
 
         val_pred = self.task.losses["cuml"].bw_func(best_pred)

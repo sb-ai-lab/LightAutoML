@@ -97,8 +97,8 @@ class WhiteBoxPreset(AutoMLPreset):
 
         # upd manual params
         for name, param in zip(
-            ["general_params", "reader_params", "read_csv_params", "whitebox_params",],
-            [general_params, reader_params, read_csv_params, whitebox_params,],
+            ["general_params", "reader_params", "read_csv_params", "whitebox_params"],
+            [general_params, reader_params, read_csv_params, whitebox_params],
         ):
             if param is None:
                 param = {}

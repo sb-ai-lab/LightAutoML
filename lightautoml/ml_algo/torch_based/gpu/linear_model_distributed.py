@@ -10,7 +10,6 @@ import dask_cudf
 import numpy as np
 import torch
 from cupyx.scipy import sparse as sparse_gpu
-from joblib import Parallel, delayed
 from torch import nn, optim
 
 from lightautoml.ml_algo.torch_based.gpu.linear_model_cupy import (
@@ -60,7 +59,7 @@ class TorchBasedLinearEstimator:
         if rank is None:
             ind = 0
             size = 1
-            device_id = f"cuda:0"
+            device_id = "cuda:0"
         else:
             ind = rank
             size = torch.cuda.device_count()
@@ -259,8 +258,6 @@ class TorchBasedLinearEstimator:
             tolerance_grad=self.tol,
             line_search_fn="strong_wolfe",
         )
-        # keep history
-        results = []
 
         def closure():
             opt.zero_grad(set_to_none=True)
@@ -351,7 +348,6 @@ class TorchBasedLinearEstimator:
             weights_slices_val.append(weights_val_slice)
 
         for c in self.cs:
-            res = []
             models = []
             for i in range(len(self.gpu_ids)):
                 models.append(deepcopy(self.model.to(f"cuda:{i}")))

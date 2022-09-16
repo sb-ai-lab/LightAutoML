@@ -281,7 +281,7 @@ class TabularDataFeatures:
             outp_role = NumericRole(np.float32)
 
         date_as_cat = SequentialTransformer(
-            [ColumnsSelector(keys=datetimes), DateSeasons(outp_role),]
+            [ColumnsSelector(keys=datetimes), DateSeasons(outp_role)]
         )
         return date_as_cat
 
@@ -344,7 +344,7 @@ class TabularDataFeatures:
             return
 
         cat_processing = SequentialTransformer(
-            [ColumnsSelector(keys=feats_to_select), FreqEncoder(),]
+            [ColumnsSelector(keys=feats_to_select), FreqEncoder()]
         )
         return cat_processing
 

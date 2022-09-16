@@ -154,10 +154,12 @@ class TabularAutoML_gpu(TabularAutoML):
                 res = self.cb_params["parallel_folds"]
             except KeyError:
                 self.cb_params["parallel_folds"] = val
-            try:
-                res = self.linear_l2_params["parallel_folds"]
-            except KeyError:
+
+            res = self.linear_l2_params.get("parallel_folds")
+            if res is None:
                 self.linear_l2_params["parallel_folds"] = val
+            else:
+                self.linear_l2_params["parallel_folds"] = res
 
         length = train_data.shape[0]
 

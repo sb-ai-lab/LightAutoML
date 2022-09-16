@@ -1,6 +1,5 @@
 """Roles guess on gpu."""
 
-from time import perf_counter
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import cudf
@@ -232,7 +231,6 @@ def get_target_and_encoder_gpu(train: GpuDataset) -> Tuple[Any, type]:
     if isinstance(target, cudf.Series):
         target = target.values
 
-    target_name = train.target.name
     if train.task.name == "multiclass":
         n_out = cp.max(target) + 1
         target = target[:, cp.newaxis] == cp.arange(n_out)[cp.newaxis, :]
@@ -513,7 +511,7 @@ def get_numeric_roles_stat_gpu(
     # check unique values
     unique_values = None
     top_freq_values = None
-    ## transfer memory
+    # transfer memory
     if isinstance(train.data, cudf.DataFrame):
 
         desc = train.data.nans_to_nulls().astype(object).describe(include="all")

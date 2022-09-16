@@ -12,6 +12,7 @@ from lightautoml.tasks.gpu.common_metric_gpu import (
     _valid_str_multiclass_metric_names_gpu,
 )
 from lightautoml.tasks.losses.base import Loss
+from lightautoml.tasks.gpu.utils_gpu import infer_gib_gpu
 
 XGBMatrix = Union[xgb.DMatrix, dxgb.DaskDeviceQuantileDMatrix]
 
@@ -37,12 +38,8 @@ _xgb_reg_metrics_dict = {
 
 _xgb_multiclass_metrics_dict_gpu = {
     "auc": _valid_str_multiclass_metric_names_gpu["auc"],
-    #'auc_mu': _valid_str_multiclass_metric_names_gpu['auc_mu'],
     "crossentropy": "mlogloss",
     "accuracy": "merror",
-    #'f1_macro': _valid_str_multiclass_metric_names_gpu['f1_macro'],
-    #'f1_micro': _valid_str_multiclass_metric_names_gpu['f1_micro'],
-    #'f1_weighted': _valid_str_multiclass_metric_names_gpu['f1_weighted'],
 }
 
 
@@ -55,14 +52,7 @@ _xgb_metrics_dict_gpu = {
 _xgb_loss_mapping = {
     "logloss": ("binary:logistic", None, None),
     "mse": ("reg:squarederror", None, None),
-    #'mae': ('l1', None, None),
-    #'mape': ('mape', None, None),
     "crossentropy": ("multi:softprob", None, None),
-    #'rmsle': ('mse', fw_rmsle, np.expm1),
-    #'quantile': ('quantile', None, None),
-    #'huber': ('huber', None, None),
-    #'fair': ('fair', None, None),
-    #'f1': (lgb_f1_loss_multiclass, None, softmax_ax1)
 }
 
 _xgb_loss_params_mapping = {
@@ -193,7 +183,7 @@ class XGBLoss_gpu(Loss):
 
         """
         if greater_is_better is None:
-            greater_is_better = infer_gib(metric_func)
+            greater_is_better = infer_gib_gpu(metric_func)
 
         if metric_params is not None:
             metric_func = partial(metric_func, **metric_params)

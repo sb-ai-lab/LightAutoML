@@ -3,7 +3,6 @@
 from typing import Callable
 
 import cupy as cp
-import dask.array as da
 
 
 def infer_gib_gpu(metric: Callable) -> bool:

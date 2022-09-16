@@ -59,7 +59,7 @@ class MLPipeForAutoMLWrapper(MLPipeline):
 
     @classmethod
     def from_blended(cls, automls: Sequence[AutoML], blender: Blender):
-        ml_pipe = cls([MLAlgoForAutoMLWrapper.from_automls(automls),])
+        ml_pipe = cls([MLAlgoForAutoMLWrapper.from_automls(automls)])
         ml_pipe.blender = blender
 
         return ml_pipe
