@@ -1,13 +1,11 @@
 """Tools for partial installation."""
 
 try:
-    from importlib.metadata import PackageNotFoundError
-    from importlib.metadata import distribution
+    from importlib.metadata import PackageNotFoundError, distribution
 except ModuleNotFoundError:
     from importlib_metadata import PackageNotFoundError, distribution
 
 import logging
-
 
 logger = logging.getLogger(__name__)
 

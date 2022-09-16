@@ -1,42 +1,39 @@
 """Metrics and loss functions for cuml models."""
 
 import logging
-
 from functools import partial
-from typing import Callable
-from typing import Optional
-from typing import Dict
-from typing import Union
+from typing import Callable, Dict, Optional, Union
 
 import cupy as cp
 
-from lightautoml.tasks.losses.base import Loss, MetricFunc
-
-from lightautoml.tasks.gpu.utils_gpu import infer_gib_gpu
-
 from lightautoml.tasks.gpu.common_metric_gpu import _valid_str_metric_names_gpu
+from lightautoml.tasks.gpu.utils_gpu import infer_gib_gpu
+from lightautoml.tasks.losses.base import Loss, MetricFunc
 
 logger = logging.getLogger(__name__)
 
-def fw_rmsle(x, y): return cp.log1p(x), y
 
-_cuml_loss_mapping = {
+def fw_rmsle(x, y):
+    return cp.log1p(x), y
 
-    'rmsle': ('mse', fw_rmsle, cp.expm1)
 
-}
+_cuml_loss_mapping = {"rmsle": ("mse", fw_rmsle, cp.expm1)}
 
 _cuml_force_metric = {
-
-    'rmsle': ('mse', None, None),
-
+    "rmsle": ("mse", None, None),
 }
+
 
 class CUMLLoss(Loss):
     """Loss used for cuml."""
 
-    def __init__(self, loss: str, loss_params: Optional[Dict] = None, fw_func: Optional[Callable] = None,
-                 bw_func: Optional[Callable] = None):
+    def __init__(
+        self,
+        loss: str,
+        loss_params: Optional[Dict] = None,
+        fw_func: Optional[Callable] = None,
+        bw_func: Optional[Callable] = None,
+    ):
         """
 
         Args:
@@ -49,8 +46,13 @@ class CUMLLoss(Loss):
               Used for predict values transformation.
 
         """
-        assert loss in ['logloss', 'mse', 'crossentropy', 'rmsle'], 'Not supported in cuml in general case.'
-        self.flg_regressor = loss in ['mse', 'rmsle']
+        assert loss in [
+            "logloss",
+            "mse",
+            "crossentropy",
+            "rmsle",
+        ], "Not supported in cuml in general case."
+        self.flg_regressor = loss in ["mse", "rmsle"]
 
         if loss in _cuml_loss_mapping:
             self.loss, fw_func, bw_func = _cuml_loss_mapping[loss]
@@ -64,8 +66,12 @@ class CUMLLoss(Loss):
 
         self.loss_params = loss_params
 
-    def metric_wrapper(self, metric_func: Callable, greater_is_better: Optional[bool],
-                           metric_params: Optional[Dict] = None) -> Callable:
+    def metric_wrapper(
+        self,
+        metric_func: Callable,
+        greater_is_better: Optional[bool],
+        metric_params: Optional[Dict] = None,
+    ) -> Callable:
         """Customize metric.
 
         Args:
@@ -88,8 +94,13 @@ class CUMLLoss(Loss):
 
         return MetricFunc(metric_func, m, self._bw_func)
 
-    def set_callback_metric(self, metric: Union[str, Callable], greater_is_better: Optional[bool] = None,
-                            metric_params: Optional[Dict] = None, task_name: Optional[str] = None):
+    def set_callback_metric(
+        self,
+        metric: Union[str, Callable],
+        greater_is_better: Optional[bool] = None,
+        metric_params: Optional[Dict] = None,
+        task_name: Optional[str] = None,
+    ):
         """
         Callback metric setter.
 
@@ -105,9 +116,15 @@ class CUMLLoss(Loss):
 
         if self.loss in _cuml_force_metric:
             metric, greater_is_better, metric_params = _cuml_force_metric[self.loss]
-            logger.warning('For cuml {0} callback metric switched to {1}'.format(self.loss, metric))
+            logger.warning(
+                "For cuml {0} callback metric switched to {1}".format(self.loss, metric)
+            )
 
-        assert task_name in ['binary', 'reg', 'multiclass'], 'Incorrect task name: {}'.format(task_name)
+        assert task_name in [
+            "binary",
+            "reg",
+            "multiclass",
+        ], "Incorrect task name: {}".format(task_name)
 
         self.metric = metric
 
@@ -119,8 +136,12 @@ class CUMLLoss(Loss):
 
             metric_dict = _valid_str_metric_names_gpu[task_name]
 
-            self.metric_func = self.metric_wrapper(metric_dict[metric], greater_is_better, metric_params)
+            self.metric_func = self.metric_wrapper(
+                metric_dict[metric], greater_is_better, metric_params
+            )
             self.metric_name = metric
         else:
-            self.metric_func = self.metric_wrapper(metric, greater_is_better, metric_params)
+            self.metric_func = self.metric_wrapper(
+                metric, greater_is_better, metric_params
+            )
             self.metric_name = None

@@ -1,24 +1,20 @@
 """Tabular iterators."""
 
-from typing import Optional
-from typing import Tuple
-from typing import Union
-from typing import cast
+from typing import Optional, Tuple, Union, cast
 
 import cupy as cp
 
-from lightautoml.dataset.gpu.gpu_dataset import CupyDataset
-from lightautoml.dataset.gpu.gpu_dataset import CudfDataset
-from lightautoml.dataset.gpu.gpu_dataset import DaskCudfDataset
-from lightautoml.validation.base import CustomIdxs
-from lightautoml.validation.base import CustomIterator
-from lightautoml.validation.base import DummyIterator
-from lightautoml.validation.base import HoldoutIterator
-from lightautoml.validation.base import TrainValidIterator
-
-
+from lightautoml.dataset.gpu.gpu_dataset import CudfDataset, CupyDataset, DaskCudfDataset
+from lightautoml.validation.base import (
+    CustomIdxs,
+    CustomIterator,
+    DummyIterator,
+    HoldoutIterator,
+    TrainValidIterator,
+)
 
 GpuDataset = Union[CupyDataset, CudfDataset, DaskCudfDataset]
+
 
 class HoldoutIterator_gpu(HoldoutIterator):
     """Iterator for classic holdout - just predefined train and valid samples (GPU version requires indexing)."""
@@ -33,7 +29,7 @@ class HoldoutIterator_gpu(HoldoutIterator):
         """
         self.train = train
         self.valid = valid
-       
+
     def __len__(self) -> Optional[int]:
         """Get 1 len.
 
@@ -43,20 +39,20 @@ class HoldoutIterator_gpu(HoldoutIterator):
         """
         return 1
 
-    def __iter__(self) -> 'HoldoutIterator_gpu':
+    def __iter__(self) -> "HoldoutIterator_gpu":
         """Simple iterable object.
 
         Returns:
             Iterable object for train validation dataset.
 
         """
-        
+
         return iter([(None, self.train, self.valid)])
 
     def __getitem__(self, number):
         if number >= 1:
-            raise IndexError('index out of range')
-        
+            raise IndexError("index out of range")
+
         return None, self.train, self.valid
 
 
@@ -74,7 +70,9 @@ class FoldsIterator_gpu(TrainValidIterator):
             n_folds: Number of folds.
 
         """
-        assert hasattr(train, 'folds'), 'Folds in dataset should be defined to make folds iterator.'
+        assert hasattr(
+            train, "folds"
+        ), "Folds in dataset should be defined to make folds iterator."
 
         self.train = train
 
@@ -94,7 +92,7 @@ class FoldsIterator_gpu(TrainValidIterator):
         """
         return self.n_folds
 
-    def __iter__(self) -> 'FoldsIterator':
+    def __iter__(self) -> "FoldsIterator":
         """Set counter to 0 and return self.
 
         Returns:
@@ -106,9 +104,9 @@ class FoldsIterator_gpu(TrainValidIterator):
 
     def __getitem__(self, number):
         if number >= self.n_folds:
-            raise IndexError('index out of range')
-        
-        val_idx = (self.train.folds == number)
+            raise IndexError("index out of range")
+
+        val_idx = self.train.folds == number
         if type(self.train) == CudfDataset:
             val_idx = val_idx.values
         elif type(self.train) == DaskCudfDataset:
@@ -124,7 +122,6 @@ class FoldsIterator_gpu(TrainValidIterator):
         train, valid = self.train[tr_idx], self.train[val_idx]
 
         return val_idx, cast(GpuDataset, train), cast(GpuDataset, valid)
-       
 
     def __next__(self) -> Tuple[cp.ndarray, GpuDataset, GpuDataset]:
         """Define how to get next object.
@@ -136,14 +133,14 @@ class FoldsIterator_gpu(TrainValidIterator):
 
         if self._curr_idx == self.n_folds:
             raise StopIteration
-        
-        val_idx = (self.train.folds == self._curr_idx)
-        
+
+        val_idx = self.train.folds == self._curr_idx
+
         if type(self.train) == CudfDataset:
             val_idx = val_idx.values
         elif type(self.train) == DaskCudfDataset:
             val_idx = val_idx.compute().values
-        
+
         tr_idx = cp.logical_not(val_idx)
         idx = cp.arange(self.train.shape[0])
         tr_idx, val_idx = idx[tr_idx], idx[val_idx]
@@ -173,7 +170,7 @@ class FoldsIterator_gpu(TrainValidIterator):
             new hold-out-iterator.
 
         """
-        val_idx = (self.train.folds == 0)
+        val_idx = self.train.folds == 0
         if type(self.train) == CudfDataset:
             val_idx = val_idx.values
         elif type(self.train) == DaskCudfDataset:
@@ -181,7 +178,7 @@ class FoldsIterator_gpu(TrainValidIterator):
 
         tr_idx = cp.logical_not(val_idx)
         idx = cp.arange(self.train.shape[0])
-        
+
         tr_idx, val_idx = idx[tr_idx], idx[val_idx]
         if type(self.train) == DaskCudfDataset:
             tr_idx = tr_idx.get()
@@ -196,8 +193,14 @@ def get_gpu_iterator(
     train: GpuDataset,
     valid: Optional[GpuDataset] = None,
     n_folds: Optional[int] = None,
-    iterator: Optional[CustomIdxs] = None
-) -> Union[FoldsIterator_gpu, HoldoutIterator_gpu, HoldoutIterator, CustomIterator, DummyIterator]:
+    iterator: Optional[CustomIdxs] = None,
+) -> Union[
+    FoldsIterator_gpu,
+    HoldoutIterator_gpu,
+    HoldoutIterator,
+    CustomIterator,
+    DummyIterator,
+]:
     """Get iterator for gpu dataset.
 
     If valid is defined, other parameters are ignored.
@@ -226,5 +229,5 @@ def get_gpu_iterator(
         train_valid = FoldsIterator_gpu(train, n_folds)
     else:
         train_valid = DummyIterator(train)
-    
+
     return train_valid

@@ -19,14 +19,15 @@ def infer_gib_gpu(metric: Callable) -> bool:
         AssertionError: If there is no way to order the predictions.
 
     """
-    label = cp.array([0., 1.])
+    label = cp.array([0.0, 1.0])
     pred = cp.array([0.1, 0.9])
 
     g_val = metric(label, pred)
     b_val = metric(label, pred[::-1])
 
-    assert g_val != b_val, 'Cannot infer greater is better from metric.' \
-                           ' Should be set manually.'
+    assert g_val != b_val, (
+        "Cannot infer greater is better from metric." " Should be set manually."
+    )
 
     return g_val > b_val
 
@@ -45,13 +46,14 @@ def infer_gib_multiclass_gpu(metric: Callable) -> bool:
         AssertionError: If there is no way to order the predictions.
 
     """
-    label = cp.array([0., 1., 2.])
+    label = cp.array([0.0, 1.0, 2.0])
     pred = cp.array([[0.9, 0.05, 0.05], [0.05, 0.9, 0.05], [0.05, 0.05, 0.9]])
 
     g_val = metric(label, pred)
     b_val = metric(label, pred[::-1])
 
-    assert g_val != b_val, 'Cannot infer greater is better from metric. ' \
-                           'Should be set manually.'
+    assert g_val != b_val, (
+        "Cannot infer greater is better from metric. " "Should be set manually."
+    )
 
     return g_val > b_val

@@ -1,18 +1,24 @@
 """Reader utils on gpu."""
 
-from typing import Optional, Union, Callable
+from typing import Callable, Optional, Union
 
-import numpy as np
-import cupy as cp
 import cudf
+import cupy as cp
 import dask_cudf
+import numpy as np
 
 from ...tasks import Task
 
 GpuSeries = Union[cp.ndarray, cudf.Series, dask_cudf.Series]
 
-def set_sklearn_folds_gpu(task: Task, target: GpuSeries, cv: Union[Callable, int] = 5,
-                      random_state: int = 42, group: Optional[np.ndarray] = None)-> GpuSeries:
+
+def set_sklearn_folds_gpu(
+    task: Task,
+    target: GpuSeries,
+    cv: Union[Callable, int] = 5,
+    random_state: int = 42,
+    group: Optional[np.ndarray] = None,
+) -> GpuSeries:
     """Determines the cross-validation splitting strategy. If target is dask_cudf.Series
        then regular KFolds is used
 
@@ -27,8 +33,13 @@ def set_sklearn_folds_gpu(task: Task, target: GpuSeries, cv: Union[Callable, int
         Array with fold indices.
 
     """
-    def KFolds_gpu(target: cudf.Series, n_splits: int = 5, shuffle: bool = True,
-                   random_state: int = 42) -> cudf.Series:
+
+    def KFolds_gpu(
+        target: cudf.Series,
+        n_splits: int = 5,
+        shuffle: bool = True,
+        random_state: int = 42,
+    ) -> cudf.Series:
         """Performs regular KFolds
 
         Args:
@@ -47,22 +58,23 @@ def set_sklearn_folds_gpu(task: Task, target: GpuSeries, cv: Union[Callable, int
         if shuffle:
             cp.random.shuffle(indices)
         fold_sizes = cp.full(n_splits, n_samples // n_splits, dtype=int)
-        fold_sizes[:n_samples % n_splits] += 1
+        fold_sizes[: n_samples % n_splits] += 1
         current = 0
-        output = cp.zeros(n_samples, dtype='i')
+        output = cp.zeros(n_samples, dtype="i")
         for i, fold_size in enumerate(fold_sizes):
             start, stop = current, current + fold_size
             output[indices[start:stop]] = i
             current = stop
-        output = cudf.Series(output, index=target.index, name='folds')
+        output = cudf.Series(output, index=target.index, name="folds")
         return output
 
     if type(cv) is int:
         output = None
         if isinstance(target, (dask_cudf.Series, dask_cudf.DataFrame)):
             shuffle = True
-            output = target.map_partitions(KFolds_gpu, cv, shuffle,
-                                           random_state, meta=('folds', np.int32))
+            output = target.map_partitions(
+                KFolds_gpu, cv, shuffle, random_state, meta=("folds", np.int32)
+            )
 
         elif group is not None:
             n_samples = len(target)
@@ -79,12 +91,12 @@ def set_sklearn_folds_gpu(task: Task, target: GpuSeries, cv: Union[Callable, int
                 group_to_fold[indices[group_index]] = lightest_fold
 
             indices = group_to_fold[groups]
-            output = cp.zeros(n_samples, dtype='i')
+            output = cp.zeros(n_samples, dtype="i")
             for i in range(n_splits):
-                output[cp.where(indices==i)] = i
+                output[cp.where(indices == i)] = i
             output = cudf.Series(output, index=target.index)
 
-        elif task.name in ['binary', 'multiclass']:
+        elif task.name in ["binary", "multiclass"]:
             cp.random.seed(seed=42)
             shuffle = True
             n_splits = cv
@@ -95,10 +107,13 @@ def set_sklearn_folds_gpu(task: Task, target: GpuSeries, cv: Union[Callable, int
             y_order = cp.sort(y_encoded)
 
             allocation = cp.asarray(
-                    [cp.bincount(y_order[i::n_splits], minlength=n_classes)
-                    for i in range(n_splits)]).get()
+                [
+                    cp.bincount(y_order[i::n_splits], minlength=n_classes)
+                    for i in range(n_splits)
+                ]
+            ).get()
 
-            output = cp.empty(len(target), dtype='i')
+            output = cp.empty(len(target), dtype="i")
             for k in range(n_classes):
                 folds_for_class = cp.arange(n_splits).repeat(allocation[:, k].tolist())
 
@@ -108,7 +123,7 @@ def set_sklearn_folds_gpu(task: Task, target: GpuSeries, cv: Union[Callable, int
             output = cudf.Series(output, index=target.index)
 
         else:
-            shuffle=True
+            shuffle = True
             output = KFolds_gpu(target, cv, shuffle, random_state)
 
         return output

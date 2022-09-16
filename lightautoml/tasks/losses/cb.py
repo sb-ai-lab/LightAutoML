@@ -1,9 +1,6 @@
 """Metrics and loss functions for Catboost."""
 
-from typing import Callable
-from typing import Dict
-from typing import Optional
-from typing import Union
+from typing import Callable, Dict, Optional, Union
 
 import numpy as np
 
@@ -117,7 +114,10 @@ class CBLoss(Loss):
             if loss in _cb_loss_mapping:
                 loss_name, fw_func, bw_func = _cb_loss_mapping[loss]
                 if loss in _cb_loss_params_mapping:
-                    mapped_params = {_cb_loss_params_mapping[loss][k]: v for (k, v) in self.loss_params.items()}
+                    mapped_params = {
+                        _cb_loss_params_mapping[loss][k]: v
+                        for (k, v) in self.loss_params.items()
+                    }
                     self.fobj = None
                     self.fobj_name = cb_str_loss_wrapper(loss_name, **mapped_params)
 
@@ -181,8 +181,13 @@ class CBLoss(Loss):
             self.metric = None
             _metric_dict = _cb_metrics_dict[task_name]
             if metric in _cb_metric_params_mapping:
-                metric_params = {_cb_metric_params_mapping[metric][k]: v for (k, v) in self.metric_params.items()}
-                self.metric_name = cb_str_loss_wrapper(_metric_dict[metric], **metric_params)
+                metric_params = {
+                    _cb_metric_params_mapping[metric][k]: v
+                    for (k, v) in self.metric_params.items()
+                }
+                self.metric_name = cb_str_loss_wrapper(
+                    _metric_dict[metric], **metric_params
+                )
             else:
                 self.metric_name = _metric_dict[metric]
 

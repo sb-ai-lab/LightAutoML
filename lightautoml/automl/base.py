@@ -1,13 +1,7 @@
 """Base AutoML class."""
 
 import logging
-
-from typing import Any
-from typing import Dict
-from typing import Iterable
-from typing import List
-from typing import Optional
-from typing import Sequence
+from typing import Any, Dict, Iterable, List, Optional, Sequence
 
 from torch.cuda import device_count
 
@@ -15,13 +9,10 @@ from ..dataset.base import LAMLDataset
 from ..dataset.utils import concatenate
 from ..pipelines.ml.base import MLPipeline
 from ..reader.base import Reader
-from ..utils.logging import set_stdout_level
-from ..utils.logging import verbosity_to_loglevel
+from ..utils.logging import set_stdout_level, verbosity_to_loglevel
 from ..utils.timer import PipelineTimer
 from ..validation.utils import create_validation_iterator
-from .blend import BestModelSelector
-from .blend import Blender
-
+from .blend import BestModelSelector, Blender
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +90,9 @@ class AutoML:
                 - `3`: Debug.
 
         """
-        self._initialize(reader, levels, timer, blender, skip_conn, return_all_predictions)
+        self._initialize(
+            reader, levels, timer, blender, skip_conn, return_all_predictions
+        )
 
     def _initialize(
         self,
@@ -198,15 +191,19 @@ class AutoML:
 
         valid_dataset = None
         if valid_data is not None:
-            valid_dataset = self.reader.read(valid_data, valid_features, add_array_attrs=True)
+            valid_dataset = self.reader.read(
+                valid_data, valid_features, add_array_attrs=True
+            )
 
-        if self.task.device == 'mgpu':
+        if self.task.device == "mgpu":
             train_dataset = train_dataset.to_daskcudf(device_count())
             if valid_dataset is not None:
                 valid_dataset = valid_dataset.to_daskcudf(device_count())
 
-        train_valid = create_validation_iterator(train_dataset, valid_dataset, n_folds=None, cv_iter=cv_iter)
-        
+        train_valid = create_validation_iterator(
+            train_dataset, valid_dataset, n_folds=None, cv_iter=cv_iter
+        )
+
         # for pycharm)
         level_predictions = None
         pipes = None
@@ -245,7 +242,9 @@ class AutoML:
                     )
                     flg_last_level = True
 
-            logger.info("\x1b[1mLayer {} training completed.\x1b[0m\n".format(leven_number))
+            logger.info(
+                "\x1b[1mLayer {} training completed.\x1b[0m\n".format(leven_number)
+            )
 
             # here is split on exit condition
             if not flg_last_level:
@@ -265,14 +264,20 @@ class AutoML:
                     level_predictions = concatenate([level_predictions, valid_part])
                     level_predictions.folds.name = valid_part.folds.name
                     level_predictions.target.name = valid_part.target.name
-                train_valid = create_validation_iterator(level_predictions, None, n_folds=None, cv_iter=None)
+                train_valid = create_validation_iterator(
+                    level_predictions, None, n_folds=None, cv_iter=None
+                )
             else:
                 break
 
-        blended_prediction, last_pipes = self.blender.fit_predict(level_predictions, pipes)
+        blended_prediction, last_pipes = self.blender.fit_predict(
+            level_predictions, pipes
+        )
         self.levels.append(last_pipes)
 
-        self.reader.upd_used_features(remove=list(set(self.reader.used_features) - set(self.collect_used_feats())))
+        self.reader.upd_used_features(
+            remove=list(set(self.reader.used_features) - set(self.collect_used_feats()))
+        )
 
         del self._levels
 
@@ -299,8 +304,10 @@ class AutoML:
 
         """
 
-        dataset = self.reader.read(data, features_names=features_names, add_array_attrs=False)
-        if self.task.device == 'mgpu':
+        dataset = self.reader.read(
+            data, features_names=features_names, add_array_attrs=False
+        )
+        if self.task.device == "mgpu":
             dataset = dataset.to_daskcudf(device_count())
 
         for n, level in enumerate(self.levels, 1):
@@ -323,7 +330,9 @@ class AutoML:
                 else:
                     dataset = level_predictions
             else:
-                if (return_all_predictions is None and self.return_all_predictions) or return_all_predictions:
+                if (
+                    return_all_predictions is None and self.return_all_predictions
+                ) or return_all_predictions:
                     return concatenate(level_predictions)
                 return self.blender.predict(level_predictions)
 

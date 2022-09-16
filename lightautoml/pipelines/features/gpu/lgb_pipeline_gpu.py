@@ -1,29 +1,26 @@
 """Pipeline for tree based models (GPU version)."""
 
-from typing import Optional
-from typing import Union
+from typing import Optional, Union
 
 import numpy as np
 
+from lightautoml.dataset.gpu.gpu_dataset import CudfDataset, CupyDataset, DaskCudfDataset
+from lightautoml.dataset.roles import CategoryRole, NumericRole
 from lightautoml.pipelines.features.base import FeaturesPipeline
-from .base_gpu import TabularDataFeatures_gpu
-
 from lightautoml.pipelines.selection.base import ImportanceEstimator
-
 from lightautoml.pipelines.utils import get_columns_by_role
-from lightautoml.dataset.gpu.gpu_dataset import CupyDataset
-from lightautoml.dataset.gpu.gpu_dataset import CudfDataset
-from lightautoml.dataset.gpu.gpu_dataset import DaskCudfDataset
-from lightautoml.dataset.roles import NumericRole
-from lightautoml.dataset.roles import CategoryRole
-from lightautoml.transformers.base import LAMLTransformer
-from lightautoml.transformers.base import SequentialTransformer
-from lightautoml.transformers.base import UnionTransformer
-from lightautoml.transformers.base import ColumnsSelector
-from lightautoml.transformers.base import ConvertDataset
-from lightautoml.transformers.base import ChangeRoles
+from lightautoml.transformers.base import (
+    ChangeRoles,
+    ColumnsSelector,
+    ConvertDataset,
+    LAMLTransformer,
+    SequentialTransformer,
+    UnionTransformer,
+)
 from lightautoml.transformers.gpu.categorical_gpu import OrdinalEncoder_gpu
 from lightautoml.transformers.gpu.datetime_gpu import TimeToNum_gpu
+
+from .base_gpu import TabularDataFeatures_gpu
 
 GpuDataset = Union[CupyDataset, CudfDataset, DaskCudfDataset]
 
@@ -52,43 +49,44 @@ class LGBSimpleFeatures_gpu(FeaturesPipeline):
         transformers_list = []
 
         # process categories
-        categories = get_columns_by_role(train, 'Category')
+        categories = get_columns_by_role(train, "Category")
         if len(categories) > 0:
-            cat_processing = SequentialTransformer([
-
-                ColumnsSelector(keys=categories),
-                OrdinalEncoder_gpu(subs=None, random_state=42),
-                # ChangeRoles(NumericRole(np.float32))
-
-            ])
+            cat_processing = SequentialTransformer(
+                [
+                    ColumnsSelector(keys=categories),
+                    OrdinalEncoder_gpu(subs=None, random_state=42),
+                    # ChangeRoles(NumericRole(np.float32))
+                ]
+            )
             transformers_list.append(cat_processing)
 
         # process datetimes
-        datetimes = get_columns_by_role(train, 'Datetime')
+        datetimes = get_columns_by_role(train, "Datetime")
         if len(datetimes) > 0:
-            dt_processing = SequentialTransformer([
-
-                ColumnsSelector(keys=datetimes),
-                TimeToNum_gpu()
-
-            ])
+            dt_processing = SequentialTransformer(
+                [ColumnsSelector(keys=datetimes), TimeToNum_gpu()]
+            )
             transformers_list.append(dt_processing)
 
         # process numbers
-        numerics = get_columns_by_role(train, 'Numeric')
+        numerics = get_columns_by_role(train, "Numeric")
         if len(numerics) > 0:
             dataset_type = type(train)
             if dataset_type is DaskCudfDataset:
-                num_processing = SequentialTransformer([
-                    ColumnsSelector(keys=numerics),
-                    ConvertDataset(dataset_type=dataset_type)
-                ])
+                num_processing = SequentialTransformer(
+                    [
+                        ColumnsSelector(keys=numerics),
+                        ConvertDataset(dataset_type=dataset_type),
+                    ]
+                )
             else:
-                
-                num_processing = SequentialTransformer([
-                    ColumnsSelector(keys=numerics),
-                    ConvertDataset(dataset_type=CupyDataset)
-                ])
+
+                num_processing = SequentialTransformer(
+                    [
+                        ColumnsSelector(keys=numerics),
+                        ConvertDataset(dataset_type=CupyDataset),
+                    ]
+                )
             transformers_list.append(num_processing)
         union_all = UnionTransformer(transformers_list)
         return union_all
@@ -105,9 +103,17 @@ class LGBAdvancedPipeline_gpu(FeaturesPipeline, TabularDataFeatures_gpu):
 
     """
 
-    def __init__(self, feats_imp: Optional[ImportanceEstimator] = None, top_intersections: int = 5,
-                 max_intersection_depth: int = 3, subsample: Optional[Union[int, float]] = None, multiclass_te_co: int = 3,
-                 auto_unique_co: int = 10, output_categories: bool = False, **kwargs):
+    def __init__(
+        self,
+        feats_imp: Optional[ImportanceEstimator] = None,
+        top_intersections: int = 5,
+        max_intersection_depth: int = 3,
+        subsample: Optional[Union[int, float]] = None,
+        multiclass_te_co: int = 3,
+        auto_unique_co: int = 10,
+        output_categories: bool = False,
+        **kwargs
+    ):
         """
 
         Args:
@@ -121,15 +127,16 @@ class LGBAdvancedPipeline_gpu(FeaturesPipeline, TabularDataFeatures_gpu):
             auto_unique_co: Switch to target encoding if high cardinality.
 
         """
-        super().__init__(multiclass_te_co=multiclass_te_co,
-                         top_intersections=top_intersections,
-                         max_intersection_depth=max_intersection_depth,
-                         subsample=subsample,
-                         feats_imp=feats_imp,
-                         auto_unique_co=auto_unique_co,
-                         output_categories=output_categories,
-                         ascending_by_cardinality=False
-                         )
+        super().__init__(
+            multiclass_te_co=multiclass_te_co,
+            top_intersections=top_intersections,
+            max_intersection_depth=max_intersection_depth,
+            subsample=subsample,
+            feats_imp=feats_imp,
+            auto_unique_co=auto_unique_co,
+            output_categories=output_categories,
+            ascending_by_cardinality=False,
+        )
 
     def create_pipeline(self, train: GpuDataset) -> LAMLTransformer:
         """Create tree pipeline.
@@ -145,7 +152,11 @@ class LGBAdvancedPipeline_gpu(FeaturesPipeline, TabularDataFeatures_gpu):
         transformer_list = []
         target_encoder = self.get_target_encoder(train)
 
-        output_category_role = CategoryRole(np.float32, label_encoded=True) if self.output_categories else NumericRole(np.float32)
+        output_category_role = (
+            CategoryRole(np.float32, label_encoded=True)
+            if self.output_categories
+            else NumericRole(np.float32)
+        )
 
         # handle categorical feats
         # split categories by handling type. This pipe use 3 encodings - freq/label/target/ordinal
@@ -153,29 +164,39 @@ class LGBAdvancedPipeline_gpu(FeaturesPipeline, TabularDataFeatures_gpu):
         transformer_list.append(self.get_freq_encoding(train))
 
         # 2 - check different target encoding parts and split (ohe is the same as auto - no ohe in gbm)
-        auto = (get_columns_by_role(train, 'Category', encoding_type='auto')
-                + get_columns_by_role(train, 'Category', encoding_type='ohe'))
+        auto = get_columns_by_role(
+            train, "Category", encoding_type="auto"
+        ) + get_columns_by_role(train, "Category", encoding_type="ohe")
 
         if self.output_categories:
-            le = (auto + get_columns_by_role(train, 'Category', encoding_type='oof')
-                  + get_columns_by_role(train, 'Category', encoding_type='int'))
+            le = (
+                auto
+                + get_columns_by_role(train, "Category", encoding_type="oof")
+                + get_columns_by_role(train, "Category", encoding_type="int")
+            )
             te = []
             ordinal = None
 
         else:
-            le = get_columns_by_role(train, 'Category', encoding_type='int')
-            ordinal = get_columns_by_role(train, 'Category', ordinal=True)
+            le = get_columns_by_role(train, "Category", encoding_type="int")
+            ordinal = get_columns_by_role(train, "Category", ordinal=True)
 
             if target_encoder is not None:
-                te = get_columns_by_role(train, 'Category', encoding_type='oof')
+                te = get_columns_by_role(train, "Category", encoding_type="oof")
                 # split auto categories by unique values cnt
                 un_values = self.get_uniques_cnt(train, auto)
-                te = te + [x for x in un_values.index if un_values[x] > self.auto_unique_co]
+                te = te + [
+                    x for x in un_values.index if un_values[x] > self.auto_unique_co
+                ]
                 ordinal = ordinal + list(set(auto) - set(te))
 
             else:
                 te = []
-                ordinal = ordinal + auto + get_columns_by_role(train, 'Category', encoding_type='oof')
+                ordinal = (
+                    ordinal
+                    + auto
+                    + get_columns_by_role(train, "Category", encoding_type="oof")
+                )
 
             ordinal = sorted(list(set(ordinal)))
 
@@ -197,7 +218,9 @@ class LGBAdvancedPipeline_gpu(FeaturesPipeline, TabularDataFeatures_gpu):
             if target_encoder is not None:
                 ints_part = SequentialTransformer([intersections, target_encoder()])
             else:
-                ints_part = SequentialTransformer([intersections, ChangeRoles(output_category_role)])
+                ints_part = SequentialTransformer(
+                    [intersections, ChangeRoles(output_category_role)]
+                )
 
             transformer_list.append(ints_part)
 
@@ -207,7 +230,9 @@ class LGBAdvancedPipeline_gpu(FeaturesPipeline, TabularDataFeatures_gpu):
         # add difference with base date
         transformer_list.append(self.get_datetime_diffs(train))
         # add datetime seasonality
-        transformer_list.append(self.get_datetime_seasons(train, NumericRole(np.float32)))
+        transformer_list.append(
+            self.get_datetime_seasons(train, NumericRole(np.float32))
+        )
 
         # final pipeline
         union_all = UnionTransformer([x for x in transformer_list if x is not None])

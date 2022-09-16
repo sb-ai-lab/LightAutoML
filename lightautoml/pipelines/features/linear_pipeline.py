@@ -1,29 +1,28 @@
 """Linear models features."""
 
-from typing import Optional
-from typing import Union
+from typing import Optional, Union
 
 import numpy as np
 
-from ...dataset.np_pd_dataset import NumpyDataset
-from ...dataset.np_pd_dataset import PandasDataset
+from ...dataset.np_pd_dataset import NumpyDataset, PandasDataset
 from ...dataset.roles import CategoryRole
-from ...transformers.base import ChangeRoles
-from ...transformers.base import LAMLTransformer
-from ...transformers.base import SequentialTransformer
-from ...transformers.base import UnionTransformer
-from ...transformers.categorical import LabelEncoder
-from ...transformers.categorical import OHEEncoder
-from ...transformers.numeric import FillInf
-from ...transformers.numeric import FillnaMedian
-from ...transformers.numeric import LogOdds
-from ...transformers.numeric import NaNFlags
-from ...transformers.numeric import StandardScaler
+from ...transformers.base import (
+    ChangeRoles,
+    LAMLTransformer,
+    SequentialTransformer,
+    UnionTransformer,
+)
+from ...transformers.categorical import LabelEncoder, OHEEncoder
+from ...transformers.numeric import (
+    FillInf,
+    FillnaMedian,
+    LogOdds,
+    NaNFlags,
+    StandardScaler,
+)
 from ..selection.base import ImportanceEstimator
 from ..utils import get_columns_by_role
-from .base import FeaturesPipeline
-from .base import TabularDataFeatures
-
+from .base import FeaturesPipeline, TabularDataFeatures
 
 NumpyOrPandas = Union[PandasDataset, NumpyDataset]
 
@@ -74,7 +73,9 @@ class LinearFeatures(FeaturesPipeline, TabularDataFeatures):
               on multiclass task if number of classes is high.
 
         """
-        assert max_bin_count is None or max_bin_count > 1, "Max bin count should be >= 2 or None"
+        assert (
+            max_bin_count is None or max_bin_count > 1
+        ), "Max bin count should be >= 2 or None"
 
         super().__init__(
             multiclass_te=False,
@@ -113,9 +114,9 @@ class LinearFeatures(FeaturesPipeline, TabularDataFeatures):
         dense_list.append(self.get_freq_encoding(train))
 
         # 2 - check 'auto' type (int is the same - no label encoded numbers in linear models)
-        auto = get_columns_by_role(train, "Category", encoding_type="auto") + get_columns_by_role(
-            train, "Category", encoding_type="int"
-        )
+        auto = get_columns_by_role(
+            train, "Category", encoding_type="auto"
+        ) + get_columns_by_role(train, "Category", encoding_type="int")
 
         # if self.output_categories or target_encoder is None:
         if target_encoder is None:
@@ -185,7 +186,9 @@ class LinearFeatures(FeaturesPipeline, TabularDataFeatures):
                     UnionTransformer(dense_list),
                     UnionTransformer(
                         [
-                            SequentialTransformer([FillInf(), FillnaMedian(), StandardScaler()]),
+                            SequentialTransformer(
+                                [FillInf(), FillnaMedian(), StandardScaler()]
+                            ),
                             NaNFlags(),
                         ]
                     ),

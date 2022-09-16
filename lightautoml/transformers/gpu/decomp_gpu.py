@@ -1,21 +1,14 @@
 """Dimension reduction transformers."""
 
-from typing import List
-from typing import Optional
-from typing import Union
+from typing import List, Optional, Union
 
-import numpy as np
 import cupy as cp
+import numpy as np
+from cuml import PCA, TruncatedSVD
 
-from cuml import PCA
-from cuml import TruncatedSVD
-
-from lightautoml.dataset.gpu.gpu_dataset import CudfDataset
-from lightautoml.dataset.gpu.gpu_dataset import CupyDataset
-from lightautoml.dataset.gpu.gpu_dataset import DaskCudfDataset
+from lightautoml.dataset.gpu.gpu_dataset import CudfDataset, CupyDataset, DaskCudfDataset
 from lightautoml.dataset.roles import NumericRole
 from lightautoml.transformers.base import LAMLTransformer
-
 from lightautoml.transformers.decomposition import numeric_check
 
 # type - something that can be converted to pandas dataset
@@ -29,14 +22,16 @@ class PCATransformer_gpu(LAMLTransformer):
 
     _fit_checks = (numeric_check,)
     _transform_checks = ()
-    _fname_prefix = 'pca_gpu'
+    _fname_prefix = "pca_gpu"
 
     @property
     def features(self) -> List[str]:
         """Features list."""
         return self._features
 
-    def __init__(self, subs: Optional[int] = None, random_state: int = 42, n_components: int = 500):
+    def __init__(
+        self, subs: Optional[int] = None, random_state: int = 42, n_components: int = 500
+    ):
         """
 
         Args:
@@ -67,13 +62,18 @@ class PCATransformer_gpu(LAMLTransformer):
         dataset = dataset.to_cupy()
         data = dataset.data
         self.n_components = int(np.minimum(self.n_components, data.shape[1] - 1))
-        self.pca = self._pca(n_components=self.n_components, random_state=self.random_state)
+        self.pca = self._pca(
+            n_components=self.n_components, random_state=self.random_state
+        )
         self.pca.fit(data)
 
-        orig_name = dataset.features[0].split('__')[-1]
+        orig_name = dataset.features[0].split("__")[-1]
 
-        feats = np.char.array([self._fname_prefix + '_']) + np.arange(self.n_components).astype(str) + np.char.array(
-            ['__' + orig_name])
+        feats = (
+            np.char.array([self._fname_prefix + "_"])
+            + np.arange(self.n_components).astype(str)
+            + np.char.array(["__" + orig_name])
+        )
 
         self._features = list(feats)
         return self
@@ -107,14 +107,16 @@ class SVDTransformer_gpu(LAMLTransformer):
 
     _fit_checks = (numeric_check,)
     _transform_checks = ()
-    _fname_prefix = 'svd_gpu'
+    _fname_prefix = "svd_gpu"
 
     @property
     def features(self) -> List[str]:
         """Features list."""
         return self._features
 
-    def __init__(self, subs: Optional[int] = None, random_state: int = 42, n_components: int = 100):
+    def __init__(
+        self, subs: Optional[int] = None, random_state: int = 42, n_components: int = 100
+    ):
         """
 
         Args:
@@ -144,13 +146,18 @@ class SVDTransformer_gpu(LAMLTransformer):
         # convert to accepted dtype and get attributes
         data = dataset.data
         self.n_components = int(np.minimum(self.n_components, data.shape[1] - 1))
-        self.svd = self._svd(n_components=self.n_components, random_state=self.random_state)
+        self.svd = self._svd(
+            n_components=self.n_components, random_state=self.random_state
+        )
         self.svd.fit(data)
 
-        orig_name = dataset.features[0].split('__')[-1]
+        orig_name = dataset.features[0].split("__")[-1]
 
-        feats = np.char.array([self._fname_prefix + '_']) + np.arange(self.n_components).astype(str) + np.char.array(
-            ['__' + orig_name])
+        feats = (
+            np.char.array([self._fname_prefix + "_"])
+            + np.arange(self.n_components).astype(str)
+            + np.char.array(["__" + orig_name])
+        )
 
         self._features = list(feats)
         return self

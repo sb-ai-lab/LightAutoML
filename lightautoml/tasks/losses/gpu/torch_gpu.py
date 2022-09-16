@@ -1,18 +1,12 @@
 """Metrics and loss functions for Torch based models."""
 
 from functools import partial
-from typing import Callable
-from typing import Dict
-from typing import Optional
-from typing import Union
-
-from lightautoml.tasks.losses.base import MetricFunc
-from lightautoml.tasks.losses.base import Loss
-from lightautoml.tasks.losses.torch import TorchLossWrapper
-from lightautoml.tasks.losses.torch import _torch_loss_dict
+from typing import Callable, Dict, Optional, Union
 
 from lightautoml.tasks.gpu.common_metric_gpu import _valid_str_metric_names_gpu
 from lightautoml.tasks.gpu.utils_gpu import infer_gib_gpu
+from lightautoml.tasks.losses.base import Loss, MetricFunc
+from lightautoml.tasks.losses.torch import TorchLossWrapper, _torch_loss_dict
 
 
 class TORCHLoss_gpu(Loss):
@@ -37,8 +31,12 @@ class TORCHLoss_gpu(Loss):
         else:
             self.loss = partial(loss, **self.loss_params)
 
-    def metric_wrapper(self, metric_func: Callable, greater_is_better: Optional[bool],
-                       metric_params: Optional[Dict] = None) -> Callable:
+    def metric_wrapper(
+        self,
+        metric_func: Callable,
+        greater_is_better: Optional[bool],
+        metric_params: Optional[Dict] = None,
+    ) -> Callable:
         """Customize metric.
 
         Args:
@@ -52,7 +50,6 @@ class TORCHLoss_gpu(Loss):
         """
         if greater_is_better is None:
             greater_is_better = infer_gib_gpu(metric_func)
-            
 
         m = 2 * float(greater_is_better) - 1
 
@@ -66,7 +63,7 @@ class TORCHLoss_gpu(Loss):
         metric: Union[str, Callable],
         greater_is_better: Optional[bool] = None,
         metric_params: Optional[Dict] = None,
-        task_name: Optional[Dict] = None
+        task_name: Optional[Dict] = None,
     ):
 
         """Callback metric setter.
@@ -86,7 +83,11 @@ class TORCHLoss_gpu(Loss):
 
         """
 
-        assert task_name in ['binary', 'reg', 'multiclass'], 'Incorrect task name: {}'.format(task_name)
+        assert task_name in [
+            "binary",
+            "reg",
+            "multiclass",
+        ], "Incorrect task name: {}".format(task_name)
         self.metric = metric
 
         if metric_params is None:
@@ -96,13 +97,13 @@ class TORCHLoss_gpu(Loss):
             metric_dict = _valid_str_metric_names_gpu[task_name]
 
             self.metric_func = self.metric_wrapper(
-                metric_dict[metric],
-                greater_is_better,
-                metric_params
+                metric_dict[metric], greater_is_better, metric_params
             )
             self.metric_name = metric
 
         else:
             # TODO: create check for gpu-compatibility
-            self.metric_func = self.metric_wrapper(metric, greater_is_better, metric_params)
+            self.metric_func = self.metric_wrapper(
+                metric, greater_is_better, metric_params
+            )
             self.metric_name = None

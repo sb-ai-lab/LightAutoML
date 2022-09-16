@@ -2,7 +2,6 @@
 
 from lightautoml.utils.installation import __validate_extra_deps
 
-
 __validate_extra_deps("nlp")
 
 
@@ -10,32 +9,32 @@ import gc
 import logging
 import os
 import uuid
-
 from copy import copy
 
 import numpy as np
 import torch
-
 from torch.optim import lr_scheduler
 from transformers import AutoTokenizer
 
-from ..ml_algo.base import TabularDataset
-from ..ml_algo.base import TabularMLAlgo
+from ..ml_algo.base import TabularDataset, TabularMLAlgo
 from ..pipelines.features.text_pipeline import _model_name_by_lang
 from ..pipelines.utils import get_columns_by_role
-from ..text.nn_model import CatEmbedder
-from ..text.nn_model import ContEmbedder
-from ..text.nn_model import TextBert
-from ..text.nn_model import TorchUniversalModel
-from ..text.nn_model import UniversalDataset
+from ..text.nn_model import (
+    CatEmbedder,
+    ContEmbedder,
+    TextBert,
+    TorchUniversalModel,
+    UniversalDataset,
+)
 from ..text.trainer import Trainer
-from ..text.utils import collate_dict
-from ..text.utils import inv_sigmoid
-from ..text.utils import inv_softmax
-from ..text.utils import is_shuffle
-from ..text.utils import parse_devices
-from ..text.utils import seed_everything
-
+from ..text.utils import (
+    collate_dict,
+    inv_sigmoid,
+    inv_softmax,
+    is_shuffle,
+    parse_devices,
+    seed_everything,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -89,9 +88,7 @@ class TorchModel(TabularMLAlgo):
         "bs": 16,
         "num_workers": 4,
         "max_length": 256,
-        "opt_params": {
-            "lr": 1e-4,
-        },
+        "opt_params": {"lr": 1e-4,},
         "scheduler_params": {"patience": 5, "factor": 0.5, "verbose": True},
         "is_snap": False,
         "snap_params": {"k": 1, "early_stopping": True, "patience": 1, "swa": False},
@@ -131,7 +128,11 @@ class TorchModel(TabularMLAlgo):
         params["loss"] = self.task.losses["torch"].loss
         params["metric"] = self.task.losses["torch"].metric_func
 
-        is_text = (len(params["text_features"]) > 0) and (params["use_text"]) and (params["device"].type == "cuda")
+        is_text = (
+            (len(params["text_features"]) > 0)
+            and (params["use_text"])
+            and (params["device"].type == "cuda")
+        )
         is_cat = (len(params["cat_features"]) > 0) and (params["use_cat"])
         is_cont = (len(params["cont_features"]) > 0) and (params["use_cont"])
 
@@ -185,7 +186,11 @@ class TorchModel(TabularMLAlgo):
             "dataset": UniversalDataset,
             "bs": params["bs"],
             "num_workers": params["num_workers"],
-            "tokenizer": AutoTokenizer.from_pretrained(params["bert_name"], use_fast=False) if is_text else None,
+            "tokenizer": AutoTokenizer.from_pretrained(
+                params["bert_name"], use_fast=False
+            )
+            if is_text
+            else None,
             "max_length": params["max_length"],
         }
 
@@ -230,26 +235,42 @@ class TorchModel(TabularMLAlgo):
 
         task_name = train_valid_iterator.train.task.name
         target = train_valid_iterator.train.target
-        suggested_params["n_out"] = 1 if task_name != "multiclass" else np.max(target) + 1
+        suggested_params["n_out"] = (
+            1 if task_name != "multiclass" else np.max(target) + 1
+        )
 
         cat_dims = []
-        suggested_params["cat_features"] = get_columns_by_role(train_valid_iterator.train, "Category")
+        suggested_params["cat_features"] = get_columns_by_role(
+            train_valid_iterator.train, "Category"
+        )
         for cat_feature in suggested_params["cat_features"]:
-            num_unique_categories = max(train_valid_iterator.train[:, cat_feature].data) + 1
+            num_unique_categories = (
+                max(train_valid_iterator.train[:, cat_feature].data) + 1
+            )
             cat_dims.append(num_unique_categories)
         suggested_params["cat_dims"] = cat_dims
 
-        suggested_params["cont_features"] = get_columns_by_role(train_valid_iterator.train, "Numeric")
+        suggested_params["cont_features"] = get_columns_by_role(
+            train_valid_iterator.train, "Numeric"
+        )
         suggested_params["cont_dim"] = len(suggested_params["cont_features"])
 
-        suggested_params["text_features"] = get_columns_by_role(train_valid_iterator.train, "Text")
-        suggested_params["bias"] = self.get_mean_target(target, task_name) if suggested_params["init_bias"] else None
+        suggested_params["text_features"] = get_columns_by_role(
+            train_valid_iterator.train, "Text"
+        )
+        suggested_params["bias"] = (
+            self.get_mean_target(target, task_name)
+            if suggested_params["init_bias"]
+            else None
+        )
 
         return suggested_params
 
     def get_dataloaders_from_dicts(self, data_dict):
         logger.debug(f'number of text features: {len(self.params["text_features"])} ')
-        logger.debug(f'number of categorical features: {len(self.params["cat_features"])} ')
+        logger.debug(
+            f'number of categorical features: {len(self.params["cat_features"])} '
+        )
         logger.debug(f'number of continuous features: {self.params["cont_dim"]} ')
 
         datasets = {}
@@ -270,7 +291,9 @@ class TorchModel(TabularMLAlgo):
             datasets[stage] = self.train_params["dataset"](
                 data=data,
                 y=value.target.values if stage != "test" else np.ones(len(value.data)),
-                w=value.weights.values if value.weights is not None else np.ones(len(value.data)),
+                w=value.weights.values
+                if value.weights is not None
+                else np.ones(len(value.data)),
                 tokenizer=self.train_params["tokenizer"],
                 max_length=self.train_params["max_length"],
                 stage=stage,
@@ -304,7 +327,9 @@ class TorchModel(TabularMLAlgo):
         model = self._infer_params()
 
         model_path = (
-            os.path.join(self.path_to_save, f"{uuid.uuid4()}.pickle") if self.path_to_save is not None else None
+            os.path.join(self.path_to_save, f"{uuid.uuid4()}.pickle")
+            if self.path_to_save is not None
+            else None
         )
         # init datasets
         dataloaders = self.get_dataloaders_from_dicts({"train": train, "val": valid})

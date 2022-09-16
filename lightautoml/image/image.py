@@ -1,13 +1,7 @@
 """Image feature extractors based on color histograms and CNN embeddings."""
 
 from copy import copy
-from typing import Any
-from typing import Callable
-from typing import List
-from typing import Optional
-from typing import Sequence
-from typing import Union
-
+from typing import Any, Callable, List, Optional, Sequence, Union
 
 try:
     import cv2
@@ -20,11 +14,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-
 try:
-    from albumentations import Compose
-    from albumentations import Normalize
-    from albumentations import Resize
+    from albumentations import Compose, Normalize, Resize
     from albumentations.pytorch import ToTensorV2
 except:
     import warnings
@@ -37,16 +28,13 @@ except:
 
     warnings.warn("'efficientnet_pytorch' - package isn't installed")
 
-from joblib import Parallel
-from joblib import delayed
+from joblib import Parallel, delayed
 from sklearn.base import TransformerMixin
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from ..text.utils import parse_devices
-from ..text.utils import seed_everything
+from ..text.utils import parse_devices, seed_everything
 from .utils import pil_loader
-
 
 numeric = Union[int, float]
 
@@ -79,7 +67,9 @@ class ColorFeatures:
 
         """
         # TODO: add value range check
-        hist = cv2.calcHist([img], [0], mask=None, histSize=[self.hist_size], ranges=(0, 255))[:, 0]
+        hist = cv2.calcHist(
+            [img], [0], mask=None, histSize=[self.hist_size], ranges=(0, 255)
+        )[:, 0]
 
         return list(hist / hist.sum())
 
@@ -92,7 +82,10 @@ class ColorFeatures:
         """
         return [
             j
-            for i in [["color_" + j + "_" + str(i) for i in np.arange(self.hist_size)] for j in self._f_names]
+            for i in [
+                ["color_" + j + "_" + str(i) for i in np.arange(self.hist_size)]
+                for j in self._f_names
+            ]
             for j in i
         ]
 
@@ -167,7 +160,9 @@ class CreateImageFeatures:
             Array of histograms.
 
         """
-        res = Parallel(self.n_jobs)(delayed(self.process)(im_path_i) for im_path_i in samples)
+        res = Parallel(self.n_jobs)(
+            delayed(self.process)(im_path_i) for im_path_i in samples
+        )
         return np.vstack(res)
 
 
@@ -296,7 +291,9 @@ class DeepImageEmbedder(TransformerMixin):
         self.verbose = verbose
         seed_everything(random_state)
 
-        self.model = EffNetImageEmbedder(model_name, weights_path, self.is_advprop, self.device)
+        self.model = EffNetImageEmbedder(
+            model_name, weights_path, self.is_advprop, self.device
+        )
 
     def fit(self, data: Any = None):
         return self
@@ -314,7 +311,9 @@ class DeepImageEmbedder(TransformerMixin):
         """
 
         data = ImageDataset(data, self.is_advprop)
-        loader = DataLoader(data, batch_size=self.batch_size, shuffle=False, num_workers=self.n_jobs)
+        loader = DataLoader(
+            data, batch_size=self.batch_size, shuffle=False, num_workers=self.n_jobs
+        )
 
         result = []
         if self.verbose:

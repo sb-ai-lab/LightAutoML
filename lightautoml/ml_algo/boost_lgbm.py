@@ -1,27 +1,19 @@
 """Wrapped LightGBM for tabular datasets."""
 
 import logging
-
 from contextlib import redirect_stdout
 from copy import copy
-from typing import Callable
-from typing import Dict
-from typing import Optional
-from typing import Tuple
+from typing import Callable, Dict, Optional, Tuple
 
 import lightgbm as lgb
 import numpy as np
-
 from pandas import Series
 
 from ..pipelines.selection.base import ImportanceEstimator
 from ..utils.logging import LoggerStream
 from ..validation.base import TrainValidIterator
-from .base import TabularDataset
-from .base import TabularMLAlgo
-from .tuning.base import Distribution
-from .tuning.base import SearchSpace
-
+from .base import TabularDataset, TabularMLAlgo
+from .tuning.base import Distribution, SearchSpace
 
 logger = logging.getLogger(__name__)
 
@@ -177,7 +169,9 @@ class BoostLGBM(TabularMLAlgo, ImportanceEstimator):
 
         return suggested_params
 
-    def _get_default_search_spaces(self, suggested_params: Dict, estimated_n_trials: int) -> Dict:
+    def _get_default_search_spaces(
+        self, suggested_params: Dict, estimated_n_trials: int
+    ) -> Dict:
         """Sample hyperparameters from suggested.
 
         Args:
@@ -192,45 +186,35 @@ class BoostLGBM(TabularMLAlgo, ImportanceEstimator):
         optimization_search_space = {}
 
         optimization_search_space["feature_fraction"] = SearchSpace(
-            Distribution.UNIFORM,
-            low=0.5,
-            high=1.0,
+            Distribution.UNIFORM, low=0.5, high=1.0,
         )
 
         optimization_search_space["num_leaves"] = SearchSpace(
-            Distribution.INTUNIFORM,
-            low=16,
-            high=255,
+            Distribution.INTUNIFORM, low=16, high=255,
         )
 
         if estimated_n_trials > 30:
             optimization_search_space["bagging_fraction"] = SearchSpace(
-                Distribution.UNIFORM,
-                low=0.5,
-                high=1.0,
+                Distribution.UNIFORM, low=0.5, high=1.0,
             )
 
             optimization_search_space["min_sum_hessian_in_leaf"] = SearchSpace(
-                Distribution.LOGUNIFORM,
-                low=1e-3,
-                high=10.0,
+                Distribution.LOGUNIFORM, low=1e-3, high=10.0,
             )
 
         if estimated_n_trials > 100:
             optimization_search_space["reg_alpha"] = SearchSpace(
-                Distribution.LOGUNIFORM,
-                low=1e-8,
-                high=10.0,
+                Distribution.LOGUNIFORM, low=1e-8, high=10.0,
             )
             optimization_search_space["reg_lambda"] = SearchSpace(
-                Distribution.LOGUNIFORM,
-                low=1e-8,
-                high=10.0,
+                Distribution.LOGUNIFORM, low=1e-8, high=10.0,
             )
 
         return optimization_search_space
 
-    def fit_predict_single_fold(self, train: TabularDataset, valid: TabularDataset) -> Tuple[lgb.Booster, np.ndarray]:
+    def fit_predict_single_fold(
+        self, train: TabularDataset, valid: TabularDataset
+    ) -> Tuple[lgb.Booster, np.ndarray]:
         """Implements training and prediction on single fold.
 
         Args:
@@ -251,8 +235,12 @@ class BoostLGBM(TabularMLAlgo, ImportanceEstimator):
             feval,
         ) = self._infer_params()
 
-        train_target, train_weight = self.task.losses["lgb"].fw_func(train.target, train.weights)
-        valid_target, valid_weight = self.task.losses["lgb"].fw_func(valid.target, valid.weights)
+        train_target, train_weight = self.task.losses["lgb"].fw_func(
+            train.target, train.weights
+        )
+        valid_target, valid_weight = self.task.losses["lgb"].fw_func(
+            valid.target, valid.weights
+        )
 
         lgb_train = lgb.Dataset(train.data, label=train_target, weight=train_weight)
         lgb_valid = lgb.Dataset(valid.data, label=valid_target, weight=valid_weight)
@@ -275,7 +263,9 @@ class BoostLGBM(TabularMLAlgo, ImportanceEstimator):
 
         return model, val_pred
 
-    def predict_single_fold(self, model: lgb.Booster, dataset: TabularDataset) -> np.ndarray:
+    def predict_single_fold(
+        self, model: lgb.Booster, dataset: TabularDataset
+    ) -> np.ndarray:
         """Predict target values for dataset.
 
         Args:

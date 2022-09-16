@@ -1,15 +1,11 @@
 """Neural Net modules for differen data types."""
 
 
-from typing import Callable
-from typing import Dict
-from typing import Optional
-from typing import Sequence
+from typing import Callable, Dict, Optional, Sequence
 
 import numpy as np
 import torch
 import torch.nn as nn
-
 
 try:
     from transformers import AutoModel
@@ -57,13 +53,19 @@ class UniversalDataset:
 
     def __getitem__(self, index: int) -> Dict[str, np.ndarray]:
         res = {"label": self.y[index]}
-        res.update({key: value[index] for key, value in self.data.items() if key != "text"})
+        res.update(
+            {key: value[index] for key, value in self.data.items() if key != "text"}
+        )
         if (self.tokenizer is not None) and ("text" in self.data):
             sent = self.data["text"][index, 0]  # only one column
             _split = sent.split("[SEP]")
             sent = _split if len(_split) == 2 else (sent,)
             data = self.tokenizer.encode_plus(
-                *sent, add_special_tokens=True, max_length=self.max_length, padding="max_length", truncation=True
+                *sent,
+                add_special_tokens=True,
+                max_length=self.max_length,
+                padding="max_length",
+                truncation=True
             )
 
             res.update({i: np.array(data[i]) for i in data.keys()})
@@ -122,7 +124,11 @@ class TextBert(nn.Module):
         """
         super(TextBert, self).__init__()
         if pooling not in self._poolers:
-            raise ValueError("pooling - {} - not in the list of available types {}".format(pooling, self._poolers))
+            raise ValueError(
+                "pooling - {} - not in the list of available types {}".format(
+                    pooling, self._poolers
+                )
+            )
 
         self.transformer = AutoModel.from_pretrained(model_name)
         self.n_out = self.transformer.config.hidden_size
@@ -149,7 +155,9 @@ class TextBert(nn.Module):
         )
 
         # pool the outputs into a vector
-        encoded_layers = self.pooling(encoded_layers, inp["attention_mask"].unsqueeze(-1).bool())
+        encoded_layers = self.pooling(
+            encoded_layers, inp["attention_mask"].unsqueeze(-1).bool()
+        )
         mean_last_hidden_state = self.activation(encoded_layers)
         mean_last_hidden_state = self.dropout(mean_last_hidden_state)
         return mean_last_hidden_state
@@ -176,7 +184,10 @@ class CatEmbedder(nn.Module):
 
         """
         super(CatEmbedder, self).__init__()
-        emb_dims = [(int(x), int(min(max_emb_size, max(1, (x + 1) // emb_ratio)))) for x in cat_dims]
+        emb_dims = [
+            (int(x), int(min(max_emb_size, max(1, (x + 1) // emb_ratio))))
+            for x in cat_dims
+        ]
         self.no_of_embs = sum([y for x, y in emb_dims])
         assert self.no_of_embs != 0, "The input is empty."
         # Embedding layers
@@ -301,7 +312,9 @@ class TorchUniversalModel(nn.Module):
 
     def forward(self, inp: Dict[str, torch.Tensor]) -> torch.Tensor:
         x = self.predict(inp)
-        loss = self.loss(inp["label"].view(inp["label"].shape[0], -1), x, inp.get("weight", None))
+        loss = self.loss(
+            inp["label"].view(inp["label"].shape[0], -1), x, inp.get("weight", None)
+        )
         return loss
 
     def predict(self, inp: Dict[str, torch.Tensor]) -> torch.Tensor:

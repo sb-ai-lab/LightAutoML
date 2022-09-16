@@ -1,22 +1,15 @@
 """Datetime features transformers."""
 
 from collections import OrderedDict
-from typing import List
-from typing import Optional
-from typing import Sequence
-from typing import Union
+from typing import List, Optional, Sequence, Union
 
 import holidays
 import numpy as np
 
 from ..dataset.base import LAMLDataset
-from ..dataset.np_pd_dataset import NumpyDataset
-from ..dataset.np_pd_dataset import PandasDataset
-from ..dataset.roles import CategoryRole
-from ..dataset.roles import ColumnRole
-from ..dataset.roles import NumericRole
+from ..dataset.np_pd_dataset import NumpyDataset, PandasDataset
+from ..dataset.roles import CategoryRole, ColumnRole, NumericRole
 from .base import LAMLTransformer
-
 
 # type - dataset that is ok with datetime dtypes
 DatetimeCompatible = Union[PandasDataset]
@@ -83,9 +76,10 @@ class TimeToNum(LAMLTransformer):
         # transform
         roles = NumericRole(np.float32)
 
-        new_arr = ((data - np.datetime64(self.basic_time)) / np.timedelta64(1, self.basic_interval)).values.astype(
-            np.float32
-        )
+        new_arr = (
+            (data - np.datetime64(self.basic_time))
+            / np.timedelta64(1, self.basic_interval)
+        ).values.astype(np.float32)
 
         # create resulted
         output = dataset.empty().to_numpy()
@@ -142,7 +136,9 @@ class BaseDiff(LAMLTransformer):
         """
         self._features = []
         for col in self.base_names:
-            self._features.extend(["basediff_{0}__{1}".format(col, x) for x in self.diff_names])
+            self._features.extend(
+                ["basediff_{0}__{1}".format(col, x) for x in self.diff_names]
+            )
 
         for check_func in self._fit_checks:
             check_func(dataset)
@@ -169,7 +165,9 @@ class BaseDiff(LAMLTransformer):
 
         # transform
         for col in base_cols.columns:
-            new_arr = ((data - base_cols[[col]].values) / np.timedelta64(1, self.basic_interval)).astype(np.float32)
+            new_arr = (
+                (data - base_cols[[col]].values) / np.timedelta64(1, self.basic_interval)
+            ).astype(np.float32)
             feats_block.append(new_arr)
 
         feats_block = np.concatenate(feats_block, axis=1)

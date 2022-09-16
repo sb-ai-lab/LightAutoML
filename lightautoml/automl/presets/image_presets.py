@@ -2,17 +2,13 @@
 
 from lightautoml.utils.installation import __validate_extra_deps
 
-
 __validate_extra_deps("cv", error=True)
 
 
 import os
-
-from typing import Optional
-from typing import Sequence
+from typing import Optional, Sequence
 
 import torch
-
 from pandas import DataFrame
 
 from ...ml_algo.boost_cb import BoostCB
@@ -20,8 +16,7 @@ from ...ml_algo.boost_lgbm import BoostLGBM
 from ...ml_algo.linear_sklearn import LinearLBFGS
 from ...ml_algo.tuning.optuna import OptunaTuner
 from ...pipelines.features.base import FeaturesPipeline
-from ...pipelines.features.image_pipeline import ImageAutoFeatures
-from ...pipelines.features.image_pipeline import ImageSimpleFeatures
+from ...pipelines.features.image_pipeline import ImageAutoFeatures, ImageSimpleFeatures
 from ...pipelines.features.lgb_pipeline import LGBAdvancedPipeline
 from ...pipelines.features.linear_pipeline import LinearFeatures
 from ...pipelines.ml.nested_ml_pipe import NestedTabularMLPipeline
@@ -31,9 +26,7 @@ from ...reader.tabular_batch_generator import ReadableToDf
 from ...tasks import Task
 from ..blend import WeightedBlender
 from .base import upd_params
-from .tabular_presets import NumpyDataset
-from .tabular_presets import TabularAutoML
-
+from .tabular_presets import NumpyDataset, TabularAutoML
 
 _base_dir = os.path.dirname(__file__)
 # set initial runtime rate guess for first level models
@@ -213,7 +206,9 @@ class TabularCVAutoML(TabularAutoML):
             self.autocv_features["n_jobs"] = cpu_cnt
 
         if "n_jobs" in self.cv_simple_features:
-            self.cv_simple_features["n_jobs"] = min(self.cv_simple_features["n_jobs"], cpu_cnt)
+            self.cv_simple_features["n_jobs"] = min(
+                self.cv_simple_features["n_jobs"], cpu_cnt
+            )
         else:
             self.cv_simple_features["n_jobs"] = cpu_cnt
 
@@ -228,7 +223,9 @@ class TabularCVAutoML(TabularAutoML):
         else:
             return None
 
-    def get_linear(self, n_level: int = 1, pre_selector: Optional[SelectionPipeline] = None) -> NestedTabularMLPipeline:
+    def get_linear(
+        self, n_level: int = 1, pre_selector: Optional[SelectionPipeline] = None
+    ) -> NestedTabularMLPipeline:
 
         # linear model with l2
         time_score = self.get_time_score(n_level, "linear_l2")
@@ -236,7 +233,9 @@ class TabularCVAutoML(TabularAutoML):
         linear_l2_model = LinearLBFGS(timer=linear_l2_timer, **self.linear_l2_params)
 
         cv_l2_feats = self.get_cv_pipe(self.linear_pipeline_params["cv_features"])
-        linear_l2_feats = LinearFeatures(output_categories=True, **self.linear_pipeline_params)
+        linear_l2_feats = LinearFeatures(
+            output_categories=True, **self.linear_pipeline_params
+        )
         if cv_l2_feats is not None:
             linear_l2_feats.append(cv_l2_feats)
 
@@ -257,7 +256,9 @@ class TabularCVAutoML(TabularAutoML):
     ):
 
         cv_gbm_feats = self.get_cv_pipe(self.gbm_pipeline_params["cv_features"])
-        gbm_feats = LGBAdvancedPipeline(output_categories=False, **self.gbm_pipeline_params)
+        gbm_feats = LGBAdvancedPipeline(
+            output_categories=False, **self.gbm_pipeline_params
+        )
         if cv_gbm_feats is not None:
             gbm_feats.append(cv_gbm_feats)
 
@@ -286,7 +287,11 @@ class TabularCVAutoML(TabularAutoML):
             force_calc.append(force)
 
         gbm_pipe = NestedTabularMLPipeline(
-            ml_algos, force_calc, pre_selection=pre_selector, features_pipeline=gbm_feats, **self.nested_cv_params
+            ml_algos,
+            force_calc,
+            pre_selection=pre_selector,
+            features_pipeline=gbm_feats,
+            **self.nested_cv_params
         )
 
         return gbm_pipe
@@ -321,12 +326,16 @@ class TabularCVAutoML(TabularAutoML):
                 lvl.append(self.get_linear(n + 1, selector))
 
             gbm_models = [
-                x for x in ["lgb", "lgb_tuned", "cb", "cb_tuned"] if x in names and x.split("_")[0] in self.task.losses
+                x
+                for x in ["lgb", "lgb_tuned", "cb", "cb_tuned"]
+                if x in names and x.split("_")[0] in self.task.losses
             ]
 
             if len(gbm_models) > 0:
                 selector = None
-                if "gbm" in self.selection_params["select_algos"] and (self.general_params["skip_conn"] or n == 0):
+                if "gbm" in self.selection_params["select_algos"] and (
+                    self.general_params["skip_conn"] or n == 0
+                ):
                     selector = pre_selector
                 lvl.append(self.get_gbms(gbm_models, n + 1, selector))
 

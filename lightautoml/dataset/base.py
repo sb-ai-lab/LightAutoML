@@ -1,17 +1,10 @@
 """Contains base classes for internal dataset interface."""
 
 from copy import copy, deepcopy
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Sequence
-from typing import Tuple
-from typing import Union
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 from ..tasks.base import Task
 from .roles import ColumnRole
-
 
 valid_array_attributes = ("target", "group", "folds", "weights", "treatment")
 array_attr_roles = ("Target", "Group", "Folds", "Weights", "Treatment")
@@ -104,7 +97,9 @@ class LAMLDataset:
         return self.data.__repr__()
 
     # default behavior and abstract methods
-    def __getitem__(self, k: Tuple[RowSlice, ColSlice]) -> Union["LAMLDataset", LAMLColumn]:
+    def __getitem__(
+        self, k: Tuple[RowSlice, ColSlice]
+    ) -> Union["LAMLDataset", LAMLColumn]:
         """Select a subset of dataset.
 
         Define how to slice a dataset
@@ -130,7 +125,9 @@ class LAMLDataset:
 
             # case of single column - return LAMLColumn
             if isinstance(cols, str):
-                dataset = LAMLColumn(self._get_2d(self.data, (rows, idx)), role=self.roles[cols])
+                dataset = LAMLColumn(
+                    self._get_2d(self.data, (rows, idx)), role=self.roles[cols]
+                )
 
                 return dataset
 
@@ -145,7 +142,12 @@ class LAMLDataset:
             dataset = self.empty()
         else:
             dataset = copy(self)
-            params = dict(((x, self._get_rows(self.__dict__[x], rows)) for x in self._array_like_attrs))
+            params = dict(
+                (
+                    (x, self._get_rows(self.__dict__[x], rows))
+                    for x in self._array_like_attrs
+                )
+            )
             dataset._initialize(self.task, **params)
             data = self._get_rows(data, rows)
 
@@ -162,11 +164,15 @@ class LAMLDataset:
               or 1d array like.
 
         """
-        assert k in self.features, "Can only replace existed columns in default implementations."
+        assert (
+            k in self.features
+        ), "Can only replace existed columns in default implementations."
         idx = self._get_cols_idx(k)
         # for case when setting col and change role
         if type(val) is LAMLColumn:
-            assert val.role.dtype == self.roles[k].dtype, "Inplace changing types unavaliable."
+            assert (
+                val.role.dtype == self.roles[k].dtype
+            ), "Inplace changing types unavaliable."
             self._set_col(self.data, idx, val.data)
             self.roles[k] = val.role
         # for case only changing column values
@@ -277,9 +283,9 @@ class LAMLDataset:
             **kwargs: 1d arrays like attrs like target, group etc.
 
         """
-        assert all([x in valid_array_attributes for x in kwargs]), "Unknown array attribute. Valid are {0}".format(
-            valid_array_attributes
-        )
+        assert all(
+            [x in valid_array_attributes for x in kwargs]
+        ), "Unknown array attribute. Valid are {0}".format(valid_array_attributes)
 
         self.task = task
         # here we set target and group and so ...

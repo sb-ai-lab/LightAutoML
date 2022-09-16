@@ -1,10 +1,8 @@
 """Selectors for linear models."""
 
-from typing import Optional
-from typing import Union
+from typing import Optional, Union
 
 import numpy as np
-
 from scipy.sparse import linalg as sp_linalg
 
 from ...validation.base import TrainValidIterator
@@ -20,7 +18,13 @@ class HighCorrRemoval(SelectionPipeline):
 
     """
 
-    def __init__(self, corr_co: float = 0.98, subsample: Union[int, float] = 100000, random_state: int = 42, **kwargs):
+    def __init__(
+        self,
+        corr_co: float = 0.98,
+        subsample: Union[int, float] = 100000,
+        random_state: int = 42,
+        **kwargs
+    ):
         """
 
         Args:
@@ -59,7 +63,9 @@ class HighCorrRemoval(SelectionPipeline):
             else:
                 subsample = int(self.subsample)
 
-            idx = np.random.RandomState(self.random_state).permutation(train.shape[0])[:subsample]
+            idx = np.random.RandomState(self.random_state).permutation(train.shape[0])[
+                :subsample
+            ]
             train, target = train[idx], target[idx]
 
         # correlation or cosine
@@ -85,4 +91,6 @@ class HighCorrRemoval(SelectionPipeline):
         for i in const:
             removed.add(i)
 
-        self._selected_features = [x for (n, x) in enumerate(train_valid.features) if n not in removed]
+        self._selected_features = [
+            x for (n, x) in enumerate(train_valid.features) if n not in removed
+        ]

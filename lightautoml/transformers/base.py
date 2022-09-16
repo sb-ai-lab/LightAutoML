@@ -1,19 +1,13 @@
 """Basic classes for transformers."""
 
 from copy import deepcopy
-from typing import Callable
-from typing import ClassVar
-from typing import List
-from typing import Sequence
-from typing import Union
+from typing import Callable, ClassVar, List, Sequence, Union
 
 import numpy as np
 
-from ..dataset.base import LAMLDataset
-from ..dataset.base import RolesDict
+from ..dataset.base import LAMLDataset, RolesDict
 from ..dataset.roles import ColumnRole
 from ..dataset.utils import concatenate
-
 
 # TODO: From func transformer
 
@@ -39,7 +33,10 @@ class LAMLTransformer:
             raise AttributeError("Should be fitted at first.")
 
         feats = [
-            "{0}__{1}".format(self._fname_prefix, x) if self._fname_prefix is not None else x for x in self._features
+            "{0}__{1}".format(self._fname_prefix, x)
+            if self._fname_prefix is not None
+            else x
+            for x in self._features
         ]
 
         return feats
@@ -378,7 +375,9 @@ class ColumnsSelector(LAMLTransformer):
         """
         # to avoid coping if not needed
 
-        if len(self.keys) == len(dataset.features) and all((x == y for (x, y) in zip(self.keys, dataset.features))):
+        if len(self.keys) == len(dataset.features) and all(
+            (x == y for (x, y) in zip(self.keys, dataset.features))
+        ):
             out = dataset
         else:
             out = dataset[:, self.keys]

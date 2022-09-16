@@ -4,10 +4,8 @@ import argparse
 import fileinput
 import re
 import sys
-
 from pathlib import Path
 from typing import Optional
-
 
 PYPROJECT_TOML = Path("pyproject.toml")
 ALL_PYTHON_DEPS = ">=3.6.1, <3.10"
@@ -49,7 +47,12 @@ def main():
         action="store_true",
         help="Set curret python version in `pyproject.toml`",
     )
-    group.add_argument("-f", "--full", action="store_true", help="Set all pythons versions in `pyproject.toml`")
+    group.add_argument(
+        "-f",
+        "--full",
+        action="store_true",
+        help="Set all pythons versions in `pyproject.toml`",
+    )
 
     args = parser.parse_args()
 

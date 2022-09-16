@@ -1,14 +1,9 @@
 """Role contains information about the column, which determines how it is processed."""
 
 from datetime import datetime
-from typing import Any
-from typing import Callable
-from typing import Optional
-from typing import Sequence
-from typing import Union
+from typing import Any, Callable, Optional, Sequence, Union
 
 import numpy as np
-
 
 Dtype = Union[Callable, type, str]
 
@@ -47,9 +42,13 @@ class ColumnRole:
             Representation string.
 
         """
-        params = [(x, self.__dict__[x]) for x in self.__dict__ if x not in ["dtype", "name"]]
+        params = [
+            (x, self.__dict__[x]) for x in self.__dict__ if x not in ["dtype", "name"]
+        ]
 
-        return "{0} role, dtype {1}. Additional params: {2}".format(self.name, self.dtype, params)
+        return "{0} role, dtype {1}. Additional params: {2}".format(
+            self.name, self.dtype, params
+        )
 
     def __hash__(self) -> int:
         """Define how to hash - hash from str view.

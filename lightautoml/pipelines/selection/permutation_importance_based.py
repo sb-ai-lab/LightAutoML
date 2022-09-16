@@ -1,12 +1,10 @@
 """Iterative feature selector."""
 
 import logging
-
 from copy import deepcopy
 from typing import Optional
 
 import numpy as np
-
 from pandas import Series
 
 from lightautoml.validation.base import TrainValidIterator
@@ -15,10 +13,7 @@ from ...dataset.base import LAMLDataset
 from ...ml_algo.base import MLAlgo
 from ...ml_algo.utils import tune_and_fit_predict
 from ..features.base import FeaturesPipeline
-from .base import ImportanceEstimator
-from .base import PredefinedSelector
-from .base import SelectionPipeline
-
+from .base import ImportanceEstimator, PredefinedSelector, SelectionPipeline
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +70,9 @@ class NpPermutationImportanceEstimator(ImportanceEstimator):
         valid_data = train_valid.get_validation_data()
         valid_data = valid_data.to_numpy()
 
-        permutation = np.random.RandomState(seed=self.random_state).permutation(valid_data.shape[0])
+        permutation = np.random.RandomState(seed=self.random_state).permutation(
+            valid_data.shape[0]
+        )
         permutation_importance = {}
 
         for it, col in enumerate(valid_data.features):
@@ -105,7 +102,9 @@ class NpPermutationImportanceEstimator(ImportanceEstimator):
             logger.debug("Normal column set")
             valid_data[col] = save_col
 
-        self.raw_importances = Series(permutation_importance).sort_values(ascending=False)
+        self.raw_importances = Series(permutation_importance).sort_values(
+            ascending=False
+        )
 
 
 class NpIterativeFeatureSelector(SelectionPipeline):
@@ -139,7 +138,9 @@ class NpIterativeFeatureSelector(SelectionPipeline):
 
         """
         if not fit_on_holdout:
-            logger.info2("This selector only for holdout training. fit_on_holout argument added just to be compatible")
+            logger.info2(
+                "This selector only for holdout training. fit_on_holout argument added just to be compatible"
+            )
 
         super().__init__(feature_pipeline, ml_algo, imp_estimator, True)
 
@@ -166,7 +167,10 @@ class NpIterativeFeatureSelector(SelectionPipeline):
         cur_best_score = None
 
         for it, chunk in enumerate(chunks):
-            if self.max_features_cnt_in_result is not None and len(selected_feats) >= self.max_features_cnt_in_result:
+            if (
+                self.max_features_cnt_in_result is not None
+                and len(selected_feats) >= self.max_features_cnt_in_result
+            ):
                 logger.info3(
                     "We exceeded max_feature_cnt_in_result bound (selected features count = {}). Exiting from iterative algo...".format(
                         len(selected_feats)
@@ -174,7 +178,11 @@ class NpIterativeFeatureSelector(SelectionPipeline):
                 )
                 break
             selected_feats += chunk
-            logger.info3("Started iteration {}, chunk = {}, feats to check = {}".format(it, chunk, selected_feats))
+            logger.info3(
+                "Started iteration {}, chunk = {}, feats to check = {}".format(
+                    it, chunk, selected_feats
+                )
+            )
             cs = PredefinedSelector(selected_feats)
             selected_cols_iterator = train_valid.apply_selector(cs)
             logger.info3("Features in SCI = {}".format(selected_cols_iterator.features))
@@ -185,10 +193,16 @@ class NpIterativeFeatureSelector(SelectionPipeline):
             )
 
             cur_score = ml_algo_for_iterative.score(preds)
-            logger.debug("Current score = {}, current best score = {}".format(cur_score, cur_best_score))
+            logger.debug(
+                "Current score = {}, current best score = {}".format(
+                    cur_score, cur_best_score
+                )
+            )
 
             if cur_best_score is None or cur_best_score < cur_score:
-                logger.info3("Update best score from {} to {}".format(cur_best_score, cur_score))
+                logger.info3(
+                    "Update best score from {} to {}".format(cur_best_score, cur_score)
+                )
                 cur_best_score = cur_score
                 cnt_without_update = 0
             else:

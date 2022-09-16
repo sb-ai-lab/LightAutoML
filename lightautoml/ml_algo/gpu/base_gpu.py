@@ -1,35 +1,36 @@
 """Base classes for machine learning algorithms (GPU version)."""
 
 import logging
+from typing import Any, Union, cast
 
-from typing import Any
-from typing import Union
-from typing import cast
-
-import cupy as cp
-import numpy as np
 import cudf
-import dask_cudf
+import cupy as cp
 import dask.dataframe as dd
+import dask_cudf
+import numpy as np
 import torch
-
-from lightautoml.ml_algo.base import TabularMLAlgo
 from joblib import Parallel, delayed
 
+from lightautoml.dataset.gpu.gpu_dataset import CudfDataset, CupyDataset, DaskCudfDataset
+from lightautoml.ml_algo.base import TabularMLAlgo
 from lightautoml.validation.base import TrainValidIterator
-
-from lightautoml.dataset.gpu.gpu_dataset import CupyDataset
-from lightautoml.dataset.gpu.gpu_dataset import CudfDataset
-from lightautoml.dataset.gpu.gpu_dataset import DaskCudfDataset
 
 logger = logging.getLogger(__name__)
 TabularDatasetGpu = Union[CupyDataset, CudfDataset, DaskCudfDataset]
 
+
 class TabularMLAlgo_gpu(TabularMLAlgo):
     """Machine learning algorithms that accepts gpu data as input."""
-    _name: str = 'TabularAlgo_gpu'
 
-    def __init__(self, parallel_folds: bool=False, gpu_ids:[int]=None, *args: Any, **kwargs: Any):
+    _name: str = "TabularAlgo_gpu"
+
+    def __init__(
+        self,
+        parallel_folds: bool = False,
+        gpu_ids: [int] = None,
+        *args: Any,
+        **kwargs: Any
+    ):
         super().__init__(*args, **kwargs)
         self.gpu_ids = gpu_ids
         self.parallel_folds = parallel_folds
@@ -50,9 +51,9 @@ class TabularMLAlgo_gpu(TabularMLAlgo):
 
         """
 
-        logger.info('Start fitting {} ...'.format(self._name))
+        logger.info("Start fitting {} ...".format(self._name))
         self.timer.start()
-        assert self.is_fitted is False, 'Algo is already fitted'
+        assert self.is_fitted is False, "Algo is already fitted"
         # init params on input if no params was set before
         if self._params is None:
             self.params = self.init_params_on_input(train_valid_iterator)
@@ -65,21 +66,20 @@ class TabularMLAlgo_gpu(TabularMLAlgo):
         preds_ds = cast(CupyDataset, val_data.to_cupy())
         outp_dim = 1
 
-        if self.task.name == 'multiclass':
+        if self.task.name == "multiclass":
             if type(val_data) == DaskCudfDataset:
-                outp_dim = int(val_data.target.max().compute()+1)
+                outp_dim = int(val_data.target.max().compute() + 1)
             else:
                 outp_dim = int(val_data.target.max()) + 1
         # save n_classes to infer params
         self.n_classes = outp_dim
 
         preds_arr = cp.zeros(
-            (train_valid_iterator.get_validation_data().shape[0], outp_dim), 
-            dtype=cp.float32
+            (train_valid_iterator.get_validation_data().shape[0], outp_dim),
+            dtype=cp.float32,
         )
         counter_arr = cp.zeros(
-            (train_valid_iterator.get_validation_data().shape[0], 1),
-            dtype=cp.float32
+            (train_valid_iterator.get_validation_data().shape[0], 1), dtype=cp.float32
         )
 
         if self.parallel_folds:
@@ -88,7 +88,11 @@ class TabularMLAlgo_gpu(TabularMLAlgo):
                 models = []
                 preds = []
                 (idx, train, valid) = train_valid[ind]
-                logger.info("===== Start working with \x1b[1mfold {}\x1b[0m for \x1b[1m{}\x1b[0m (par) =====".format(ind,self._name))
+                logger.info(
+                    "===== Start working with \x1b[1mfold {}\x1b[0m for \x1b[1m{}\x1b[0m (par) =====".format(
+                        ind, self._name
+                    )
+                )
                 model, pred = fit_predict_single_fold(train, valid, dev_id)
                 return model, pred
 
@@ -96,57 +100,73 @@ class TabularMLAlgo_gpu(TabularMLAlgo):
                 n_parts = 1
             else:
                 n_parts = torch.cuda.device_count()
-          
+
             n_folds = len(train_valid_iterator)
-            num_its = int(np.ceil(n_folds/n_parts))
+            num_its = int(np.ceil(n_folds / n_parts))
 
             inds = []
             for i in range(num_its):
-                left = n_folds - i*n_parts
+                left = n_folds - i * n_parts
                 if left > n_parts:
-                    inds.append(np.arange(i*n_parts, i*n_parts + n_parts)) 
+                    inds.append(np.arange(i * n_parts, i * n_parts + n_parts))
                 elif left > 0:
-                    inds.append(np.arange(i*n_parts, i*n_parts + left))
-            #inds = np.array_split(np.arange(n_folds), num_its)
+                    inds.append(np.arange(i * n_parts, i * n_parts + left))
+            # inds = np.array_split(np.arange(n_folds), num_its)
             inds = [x for x in inds if len(x) > 0]
 
             res = None
             models = []
             preds = []
 
-            #with Parallel(n_jobs=n_parts, prefer='processes', 
+            # with Parallel(n_jobs=n_parts, prefer='processes',
             #              backend='loky', max_nbytes=None) as p:
 
             for n in range(num_its):
                 self.timer.set_control_point()
-                with Parallel(n_jobs=n_parts, prefer='threads') as p: 
-                    res = p(delayed(perform_iterations)
-                    (self.fit_predict_single_fold,
-                    train_valid_iterator, ind, device_id) 
-                    for (ind, device_id) in zip(inds[n], self.gpu_ids))
+                with Parallel(n_jobs=n_parts, prefer="threads") as p:
+                    res = p(
+                        delayed(perform_iterations)(
+                            self.fit_predict_single_fold,
+                            train_valid_iterator,
+                            ind,
+                            device_id,
+                        )
+                        for (ind, device_id) in zip(inds[n], self.gpu_ids)
+                    )
 
                 for elem in res:
-                     models.append(elem[0])
-                     preds.append(elem[1])
-                     del elem
+                    models.append(elem[0])
+                    preds.append(elem[1])
+                    del elem
 
                 self.timer.write_run_info()
                 if (n + 1) != num_its:
                     if self.timer.time_limit_exceeded():
-                        logger.warning('Time limit exceeded after calculating fold(s) {0}'\
-                        .format(inds[n]))
+                        logger.warning(
+                            "Time limit exceeded after calculating fold(s) {0}".format(
+                                inds[n]
+                            )
+                        )
                         break
 
-            logger.debug('Time history {0}. Time left {1}'\
-                .format(self.timer.get_run_results(), self.timer.time_left))
+            logger.debug(
+                "Time history {0}. Time left {1}".format(
+                    self.timer.get_run_results(), self.timer.time_left
+                )
+            )
 
             self.models = models
             for n, (idx, _, _) in enumerate(train_valid_iterator):
                 if n < len(preds):
-                    if isinstance(preds[n], (dask_cudf.DataFrame, dask_cudf.Series, dd.DataFrame, dd.Series)):
-                        preds_arr[idx] += preds[n]\
-                            .compute().values\
-                            .reshape(preds[n].shape[0].compute(), -1)
+                    if isinstance(
+                        preds[n],
+                        (dask_cudf.DataFrame, dask_cudf.Series, dd.DataFrame, dd.Series),
+                    ):
+                        preds_arr[idx] += (
+                            preds[n]
+                            .compute()
+                            .values.reshape(preds[n].shape[0].compute(), -1)
+                        )
                         counter_arr[idx] += 1
                     else:
                         if isinstance(preds[n], np.ndarray):
@@ -155,23 +175,30 @@ class TabularMLAlgo_gpu(TabularMLAlgo):
                         counter_arr[idx] += 1
         else:
             for n, (idx, train, valid) in enumerate(train_valid_iterator):
-                logger.info("===== Start working with \x1b[1mfold {}\x1b[0m for \x1b[1m{}\x1b[0m (orig) =====".format(n, self._name))
+                logger.info(
+                    "===== Start working with \x1b[1mfold {}\x1b[0m for \x1b[1m{}\x1b[0m (orig) =====".format(
+                        n, self._name
+                    )
+                )
 
                 self.timer.set_control_point()
                 model, pred = self.fit_predict_single_fold(train, valid)
                 self.models.append(model)
 
-                if isinstance(pred, (dask_cudf.DataFrame, dask_cudf.Series, dd.DataFrame, dd.Series)):
+                if isinstance(
+                    pred,
+                    (dask_cudf.DataFrame, dask_cudf.Series, dd.DataFrame, dd.Series),
+                ):
 
                     if idx is not None:
-                        preds_arr[idx] += pred\
-                            .compute().values\
-                            .reshape(pred.shape[0].compute(), -1)
+                        preds_arr[idx] += pred.compute().values.reshape(
+                            pred.shape[0].compute(), -1
+                        )
                         counter_arr[idx] += 1
                     else:
-                        preds_arr += pred\
-                            .compute().values\
-                            .reshape(pred.shape[0].compute(), -1)
+                        preds_arr += pred.compute().values.reshape(
+                            pred.shape[0].compute(), -1
+                        )
                         counter_arr += 1
 
                 else:
@@ -183,18 +210,22 @@ class TabularMLAlgo_gpu(TabularMLAlgo):
                 self.timer.write_run_info()
                 if (n + 1) != len(train_valid_iterator):
                     if self.timer.time_limit_exceeded():
-                        logger.warning('Time limit exceeded after calculating fold {0}'\
-                        .format(n))
+                        logger.warning(
+                            "Time limit exceeded after calculating fold {0}".format(n)
+                        )
                         break
 
-            logger.debug('Time history {0}. Time left {1}'\
-                .format(self.timer.get_run_results(), self.timer.time_left))
+            logger.debug(
+                "Time history {0}. Time left {1}".format(
+                    self.timer.get_run_results(), self.timer.time_left
+                )
+            )
 
         preds_arr /= cp.where(counter_arr == 0, 1, counter_arr)
         preds_arr = cp.where(counter_arr == 0, cp.nan, preds_arr)
 
         preds_ds = self._set_prediction(preds_ds, preds_arr)
-        logger.info('{} fitting and predicting completed'.format(self._name))
+        logger.info("{} fitting and predicting completed".format(self._name))
         return preds_ds
 
     def predict(self, dataset: TabularDatasetGpu) -> CupyDataset:
@@ -207,13 +238,13 @@ class TabularMLAlgo_gpu(TabularMLAlgo):
             Dataset with predicted values.
 
         """
-        
-        assert self.models != [], 'Should be fitted first.'
 
-        '''if type(dataset) == DaskCudfDataset:
+        assert self.models != [], "Should be fitted first."
+
+        """if type(dataset) == DaskCudfDataset:
             preds_ds = dataset.empty()
             preds_arr = None
-        else:'''
+        else:"""
         preds_ds = dataset.empty().to_cupy()
         preds_arr = None
 
@@ -221,7 +252,9 @@ class TabularMLAlgo_gpu(TabularMLAlgo):
 
             pred = self.predict_single_fold(model, dataset)
 
-            if isinstance(pred, (dask_cudf.DataFrame, dd.DataFrame, dask_cudf.Series, dd.Series)):
+            if isinstance(
+                pred, (dask_cudf.DataFrame, dd.DataFrame, dask_cudf.Series, dd.Series)
+            ):
                 pred = pred.compute().values
             elif isinstance(pred, (cudf.DataFrame, cudf.Series)):
                 pred = pred.values

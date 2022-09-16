@@ -1,12 +1,7 @@
 """Base classes for metric and loss functions."""
 
 from functools import partial
-from typing import Any
-from typing import Callable
-from typing import Dict
-from typing import Optional
-from typing import Tuple
-from typing import Union
+from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 from ..common_metric import _valid_str_metric_names
 from ..utils import infer_gib
@@ -152,8 +147,12 @@ class Loss:
 
         if type(metric) is str:
             metric_dict = _valid_str_metric_names[task_name]
-            self.metric_func = self.metric_wrapper(metric_dict[metric], greater_is_better, metric_params)
+            self.metric_func = self.metric_wrapper(
+                metric_dict[metric], greater_is_better, metric_params
+            )
             self.metric_name = metric
         else:
-            self.metric_func = self.metric_wrapper(metric, greater_is_better, metric_params)
+            self.metric_func = self.metric_wrapper(
+                metric, greater_is_better, metric_params
+            )
             self.metric_name = None

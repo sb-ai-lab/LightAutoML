@@ -1,20 +1,15 @@
 """Weighted average transformer for sequence embeddings."""
 
 import logging
-
 from collections import Counter
 from itertools import repeat
-from typing import Any
-from typing import Dict
-from typing import Sequence
+from typing import Any, Dict, Sequence
 
 import numpy as np
-
 from scipy.linalg import svd
 from sklearn.base import TransformerMixin
 from sklearn.feature_extraction import DictVectorizer
 from tqdm import tqdm
-
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +86,9 @@ class WeightedAverageTransformer(TransformerMixin):
     def get_statistic(self):
         """Get module statistics."""
 
-        logger.info3(f"N_words: {self.w_all}, N_emb: {self.w_emb}, coverage: {self.w_emb / self.w_all}.")
+        logger.info3(
+            f"N_words: {self.w_all}, N_emb: {self.w_emb}, coverage: {self.w_emb / self.w_all}."
+        )
 
     def get_embedding_(self, sentence: Sequence[str]) -> np.ndarray:
         result = np.zeros((self.embed_size,))
@@ -140,7 +137,10 @@ class WeightedAverageTransformer(TransformerMixin):
         sentence_embeddings = np.vstack([self.get_embedding_(x) for x in sentences])
 
         if self.use_svd:
-            proj = (self.u_.reshape(-1, 1) * self.u_.dot(sentence_embeddings.T).reshape(1, -1)).T
+            proj = (
+                self.u_.reshape(-1, 1)
+                * self.u_.dot(sentence_embeddings.T).reshape(1, -1)
+            ).T
             sentence_embeddings = sentence_embeddings - proj
 
         return sentence_embeddings.astype(np.float32)

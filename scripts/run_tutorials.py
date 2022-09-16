@@ -6,18 +6,17 @@
 
 
 import subprocess
-
 from pathlib import Path
-from typing import List
-from typing import Tuple
+from typing import List, Tuple
 
 import click
-
 
 DEFAULT_EXECLUDE_TUTORIALS = (2, 4)  # 2 -> spark, 4 - nlp(+gpu)
 TUTORIALS_DIR = Path("examples/tutorials/")
 TUTORIAL_PREFIX = "Tutorial"
-JUPYTER_NBCONVERT_CMD_FMT = "jupyter nbconvert --config {CONFIG} --to notebook --execute --inplace {FILE}"
+JUPYTER_NBCONVERT_CMD_FMT = (
+    "jupyter nbconvert --config {CONFIG} --to notebook --execute --inplace {FILE}"
+)
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
@@ -27,7 +26,9 @@ def _starts_with_any(s: str, prefixs: Tuple[int]) -> bool:
     return any(cond)
 
 
-def get_valid_tutorials_paths(exe_tutorials: Tuple[int], exclude_tutorials: Tuple[int]) -> List[Path]:
+def get_valid_tutorials_paths(
+    exe_tutorials: Tuple[int], exclude_tutorials: Tuple[int]
+) -> List[Path]:
     """List of tutorials for executions.
 
     Tutorial selection rule:
@@ -86,7 +87,11 @@ def clean_tutorials_dir():
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
-@click.option("--config", default=".jupyter/jupyter_notebook_config.py", help="Path to jupyter config.")
+@click.option(
+    "--config",
+    default=".jupyter/jupyter_notebook_config.py",
+    help="Path to jupyter config.",
+)
 @click.option(
     "--tutorial",
     "-t",
@@ -101,9 +106,17 @@ def clean_tutorials_dir():
     type=int,
     help="Indexes of the tutorials that should be excluded.",
 )
-@click.option("--ignore-exclude", "-i", is_flag=True, help="Ignore default excluded tutorials.")
+@click.option(
+    "--ignore-exclude", "-i", is_flag=True, help="Ignore default excluded tutorials."
+)
 @click.option("--clean", "-c", is_flag=True, help="Clean directory before execution.")
-def main(config: str, tutorial: Tuple[int], exclude_tutorials: Tuple[int], ignore_exclude: bool, clean: bool):
+def main(
+    config: str,
+    tutorial: Tuple[int],
+    exclude_tutorials: Tuple[int],
+    ignore_exclude: bool,
+    clean: bool,
+):
     """Run tutorials."""
     if ignore_exclude:
         exclude_tutorials = tuple()

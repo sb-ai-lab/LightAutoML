@@ -24,7 +24,9 @@ def infer_gib(metric: Callable) -> bool:
     g_val = metric(label, pred)
     b_val = metric(label, pred[::-1])
 
-    assert g_val != b_val, "Cannot infer greater is better from metric." " Should be set manually."
+    assert g_val != b_val, (
+        "Cannot infer greater is better from metric." " Should be set manually."
+    )
 
     return g_val > b_val
 
@@ -49,6 +51,8 @@ def infer_gib_multiclass(metric: Callable) -> bool:
     g_val = metric(label, pred)
     b_val = metric(label, pred[::-1])
 
-    assert g_val != b_val, "Cannot infer greater is better from metric. " "Should be set manually."
+    assert g_val != b_val, (
+        "Cannot infer greater is better from metric. " "Should be set manually."
+    )
 
     return g_val > b_val

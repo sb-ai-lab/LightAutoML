@@ -1,25 +1,20 @@
 """Tabular iterators."""
 
-from typing import Optional
-from typing import Sequence
-from typing import Tuple
-from typing import Union
-from typing import cast
+from typing import Optional, Sequence, Tuple, Union, cast
 
 import numpy as np
 
 from lightautoml.reader.utils import set_sklearn_folds
 from lightautoml.tasks import Task
 
-from ..dataset.np_pd_dataset import CSRSparseDataset
-from ..dataset.np_pd_dataset import NumpyDataset
-from ..dataset.np_pd_dataset import PandasDataset
-from .base import CustomIdxs
-from .base import CustomIterator
-from .base import DummyIterator
-from .base import HoldoutIterator
-from .base import TrainValidIterator
-
+from ..dataset.np_pd_dataset import CSRSparseDataset, NumpyDataset, PandasDataset
+from .base import (
+    CustomIdxs,
+    CustomIterator,
+    DummyIterator,
+    HoldoutIterator,
+    TrainValidIterator,
+)
 
 NumpyOrSparse = Union[CSRSparseDataset, NumpyDataset, PandasDataset]
 
@@ -38,7 +33,9 @@ class FoldsIterator(TrainValidIterator):
             n_folds: Number of folds.
 
         """
-        assert hasattr(train, "folds"), "Folds in dataset should be defined to make folds iterator."
+        assert hasattr(
+            train, "folds"
+        ), "Folds in dataset should be defined to make folds iterator."
 
         self.train = train
         self.n_folds = train.folds.max() + 1
@@ -185,7 +182,10 @@ class TimeSeriesIterator:
         order = np.argsort(datetime_col)
         sorted_idx = idx[order]
         folds = np.concatenate(
-            [[n] * x.shape[0] for (n, x) in enumerate(np.array_split(sorted_idx, n_splits))],
+            [
+                [n] * x.shape[0]
+                for (n, x) in enumerate(np.array_split(sorted_idx, n_splits))
+            ],
             axis=0,
         )
         folds = folds[sorted_idx]
@@ -289,7 +289,9 @@ class UpliftIterator:
         self.constant_idx = idx[flg]
         self.splitted_idx = idx[~flg]
 
-        self.folds = set_sklearn_folds(self.task, target[self.splitted_idx], self.n_folds)
+        self.folds = set_sklearn_folds(
+            self.task, target[self.splitted_idx], self.n_folds
+        )
 
     def __len__(self):
         """Get number of folds.
