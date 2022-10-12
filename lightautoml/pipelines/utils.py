@@ -1,14 +1,13 @@
 """Pipeline utils."""
 
-from typing import Any
-from typing import List
-from typing import Optional
-from typing import Sequence
+from typing import Any, List, Optional, Sequence
 
 from lightautoml.dataset.base import LAMLDataset
 
 
-def map_pipeline_names(input_names: Sequence[str], output_names: Sequence[str]) -> List[Optional[str]]:
+def map_pipeline_names(
+    input_names: Sequence[str], output_names: Sequence[str]
+) -> List[Optional[str]]:
     """Pipelines create name in the way 'prefix__feature_name'.
 
     Multiple pipelines will create names
@@ -38,19 +37,24 @@ def map_pipeline_names(input_names: Sequence[str], output_names: Sequence[str]) 
                 mapped[n] = name
                 break
 
-    assert None not in mapped, "Can not infer names. For feature selection purposes use simple pipeline (one-to-one)"
+    assert (
+        None not in mapped
+    ), "Can not infer names. For feature selection purposes use simple pipeline (one-to-one)"
 
     return mapped
 
 
-def get_columns_by_role(dataset: LAMLDataset, role_name: str, **kwargs: Any) -> List[str]:
-    """Search for columns with specific role and attributes when building pipeline.
+def get_columns_by_role(
+    dataset: LAMLDataset, role_name: str, **kwargs: Any
+) -> List[str]:
+    """
+    Search for columns with specific role and attributes when building pipeline.
 
     Args:
         dataset: Dataset to search.
         role_name: Name of features role.
         **kwargs: Specific parameters values to search.
-            Example: search for categories with OHE processing only.
+          Example: search for categories with OHE processing only.
 
     Returns:
         List of str features names.

@@ -1,19 +1,11 @@
 import logging
 import os
-
 from html import escape
 from numbers import Number
-from typing import Any
-from typing import Callable
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Type
-from typing import Union
+from typing import Any, Callable, Dict, List, Optional, Type, Union
 
 import numpy as np
 import pandas as pd
-
 
 try:
     import gensim
@@ -24,25 +16,27 @@ except:
 
 import torch
 import torch.nn as nn
-
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from tqdm import tqdm
 
 from ...pipelines.features.text_pipeline import _tokenizer_by_lang
 from ...text.utils import seed_everything
-from .data_process import get_embedding_matrix
-from .data_process import get_len_dataloader
-from .data_process import get_len_dataset
-from .data_process import get_tokenized
-from .data_process import get_vocab
-from .data_process import map_tokenized_to_id
+from .data_process import (
+    get_embedding_matrix,
+    get_len_dataloader,
+    get_len_dataset,
+    get_tokenized,
+    get_vocab,
+    map_tokenized_to_id,
+)
 from .l2x_model import L2XModel
-from .utils import WrappedTokenizer
-from .utils import WrappedVocabulary
-from .utils import cross_entropy_multiple_class
-from .utils import draw_html
-
+from .utils import (
+    WrappedTokenizer,
+    WrappedVocabulary,
+    cross_entropy_multiple_class,
+    draw_html,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -93,57 +87,6 @@ class L2XTextExplainer:
         >>> explanations.get_all() # return list of (tokens_i, mask_i). The mask and tokens arrays have same sizes.
         >>> explanations[i].visualize_in_notebook() # produces the visualization of highlited tokens in document i.
 
-
-    Args:
-        automl: Automl object.
-        tokenizer: String with language ['ru', 'en'],
-            or callable function that take something,
-            that deal with sentence in string to list of tokens.
-            of list of strings. If None the lang
-            from automl's text_params will be used.
-        train_device: Device that will be used for traning L2X.
-            Name of device should be valid for torch.device.
-        inference_device: Device that will be used for inference L2X.
-            Name of device should be valid for torch.device.
-        verbose: Verbose training.
-        binning_mode: For dynamic batching we use binning sampler by number
-            of tokens in the tokenized document. This parameter specifies
-            the method for constructing the boundaries for binning.
-            Valid parameter values: 'linear' (min-max binning,
-            like linspace), 'hist' (histogram binning).
-        bins_number: Number of bins.
-        n_important: Number of imembeddportant tokens.
-        learning_rate: Learning rate of optimizer for traning L2X.
-        n_epochs: Number of epochs for training L2X.
-        optimizer: Should be optimizer in pytorch format.
-        optimizer_params: Additional params of optimizer,
-            exclude learning_rate.
-        patience: Number of epochs before reducing learning rate.
-        extreme_patience: Early stopping epochs.
-        train_batch_size: Size of batch for training process.
-        valid_batch_size: Size of batch for validation process.
-        temperature: Temperature of concrete distribution sampling.
-        temp_anneal_factor: Annealing temperature. The temperature will be
-            multiplied by this coefficient after every epoch.
-        conv_filters: Number of convolution kernels in model,
-            that produces important tokens.
-        conv_ksize: Size of convolution kernel.
-        hidden_dim: Size of fully connected layer in L2X.
-        drop_rate: Dropout rates in L2X.
-        importance_sampler: Specifices method of sampling importance.
-        embedder: Embedding dictionary or path to fasttext/dict of embeddings.
-        embedding_dim: Dimention of embeddings.
-        trainable_embeds: To train embeddings of L2X.
-        max_vocab_length: Maximum vocabulary length. If -1 then include all in train set.
-        gamma: Special coefficient, that encourage neighborhood of important tokens.
-        gamma_anneal_factor: Annealing gamma. The gamma will be
-            multiplied by this coefficient after every epoch.
-        random_seed: Random seed.
-        deterministic: Use cuda deterministic.
-        cache_dir: Directory used for checkpointing model for early stopping.
-            By default, it will infer from automl cache directory,
-            or './l2x_cache' in case there is no opportunity to infer.
-
     """
 
     def __init__(
@@ -181,6 +124,57 @@ class L2XTextExplainer:
         deterministic: bool = True,
         cache_dir: Optional[str] = None,
     ):
+        """
+
+        Args:
+            automl: Automl object.
+            tokenizer: String with language ['ru', 'en'],
+                or callable function that take something,
+                that deal with sentence in string to list of tokens.
+                of list of strings. If None the lang
+                from automl's text_params will be used.
+            train_device: Device that will be used for traning L2X.
+                Name of device should be valid for torch.device.
+            inference_device: Device that will be used for inference L2X.
+                Name of device should be valid for torch.device.
+            verbose: Verbose training.
+            binning_mode: For dynamic batching we use binning sampler by number
+                of tokens in the tokenized document. This parameter specifies
+                the method for constructing the boundaries for binning.
+                Valid parameter values: 'linear' (min-max binning,
+                like linspace), 'hist' (histogram binning).
+            bins_number: Number of bins.
+            n_important: Number of important tokens.
+            learning_rate: Learning rate of optimizer for traning L2X.
+            n_epochs: Number of epochs for training L2X.
+            optimizer: Should be optimizer in pytorch format.
+            optimizer_params: Additional params of optimizer,
+                exclude learning_rate.
+            patience: Number of epochs before reducing learning rate.
+            extreme_patience: Early stopping epochs.
+            train_batch_size: Size of batch for training process.
+            valid_batch_size: Size of batch for validation process.
+            temperature: Temperature of concrete distribution sampling.
+            temp_anneal_factor: Annealing temperature. The temperature will be
+                multiplied by this coefficient after every epoch.
+            conv_filters: Number of convolution kernels in model,
+                that produces important tokens.
+            conv_ksize: Size of convolution kernel.
+            hidden_dim: Size of fully connected layer in L2X.
+            drop_rate: Dropout rates in L2X.
+            importance_sampler: Specifices method of sampling importance.
+            embedder: Embedding dictionary or path to fasttext/dict of embeddings.
+            trainable_embeds: To train embeddings of L2X.
+            max_vocab_length: Maximum vocabulary length. If -1 then include all in train set.
+            gamma: Special coefficient, that encourage neighborhood of important tokens.
+            gamma_anneal_factor: Annealing gamma. The gamma will be
+                multiplied by this coefficient after every epoch.
+            random_seed: Random seed.
+            deterministic: Use cuda deterministic.
+            cache_dir: Directory used for checkpointing model for early stopping.
+                By default, it will infer from automl cache directory,
+                or './l2x_cache' in case there is no opportunity to infer.
+        """
         self.automl = automl
         self.reader = automl.reader
         self.task_name = automl.reader.task.name
@@ -198,7 +192,9 @@ class L2XTextExplainer:
 
         if isinstance(tokenizer, str):
             if tokenizer not in ["ru", "en"]:
-                raise ValueError("Tokenizer must be one 'ru' or 'en', but {} given".format(tokenizer))
+                raise ValueError(
+                    "Tokenizer must be one 'ru' or 'en', but {} given".format(tokenizer)
+                )
             self._tokenizer = _tokenizer_by_lang[tokenizer](is_stemmer=False)
             self.tokenizer = WrappedTokenizer(self._tokenizer)
         elif tokenizer is None:
@@ -217,17 +213,27 @@ class L2XTextExplainer:
         self.verbose = verbose
 
         if binning_mode not in ["linear", "hist"]:
-            raise ValueError("Only avaliable 'linear', 'hist' binning mods, but {} given".format(binning_mode))
+            raise ValueError(
+                "Only avaliable 'linear', 'hist' binning mods, but {} given".format(
+                    binning_mode
+                )
+            )
         self.binning_mode = binning_mode
         self.bins_number = bins_number
         self.k = n_important
         self.learning_rate = learning_rate
         if n_epochs <= 0:
-            raise ValueError("Epochs number should be positive, but {} given".format(n_epochs))
+            raise ValueError(
+                "Epochs number should be positive, but {} given".format(n_epochs)
+            )
         self.n_epochs = n_epochs
 
         if not issubclass(optimizer, torch.optim.Optimizer):
-            raise TypeError("Not torch.optim.Optimizer like optimizer format, {} given".format(type(optimizer)))
+            raise TypeError(
+                "Not torch.optim.Optimizer like optimizer format, {} given".format(
+                    type(optimizer)
+                )
+            )
         self.optimizer = optimizer
         optimizer_params = optimizer_params or {}
         self.optim_params = {**optimizer_params, "lr": self.learning_rate}
@@ -235,28 +241,44 @@ class L2XTextExplainer:
         self.valid_batch_size = valid_batch_size
 
         if temperature <= 0:
-            raise ValueError("Temperature should be positive, but {} given".format(temperature))
+            raise ValueError(
+                "Temperature should be positive, but {} given".format(temperature)
+            )
         self.T = temperature
 
         if temp_anneal_factor <= 0:
-            raise ValueError("Temperature annealing factor should be positive, but {} given".format(temp_anneal_factor))
+            raise ValueError(
+                "Temperature annealing factor should be positive, but {} given".format(
+                    temp_anneal_factor
+                )
+            )
         self.temp_anneal_factor = temp_anneal_factor
 
         if conv_filters <= 0:
             raise ValueError(
-                "Number of filters in convolution layers should be positive, but {} given".format(conv_filters)
+                "Number of filters in convolution layers should be positive, but {} given".format(
+                    conv_filters
+                )
             )
         self.conv_filters = conv_filters
         if conv_ksize <= 0:
             raise ValueError(
-                "Kernel size of filters in convolution layers should be positive, but {} given".format(conv_ksize)
+                "Kernel size of filters in convolution layers should be positive, but {} given".format(
+                    conv_ksize
+                )
             )
         self.conv_ksize = conv_ksize
         if hidden_dim <= 0:
-            raise ValueError("Dimention of hidden layer should be positive, but {} given".format(hidden_dim))
+            raise ValueError(
+                "Dimention of hidden layer should be positive, but {} given".format(
+                    hidden_dim
+                )
+            )
         self.hidden_dim = hidden_dim
         if drop_rate >= 1 or drop_rate < 0:
-            raise ValueError("Dropout rate should be in [0, 1), but {} given".format(drop_rate))
+            raise ValueError(
+                "Dropout rate should be in [0, 1), but {} given".format(drop_rate)
+            )
         self.drop_rate = drop_rate
 
         if importance_sampler not in ["gumbeltopk", "softsub"]:
@@ -276,7 +298,9 @@ class L2XTextExplainer:
                 self.embedder = gensim.models.FastText.load(embedder).wv
             except:
                 try:
-                    self.embedder = gensim.models.FastText.load_fasttext_format(embedder).wv
+                    self.embedder = gensim.models.FastText.load_fasttext_format(
+                        embedder
+                    ).wv
                 except:
                     self.embedder = gensim.models.KeyedVectors.load(embedder).wv
             self.embedding_dim = self.embedder.vector_size
@@ -291,18 +315,30 @@ class L2XTextExplainer:
         self.trainable_embeds = trainable_embeds
 
         if not isinstance(max_vocab_length, int):
-            raise TypeError("max_vocab_length should be int, but {} given".format(type(max_vocab_length)))
+            raise TypeError(
+                "max_vocab_length should be int, but {} given".format(
+                    type(max_vocab_length)
+                )
+            )
         elif max_vocab_length < -1 or max_vocab_length == 0:
             raise ValueError(
-                "Only avaliable values for max_vocab_length: -1 or grater 0, but {} given".format(max_vocab_length)
+                "Only avaliable values for max_vocab_length: -1 or grater 0, but {} given".format(
+                    max_vocab_length
+                )
             )
         self.max_vocab_length = max_vocab_length
 
         if gamma < 0:
-            logger.info2("For now sparse token highlighting will be encouraged, since gamma < 0")
+            logger.info2(
+                "For now sparse token highlighting will be encouraged, since gamma < 0"
+            )
         self.gamma = gamma
         if gamma_anneal_factor <= 0:
-            raise ValueError("Gamma annealing factor should be positive, but {} given".format(temp_anneal_factor))
+            raise ValueError(
+                "Gamma annealing factor should be positive, but {} given".format(
+                    temp_anneal_factor
+                )
+            )
         self.gamma_anneal_factor = gamma_anneal_factor
         self.explainers = {}
         self.random_seed = random_seed
@@ -345,7 +381,8 @@ class L2XTextExplainer:
         valid_data: Optional[pd.DataFrame] = None,
         cols_to_explain: Optional[Union[str, List[str]]] = None,
     ):
-        """Fit model for all columns in cols_to_explain.
+        """
+        Fit model for all columns in cols_to_explain.
 
         Target for L2X is the predictions of AutoML model. So, that you
         can pass any dataset there, but it recommend using training
@@ -365,10 +402,13 @@ class L2XTextExplainer:
         if valid_data is not None:
             valid_preds = self.automl.predict(valid_data).data
         for col in cols:
-            self.explainers[col] = self._fit_one(col, train_data, train_preds, valid_data, valid_preds)
+            self.explainers[col] = self._fit_one(
+                col, train_data, train_preds, valid_data, valid_preds
+            )
 
     def _get_cols(self, cols_to_explain: Union[None, str, List[str]]) -> List[str]:
-        """Handler for column names.
+        """
+        Handler for column names.
 
         Args:
             cols_to_explain: Explaining columns.
@@ -414,18 +454,24 @@ class L2XTextExplainer:
         train_tokenized = get_tokenized(train_data, col_to_explain, self.tokenizer)
         word_to_id, id_to_word = get_vocab(train_tokenized, self.max_vocab_length)
         word_to_id = WrappedVocabulary(word_to_id)
-        weights_matrix = get_embedding_matrix(id_to_word, self.embedder, self.embedding_dim)
+        weights_matrix = get_embedding_matrix(
+            id_to_word, self.embedder, self.embedding_dim
+        )
         train_data = map_tokenized_to_id(train_tokenized, word_to_id, self.k)
         train_dataset = get_len_dataset(train_data, train_preds)
         data_lens = self._get_lens(train_dataset)
         boundaries = self.calc_bins(data_lens, train_preds)
-        train_dataloader = get_len_dataloader(train_dataset, self.train_batch_size, boundaries, mode="train")
+        train_dataloader = get_len_dataloader(
+            train_dataset, self.train_batch_size, boundaries, mode="train"
+        )
         valid_dataloader = None
         if valid_data is not None:
             valid_tokenized = get_tokenized(valid_data, col_to_explain, self.tokenizer)
             valid_data = map_tokenized_to_id(valid_tokenized, word_to_id, self.k)
             valid_dataset = get_len_dataset(valid_data, valid_preds)
-            valid_dataloader = get_len_dataloader(valid_dataset, self.valid_batch_size, boundaries, mode="valid")
+            valid_dataloader = get_len_dataloader(
+                valid_dataset, self.valid_batch_size, boundaries, mode="valid"
+            )
 
         model = L2XModel(
             task_name=self.task_name,
@@ -446,7 +492,9 @@ class L2XTextExplainer:
         train_loss_logs = []
         if valid_data is not None:
             valid_loss_logs = []
-        self.train(model, train_dataloader, train_loss_logs, valid_dataloader, valid_loss_logs)
+        self.train(
+            model, train_dataloader, train_loss_logs, valid_dataloader, valid_loss_logs
+        )
 
         return _L2XExplainer(
             model,
@@ -470,16 +518,13 @@ class L2XTextExplainer:
         valid_dataloader: Optional[torch.utils.data.DataLoader] = None,
         valid_loss_logs: List[Union[float, None]] = None,
     ):
-        """Trainer for L2X.
+        """
+        Trainer for L2X.
 
         Args:
             model: Model to train.
             train_dataloader: Dataloader, used for training.
-            train_loss_logs: Train process logs.
-                Contains train loss list.
             valid_dataloader: Dataloader, used for validation.
-            valid_loss_logs: Train process logs.
-                Contains train loss list.
 
         """
         loss = self._loss
@@ -491,14 +536,20 @@ class L2XTextExplainer:
 
         scheduler = ReduceLROnPlateau(optimizer, patience=self.patience)
         for epoch in range(self.n_epochs):
-            train_loss = self._train_epoch(model, train_dataloader, loss, optimizer, self.train_device, gamma)
+            train_loss = self._train_epoch(
+                model, train_dataloader, loss, optimizer, self.train_device, gamma
+            )
             valid_loss = self._validate(model, valid_dataloader, loss, self.train_device)
             train_loss_logs.append(train_loss)
             if valid_loss_logs is not None:
                 valid_loss_logs.append(valid_loss)
             if self.verbose:
                 if valid_loss is None:
-                    logger.info3("Epoch: {}/{}, train loss: {}".format(epoch + 1, self.n_epochs, train_loss))
+                    logger.info3(
+                        "Epoch: {}/{}, train loss: {}".format(
+                            epoch + 1, self.n_epochs, train_loss
+                        )
+                    )
                 else:
                     logger.info3(
                         "Epoch: {}/{}, train loss: {}, valid loss: {}".format(
@@ -512,7 +563,10 @@ class L2XTextExplainer:
                     prev_best = epoch
                     torch.save(model.state_dict(), self._checkpoint_path)
 
-                elif self.extreme_patience > 0 and epoch - prev_best > self.extreme_patience:
+                elif (
+                    self.extreme_patience > 0
+                    and epoch - prev_best > self.extreme_patience
+                ):
                     model.load_state_dict(torch.load(self._checkpoint_path))
                     break
             if epoch != self.n_epochs - 1:
@@ -530,18 +584,14 @@ class L2XTextExplainer:
         device: torch.device,
         gamma: float,
     ) -> float:
-        """Train only one epoch.
+        """
+        Train only one epoch.
 
         Args:
             model: Trained L2X model.
             train_dataloader: Dataloader, used for training.
-            criterion: Torch loss object. Unnormalized (biased) negative log-likelihood.
+            loss: Torch loss object. Unnormalized (biased) negative log-likelihood.
             optimizer: Optimizer that should be one or nothing.
-            device: Device.
-            gamma: Gamma.
-
-        Returns:
-            Accumalated loss.
 
         """
         model.train()
@@ -560,7 +610,9 @@ class L2XTextExplainer:
             # Negative loglikelihood up to a constant
             nll_loss = criterion(pred, y)
             # Encouragement of neighbour tokens
-            corr_loss = torch.mean(((corr_pred[:, 1:]) ** 2 * (corr_pred[:, :-1]) ** 2).sum(-1))
+            corr_loss = torch.mean(
+                ((corr_pred[:, 1:]) ** 2 * (corr_pred[:, :-1]) ** 2).sum(-1)
+            )
             # Not sure that optima of this pair of losses is the same
             # but dunno how get best validation score
             loss = nll_loss - gamma * corr_loss
@@ -571,7 +623,9 @@ class L2XTextExplainer:
             iters += 1
 
             if self.verbose:
-                train_dataloader.set_description("train nll (loss={:.4f})".format(accum_loss / iters))
+                train_dataloader.set_description(
+                    "train nll (loss={:.4f})".format(accum_loss / iters)
+                )
 
         return accum_loss / iters
 
@@ -617,7 +671,9 @@ class L2XTextExplainer:
             return self._mi_bins(lens, target)
 
     def _linear_bins(self, lens) -> np.ndarray:
-        return np.r_[0, np.linspace(lens.min(), lens.max() + 1, self.bins_number + 1)[1:]]
+        return np.r_[
+            0, np.linspace(lens.min(), lens.max() + 1, self.bins_number + 1)[1:]
+        ]
 
     def _hist_bins(self, lens) -> np.ndarray:
         return np.r_[0, np.hist(lens, self.bins_number)[1]]
@@ -652,8 +708,7 @@ class _L2XExplainer:
             col_to_explain: Explaining column.
             bins: Binning used for training.
             tokenizer: Tokenizer function.
-            word_to_id: Dictionary word to token-id.
-            id_to_word: Dictionary token-id to word.
+            embedder: Embedding dictionary (token->embedding).
             inference_device: Inference device.
             n_important: Number of important tokens.
             task_name: Task name.
@@ -691,16 +746,16 @@ class _L2XExplainer:
     def n_important(self):
         return self.k
 
-    def explain_instances(self, data: pd.DataFrame, batch_size: int = 1) -> "L2XExplanationsContainer":
-        """Get explanations for data.
+    def explain_instances(
+        self, data: pd.DataFrame, batch_size: int = 1
+    ) -> "L2XExplanationsContainer":
+        """
+        Get explanations for data.
 
         Args:
             data: Data to explain.
             batch_size: Size of batch. Carefully, if batch_size > 0
                 every document will be padded to max size of documents in abstract.
-
-        Returns:
-            Explaner.
 
         """
         data_tokenized = get_tokenized(data, self.col_to_explain, self.tokenizer)
@@ -756,16 +811,19 @@ class L2XExplanation:
         """
         Visualization of important tokens in notebook.
         """
-        from IPython.display import HTML
-        from IPython.display import display_html
+        from IPython.display import HTML, display_html
 
         token_weights = [(escape(x), y) for x, y in zip(self.tokens, self.mask)]
-        html_code = draw_html(token_weights, self.task_name, self._hightliting_color, grad_line=False)
+        html_code = draw_html(
+            token_weights, self.task_name, self._hightliting_color, grad_line=False
+        )
         display_html(HTML(html_code))
 
 
 class L2XExplanationsContainer:
-    """Container of explanations."""
+    """
+    Container of explanations.
+    """
 
     def __init__(self, docs: List[List[str]], masks: List[List[float]], task_name: str):
         """
@@ -773,7 +831,6 @@ class L2XExplanationsContainer:
         Args:
             docs: Tokenized documents.
             masks: Mask for importances.
-            task_name: Task name.
 
         """
         self.docs = docs

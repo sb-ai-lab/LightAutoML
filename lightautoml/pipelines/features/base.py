@@ -1,43 +1,33 @@
 """Basic classes for features generation."""
 
-from copy import copy
-from copy import deepcopy
-from typing import Any
-from typing import Callable
-from typing import List
-from typing import Optional
-from typing import Tuple
-from typing import Union
+from copy import copy, deepcopy
+from typing import Any, Callable, List, Optional, Tuple, Union
 
 import numpy as np
-
-from pandas import DataFrame
-from pandas import Series
+from pandas import DataFrame, Series
 
 from ...dataset.base import LAMLDataset
-from ...dataset.np_pd_dataset import NumpyDataset
-from ...dataset.np_pd_dataset import PandasDataset
-from ...dataset.roles import ColumnRole
-from ...dataset.roles import NumericRole
-from ...transformers.base import ChangeRoles
-from ...transformers.base import ColumnsSelector
-from ...transformers.base import ConvertDataset
-from ...transformers.base import LAMLTransformer
-from ...transformers.base import SequentialTransformer
-from ...transformers.base import UnionTransformer
-from ...transformers.categorical import CatIntersectstions
-from ...transformers.categorical import FreqEncoder
-from ...transformers.categorical import LabelEncoder
-from ...transformers.categorical import MultiClassTargetEncoder
-from ...transformers.categorical import MultioutputTargetEncoder
-from ...transformers.categorical import OrdinalEncoder
-from ...transformers.categorical import TargetEncoder
-from ...transformers.datetime import BaseDiff
-from ...transformers.datetime import DateSeasons
+from ...dataset.np_pd_dataset import NumpyDataset, PandasDataset
+from ...dataset.roles import ColumnRole, NumericRole
+from ...transformers.base import (
+    ChangeRoles,
+    ColumnsSelector,
+    ConvertDataset,
+    LAMLTransformer,
+    SequentialTransformer,
+    UnionTransformer,
+)
+from ...transformers.categorical import (
+    CatIntersectstions,
+    FreqEncoder,
+    LabelEncoder,
+    MultiClassTargetEncoder,
+    OrdinalEncoder,
+    TargetEncoder,
+)
+from ...transformers.datetime import BaseDiff, DateSeasons
 from ...transformers.numeric import QuantileBinning
-from ..utils import get_columns_by_role
-from ..utils import map_pipeline_names
-
+from ..utils import get_columns_by_role, map_pipeline_names
 
 NumpyOrPandas = Union[PandasDataset, NumpyDataset]
 
@@ -60,7 +50,9 @@ class FeaturesPipeline:
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.pipes: List[Callable[[LAMLDataset], LAMLTransformer]] = [self.create_pipeline]
+        self.pipes: List[Callable[[LAMLDataset], LAMLTransformer]] = [
+            self.create_pipeline
+        ]
         self.sequential = False
 
     # TODO: visualize pipeline ?
@@ -96,7 +88,7 @@ class FeaturesPipeline:
         Args:
             train: Dataset with train data.
 
-        Returns:  # noqa DAR202
+        Returns:
             Composite transformer (pipeline).
 
         """
@@ -114,7 +106,10 @@ class FeaturesPipeline:
         """
         # TODO: Think about input/output features attributes
         self._input_features = train.features
-        self._pipeline = self._merge_seq(train) if self.sequential else self._merge(train)
+
+        self._pipeline = (
+            self._merge_seq(train) if self.sequential else self._merge(train)
+        )
 
         return self._pipeline.fit_transform(train)
 
@@ -128,13 +123,14 @@ class FeaturesPipeline:
             Dataset with new features.
 
         """
-        return self._pipeline.transform(test)
+        out = self._pipeline.transform(test)
+        return out
 
-    def set_sequential(self, val: bool = True):  # noqa D102
+    def set_sequential(self, val: bool = True):
         self.sequential = val
         return self
 
-    def append(self, pipeline):  # noqa D102
+    def append(self, pipeline):
         if isinstance(pipeline, FeaturesPipeline):
             pipeline = [pipeline]
 
@@ -143,7 +139,7 @@ class FeaturesPipeline:
 
         return self
 
-    def prepend(self, pipeline):  # noqa D102
+    def prepend(self, pipeline):
         if isinstance(pipeline, FeaturesPipeline):
             pipeline = [pipeline]
 
@@ -152,7 +148,7 @@ class FeaturesPipeline:
 
         return self
 
-    def pop(self, i: int = -1) -> Optional[Callable[[LAMLDataset], LAMLTransformer]]:  # noqa D102
+    def pop(self, i: int = -1) -> Optional[Callable[[LAMLDataset], LAMLTransformer]]:
         if len(self.pipes) > 1:
             return self.pipes.pop(i)
 
@@ -229,9 +225,9 @@ class TabularDataFeatures:
 
         """
         base_dates = get_columns_by_role(train, "Datetime", base_date=True)
-        datetimes = get_columns_by_role(train, "Datetime", base_date=False) + get_columns_by_role(
-            train, "Datetime", base_date=True, base_feats=True
-        )
+        datetimes = get_columns_by_role(
+            train, "Datetime", base_date=False
+        ) + get_columns_by_role(train, "Datetime", base_date=True, base_feats=True)
 
         return base_dates, datetimes
 
@@ -272,7 +268,10 @@ class TabularDataFeatures:
         """
         _, datetimes = self.get_cols_for_datetime(train)
         for col in copy(datetimes):
-            if len(train.roles[col].seasonality) == 0 and train.roles[col].country is None:
+            if (
+                len(train.roles[col].seasonality) == 0
+                and train.roles[col].country is None
+            ):
                 datetimes.remove(col)
 
         if len(datetimes) == 0:
@@ -282,10 +281,7 @@ class TabularDataFeatures:
             outp_role = NumericRole(np.float32)
 
         date_as_cat = SequentialTransformer(
-            [
-                ColumnsSelector(keys=datetimes),
-                DateSeasons(outp_role),
-            ]
+            [ColumnsSelector(keys=datetimes), DateSeasons(outp_role)]
         )
         return date_as_cat
 
@@ -340,16 +336,15 @@ class TabularDataFeatures:
 
         """
         if feats_to_select is None:
-            feats_to_select = get_columns_by_role(train, "Category", encoding_type="freq")
+            feats_to_select = get_columns_by_role(
+                train, "Category", encoding_type="freq"
+            )
 
         if len(feats_to_select) == 0:
             return
 
         cat_processing = SequentialTransformer(
-            [
-                ColumnsSelector(keys=feats_to_select),
-                FreqEncoder(),
-            ]
+            [ColumnsSelector(keys=feats_to_select), FreqEncoder()]
         )
         return cat_processing
 
@@ -393,10 +388,13 @@ class TabularDataFeatures:
             Transformer.
 
         """
+
         if feats_to_select is None:
             feats_to_select = []
             for i in ["auto", "oof", "int", "ohe"]:
-                feats_to_select.extend(get_columns_by_role(train, "Category", encoding_type=i))
+                feats_to_select.extend(
+                    get_columns_by_role(train, "Category", encoding_type=i)
+                )
 
         if len(feats_to_select) == 0:
             return
@@ -422,11 +420,6 @@ class TabularDataFeatures:
         if train.folds is not None:
             if train.task.name in ["binary", "reg"]:
                 target_encoder = TargetEncoder
-            elif (train.task.name == "multi:reg") or (train.task.name == "multilabel"):
-                n_classes = train.target.shape[1]
-                if n_classes <= self.multiclass_te_co:
-                    target_encoder = MultioutputTargetEncoder
-
             else:
                 n_classes = train.target.max() + 1
                 if n_classes <= self.multiclass_te_co:
@@ -474,6 +467,7 @@ class TabularDataFeatures:
             Transformer.
 
         """
+
         if feats_to_select is None:
 
             categories = get_columns_by_role(train, "Category")
@@ -511,6 +505,7 @@ class TabularDataFeatures:
             Series.
 
         """
+
         uns = []
         for col in feats:
             feat = Series(train[:, col].data)
@@ -552,7 +547,9 @@ class TabularDataFeatures:
         df = DataFrame({"importance": 0, "cardinality": 0}, index=cats)
         # importance if defined
         if self.feats_imp is not None:
-            feats_imp = Series(self.feats_imp.get_features_score()).sort_values(ascending=False)
+            feats_imp = Series(self.feats_imp.get_features_score()).sort_values(
+                ascending=False
+            )
             df["importance"] = feats_imp[feats_imp.index.isin(cats)]
             df["importance"].fillna(-np.inf)
 

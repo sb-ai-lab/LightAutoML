@@ -1,19 +1,19 @@
 """Bunch of metrics with unified interface."""
 
 from functools import partial
-from typing import Callable
-from typing import Optional
+from typing import Callable, Optional
 
 import numpy as np
-
-from sklearn.metrics import accuracy_score
-from sklearn.metrics import f1_score
-from sklearn.metrics import log_loss
-from sklearn.metrics import mean_absolute_error
-from sklearn.metrics import mean_squared_error
-from sklearn.metrics import mean_squared_log_error
-from sklearn.metrics import r2_score
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import (
+    accuracy_score,
+    f1_score,
+    log_loss,
+    mean_absolute_error,
+    mean_squared_error,
+    mean_squared_log_error,
+    r2_score,
+    roc_auc_score,
+)
 
 
 def mean_quantile_error(
@@ -122,7 +122,9 @@ def mean_absolute_percentage_error(
     return err.mean()
 
 
-def roc_auc_ovr(y_true: np.ndarray, y_pred: np.ndarray, sample_weight: Optional[np.ndarray] = None):
+def roc_auc_ovr(
+    y_true: np.ndarray, y_pred: np.ndarray, sample_weight: Optional[np.ndarray] = None
+):
     """ROC-AUC One-Versus-Rest.
 
     Args:
@@ -134,10 +136,13 @@ def roc_auc_ovr(y_true: np.ndarray, y_pred: np.ndarray, sample_weight: Optional[
         Metric values.
 
     """
+
     return roc_auc_score(y_true, y_pred, sample_weight=sample_weight, multi_class="ovr")
 
 
-def rmsle(y_true: np.ndarray, y_pred: np.ndarray, sample_weight: Optional[np.ndarray] = None):
+def rmsle(
+    y_true: np.ndarray, y_pred: np.ndarray, sample_weight: Optional[np.ndarray] = None
+):
     """Root mean squared log error.
 
     Args:
@@ -182,6 +187,7 @@ def auc_mu(
         Code was refactored from https://github.com/kleimanr/auc_mu/blob/master/auc_mu.py
 
     """
+
     if not isinstance(y_pred, np.ndarray):
         raise TypeError("Expected y_pred to be np.ndarray, got: {}".format(type(y_pred)))
     if not y_pred.ndim == 2:
@@ -207,11 +213,19 @@ def auc_mu(
         class_weights /= class_weights.sum()
 
     if not isinstance(class_weights, np.ndarray):
-        raise TypeError("Expected class_weights to be np.ndarray, got: {}".format(type(class_weights)))
+        raise TypeError(
+            "Expected class_weights to be np.ndarray, got: {}".format(
+                type(class_weights)
+            )
+        )
     if not class_weights.ndim == 2:
         raise ValueError("Expected class_weights to be a 2-dimentional array")
     if not class_weights.shape == (n_classes, n_classes):
-        raise ValueError("Expected class_weights size: {}, got: {}".format((n_classes, n_classes), class_weights.shape))
+        raise ValueError(
+            "Expected class_weights size: {}, got: {}".format(
+                (n_classes, n_classes), class_weights.shape
+            )
+        )
     # check sum?
     confusion_matrix = np.ones((n_classes, n_classes)) - np.eye(n_classes)
     auc_full = 0.0
@@ -235,14 +249,17 @@ def auc_mu(
 
 
 class F1Factory:
-    """Wrapper for :func:`~sklearn.metrics.f1_score` function.
-
-    Args:
-        average: Averaging type ('micro', 'macro', 'weighted').
-
+    """
+    Wrapper for :func:`~sklearn.metrics.f1_score` function.
     """
 
     def __init__(self, average: str = "micro"):
+        """
+
+        Args:
+            average: Averaging type ('micro', 'macro', 'weighted').
+
+        """
         self.average = average
 
     def __call__(
@@ -264,46 +281,64 @@ class F1Factory:
             for the multiclass task.
 
         """
-        return f1_score(y_true, y_pred, sample_weight=sample_weight, average=self.average)
+        return f1_score(
+            y_true, y_pred, sample_weight=sample_weight, average=self.average
+        )
 
 
 class BestClassBinaryWrapper:
-    r"""Metric wrapper to get best class prediction instead of probs.
+    """Metric wrapper to get best class prediction instead of probs.
 
     There is cut-off for prediction by ``0.5``.
-
-    Args:
-        func: Metric function. Function format:
-            func(y_pred, y_true, weights, \*\*kwargs).
 
     """
 
     def __init__(self, func: Callable):
+        """
+
+        Args:
+            func: Metric function. Function format:
+               func(y_pred, y_true, weights, \*\*kwargs).
+
+        """
         self.func = func
 
-    def __call__(self, y_true: np.ndarray, y_pred: np.ndarray, sample_weight: Optional[np.ndarray] = None, **kwargs):
-        """Calculate metric."""
+    def __call__(
+        self,
+        y_true: np.ndarray,
+        y_pred: np.ndarray,
+        sample_weight: Optional[np.ndarray] = None,
+        **kwargs
+    ):
         y_pred = (y_pred > 0.5).astype(np.float32)
 
         return self.func(y_true, y_pred, sample_weight=sample_weight, **kwargs)
 
 
 class BestClassMulticlassWrapper:
-    r"""Metric wrapper to get best class prediction instead of probs for multiclass.
+    """Metric wrapper to get best class prediction instead of probs for multiclass.
 
     Prediction provides by argmax.
-
-    Args:
-        func: Metric function. Function format:
-            func(y_pred, y_true, weights, \*\*kwargs)
 
     """
 
     def __init__(self, func):
+        """
+
+        Args:
+            func: Metric function. Function format:
+               func(y_pred, y_true, weights, \*\*kwargs)
+
+        """
         self.func = func
 
-    def __call__(self, y_true: np.ndarray, y_pred: np.ndarray, sample_weight: Optional[np.ndarray] = None, **kwargs):
-        """Calculate metric."""
+    def __call__(
+        self,
+        y_true: np.ndarray,
+        y_pred: np.ndarray,
+        sample_weight: Optional[np.ndarray] = None,
+        **kwargs
+    ):
         y_pred = (y_pred.argmax(axis=1)).astype(np.float32)
 
         return self.func(y_true, y_pred, sample_weight=sample_weight, **kwargs)
@@ -339,16 +374,11 @@ _valid_str_multiclass_metric_names = {
     "f1_micro": BestClassMulticlassWrapper(F1Factory("micro")),
     "f1_weighted": BestClassMulticlassWrapper(F1Factory("weighted")),
 }
-_valid_str_multireg_metric_names = {"mse": mean_squared_error, "mae": mean_absolute_error}
-
-_valid_str_multilabel_metric_names = {"logloss": partial(log_loss, eps=1e-7)}
 
 _valid_str_metric_names = {
     "binary": _valid_str_binary_metric_names,
     "reg": _valid_str_reg_metric_names,
     "multiclass": _valid_str_multiclass_metric_names,
-    "multi:reg": _valid_str_multireg_metric_names,
-    "multilabel": _valid_str_multilabel_metric_names,
 }
 
 _valid_metric_args = {"quantile": ["q"], "huber": ["a"], "fair": ["c"]}

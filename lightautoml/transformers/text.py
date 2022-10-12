@@ -4,15 +4,8 @@ import gc
 import logging
 import os
 import pickle
-
-from copy import copy
-from copy import deepcopy
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Union
-
+from copy import copy, deepcopy
+from typing import Any, Dict, List, Optional, Union
 
 try:
     import gensim
@@ -24,29 +17,18 @@ except:
 import numpy as np
 import pandas as pd
 import torch
-
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.linear_model import SGDClassifier
-from sklearn.linear_model import SGDRegressor
+from sklearn.linear_model import SGDClassifier, SGDRegressor
 
 from ..dataset.base import LAMLDataset
-from ..dataset.np_pd_dataset import CSRSparseDataset
-from ..dataset.np_pd_dataset import NumpyDataset
-from ..dataset.np_pd_dataset import PandasDataset
-from ..dataset.roles import NumericRole
-from ..dataset.roles import TextRole
-from ..text.dl_transformers import BOREP
-from ..text.dl_transformers import BertEmbedder
-from ..text.dl_transformers import DLTransformer
-from ..text.dl_transformers import RandomLSTM
-from ..text.embed_dataset import BertDataset
-from ..text.embed_dataset import EmbedDataset
-from ..text.tokenizer import BaseTokenizer
-from ..text.tokenizer import SimpleEnTokenizer
+from ..dataset.np_pd_dataset import CSRSparseDataset, NumpyDataset, PandasDataset
+from ..dataset.roles import NumericRole, TextRole
+from ..text.dl_transformers import BOREP, BertEmbedder, DLTransformer, RandomLSTM
+from ..text.embed_dataset import BertDataset, EmbedDataset
+from ..text.tokenizer import BaseTokenizer, SimpleEnTokenizer
 from ..text.utils import get_textarr_hash
 from ..text.weighted_average_transformer import WeightedAverageTransformer
 from .base import LAMLTransformer
-
 
 logger = logging.getLogger(__name__)
 
@@ -156,13 +138,6 @@ class TunableTransformer(LAMLTransformer):
     """Base class for ML transformers.
 
     Assume that parameters my set before training.
-
-    Args:
-        default_params: algo hyperparams.
-        freeze_defaults:
-            - ``True`` :  params may be rewritten depending on dataset.
-            - ``False``:  params may be changed only manually or with tuning.
-
     """
 
     _default_params: dict = {}
@@ -188,16 +163,24 @@ class TunableTransformer(LAMLTransformer):
     def init_params_on_input(self, dataset: NumpyOrPandas) -> dict:
         """Init params depending on input data.
 
-        Args:
-            dataset: Dataset.
-
         Returns:
             Dict with model hyperparameters.
 
         """
         return self.params
 
-    def __init__(self, default_params: Optional[dict] = None, freeze_defaults: bool = True):
+    def __init__(
+        self, default_params: Optional[dict] = None, freeze_defaults: bool = True
+    ):
+        """
+
+        Args:
+            default_params: algo hyperparams.
+            freeze_defaults:
+                - ``True`` :  params may be rewritten depending on dataset.
+                - ``False``:  params may be changed only manually or with tuning.
+
+        """
         self.task = None
 
         self.freeze_defaults = freeze_defaults
@@ -208,22 +191,7 @@ class TunableTransformer(LAMLTransformer):
 
 
 class TfidfTextTransformer(TunableTransformer):
-    """Simple Tfidf vectorizer.
-
-    Args:
-        default_params: algo hyperparams.
-        freeze_defaults: Flag.
-        subs: Subsample to calculate freqs. If ``None`` - full data.
-        random_state: Random state to take subsample.
-
-    Note:
-        The behaviour of `freeze_defaults`:
-
-        - ``True`` :  params may be rewritten depending on dataset.
-        - ``False``:  params may be changed only
-            manually or with tuning.
-
-    """
+    """Simple Tfidf vectorizer."""
 
     _fit_checks = (text_check,)
     _transform_checks = ()
@@ -240,6 +208,7 @@ class TfidfTextTransformer(TunableTransformer):
     @property
     def features(self) -> List[str]:
         """Features list."""
+
         return self._features
 
     def __init__(
@@ -249,6 +218,22 @@ class TfidfTextTransformer(TunableTransformer):
         subs: Optional[int] = None,
         random_state: int = 42,
     ):
+        """
+
+        Args:
+            default_params: algo hyperparams.
+            freeze_defaults: Flag.
+            subs: Subsample to calculate freqs. If ``None`` - full data.
+            random_state: Random state to take subsample.
+
+        Note:
+            The behaviour of `freeze_defaults`:
+
+            - ``True`` :  params may be rewritten depending on dataset.
+            - ``False``:  params may be changed only
+              manually or with tuning.
+
+        """
         super().__init__(default_params, freeze_defaults)
         self.subs = subs
         self.random_state = random_state
@@ -265,6 +250,7 @@ class TfidfTextTransformer(TunableTransformer):
             Parameters of model.
 
         """
+
         # TODO: use features_num
         suggested_params = copy(self.default_params)
         if self.freeze_defaults:
@@ -346,18 +332,19 @@ class TfidfTextTransformer(TunableTransformer):
 
 
 class TokenizerTransformer(LAMLTransformer):
-    """Simple tokenizer transformer.
-
-    Args:
-        tokenizer: text tokenizer.
-
-    """
+    """Simple tokenizer transformer."""
 
     _fit_checks = (text_check,)
     _transform_checks = ()
     _fname_prefix = "tokenized"
 
     def __init__(self, tokenizer: BaseTokenizer = SimpleEnTokenizer()):
+        """
+
+        Args:
+            tokenizer: text tokenizer.
+
+        """
         self.tokenizer = tokenizer
 
     def transform(self, dataset: NumpyOrPandas) -> PandasDataset:
@@ -370,6 +357,7 @@ class TokenizerTransformer(LAMLTransformer):
             Pandas dataset with tokenized text.
 
         """
+
         # checks here
         super().transform(dataset)
         # convert to accepted dtype and get attributes
@@ -380,12 +368,16 @@ class TokenizerTransformer(LAMLTransformer):
         roles = TextRole()
         outputs = []
         for n, i in enumerate(df.columns):
-            pred = np.array(self.tokenizer.tokenize(df[i].fillna("").astype(str).tolist()))
+            pred = np.array(
+                self.tokenizer.tokenize(df[i].fillna("").astype(str).tolist())
+            )
             new_df = pd.DataFrame(pred, columns=[self._fname_prefix + "__" + i])
             outputs.append(new_df)
         # create resulted
         output = dataset.empty().to_pandas()
-        output.set_data(pd.concat(outputs, axis=1), None, {feat: roles for feat in self.features})
+        output.set_data(
+            pd.concat(outputs, axis=1), None, {feat: roles for feat in self.features}
+        )
         return output
 
 
@@ -400,6 +392,7 @@ class OneToOneTransformer(TunableTransformer):
     @property
     def features(self) -> List[str]:
         """Features list."""
+
         return self._features
 
     def init_params_on_input(self, dataset: NumpyOrPandas) -> dict:
@@ -412,6 +405,7 @@ class OneToOneTransformer(TunableTransformer):
             Parameters of model.
 
         """
+
         # TODO: use features_num
         suggested_params = copy(self.default_params)
 
@@ -427,7 +421,9 @@ class OneToOneTransformer(TunableTransformer):
 
         return suggested_params
 
-    def __init__(self, default_params: Optional[int] = None, freeze_defaults: bool = False):
+    def __init__(
+        self, default_params: Optional[int] = None, freeze_defaults: bool = False
+    ):
         super().__init__(default_params, freeze_defaults)
         """
 
@@ -445,9 +441,6 @@ class OneToOneTransformer(TunableTransformer):
 
         Args:
             dataset: Pandas or Numpy dataset of encoded text features.
-
-        Returns:
-            self.
 
         """
         for check_func in self._fit_checks:
@@ -540,18 +533,19 @@ class OneToOneTransformer(TunableTransformer):
 
 
 class ConcatTextTransformer(LAMLTransformer):
-    """Concat text features transformer.
-
-    Args:
-        special_token: Add special token between columns.
-
-    """
+    """Concat text features transformer."""
 
     _fit_checks = (text_check,)
     _transform_checks = ()
     _fname_prefix = "concated"
 
     def __init__(self, special_token: str = " [SEP] "):
+        """
+
+        Args:
+            special_token: Add special token between columns.
+
+        """
         self.special_token = special_token
 
     def transform(self, dataset: NumpyOrPandas) -> PandasDataset:
@@ -564,6 +558,7 @@ class ConcatTextTransformer(LAMLTransformer):
             Pandas dataset with one text column.
 
         """
+
         # checks here
         super().transform(dataset)
         # convert to accepted dtype and get attributes
@@ -573,7 +568,10 @@ class ConcatTextTransformer(LAMLTransformer):
         # transform
         roles = TextRole()
         new_df = pd.DataFrame(
-            df[df.columns].fillna("").astype(str).apply(f"{self.special_token}".join, axis=1),
+            df[df.columns]
+            .fillna("")
+            .astype(str)
+            .apply(f"{self.special_token}".join, axis=1),
             columns=[self._fname_prefix + "__" + "__".join(df.columns)],
         )
         # create resulted
@@ -583,27 +581,7 @@ class ConcatTextTransformer(LAMLTransformer):
 
 
 class AutoNLPWrap(LAMLTransformer):
-    """Calculate text embeddings.
-
-    Args:
-        model_name: Method for aggregating word embeddings
-            into sentence embedding.
-        transformer_params: Aggregating model parameters.
-        embedding_model: Word level embedding model with dict
-            interface or path to gensim fasttext model.
-        cache_dir: If ``None`` - do not cache transformed datasets.
-        bert_model: Name of HuggingFace transformer model.
-        subs: Subsample to calculate freqs. If None - full data.
-        multigpu: Use Data Parallel.
-        random_state: Random state to take subsample.
-        train_fasttext: Train fasttext.
-        fasttext_params: Fasttext init params.
-        fasttext_epochs: Number of epochs to train.
-        verbose: Verbosity.
-        device: Torch device or str.
-        **kwargs: Unused params.
-
-    """
+    """Calculate text embeddings."""
 
     _fit_checks = (text_check,)
     _transform_checks = ()
@@ -635,8 +613,31 @@ class AutoNLPWrap(LAMLTransformer):
         device: Any = "0",
         **kwargs: Any,
     ):
+        """
+
+        Args:
+            model_name: Method for aggregating word embeddings
+              into sentence embedding.
+            transformer_params: Aggregating model parameters.
+            embedding_model: Word level embedding model with dict
+              interface or path to gensim fasttext model.
+            cache_dir: If ``None`` - do not cache transformed datasets.
+            bert_model: Name of HuggingFace transformer model.
+            subs: Subsample to calculate freqs. If None - full data.
+            multigpu: Use Data Parallel.
+            random_state: Random state to take subsample.
+            train_fasttext: Train fasttext.
+            fasttext_params: Fasttext init params.
+            fasttext_epochs: Number of epochs to train.
+            verbose: Verbosity.
+            device: Torch device or str.
+            **kwargs: Unused params.
+
+        """
         if train_fasttext:
-            assert model_name in self._trainable, f"If train fasstext then model must be in {self._trainable}"
+            assert (
+                model_name in self._trainable
+            ), f"If train fasstext then model must be in {self._trainable}"
 
         assert model_name in self._names, f"Model name must be one of {self._names}"
         self.device = device
@@ -663,11 +664,17 @@ class AutoNLPWrap(LAMLTransformer):
                     embedding_model = gensim.models.FastText.load(embedding_model)
                 except:
                     try:
-                        embedding_model = gensim.models.FastText.load_fasttext_format(embedding_model)
+                        embedding_model = gensim.models.FastText.load_fasttext_format(
+                            embedding_model
+                        )
                     except:
-                        embedding_model = gensim.models.KeyedVectors.load(embedding_model)
+                        embedding_model = gensim.models.KeyedVectors.load(
+                            embedding_model
+                        )
 
-            self.transformer_params = self._update_transformers_emb_model(self.transformer_params, embedding_model)
+            self.transformer_params = self._update_transformers_emb_model(
+                self.transformer_params, embedding_model
+            )
 
         else:
 
@@ -683,7 +690,9 @@ class AutoNLPWrap(LAMLTransformer):
             if "dataset_params" in self.transformer_params:
                 self.transformer_params["dataset_params"]["model_name"] = bert_model
             if "embedding_model_params" in self.transformer_params:
-                self.transformer_params["embedding_model_params"]["model_name"] = bert_model
+                self.transformer_params["embedding_model_params"][
+                    "model_name"
+                ] = bert_model
             if "model_params" in self.transformer_params:
                 self.transformer_params["model_params"]["model_name"] = bert_model
         return self
@@ -708,7 +717,9 @@ class AutoNLPWrap(LAMLTransformer):
                             # Dict of embeddings checker
                             emb_size = next(iter(model.values())).shape[0]
                         except:
-                            raise ValueError("Unrecognized embedding dimention, please specify it in model_params")
+                            raise ValueError(
+                                "Unrecognized embedding dimention, please specify it in model_params"
+                            )
         try:
             model = model.wv
         except:
@@ -729,9 +740,6 @@ class AutoNLPWrap(LAMLTransformer):
 
         Args:
             dataset: Pandas or Numpy dataset of text features.
-
-        Returns:
-            self.
 
         """
         for check_func in self._fit_checks:
@@ -764,7 +772,9 @@ class AutoNLPWrap(LAMLTransformer):
                     total_examples=len(common_texts),
                     epochs=self.fasttext_epochs,
                 )
-                transformer_params = self._update_transformers_emb_model(transformer_params, embedding_model)
+                transformer_params = self._update_transformers_emb_model(
+                    transformer_params, embedding_model
+                )
 
             transformer = self.transformer(
                 verbose=self.verbose,
@@ -775,7 +785,10 @@ class AutoNLPWrap(LAMLTransformer):
             emb_name = transformer.get_name()
             emb_size = transformer.get_out_shape()
 
-            feats = [self._fname_prefix + "_" + emb_name + "_" + str(x) + "__" + i for x in range(emb_size)]
+            feats = [
+                self._fname_prefix + "_" + emb_name + "_" + str(x) + "__" + i
+                for x in range(emb_size)
+            ]
 
             self.dicts[i] = {
                 "transformer": deepcopy(transformer.fit(subs[i])),
@@ -812,7 +825,9 @@ class AutoNLPWrap(LAMLTransformer):
         outputs = []
         for n, i in enumerate(df.columns):
             if self.cache_dir is not None:
-                full_hash = get_textarr_hash(df[i]) + get_textarr_hash(self.dicts[i]["feats"])
+                full_hash = get_textarr_hash(df[i]) + get_textarr_hash(
+                    self.dicts[i]["feats"]
+                )
                 fname = os.path.join(self.cache_dir, full_hash + ".pkl")
                 if os.path.exists(fname):
                     logger.info3(f"Load saved dataset for {i}")
@@ -837,12 +852,17 @@ class AutoNLPWrap(LAMLTransformer):
         return dataset
 
     @staticmethod
-    def _sentence_norm(x: np.ndarray, mode: Optional[str] = None) -> Union[np.ndarray, float]:
+    def _sentence_norm(
+        x: np.ndarray, mode: Optional[str] = None
+    ) -> Union[np.ndarray, float]:
         """Get sentence embedding norm."""
         if mode == "l2":
             return ((x ** 2).sum(axis=1, keepdims=True)) ** 0.5
         elif mode == "l1":
             return np.abs(x).sum(axis=1, keepdims=True)
         if mode is not None:
-            logger.info2("Unknown sentence scaler mode: sent_scaler={}, " "no normalization will be used".format(mode))
+            logger.info2(
+                "Unknown sentence scaler mode: sent_scaler={}, "
+                "no normalization will be used".format(mode)
+            )
         return 1

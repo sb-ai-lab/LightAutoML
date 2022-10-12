@@ -1,16 +1,21 @@
 """Reader utils."""
 
-from typing import Callable
-from typing import Optional
-from typing import Union
+from typing import Callable, Optional, Union
 
 import numpy as np
 
-from sklearn.model_selection import GroupKFold
-from sklearn.model_selection import KFold
-from sklearn.model_selection import StratifiedKFold
+try:
+    import cudf
+    import cupy as cp
+    import dask_cudf
+except ModuleNotFoundError:
+    print("Warning: GPU is not supported on this machine")
+
+from sklearn.model_selection import GroupKFold, KFold, StratifiedKFold
 
 from ..tasks import Task
+
+GpuSeries = Union[cp.ndarray, cudf.Series, dask_cudf.Series]
 
 
 def set_sklearn_folds(
@@ -33,19 +38,126 @@ def set_sklearn_folds(
         Array with fold indices.
 
     """
-    if type(cv) is int:
-        if group is not None:
-            split = GroupKFold(cv).split(group, group, group)
-        elif task.name in ["binary", "multiclass"]:
 
-            split = StratifiedKFold(cv, random_state=random_state, shuffle=True).split(target, target)
-        else:
-            split = KFold(cv, random_state=random_state, shuffle=True).split(target, target)
+    # GPU PART
+    def KFolds_gpu(
+        target: cudf.Series,
+        n_splits: int = 5,
+        shuffle: bool = True,
+        random_state: int = 42,
+    ) -> cudf.Series:
+        """Performs regular KFolds
 
-        folds = np.zeros(target.shape[0], dtype=np.int32)
-        for n, (f0, f1) in enumerate(split):
-            folds[f1] = n
+        Args:
+            target: Target values.
+            shuffle: If data needs to shuffled.
+            random_state: Determines random number generation.
+            n_splits: Number of splits
 
-        return folds
+        Returns:
+            Array with fold indices.
+
+        """
+        cp.random.seed(seed=random_state)
+        n_samples = len(target)
+        indices = cp.arange(n_samples)
+        if shuffle:
+            cp.random.shuffle(indices)
+        fold_sizes = cp.full(n_splits, n_samples // n_splits, dtype=int)
+        fold_sizes[: n_samples % n_splits] += 1
+        current = 0
+        output = cp.zeros(n_samples, dtype="i")
+        for i, fold_size in enumerate(fold_sizes):
+            start, stop = current, current + fold_size
+            output[indices[start:stop]] = i
+            current = stop
+        output = cudf.Series(output, index=target.index, name="folds")
+        return output
+
+    # GPU PART
+    if isinstance(target, (cp.ndarray, cudf.Series, dask_cudf.Series)):
+        if type(cv) is int:
+            output = None
+            if isinstance(target, (dask_cudf.Series, dask_cudf.DataFrame)):
+                shuffle = True
+                output = target.map_partitions(
+                    KFolds_gpu, cv, shuffle, random_state, meta=("folds", np.int32)
+                ).persist()
+
+            elif group is not None:
+                n_samples = len(target)
+                n_splits = cv
+                unique_groups, groups = cp.unique(group, return_inverse=True)
+                n_samples_per_group = cp.bincount(groups)
+                indices = cp.argsort(n_samples_per_group)[::-1]
+                n_samples_per_group = n_samples_per_group[indices]
+                n_samples_per_fold = cp.zeros(n_splits)
+                group_to_fold = cp.zeros(len(unique_groups))
+                for group_index, weight in enumerate(n_samples_per_group):
+                    lightest_fold = cp.argmin(n_samples_per_fold)
+                    n_samples_per_fold[lightest_fold] += weight
+                    group_to_fold[indices[group_index]] = lightest_fold
+
+                indices = group_to_fold[groups]
+                output = cp.zeros(n_samples, dtype="i")
+                for i in range(n_splits):
+                    output[cp.where(indices == i)] = i
+                output = cudf.Series(output, index=target.index)
+
+            elif task.name in ["binary", "multiclass"]:
+                cp.random.seed(seed=42)
+                shuffle = True
+                n_splits = cv
+                _, y_idx, y_inv = cp.unique(
+                    target, return_index=True, return_inverse=True
+                )
+                _, class_perm = cp.unique(y_idx, return_inverse=True)
+                y_encoded = class_perm[y_inv]
+                n_classes = len(y_idx)
+                y_order = cp.sort(y_encoded)
+
+                allocation = cp.asarray(
+                    [
+                        cp.bincount(y_order[i::n_splits], minlength=n_classes)
+                        for i in range(n_splits)
+                    ]
+                ).get()
+
+                output = cp.empty(len(target), dtype="i")
+                for k in range(n_classes):
+                    folds_for_class = cp.arange(n_splits).repeat(
+                        allocation[:, k].tolist()
+                    )
+
+                    if shuffle:
+                        cp.random.shuffle(folds_for_class)
+                    output[y_encoded == k] = folds_for_class
+                output = cudf.Series(output, index=target.index, name="folds")
+
+            else:
+                shuffle = True
+                output = KFolds_gpu(target, cv, shuffle, random_state)
+
+            return output
+    # CPU PART
+    else:
+        if type(cv) is int:
+            if group is not None:
+                split = GroupKFold(cv).split(group, group, group)
+            elif task.name in ["binary", "multiclass"]:
+
+                split = StratifiedKFold(
+                    cv, random_state=random_state, shuffle=True
+                ).split(target, target)
+            else:
+                split = KFold(cv, random_state=random_state, shuffle=True).split(
+                    target, target
+                )
+
+            folds = np.zeros(target.shape[0], dtype=np.int32)
+            for n, (f0, f1) in enumerate(split):
+                folds[f1] = n
+
+            return folds
 
     return

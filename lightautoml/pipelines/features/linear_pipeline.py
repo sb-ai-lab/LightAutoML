@@ -1,37 +1,35 @@
 """Linear models features."""
 
-from typing import Optional
-from typing import Union
+from typing import Optional, Union
 
 import numpy as np
 
-from ...dataset.np_pd_dataset import NumpyDataset
-from ...dataset.np_pd_dataset import PandasDataset
+from ...dataset.np_pd_dataset import NumpyDataset, PandasDataset
 from ...dataset.roles import CategoryRole
-from ...transformers.base import ChangeRoles
-from ...transformers.base import ColumnsSelector
-from ...transformers.base import LAMLTransformer
-from ...transformers.base import SequentialTransformer
-from ...transformers.base import UnionTransformer
-from ...transformers.categorical import LabelEncoder
-from ...transformers.categorical import OHEEncoder
-from ...transformers.datetime import TimeToNum
-from ...transformers.numeric import FillInf
-from ...transformers.numeric import FillnaMedian
-from ...transformers.numeric import LogOdds
-from ...transformers.numeric import NaNFlags
-from ...transformers.numeric import StandardScaler
+from ...transformers.base import (
+    ChangeRoles,
+    LAMLTransformer,
+    SequentialTransformer,
+    UnionTransformer,
+)
+from ...transformers.categorical import LabelEncoder, OHEEncoder
+from ...transformers.numeric import (
+    FillInf,
+    FillnaMedian,
+    LogOdds,
+    NaNFlags,
+    StandardScaler,
+)
 from ..selection.base import ImportanceEstimator
 from ..utils import get_columns_by_role
-from .base import FeaturesPipeline
-from .base import TabularDataFeatures
-
+from .base import FeaturesPipeline, TabularDataFeatures
 
 NumpyOrPandas = Union[PandasDataset, NumpyDataset]
 
 
 class LinearFeatures(FeaturesPipeline, TabularDataFeatures):
-    """Creates pipeline for linear models and nnets.
+    """
+    Creates pipeline for linear models and nnets.
 
     Includes:
 
@@ -42,21 +40,6 @@ class LinearFeatures(FeaturesPipeline, TabularDataFeatures):
         - Numbers discretization if needed.
         - Dates handling.
         - Handling probs (output of lower level models).
-
-    Args:
-        feats_imp: Features importances mapping.
-        top_intersections: Max number of categories
-            to generate intersections.
-        max_bin_count: Max number of bins to discretize numbers.
-        max_intersection_depth: Max depth of cat intersection.
-        subsample: Subsample to calc data statistics.
-        sparse_ohe: Should we output sparse if ohe encoding
-            was used during cat handling.
-        auto_unique_co: Switch to target encoding if high cardinality.
-        output_categories: Output encoded categories or embed idxs.
-        multiclass_te_co: Cutoff if use target encoding in cat handling
-            on multiclass task if number of classes is high.
-
 
     """
 
@@ -73,7 +56,26 @@ class LinearFeatures(FeaturesPipeline, TabularDataFeatures):
         multiclass_te_co: int = 3,
         **kwargs
     ):
-        assert max_bin_count is None or max_bin_count > 1, "Max bin count should be >= 2 or None"
+        """
+
+        Args:
+            feats_imp: Features importances mapping.
+            top_intersections: Max number of categories
+              to generate intersections.
+            max_bin_count: Max number of bins to discretize numbers.
+            max_intersection_depth: Max depth of cat intersection.
+            subsample: Subsample to calc data statistics.
+            sparse_ohe: Should we output sparse if ohe encoding
+              was used during cat handling.
+            auto_unique_co: Switch to target encoding if high cardinality.
+            output_categories: Output encoded categories or embed idxs.
+            multiclass_te_co: Cutoff if use target encoding in cat handling
+              on multiclass task if number of classes is high.
+
+        """
+        assert (
+            max_bin_count is None or max_bin_count > 1
+        ), "Max bin count should be >= 2 or None"
 
         super().__init__(
             multiclass_te=False,
@@ -112,9 +114,9 @@ class LinearFeatures(FeaturesPipeline, TabularDataFeatures):
         dense_list.append(self.get_freq_encoding(train))
 
         # 2 - check 'auto' type (int is the same - no label encoded numbers in linear models)
-        auto = get_columns_by_role(train, "Category", encoding_type="auto") + get_columns_by_role(
-            train, "Category", encoding_type="int"
-        )
+        auto = get_columns_by_role(
+            train, "Category", encoding_type="auto"
+        ) + get_columns_by_role(train, "Category", encoding_type="int")
 
         # if self.output_categories or target_encoder is None:
         if target_encoder is None:
@@ -184,7 +186,9 @@ class LinearFeatures(FeaturesPipeline, TabularDataFeatures):
                     UnionTransformer(dense_list),
                     UnionTransformer(
                         [
-                            SequentialTransformer([FillInf(), FillnaMedian(), StandardScaler()]),
+                            SequentialTransformer(
+                                [FillInf(), FillnaMedian(), StandardScaler()]
+                            ),
                             NaNFlags(),
                         ]
                     ),
@@ -208,33 +212,6 @@ class LinearFeatures(FeaturesPipeline, TabularDataFeatures):
             transformers_list.append(sparse_pipe)
 
         # final pipeline
-        union_all = UnionTransformer(transformers_list)
-
-        return union_all
-
-
-class LinearTrendFeatures(FeaturesPipeline):
-    """Creates pipeline for linear trend model."""
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-    def create_pipeline(self, train: NumpyOrPandas) -> LAMLTransformer:
-        """Create linear pipeline.
-
-        Args:
-            train: Dataset with train features.
-
-        Returns:
-            Transformer.
-
-        """
-        transformers_list = []
-        # process datetimes
-        datetimes = [get_columns_by_role(train, "Datetime")[0]]
-        if len(datetimes) > 0:
-            dt_processing = SequentialTransformer([ColumnsSelector(keys=datetimes), TimeToNum(), StandardScaler()])
-            transformers_list.append(dt_processing)
         union_all = UnionTransformer(transformers_list)
 
         return union_all

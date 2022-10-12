@@ -2,21 +2,14 @@
 
 import logging
 import os
-
 from collections import Counter
-from copy import copy
-from copy import deepcopy
-from typing import Iterable
-from typing import Optional
-from typing import Sequence
-from typing import cast
+from copy import copy, deepcopy
+from typing import Iterable, Optional, Sequence, cast
 
 import numpy as np
 import pandas as pd
 import torch
-
-from joblib import Parallel
-from joblib import delayed
+from joblib import Parallel, delayed
 from pandas import DataFrame
 from tqdm import tqdm
 
@@ -25,43 +18,37 @@ from ...dataset.np_pd_dataset import NumpyDataset
 from ...ml_algo.boost_cb import BoostCB
 from ...ml_algo.boost_lgbm import BoostLGBM
 from ...ml_algo.linear_sklearn import LinearLBFGS
-from ...ml_algo.random_forest import RandomForestSklearn
 from ...ml_algo.tuning.optuna import OptunaTuner
-from ...pipelines.features.lgb_pipeline import LGBAdvancedPipeline
-from ...pipelines.features.lgb_pipeline import LGBSimpleFeatures
+from ...pipelines.features.lgb_pipeline import LGBAdvancedPipeline, LGBSimpleFeatures
 from ...pipelines.features.linear_pipeline import LinearFeatures
 from ...pipelines.ml.nested_ml_pipe import NestedTabularMLPipeline
-from ...pipelines.selection.base import ComposedSelector
-from ...pipelines.selection.base import SelectionPipeline
-from ...pipelines.selection.importance_based import ImportanceCutoffSelector
-from ...pipelines.selection.importance_based import ModelBasedImportanceEstimator
-from ...pipelines.selection.permutation_importance_based import (
-    NpIterativeFeatureSelector,
+from ...pipelines.selection.base import ComposedSelector, SelectionPipeline
+from ...pipelines.selection.importance_based import (
+    ImportanceCutoffSelector,
+    ModelBasedImportanceEstimator,
 )
 from ...pipelines.selection.permutation_importance_based import (
+    NpIterativeFeatureSelector,
     NpPermutationImportanceEstimator,
 )
 from ...reader.base import PandasToPandasReader
-from ...reader.tabular_batch_generator import ReadableToDf
-from ...reader.tabular_batch_generator import read_batch
-from ...reader.tabular_batch_generator import read_data
+from ...reader.tabular_batch_generator import ReadableToDf, read_batch, read_data
 from ...tasks import Task
-from ..blend import MeanBlender
-from ..blend import WeightedBlender
-from .base import AutoMLPreset
-from .base import upd_params
-from .utils import calc_feats_permutation_imps
-from .utils import change_datetime
-from .utils import plot_pdp_with_distribution
-
+from ..blend import MeanBlender, WeightedBlender
+from .base import AutoMLPreset, upd_params
+from .utils import (
+    calc_feats_permutation_imps,
+    change_datetime,
+    plot_pdp_with_distribution,
+)
 
 _base_dir = os.path.dirname(__file__)
 logger = logging.getLogger(__name__)
 
 
 class TabularAutoML(AutoMLPreset):
-    """Classic preset - work with tabular data.
-
+    """
+    Classic preset - work with tabular data.
     Supported data roles - numbers, dates, categories.
     Limitations:
 
@@ -69,46 +56,18 @@ class TabularAutoML(AutoMLPreset):
         - No text support
 
     GPU support in catboost/lightgbm (if installed for GPU) training.
-
-    Commonly _params kwargs (ex. timing_params) set via
-    config file (config_path argument).
-    If you need to change just few params, it's possible
-    to pass it as dict of dicts, like json.
-    To get available params please look on default config template.
-    Also you can find there param description.
-    To generate config template call
-    :meth:`TabularAutoML.get_config('config_path.yml')`.
-
-    Args:
-        task: Task to solve.
-        timeout: Timeout in seconds.
-        memory_limit: Memory limit that are passed to each automl.
-        cpu_limit: CPU limit that that are passed to each automl.
-        gpu_ids: GPU IDs that are passed to each automl.
-        timing_params: Timing param dict. Optional.
-        config_path: Path to config file.
-        general_params: General param dict.
-        reader_params: Reader param dict.
-        read_csv_params: Params to pass ``pandas.read_csv``
-            (case of train/predict from file).
-        nested_cv_params: Param dict for nested cross-validation.
-        tuning_params: Params of Optuna tuner.
-        selection_params: Params of feature selection.
-        lgb_params: Params of lightgbm model.
-        cb_params: Params of catboost model.
-        rf_params: Params of Sklearn Random Forest model.
-        linear_l2_params: Params of linear model.
-        gbm_pipeline_params: Params of feature generation
-            for boosting models.
-        linear_pipeline_params: Params of feature generation
-            for linear models.
-
     """
 
     _default_config_path = "tabular_config.yml"
 
     # set initial runtime rate guess for first level models
-    _time_scores = {"lgb": 1, "lgb_tuned": 3, "linear_l2": 0.7, "cb": 2, "cb_tuned": 6, "rf": 5, "rf_tuned": 10}
+    _time_scores = {
+        "lgb": 1,
+        "lgb_tuned": 3,
+        "linear_l2": 0.7,
+        "cb": 2,
+        "cb_tuned": 6,
+    }
 
     def __init__(
         self,
@@ -127,12 +86,49 @@ class TabularAutoML(AutoMLPreset):
         selection_params: Optional[dict] = None,
         lgb_params: Optional[dict] = None,
         cb_params: Optional[dict] = None,
-        rf_params: Optional[dict] = None,
         linear_l2_params: Optional[dict] = None,
         gbm_pipeline_params: Optional[dict] = None,
         linear_pipeline_params: Optional[dict] = None,
     ):
-        super().__init__(task, timeout, memory_limit, cpu_limit, gpu_ids, timing_params, config_path)
+
+        """
+
+        Commonly _params kwargs (ex. timing_params) set via
+        config file (config_path argument).
+        If you need to change just few params, it's possible
+        to pass it as dict of dicts, like json.
+        To get available params please look on default config template.
+        Also you can find there param description.
+        To generate config template call
+        :meth:`TabularAutoML.get_config('config_path.yml')`.
+
+        Args:
+            task: Task to solve.
+            timeout: Timeout in seconds.
+            memory_limit: Memory limit that are passed to each automl.
+            cpu_limit: CPU limit that that are passed to each automl.
+            gpu_ids: GPU IDs that are passed to each automl.
+            timing_params: Timing param dict. Optional.
+            config_path: Path to config file.
+            general_params: General param dict.
+            reader_params: Reader param dict.
+            read_csv_params: Params to pass ``pandas.read_csv``
+              (case of train/predict from file).
+            nested_cv_params: Param dict for nested cross-validation.
+            tuning_params: Params of Optuna tuner.
+            selection_params: Params of feature selection.
+            lgb_params: Params of lightgbm model.
+            cb_params: Params of catboost model.
+            linear_l2_params: Params of linear model.
+            gbm_pipeline_params: Params of feature generation
+              for boosting models.
+            linear_pipeline_params: Params of feature generation
+              for linear models.
+
+        """
+        super().__init__(
+            task, timeout, memory_limit, cpu_limit, gpu_ids, timing_params, config_path
+        )
 
         # upd manual params
         for name, param in zip(
@@ -145,7 +141,6 @@ class TabularAutoML(AutoMLPreset):
                 "selection_params",
                 "lgb_params",
                 "cb_params",
-                "rf_params",
                 "linear_l2_params",
                 "gbm_pipeline_params",
                 "linear_pipeline_params",
@@ -159,7 +154,6 @@ class TabularAutoML(AutoMLPreset):
                 selection_params,
                 lgb_params,
                 cb_params,
-                rf_params,
                 linear_l2_params,
                 gbm_pipeline_params,
                 linear_pipeline_params,
@@ -186,12 +180,11 @@ class TabularAutoML(AutoMLPreset):
 
         if self.general_params["use_algos"] == "auto":
             # TODO: More rules and add cases
-            self.general_params["use_algos"] = [["lgb", "lgb_tuned", "linear_l2", "cb", "cb_tuned"]]
+            self.general_params["use_algos"] = [
+                ["lgb", "lgb_tuned", "linear_l2", "cb", "cb_tuned"]
+            ]
             if self.task.name == "multiclass" and multilevel_avail:
                 self.general_params["use_algos"].append(["linear_l2", "lgb"])
-
-            if (self.task.name == "multi:reg") or (self.task.name == "multilabel"):
-                self.general_params["use_algos"] = [["linear_l2", "cb", "rf", "rf_tuned", "cb_tuned"]]
 
         if not self.general_params["nested_cv"]:
             self.nested_cv_params["cv"] = 1
@@ -218,7 +211,9 @@ class TabularAutoML(AutoMLPreset):
         )
         self.reader_params["n_jobs"] = min(self.reader_params["n_jobs"], cpu_cnt)
 
-    def get_time_score(self, n_level: int, model_type: str, nested: Optional[bool] = None):
+    def get_time_score(
+        self, n_level: int, model_type: str, nested: Optional[bool] = None
+    ):
 
         if nested is None:
             nested = self.general_params["nested_cv"]
@@ -238,7 +233,10 @@ class TabularAutoML(AutoMLPreset):
         score = score * mult
 
         # lower score for catboost on gpu
-        if model_type in ["cb", "cb_tuned"] and self.cb_params["default_params"]["task_type"] == "GPU":
+        if (
+            model_type in ["cb", "cb_tuned"]
+            and self.cb_params["default_params"]["task_type"] == "GPU"
+        ):
             score *= 0.5
         return score
 
@@ -251,12 +249,6 @@ class TabularAutoML(AutoMLPreset):
             **{"feature_fraction": 1},
         }
 
-        cb_params = deepcopy(self.cb_params)
-        cb_params["default_params"] = {
-            **cb_params["default_params"],
-            **{"rsm": 1},
-        }
-
         mode = selection_params["mode"]
 
         # create pre selection based on mode
@@ -264,22 +256,13 @@ class TabularAutoML(AutoMLPreset):
         if mode > 0:
             # if we need selector - define model
             # timer will be useful to estimate time for next gbm runs
+            time_score = self.get_time_score(n_level, "lgb", False)
+
+            sel_timer_0 = self.timer.get_task_timer("lgb", time_score)
             selection_feats = LGBSimpleFeatures()
 
-            if (self.task.name == "multi:reg") or (self.task.name == "multilabel"):
-                time_score = self.get_time_score(n_level, "cb", False)
-                sel_timer_0 = self.timer.get_task_timer("cb", time_score)
-                selection_gbm = BoostCB(timer=sel_timer_0, **cb_params)
-                model_name = "cb"
-            else:
-                time_score = self.get_time_score(n_level, "lgb", False)
-                sel_timer_0 = self.timer.get_task_timer("lgb", time_score)
-                selection_gbm = BoostLGBM(timer=sel_timer_0, **lgb_params)
-                model_name = "lgb"
+            selection_gbm = BoostLGBM(timer=sel_timer_0, **lgb_params)
             selection_gbm.set_prefix("Selector")
-            time_score = self.get_time_score(n_level, model_name, False)
-
-            sel_timer_0 = self.timer.get_task_timer(model_name, time_score)
 
             if selection_params["importance_type"] == "permutation":
                 importance = NpPermutationImportanceEstimator()
@@ -294,14 +277,11 @@ class TabularAutoML(AutoMLPreset):
                 fit_on_holdout=selection_params["fit_on_holdout"],
             )
             if mode == 2:
-                time_score = self.get_time_score(n_level, model_name, False)
+                time_score = self.get_time_score(n_level, "lgb", False)
 
-                sel_timer_1 = self.timer.get_task_timer(model_name, time_score)
+                sel_timer_1 = self.timer.get_task_timer("lgb", time_score)
                 selection_feats = LGBSimpleFeatures()
-                if (self.task.name == "multi:reg") or (self.task.name == "multilabel"):
-                    selection_gbm = BoostCB(timer=sel_timer_1, **cb_params)
-                else:
-                    selection_gbm = BoostLGBM(timer=sel_timer_1, **lgb_params)
+                selection_gbm = BoostLGBM(timer=sel_timer_1, **lgb_params)
                 selection_gbm.set_prefix("Selector")
 
                 # TODO: Check about reusing permutation importance
@@ -312,20 +292,26 @@ class TabularAutoML(AutoMLPreset):
                     selection_gbm,
                     importance,
                     feature_group_size=selection_params["feature_group_size"],
-                    max_features_cnt_in_result=selection_params["max_features_cnt_in_result"],
+                    max_features_cnt_in_result=selection_params[
+                        "max_features_cnt_in_result"
+                    ],
                 )
 
                 pre_selector = ComposedSelector([pre_selector, extra_selector])
 
         return pre_selector
 
-    def get_linear(self, n_level: int = 1, pre_selector: Optional[SelectionPipeline] = None) -> NestedTabularMLPipeline:
+    def get_linear(
+        self, n_level: int = 1, pre_selector: Optional[SelectionPipeline] = None
+    ) -> NestedTabularMLPipeline:
 
         # linear model with l2
         time_score = self.get_time_score(n_level, "linear_l2")
         linear_l2_timer = self.timer.get_task_timer("reg_l2", time_score)
         linear_l2_model = LinearLBFGS(timer=linear_l2_timer, **self.linear_l2_params)
-        linear_l2_feats = LinearFeatures(output_categories=True, **self.linear_pipeline_params)
+        linear_l2_feats = LinearFeatures(
+            output_categories=True, **self.linear_pipeline_params
+        )
 
         linear_l2_pipe = NestedTabularMLPipeline(
             [linear_l2_model],
@@ -371,41 +357,14 @@ class TabularAutoML(AutoMLPreset):
             force_calc.append(force)
 
         gbm_pipe = NestedTabularMLPipeline(
-            ml_algos, force_calc, pre_selection=pre_selector, features_pipeline=gbm_feats, **self.nested_cv_params
+            ml_algos,
+            force_calc,
+            pre_selection=pre_selector,
+            features_pipeline=gbm_feats,
+            **self.nested_cv_params
         )
 
         return gbm_pipe
-
-    def get_rfs(self, keys: Sequence[str], n_level: int = 1, pre_selector: Optional[SelectionPipeline] = None):
-
-        rf_feats = LGBAdvancedPipeline(**self.gbm_pipeline_params, fill_na=True)
-
-        ml_algos = []
-        force_calc = []
-        for key, force in zip(keys, [True, False]):
-            tuned = "_tuned" in key
-            algo_key = key.split("_")[0]
-            time_score = self.get_time_score(n_level, key)
-            rf_timer = self.timer.get_task_timer(algo_key, time_score)
-
-            rf_model = RandomForestSklearn(timer=rf_timer, **self.rf_params)
-
-            if tuned:
-                rf_model.set_prefix("Tuned")
-                rf_tuner = OptunaTuner(
-                    n_trials=self.tuning_params["max_tuning_iter"],
-                    timeout=self.tuning_params["max_tuning_time"],
-                    fit_on_holdout=self.tuning_params["fit_on_holdout"],
-                )
-                rf_model = (rf_model, rf_tuner)
-            ml_algos.append(rf_model)
-            force_calc.append(force)
-
-        rf_pipe = NestedTabularMLPipeline(
-            ml_algos, force_calc, pre_selection=pre_selector, features_pipeline=rf_feats, **self.nested_cv_params
-        )
-
-        return rf_pipe
 
     def create_automl(self, **fit_args):
         """Create basic automl instance.
@@ -427,14 +386,6 @@ class TabularAutoML(AutoMLPreset):
         for n, names in enumerate(self.general_params["use_algos"]):
             lvl = []
             # regs
-            rf_models = [x for x in ["rf", "rf_tuned"] if x in names]
-
-            if len(rf_models) > 0:
-                selector = None
-                if "rf" in self.selection_params["select_algos"] and (self.general_params["skip_conn"] or n == 0):
-                    selector = pre_selector
-                lvl.append(self.get_rfs(rf_models, n + 1, selector))
-
             if "linear_l2" in names:
                 selector = None
                 if "linear_l2" in self.selection_params["select_algos"] and (
@@ -444,19 +395,25 @@ class TabularAutoML(AutoMLPreset):
                 lvl.append(self.get_linear(n + 1, selector))
 
             gbm_models = [
-                x for x in ["lgb", "lgb_tuned", "cb", "cb_tuned"] if x in names and x.split("_")[0] in self.task.losses
+                x
+                for x in ["lgb", "lgb_tuned", "cb", "cb_tuned"]
+                if x in names and x.split("_")[0] in self.task.losses
             ]
 
             if len(gbm_models) > 0:
                 selector = None
-                if "gbm" in self.selection_params["select_algos"] and (self.general_params["skip_conn"] or n == 0):
+                if "gbm" in self.selection_params["select_algos"] and (
+                    self.general_params["skip_conn"] or n == 0
+                ):
                     selector = pre_selector
                 lvl.append(self.get_gbms(gbm_models, n + 1, selector))
 
             levels.append(lvl)
 
         # blend everything
-        blender = WeightedBlender(max_nonzero_coef=self.general_params["weighted_blender_max_nonzero_coef"])
+        blender = WeightedBlender(
+            max_nonzero_coef=self.general_params["weighted_blender_max_nonzero_coef"]
+        )
 
         # initialize
         self._initialize(
@@ -472,7 +429,9 @@ class TabularAutoML(AutoMLPreset):
         try:
             cols_to_read = self.reader.used_features
             numeric_dtypes = {
-                x: self.reader.roles[x].dtype for x in self.reader.roles if self.reader.roles[x].name == "Numeric"
+                x: self.reader.roles[x].dtype
+                for x in self.reader.roles
+                if self.reader.roles[x].name == "Numeric"
             }
         except AttributeError:
             cols_to_read = []
@@ -517,10 +476,13 @@ class TabularAutoML(AutoMLPreset):
         Args:
             train_data: Dataset to train.
             roles: Roles dict.
-            train_features: Optional features names, if can't be inferred from `train_data`.
-            cv_iter: Custom cv-iterator. For example, :class:`~lightautoml.validation.np_iterators.TimeSeriesIterator`.
+            train_features: Optional features names, if can't
+              be inferred from `train_data`.
+            cv_iter: Custom cv-iterator. For example,
+              :class:`~lightautoml.validation.np_iterators.TimeSeriesIterator`.
             valid_data: Optional validation dataset.
-            valid_features: Optional validation dataset features if cannot be inferred from `valid_data`.
+            valid_features: Optional validation dataset features
+              if cannot be inferred from `valid_data`.
             verbose: Controls the verbosity: the higher, the more messages.
                 <1  : messages are not displayed;
                 >=1 : the computation process for layers is displayed;
@@ -528,7 +490,7 @@ class TabularAutoML(AutoMLPreset):
                 >=3 : the hyperparameters optimization process is also displayed;
                 >=4 : the training process for every algorithm is displayed;
             log_file: Filename for writing logging messages. If log_file is specified,
-                the messages will be saved in a the file. If the file exists, it will be overwritten.
+            the messages will be saved in a the file. If the file exists, it will be overwritten.
 
         Returns:
             Dataset with predictions. Call ``.data`` to get predictions array.
@@ -540,13 +502,19 @@ class TabularAutoML(AutoMLPreset):
         if roles is None:
             roles = {}
         read_csv_params = self._get_read_csv_params()
-        train, upd_roles = read_data(train_data, train_features, self.cpu_limit, read_csv_params)
+        train, upd_roles = read_data(
+            train_data, train_features, self.cpu_limit, read_csv_params
+        )
         if upd_roles:
             roles = {**roles, **upd_roles}
         if valid_data is not None:
-            data, _ = read_data(valid_data, valid_features, self.cpu_limit, self.read_csv_params)
+            data, _ = read_data(
+                valid_data, valid_features, self.cpu_limit, self.read_csv_params
+            )
 
-        oof_pred = super().fit_predict(train, roles=roles, cv_iter=cv_iter, valid_data=valid_data, verbose=verbose)
+        oof_pred = super().fit_predict(
+            train, roles=roles, cv_iter=cv_iter, valid_data=valid_data, verbose=verbose
+        )
 
         return cast(NumpyDataset, oof_pred)
 
@@ -580,16 +548,17 @@ class TabularAutoML(AutoMLPreset):
         Args:
             data: Dataset to perform inference.
             features_names: Optional features names,
-                if cannot be inferred from `train_data`.
+              if cannot be inferred from `train_data`.
             batch_size: Batch size or ``None``.
             n_jobs: Number of jobs.
             return_all_predictions: if True,
-                returns all model predictions from last level
+              returns all model predictions from last level
 
         Returns:
             Dataset with predictions.
 
         """
+
         read_csv_params = self._get_read_csv_params()
 
         if batch_size is None and n_jobs == 1:
@@ -606,11 +575,17 @@ class TabularAutoML(AutoMLPreset):
         )
 
         if n_jobs == 1:
-            res = [self.predict(df, features_names, return_all_predictions) for df in data_generator]
+            res = [
+                self.predict(df, features_names, return_all_predictions)
+                for df in data_generator
+            ]
         else:
             # TODO: Check here for pre_dispatch param
             with Parallel(n_jobs, pre_dispatch=len(data_generator) + 1) as p:
-                res = p(delayed(self.predict)(df, features_names, return_all_predictions) for df in data_generator)
+                res = p(
+                    delayed(self.predict)(df, features_names, return_all_predictions)
+                    for df in data_generator
+                )
 
         res = NumpyDataset(
             np.concatenate([x.data for x in res], axis=0),
@@ -639,7 +614,9 @@ class TabularAutoML(AutoMLPreset):
 
             else:
                 if not silent:
-                    logger.info2("No feature importances to show. Please use another calculation method")
+                    logger.info2(
+                        "No feature importances to show. Please use another calculation method"
+                    )
                 return None
 
         if calc_method != "accurate":
@@ -652,7 +629,9 @@ class TabularAutoML(AutoMLPreset):
 
         if data is None:
             if not silent:
-                logger.info2("Data parameter is not setup for accurate calculation method. Aborting...")
+                logger.info2(
+                    "Data parameter is not setup for accurate calculation method. Aborting..."
+                )
             return None
 
         read_csv_params = self._get_read_csv_params()
@@ -681,7 +660,9 @@ class TabularAutoML(AutoMLPreset):
         test_i = test_data.copy()
         # Numerical features
         if self.reader._roles[feature_name].name == "Numeric":
-            counts, bin_edges = np.histogram(test_data[feature_name].dropna(), bins=n_bins)
+            counts, bin_edges = np.histogram(
+                test_data[feature_name].dropna(), bins=n_bins
+            )
             grid = (bin_edges[:-1] + bin_edges[1:]) / 2
             ys = []
             for i in tqdm(grid):
@@ -699,12 +680,17 @@ class TabularAutoML(AutoMLPreset):
                 preds = self.predict(test_i).data
                 ys.append(preds)
             if len(feature_cnt) > top_n_categories:
-                freq_mapping = {feature_cnt.index[i]: i for i, _ in enumerate(feature_cnt)}
+                freq_mapping = {
+                    feature_cnt.index[i]: i for i, _ in enumerate(feature_cnt)
+                }
                 # add "OTHER" class
                 test_i = test_data.copy()
                 # sample from other classes with the same distribution
                 test_i[feature_name] = (
-                    test_i[feature_name][np.array([freq_mapping[k] for k in test_i[feature_name]]) > top_n_categories]
+                    test_i[feature_name][
+                        np.array([freq_mapping[k] for k in test_i[feature_name]])
+                        > top_n_categories
+                    ]
                     .sample(n=test_data.shape[0], replace=True)
                     .values
                 )
@@ -715,7 +701,9 @@ class TabularAutoML(AutoMLPreset):
         # Datetime Features
         if self.reader._roles[feature_name].name == "Datetime":
             test_data_read = self.reader.read(test_data)
-            feature_datetime = pd.arrays.DatetimeArray(test_data_read._data[feature_name])
+            feature_datetime = pd.arrays.DatetimeArray(
+                test_data_read._data[feature_name]
+            )
             if datetime_level == "year":
                 grid = np.unique([i.year for i in feature_datetime])
             elif datetime_level == "month":
@@ -724,7 +712,9 @@ class TabularAutoML(AutoMLPreset):
                 grid = np.arange(7)
             ys = []
             for i in tqdm(grid):
-                test_i[feature_name] = change_datetime(feature_datetime, datetime_level, i)
+                test_i[feature_name] = change_datetime(
+                    feature_datetime, datetime_level, i
+                )
                 preds = self.predict(test_i).data
                 ys.append(preds)
             counts = Counter([getattr(i, datetime_level) for i in feature_datetime])
@@ -762,26 +752,7 @@ class TabularAutoML(AutoMLPreset):
 
 
 class TabularUtilizedAutoML(TimeUtilization):
-    """Template to make TimeUtilization from TabularAutoML.
-
-    Simplifies using ``TimeUtilization`` module for ``TabularAutoMLPreset``.
-
-    Args:
-        task: Task to solve.
-        timeout: Timeout in seconds.
-        memory_limit: Memory limit that are passed to each automl.
-        cpu_limit: CPU limit that that are passed to each automl.
-        gpu_ids: GPU IDs that are passed to each automl.
-        timing_params: Timing params level that are passed to each automl.
-        configs_list: List of str path to configs files.
-        drop_last: Usually last automl will be stopped with timeout.
-            Flag that defines if we should drop it from ensemble.
-        return_all_predictions: skip blending phase
-        max_runs_per_config: Maximum number of multistart loops.
-        random_state: Initial random seed that will be set
-            in case of search in config.
-
-    """
+    """Template to make TimeUtilization from TabularAutoML."""
 
     def __init__(
         self,
@@ -799,6 +770,24 @@ class TabularUtilizedAutoML(TimeUtilization):
         outer_blender_max_nonzero_coef: float = 0.05,
         **kwargs
     ):
+        """Simplifies using ``TimeUtilization`` module for ``TabularAutoMLPreset``.
+
+        Args:
+            task: Task to solve.
+            timeout: Timeout in seconds.
+            memory_limit: Memory limit that are passed to each automl.
+            cpu_limit: CPU limit that that are passed to each automl.
+            gpu_ids: GPU IDs that are passed to each automl.
+            timing_params: Timing params level that are passed to each automl.
+            configs_list: List of str path to configs files.
+            drop_last: Usually last automl will be stopped with timeout.
+              Flag that defines if we should drop it from ensemble.
+            return_all_predictions: skip blending phase
+            max_runs_per_config: Maximum number of multistart loops.
+            random_state: Initial random seed that will be set
+              in case of search in config.
+
+        """
         if configs_list is None:
             configs_list = [
                 os.path.join(_base_dir, "tabular_configs", x)
@@ -850,10 +839,15 @@ class TabularUtilizedAutoML(TimeUtilization):
             n_feat_imps = len(feat_imps)
             if n_feat_imps == 0:
                 if not silent:
-                    logger.info2("No feature importances to show. Please use another calculation method")
+                    logger.info2(
+                        "No feature importances to show. Please use another calculation method"
+                    )
                 return None
             return (
-                pd.concat(feat_imps).groupby("Feature")["Importance"].agg(sum).sort_values(ascending=False)
+                pd.concat(feat_imps)
+                .groupby("Feature")["Importance"]
+                .agg(sum)
+                .sort_values(ascending=False)
                 / n_feat_imps
             ).reset_index()
 
@@ -867,7 +861,9 @@ class TabularUtilizedAutoML(TimeUtilization):
 
         if data is None:
             if not silent:
-                logger.info2("Data parameter is not setup for accurate calculation method. Aborting...")
+                logger.info2(
+                    "Data parameter is not setup for accurate calculation method. Aborting..."
+                )
             return None
 
         automl = self.outer_pipes[0].ml_algos[0].models[0][0]
@@ -888,17 +884,25 @@ class TabularUtilizedAutoML(TimeUtilization):
         )
         return fi
 
-    def create_model_str_desc(self, pref_tab_num: int = 0, split_line_len: int = 80) -> str:
+    def create_model_str_desc(
+        self, pref_tab_num: int = 0, split_line_len: int = 80
+    ) -> str:
         res = "Final prediction for new objects = \n"
-        for it, (model, weight) in enumerate(zip(self.outer_pipes, self.outer_blend.wts)):
+        for it, (model, weight) in enumerate(
+            zip(self.outer_pipes, self.outer_blend.wts)
+        ):
             config_path = model.ml_algos[0].models[0][0].config_path.split("/")[-1]
             res += "\t" * (pref_tab_num + 1) + "+ " * (it > 0)
             res += '{:.5f} * {} averaged models with config = "{}" and different CV random_states. Their structures: \n\n'.format(
                 weight, len(model.ml_algos[0].models[0]), config_path
             )
             for it1, m in enumerate(model.ml_algos[0].models[0]):
-                cur_model_desc = m.create_model_str_desc(pref_tab_num + 2, split_line_len)
-                res += "\t" * (pref_tab_num + 1) + "    Model #{}.\n{}\n\n".format(it1, cur_model_desc)
+                cur_model_desc = m.create_model_str_desc(
+                    pref_tab_num + 2, split_line_len
+                )
+                res += "\t" * (pref_tab_num + 1) + "    Model #{}.\n{}\n\n".format(
+                    it1, cur_model_desc
+                )
 
         return res
 
@@ -916,7 +920,9 @@ class TabularUtilizedAutoML(TimeUtilization):
         test_i = test_data.copy()
         # Numerical features
         if reader._roles[feature_name].name == "Numeric":
-            counts, bin_edges = np.histogram(test_data[feature_name].dropna(), bins=n_bins)
+            counts, bin_edges = np.histogram(
+                test_data[feature_name].dropna(), bins=n_bins
+            )
             grid = (bin_edges[:-1] + bin_edges[1:]) / 2
             ys = []
             for i in tqdm(grid):
@@ -934,12 +940,17 @@ class TabularUtilizedAutoML(TimeUtilization):
                 preds = self.predict(test_i).data
                 ys.append(preds)
             if len(feature_cnt) > top_n_categories:
-                freq_mapping = {feature_cnt.index[i]: i for i, _ in enumerate(feature_cnt)}
+                freq_mapping = {
+                    feature_cnt.index[i]: i for i, _ in enumerate(feature_cnt)
+                }
                 # add "OTHER" class
                 test_i = test_data.copy()
                 # sample from other classes with the same distribution
                 test_i[feature_name] = (
-                    test_i[feature_name][np.array([freq_mapping[k] for k in test_i[feature_name]]) > top_n_categories]
+                    test_i[feature_name][
+                        np.array([freq_mapping[k] for k in test_i[feature_name]])
+                        > top_n_categories
+                    ]
                     .sample(n=test_data.shape[0], replace=True)
                     .values
                 )
@@ -950,7 +961,9 @@ class TabularUtilizedAutoML(TimeUtilization):
         # Datetime Features
         if reader._roles[feature_name].name == "Datetime":
             test_data_read = reader.read(test_data)
-            feature_datetime = pd.arrays.DatetimeArray(test_data_read._data[feature_name])
+            feature_datetime = pd.arrays.DatetimeArray(
+                test_data_read._data[feature_name]
+            )
             if datetime_level == "year":
                 grid = np.unique([i.year for i in feature_datetime])
             elif datetime_level == "month":
@@ -959,7 +972,9 @@ class TabularUtilizedAutoML(TimeUtilization):
                 grid = np.arange(7)
             ys = []
             for i in tqdm(grid):
-                test_i[feature_name] = change_datetime(feature_datetime, datetime_level, i)
+                test_i[feature_name] = change_datetime(
+                    feature_datetime, datetime_level, i
+                )
                 preds = self.predict(test_i).data
                 ys.append(preds)
             counts = Counter([getattr(i, datetime_level) for i in feature_datetime])

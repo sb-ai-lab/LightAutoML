@@ -2,7 +2,6 @@ import logging
 import os
 import sys
 
-
 _root_logger = logging.getLogger()
 _logger = logging.getLogger(__name__)
 _logger.setLevel(logging.WARNING)

@@ -1,25 +1,20 @@
 """Tabular iterators."""
 
-from typing import Optional
-from typing import Sequence
-from typing import Tuple
-from typing import Union
-from typing import cast
+from typing import Optional, Sequence, Tuple, Union, cast
 
 import numpy as np
 
 from lightautoml.reader.utils import set_sklearn_folds
 from lightautoml.tasks import Task
 
-from ..dataset.np_pd_dataset import CSRSparseDataset
-from ..dataset.np_pd_dataset import NumpyDataset
-from ..dataset.np_pd_dataset import PandasDataset
-from .base import CustomIdxs
-from .base import CustomIterator
-from .base import DummyIterator
-from .base import HoldoutIterator
-from .base import TrainValidIterator
-
+from ..dataset.np_pd_dataset import CSRSparseDataset, NumpyDataset, PandasDataset
+from .base import (
+    CustomIdxs,
+    CustomIterator,
+    DummyIterator,
+    HoldoutIterator,
+    TrainValidIterator,
+)
 
 NumpyOrSparse = Union[CSRSparseDataset, NumpyDataset, PandasDataset]
 
@@ -38,7 +33,9 @@ class FoldsIterator(TrainValidIterator):
             n_folds: Number of folds.
 
         """
-        assert hasattr(train, "folds"), "Folds in dataset should be defined to make folds iterator."
+        assert hasattr(
+            train, "folds"
+        ), "Folds in dataset should be defined to make folds iterator."
 
         self.train = train
         self.n_folds = train.folds.max() + 1
@@ -124,8 +121,10 @@ def get_numpy_iterator(
     Args:
         train: ``LAMLDataset`` to train.
         valid: Optional ``LAMLDataset`` for validate.
-        n_folds: maximum number of folds to iterate. If ``None`` - iterate through all folds.
-        iterator: Takes dataset as input and return an iterator of indexes of train/valid for train dataset.
+        n_folds: maximum number of folds to iterate.
+          If ``None`` - iterate through all folds.
+        iterator: Takes dataset as input and return an iterator
+          of indexes of train/valid for train dataset.
 
     Returns:
         new train-validation iterator.
@@ -151,13 +150,15 @@ class TimeSeriesIterator:
         """Create indexes of folds splitted by thresholds.
 
         Args:
-            datetime_col: Column with value which can be interpreted as time/ordinal value (ex: np.datetime64).
+            datetime_col: Column with value which can be interpreted
+              as time/ordinal value (ex: np.datetime64).
             splitter: List of thresholds (same value as ).
 
         Returns:
             folds: Array of folds' indexes.
 
         """
+
         splitter = np.sort(splitter)
         folds = np.searchsorted(splitter, datetime_col)
 
@@ -168,18 +169,23 @@ class TimeSeriesIterator:
         """Create indexes of folds splitted into equal parts.
 
         Args:
-            datetime_col: Column with value which can be interpreted as time/ordinal value (ex: np.datetime64).
+            datetime_col: Column with value which can be interpreted
+              as time/ordinal value (ex: np.datetime64).
             n_splits: Number of splits(folds).
 
         Returns:
             folds: Array of folds' indexes.
 
         """
+
         idx = np.arange(datetime_col.shape[0])
         order = np.argsort(datetime_col)
         sorted_idx = idx[order]
         folds = np.concatenate(
-            [[n] * x.shape[0] for (n, x) in enumerate(np.array_split(sorted_idx, n_splits))],
+            [
+                [n] * x.shape[0]
+                for (n, x) in enumerate(np.array_split(sorted_idx, n_splits))
+            ],
             axis=0,
         )
         folds = folds[sorted_idx]
@@ -196,7 +202,8 @@ class TimeSeriesIterator:
         """Generates time series data split. Sorter - include left, exclude right.
 
         Args:
-            datetime_col: Column with value which can be interpreted as time/ordinal value (ex: np.datetime64).
+            datetime_col: Column with value which can be interpreted
+              as time/ordinal value (ex: np.datetime64).
             n_splits: Number of splits.
             date_splits: List of thresholds.
             sorted_kfold: is sorted.
@@ -238,6 +245,7 @@ class TimeSeriesIterator:
             Tuple of train/validation indexes.
 
         """
+
         if item >= len(self):
             raise StopIteration
 
@@ -250,18 +258,7 @@ class TimeSeriesIterator:
 
 
 class UpliftIterator:
-    """Iterator for uplift modeling task.
-
-    Generates time series data split. Sorter - include left, exclude right.
-
-    Args:
-        treatment_col: Treatment column: 0 - control group, 1 - treatment group.
-        target: Target values.
-        mode: Flag.
-        task: Task.
-        n_folds: Number of folds.
-
-    """
+    """Iterator for uplift modeling task"""
 
     def __init__(
         self,
@@ -271,6 +268,17 @@ class UpliftIterator:
         task: Task,
         n_folds: int = 5,
     ):
+        """Generates time series data split. Sorter - include left, exclude right.
+
+        Args:
+            treatment_col: Treatment column: 0 - control group, 1 - treatment group
+            target: Target values
+            mode: Flag
+            task: Task
+            n_folds:
+
+        """
+
         self.task = task
         self.n_folds = n_folds
         self.mode = mode
@@ -281,7 +289,9 @@ class UpliftIterator:
         self.constant_idx = idx[flg]
         self.splitted_idx = idx[~flg]
 
-        self.folds = set_sklearn_folds(self.task, target[self.splitted_idx], self.n_folds)
+        self.folds = set_sklearn_folds(
+            self.task, target[self.splitted_idx], self.n_folds
+        )
 
     def __len__(self):
         """Get number of folds.
@@ -302,7 +312,6 @@ class UpliftIterator:
 
         Returns:
             Tuple of train/validation indexes.
-
         """
         if item + 1 >= self.__len__():
             raise IndexError()

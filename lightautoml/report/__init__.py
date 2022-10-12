@@ -2,10 +2,7 @@
 
 from lightautoml.utils.installation import __validate_extra_deps
 
-from .report_deco import ReportDeco
-from .report_deco import ReportDecoNLP
-from .report_deco import ReportDecoWhitebox
-
+from .report_deco import ReportDeco, ReportDecoNLP, ReportDecoWhitebox
 
 __validate_extra_deps("pdf")
 
