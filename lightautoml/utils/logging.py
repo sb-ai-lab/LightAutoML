@@ -175,6 +175,7 @@ def add_filehandler(filename: str, level=logging.DEBUG):
             if type(handler) == logging.FileHandler:
                 _logger.handlers.remove(handler)
 
+                
 class DuplicateFilter(object):
     def __init__(self):
         self.msgs = set()
