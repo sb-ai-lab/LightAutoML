@@ -88,7 +88,7 @@ class LoggerStream(io.IOBase):
             return
 
         if self.counter < self.verbose_eval - 1:
-            self.logger.debug(message.rstrip())
+            self.logger.info3(message.rstrip())
             self.counter += 1
         else:
             self.logger.info3(message.rstrip())
