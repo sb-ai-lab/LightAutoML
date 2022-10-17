@@ -2,49 +2,61 @@
 
 import logging
 import os
-from copy import copy, deepcopy
-from typing import Iterable, Optional, Sequence, Union
 
-import cupy as cp
+from copy import copy
+from copy import deepcopy
+from typing import Iterable
+from typing import Optional
+from typing import Sequence
+from typing import Union
+
+try:
+    import cupy as cp
+except:
+    print("GPU version is not installed or no GPUs detected. Reinstall your library or switch to CPU preset.")
+    exit(-1)
 import torch
+
 from pandas import DataFrame
 
-from lightautoml.automl.gpu.blend_gpu import MeanBlender_gpu, WeightedBlender_gpu
-from lightautoml.automl.presets.base import upd_params
-from lightautoml.automl.presets.tabular_presets import (
-    TabularAutoML,
-    TabularUtilizedAutoML,
-)
-from lightautoml.dataset.gpu.gpu_dataset import CudfDataset, CupyDataset, DaskCudfDataset
+from lightautoml.dataset.gpu.gpu_dataset import CupyDataset
+from lightautoml.dataset.gpu.gpu_dataset import CudfDataset
+from lightautoml.dataset.gpu.gpu_dataset import DaskCudfDataset
 from lightautoml.dataset.np_pd_dataset import NumpyDataset
 from lightautoml.ml_algo.gpu.boost_cb_gpu import BoostCB_gpu
-from lightautoml.ml_algo.gpu.boost_xgb_gpu import BoostXGB, BoostXGB_dask
+from lightautoml.ml_algo.gpu.boost_xgb_gpu import BoostXGB
+from lightautoml.ml_algo.gpu.boost_xgb_gpu import BoostXGB_dask
 from lightautoml.ml_algo.gpu.linear_gpu import LinearLBFGS_gpu
-from lightautoml.ml_algo.tuning.gpu.optuna_gpu import GpuQueue, OptunaTuner_gpu
 from lightautoml.ml_algo.tuning.optuna import OptunaTuner
-from lightautoml.pipelines.features.gpu.lgb_pipeline_gpu import (
-    LGBAdvancedPipeline_gpu,
-    LGBSimpleFeatures_gpu,
-)
+from lightautoml.ml_algo.tuning.gpu.optuna_gpu import OptunaTuner_gpu
+from lightautoml.ml_algo.tuning.gpu.optuna_gpu import GpuQueue
+from lightautoml.pipelines.features.gpu.lgb_pipeline_gpu import LGBAdvancedPipeline_gpu
+from lightautoml.pipelines.features.gpu.lgb_pipeline_gpu import LGBSimpleFeatures_gpu
 from lightautoml.pipelines.features.gpu.linear_pipeline_gpu import LinearFeatures_gpu
 from lightautoml.pipelines.ml.nested_ml_pipe import NestedTabularMLPipeline
-from lightautoml.pipelines.selection.base import ComposedSelector, SelectionPipeline
-from lightautoml.pipelines.selection.importance_based import (
-    ImportanceCutoffSelector,
-    ModelBasedImportanceEstimator,
-)
+from lightautoml.pipelines.selection.base import ComposedSelector
+from lightautoml.pipelines.selection.base import SelectionPipeline
+from lightautoml.pipelines.selection.importance_based import ImportanceCutoffSelector
+from lightautoml.pipelines.selection.importance_based import ModelBasedImportanceEstimator
 from lightautoml.pipelines.selection.permutation_importance_based import (
     NpIterativeFeatureSelector,
+)
+from lightautoml.pipelines.selection.permutation_importance_based import (
     NpPermutationImportanceEstimator,
 )
 from lightautoml.reader.gpu.cudf_reader import CudfReader
 from lightautoml.reader.gpu.daskcudf_reader import DaskCudfReader
-from lightautoml.reader.tabular_batch_generator import (
-    ReadableToDf,
-    read_batch,
-    read_data,
-)
+from lightautoml.reader.tabular_batch_generator import ReadableToDf
+from lightautoml.reader.tabular_batch_generator import read_batch
+from lightautoml.reader.tabular_batch_generator import read_data
 from lightautoml.tasks import Task
+from lightautoml.automl.gpu.blend_gpu import MeanBlender_gpu
+from lightautoml.automl.gpu.blend_gpu import WeightedBlender_gpu
+from lightautoml.automl.presets.base import upd_params
+
+from lightautoml.automl.presets.tabular_presets import TabularUtilizedAutoML
+
+from lightautoml.automl.presets.tabular_presets import TabularAutoML
 
 GpuDataset = Union[CupyDataset, CudfDataset, DaskCudfDataset]
 
@@ -88,15 +100,13 @@ class TabularAutoML_gpu(TabularAutoML):
         linear_l2_params: Optional[dict] = None,
         gbm_pipeline_params: Optional[dict] = None,
         linear_pipeline_params: Optional[dict] = None,
-        client=None,
+        client = None
     ):
 
         """
         TBA
         """
-        super(TabularAutoML_gpu.__bases__[0], self).__init__(
-            task, timeout, memory_limit, cpu_limit, gpu_ids, timing_params, config_path
-        )
+        super(TabularAutoML_gpu.__bases__[0], self).__init__(task, timeout, memory_limit, cpu_limit, gpu_ids, timing_params, config_path)
 
         # upd manual params
         for name, param in zip(
@@ -154,12 +164,10 @@ class TabularAutoML_gpu(TabularAutoML):
                 res = self.cb_params["parallel_folds"]
             except KeyError:
                 self.cb_params["parallel_folds"] = val
-
-            res = self.linear_l2_params.get("parallel_folds")
-            if res is None:
+            try:
+                res = self.linear_l2_params["parallel_folds"]
+            except KeyError:
                 self.linear_l2_params["parallel_folds"] = val
-            else:
-                self.linear_l2_params["parallel_folds"] = res
 
         length = train_data.shape[0]
 
@@ -177,8 +185,8 @@ class TabularAutoML_gpu(TabularAutoML):
         if self.general_params["use_algos"] == "auto":
             # TODO: More rules and add cases
             self.general_params["use_algos"] = [["linear_l2", "cb", "xgb"]]
-            # self.general_params["use_algos"] = [["linear_l2", "cb", "cb_tuned"]]
-            # self.general_params["use_algos"] = [["xgb", "xgb_tuned", "linear_l2", "cb", "cb_tuned"]]
+            #self.general_params["use_algos"] = [["linear_l2", "cb", "cb_tuned"]]
+            #self.general_params["use_algos"] = [["xgb", "xgb_tuned", "linear_l2", "cb", "cb_tuned"]]
             if self.task.name == "multiclass" and multilevel_avail:
                 self.general_params["use_algos"].append(["linear_l2", "cb"])
 
@@ -186,7 +194,7 @@ class TabularAutoML_gpu(TabularAutoML):
             self.nested_cv_params["cv"] = 1
 
         # check gpu to use catboost
-        if self.task.device == "gpu" or self.cb_params["parallel_folds"]:
+        if self.task.device == 'gpu' or self.cb_params["parallel_folds"]:
             gpu_cnt = 1
         else:
             gpu_cnt = torch.cuda.device_count()
@@ -200,8 +208,8 @@ class TabularAutoML_gpu(TabularAutoML):
             self.cb_params["default_params"]["task_type"] = "GPU"
             self.cb_params["default_params"]["devices"] = cur_gpu_ids.replace(",", ":")
             self.cb_params["gpu_ids"] = cur_gpu_ids.split(",")
-
-        if self.task.device == "gpu" or self.xgb_params["parallel_folds"]:
+            
+        if self.task.device == 'gpu' or self.xgb_params["parallel_folds"]:
             gpu_cnt = 1
         else:
             gpu_cnt = torch.cuda.device_count()
@@ -211,10 +219,10 @@ class TabularAutoML_gpu(TabularAutoML):
                 cur_gpu_ids = ",".join(list(map(str, range(gpu_cnt))))
             else:
                 cur_gpu_ids = copy(gpu_ids)
-
+        
             self.xgb_params["gpu_ids"] = cur_gpu_ids.split(",")
 
-        if self.task.device == "gpu" or self.linear_l2_params["parallel_folds"]:
+        if self.task.device == 'gpu' or self.linear_l2_params["parallel_folds"]:
             gpu_cnt = 1
         else:
             gpu_cnt = torch.cuda.device_count()
@@ -224,10 +232,10 @@ class TabularAutoML_gpu(TabularAutoML):
                 cur_gpu_ids = ",".join(list(map(str, range(gpu_cnt))))
             else:
                 cur_gpu_ids = copy(gpu_ids)
-
+        
             self.linear_l2_params["gpu_ids"] = cur_gpu_ids.split(",")
 
-        # check all n_jobs params
+       # check all n_jobs params
         cpu_cnt = min(os.cpu_count(), self.cpu_limit)
         torch.set_num_threads(cpu_cnt)
 
@@ -238,12 +246,10 @@ class TabularAutoML_gpu(TabularAutoML):
             self.xgb_params["default_params"]["nthread"], cpu_cnt
         )
         self.reader_params["n_jobs"] = min(self.reader_params["n_jobs"], cpu_cnt)
-        if not self.linear_l2_params["parallel_folds"] and self.task.device == "mgpu":
+        if not self.linear_l2_params["parallel_folds"] and self.task.device=="mgpu":
             self.reader_params["output"] = "mgpu"
 
-    def get_time_score(
-        self, n_level: int, model_type: str, nested: Optional[bool] = None
-    ):
+    def get_time_score(self, n_level: int, model_type: str, nested: Optional[bool] = None):
 
         if nested is None:
             nested = self.general_params["nested_cv"]
@@ -261,7 +267,7 @@ class TabularAutoML_gpu(TabularAutoML):
         if model_type in ["xgb", "xgb_tuned"]:
             if self.xgb_params["parallel_folds"]:
                 score /= num_gpus
-        if model_type == "linear_l2":
+        if model_type=="linear_l2":
             if self.linear_l2_params["parallel_folds"]:
                 score /= num_gpus
 
@@ -278,10 +284,7 @@ class TabularAutoML_gpu(TabularAutoML):
         score = score * mult
 
         # lower score for catboost on gpu
-        if (
-            model_type in ["cb", "cb_tuned"]
-            and self.cb_params["default_params"]["task_type"] == "GPU"
-        ):
+        if model_type in ["cb", "cb_tuned"] and self.cb_params["default_params"]["task_type"] == "GPU":
             score *= 0.5
         return score
 
@@ -337,9 +340,7 @@ class TabularAutoML_gpu(TabularAutoML):
                     selection_gbm,
                     importance,
                     feature_group_size=selection_params["feature_group_size"],
-                    max_features_cnt_in_result=selection_params[
-                        "max_features_cnt_in_result"
-                    ],
+                    max_features_cnt_in_result=selection_params["max_features_cnt_in_result"],
                 )
 
                 pre_selector = ComposedSelector([pre_selector, extra_selector])
@@ -347,16 +348,15 @@ class TabularAutoML_gpu(TabularAutoML):
         return pre_selector
 
     def get_linear(
-        self, n_level: int = 1, pre_selector: Optional[SelectionPipeline] = None
+            self,
+            n_level: int = 1,
+            pre_selector: Optional[SelectionPipeline] = None
     ) -> NestedTabularMLPipeline:
 
-        # linear model with l2
         time_score = self.get_time_score(n_level, "linear_l2")
         linear_l2_timer = self.timer.get_task_timer("reg_l2", time_score)
         linear_l2_model = LinearLBFGS_gpu(timer=linear_l2_timer, **self.linear_l2_params)
-        linear_l2_feats = LinearFeatures_gpu(
-            output_categories=True, **self.linear_pipeline_params
-        )
+        linear_l2_feats = LinearFeatures_gpu(output_categories=True, **self.linear_pipeline_params)
 
         linear_l2_pipe = NestedTabularMLPipeline(
             [linear_l2_model],
@@ -386,11 +386,8 @@ class TabularAutoML_gpu(TabularAutoML):
             if algo_key == "cb":
                 gbm_model = BoostCB_gpu(timer=gbm_timer, **self.cb_params)
             elif algo_key == "xgb":
-                # gbm_model = BoostXGB(timer=gbm_timer, **self.xgb_params)
                 if self.task.device == "mgpu" and not self.xgb_params["parallel_folds"]:
-                    gbm_model = BoostXGB_dask(
-                        client=self.client, timer=gbm_timer, **self.xgb_params
-                    )
+                    gbm_model = BoostXGB_dask(client=self.client, timer=gbm_timer, **self.xgb_params)
                 else:
                     gbm_model = BoostXGB(timer=gbm_timer, **self.xgb_params)
             else:
@@ -400,24 +397,22 @@ class TabularAutoML_gpu(TabularAutoML):
                 gbm_model.set_prefix("Tuned")
                 if algo_key == "cb":
                     folds = self.cb_params["parallel_folds"]
-                    if self.task.device == "gpu":
+                    if self.task.device == 'gpu':
                         gpu_cnt = 1
                     else:
                         gpu_cnt = torch.cuda.device_count()
                 elif algo_key == "xgb":
                     folds = self.xgb_params["parallel_folds"]
-                    if self.task.device == "gpu":
+                    if self.task.device == 'gpu':
                         gpu_cnt = 1
                     else:
                         gpu_cnt = torch.cuda.device_count()
                 else:
                     raise ValueError("Wrong algo key")
-
+               
                 if folds:
-
-                    gbm_tuner = OptunaTuner_gpu(
-                        ngpus=gpu_cnt,
-                        gpu_queue=GpuQueue(ngpus=gpu_cnt),
+                    gbm_tuner = OptunaTuner_gpu(ngpus = gpu_cnt,
+                        gpu_queue = GpuQueue(ngpus = gpu_cnt),
                         n_trials=self.tuning_params["max_tuning_iter"],
                         timeout=self.tuning_params["max_tuning_time"],
                         fit_on_holdout=self.tuning_params["fit_on_holdout"],
@@ -434,11 +429,7 @@ class TabularAutoML_gpu(TabularAutoML):
             force_calc.append(force)
 
         gbm_pipe = NestedTabularMLPipeline(
-            ml_algos,
-            force_calc,
-            pre_selection=pre_selector,
-            features_pipeline=gbm_feats,
-            **self.nested_cv_params
+            ml_algos, force_calc, pre_selection=pre_selector, features_pipeline=gbm_feats, **self.nested_cv_params
         )
 
         return gbm_pipe
@@ -454,13 +445,12 @@ class TabularAutoML_gpu(TabularAutoML):
         multilevel_avail = fit_args["valid_data"] is None and fit_args["cv_iter"] is None
 
         self.infer_auto_params(train_data, multilevel_avail)
-
         num_data = train_data.shape[0] * train_data.shape[1]
 
-        if num_data < 1e8 or self.task.device == "gpu":
+        if num_data < 1e8 or self.task.device == 'gpu':
             reader = CudfReader(task=self.task, **self.reader_params)
         else:
-            if self.task.device != "cpu":
+            if self.task.device != 'cpu':
                 reader = DaskCudfReader(task=self.task, **self.reader_params)
             else:
                 raise ValueError("Device must be either gpu or mgpu to run on GPUs")
@@ -481,25 +471,19 @@ class TabularAutoML_gpu(TabularAutoML):
                 lvl.append(self.get_linear(n + 1, selector))
 
             gbm_models = [
-                x
-                for x in ["cb", "cb_tuned", "xgb", "xgb_tuned"]
-                if x in names and x.split("_")[0] in self.task.losses
+                x for x in ["cb", "cb_tuned", "xgb", "xgb_tuned"] if x in names and x.split("_")[0] in self.task.losses
             ]
 
             if len(gbm_models) > 0:
                 selector = None
-                if "gbm" in self.selection_params["select_algos"] and (
-                    self.general_params["skip_conn"] or n == 0
-                ):
+                if "gbm" in self.selection_params["select_algos"] and (self.general_params["skip_conn"] or n == 0):
                     selector = pre_selector
                 lvl.append(self.get_gbms(gbm_models, n + 1, selector))
 
             levels.append(lvl)
 
         # blend everything
-        blender = WeightedBlender_gpu(
-            max_nonzero_coef=self.general_params["weighted_blender_max_nonzero_coef"]
-        )
+        blender = WeightedBlender_gpu(max_nonzero_coef=self.general_params["weighted_blender_max_nonzero_coef"])
 
         # initialize
         self._initialize(
@@ -521,7 +505,6 @@ class TabularAutoML_gpu(TabularAutoML):
         valid_features: Optional[Sequence[str]] = None,
         log_file: str = None,
         verbose: int = 0,
-        return_numpy: bool = True,
     ) -> GpuDataset:
         """Fit and get prediction on validation dataset.
         Almost same as :meth:`lightautoml.automl.base.AutoML.fit_predict`.
@@ -560,24 +543,21 @@ class TabularAutoML_gpu(TabularAutoML):
         if roles is None:
             roles = {}
         read_csv_params = self._get_read_csv_params()
-        train, upd_roles = read_data(
-            train_data, train_features, self.cpu_limit, read_csv_params
-        )
+        train, upd_roles = read_data(train_data, train_features, self.cpu_limit, read_csv_params)
         if upd_roles:
             roles = {**roles, **upd_roles}
         if valid_data is not None:
-            data, _ = read_data(
-                valid_data, valid_features, self.cpu_limit, self.read_csv_params
-            )
+            data, _ = read_data(valid_data, valid_features, self.cpu_limit, self.read_csv_params)
 
         oof_pred = super(TabularAutoML_gpu.__bases__[0], self).fit_predict(
-            train, roles=roles, cv_iter=cv_iter, valid_data=valid_data, verbose=verbose
+            train,
+            roles=roles,
+            cv_iter=cv_iter,
+            valid_data=valid_data,
+            verbose=verbose
         )
 
-        if return_numpy:
-            return oof_pred.to_numpy()
-        else:
-            return oof_pred
+        return oof_pred.to_numpy()
 
     def predict(
         self,
@@ -586,7 +566,6 @@ class TabularAutoML_gpu(TabularAutoML):
         batch_size: Optional[int] = None,
         n_jobs: Optional[int] = 1,
         return_all_predictions: Optional[bool] = None,
-        return_numpy: bool = True,
     ) -> NumpyDataset:
         """Get dataset with predictions.
         Almost same as :meth:`lightautoml.automl.base.AutoML.predict`
@@ -622,13 +601,8 @@ class TabularAutoML_gpu(TabularAutoML):
         if batch_size is None:
             data, _ = read_data(data, features_names, self.cpu_limit, read_csv_params)
 
-            pred = super(TabularAutoML_gpu.__bases__[0], self).predict(
-                data, features_names, return_all_predictions
-            )
-            if return_numpy:
-                return pred.to_numpy()
-            else:
-                return pred
+            pred = super(TabularAutoML_gpu.__bases__[0], self).predict(data, features_names, return_all_predictions)
+            return pred.to_numpy()
 
         data_generator = read_batch(
             data,
@@ -639,20 +613,19 @@ class TabularAutoML_gpu(TabularAutoML):
         )
 
         if n_jobs == 1:
-            res = [
-                self.predict(df, features_names, return_all_predictions)
-                for df in data_generator
-            ]
+            res = [self.predict(df, features_names, return_all_predictions) for df in data_generator]
 
         res = CupyDataset(
             cp.concatenate([x.data for x in res], axis=0),
             features=res[0].features,
             roles=res[0].roles,
         )
-        if return_numpy:
-            return res.to_numpy()
-        else:
-            return res
+
+        #if data input is from cpu then let it output cpu as well
+        res = res.to_numpy()
+        #if data input is from gpu then let it ouput gpu as well
+
+        return res
 
 
 class TabularUtilizedAutoML_gpu(TabularUtilizedAutoML):
@@ -706,9 +679,7 @@ class TabularUtilizedAutoML_gpu(TabularUtilizedAutoML):
                 ]
             ]
         inner_blend = MeanBlender_gpu()
-        outer_blend = WeightedBlender_gpu(
-            max_nonzero_coef=outer_blender_max_nonzero_coef
-        )
+        outer_blend = WeightedBlender_gpu(max_nonzero_coef=outer_blender_max_nonzero_coef)
         super(TabularUtilizedAutoML_gpu.__bases__[0], self).__init__(
             TabularAutoML_gpu,
             task,
@@ -726,25 +697,4 @@ class TabularUtilizedAutoML_gpu(TabularUtilizedAutoML):
             None,
             random_state,
             **kwargs
-        )
-
-    def predict(
-        self,
-        data: ReadableToDf,
-        features_names: Optional[Sequence[str]] = None,
-        batch_size: Optional[int] = None,
-        n_jobs: Optional[int] = 1,
-        return_all_predictions: Optional[bool] = None,
-    ) -> NumpyDataset:
-        return (
-            super(TabularUtilizedAutoML_gpu.__bases__[0], self)
-            .predict(
-                data,
-                features_names,
-                return_all_predictions,
-                batch_size=batch_size,
-                n_jobs=n_jobs,
-                return_numpy=False,
-            )
-            .to_numpy()
         )

@@ -1,16 +1,29 @@
 """Nested MLPipeline."""
 
 import logging
-from copy import copy, deepcopy
-from typing import Any, Optional, Sequence, Tuple, Union
+
+from copy import copy
+from copy import deepcopy
+from typing import Any
+from typing import Optional
+from typing import Sequence
+from typing import Tuple
+from typing import Union
 
 import numpy as np
 import pandas as pd
+
 from pandas import Series
 
 from ...dataset.np_pd_dataset import NumpyDataset
-from ...ml_algo.base import PandasDataset, TabularDataset, TabularMLAlgo
-from ...ml_algo.tuning.base import DefaultTuner, ParamsTuner
+
+from ...dataset.gpu.gpu_dataset import CupyDataset, CudfDataset, DaskCudfDataset
+
+from ...ml_algo.base import PandasDataset
+from ...ml_algo.base import TabularDataset
+from ...ml_algo.base import TabularMLAlgo
+from ...ml_algo.tuning.base import DefaultTuner
+from ...ml_algo.tuning.base import ParamsTuner
 from ...ml_algo.utils import tune_and_fit_predict
 from ...reader.utils import set_sklearn_folds
 from ...utils.timer import PipelineTimer
@@ -20,6 +33,7 @@ from ..features.base import FeaturesPipeline
 from ..selection.base import SelectionPipeline
 from ..selection.importance_based import ImportanceEstimator
 from .base import MLPipeline
+
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +93,33 @@ class NestedTabularMLAlgo(TabularMLAlgo, ImportanceEstimator):
         self.nested_cv = cv
         self.n_folds = n_folds
 
+    def to_cpu(self):
+        """Base method for pipeline conversion to CPU inference mode.
+
+        Returns:
+            instance of pipeline with CPU inference.
+        """
+
+        def convert_recursive_cpu(pipeline):
+            if hasattr(pipeline, 'transformer_list'):
+                for i in range(len(pipeline.transformer_list)):
+                    convert_recursive_cpu(pipeline.transformer_list[i])
+            else:
+                if hasattr(pipeline, 'to_cpu'):
+                    pipeline.to_cpu()
+                if hasattr(pipeline, 'dataset_type'):
+                    if pipeline.dataset_type == DaskCudfDataset or \
+                            pipeline.dataset_type == CudfDataset:
+                        pipeline.dataset_type = PandasDataset
+                    elif pipeline.dataset_type == CupyDataset:
+                        pipeline.dataset_type = NumpyDataset
+
+        convert_recursive_cpu(self.features_pipeline._pipeline)
+
+        for i in range(len(self.ml_algos)):
+            self.ml_algos[i] = deepcopy(self.ml_algos[i].to_cpu())
+        return self
+
     def fit_predict(self, train_valid_iterator: TrainValidIterator) -> NumpyDataset:
 
         self.timer.start()
@@ -87,9 +128,7 @@ class NestedTabularMLAlgo(TabularMLAlgo, ImportanceEstimator):
 
         return super().fit_predict(train_valid_iterator)
 
-    def fit_predict_single_fold(
-        self, train: TabularDataset, valid: TabularDataset
-    ) -> Tuple[Any, np.ndarray]:
+    def fit_predict_single_fold(self, train: TabularDataset, valid: TabularDataset) -> Tuple[Any, np.ndarray]:
         """Implements training and prediction on single fold.
 
         Args:
@@ -124,11 +163,7 @@ class NestedTabularMLAlgo(TabularMLAlgo, ImportanceEstimator):
         train_valid = create_validation_iterator(train, n_folds=self.n_folds)
 
         model = deepcopy(self._ml_algo)
-        model.set_timer(
-            PipelineTimer(timeout=self._per_task_timer, overhead=0)
-            .start()
-            .get_task_timer()
-        )
+        model.set_timer(PipelineTimer(timeout=self._per_task_timer, overhead=0).start().get_task_timer())
         logger.debug(self._ml_algo.params)
         tuner = self._params_tuner
         if self._refit_tuner:
@@ -139,7 +174,10 @@ class NestedTabularMLAlgo(TabularMLAlgo, ImportanceEstimator):
             model.fit_predict(train_valid)
         else:
             logger.debug("Run with tuner")
-            (model, _,) = tune_and_fit_predict(model, tuner, train_valid, True)
+            (
+                model,
+                _,
+            ) = tune_and_fit_predict(model, tuner, train_valid, True)
 
         val_pred = model.predict(valid).data
         logger.debug("Model params", model.params)
@@ -150,15 +188,11 @@ class NestedTabularMLAlgo(TabularMLAlgo, ImportanceEstimator):
 
         return pred
 
-    def _get_search_spaces(
-        self, suggested_params: dict, estimated_n_trials: int
-    ) -> dict:
+    def _get_search_spaces(self, suggested_params: dict, estimated_n_trials: int) -> dict:
         return self._ml_algo._get_search_spaces(suggested_params, estimated_n_trials)
 
     def get_features_score(self) -> Series:
-        scores = pd.concat([x.get_features_score() for x in self.models], axis=1).mean(
-            axis=1
-        )
+        scores = pd.concat([x.get_features_score() for x in self.models], axis=1).mean(axis=1)
 
         return scores
 
@@ -227,16 +261,10 @@ class NestedTabularMLPipeline(MLPipeline):
                     mod, tuner = mt_pair, DefaultTuner()
 
                 if inner_tune:
-                    new_ml_algos.append(
-                        NestedTabularMLAlgo(mod, tuner, refit_tuner, cv, n_folds)
-                    )
+                    new_ml_algos.append(NestedTabularMLAlgo(mod, tuner, refit_tuner, cv, n_folds))
                 else:
-                    new_ml_algos.append(
-                        (NestedTabularMLAlgo(mod, None, True, cv, n_folds), tuner)
-                    )
+                    new_ml_algos.append((NestedTabularMLAlgo(mod, None, True, cv, n_folds), tuner))
 
             ml_algos = new_ml_algos
 
-        super().__init__(
-            ml_algos, force_calc, pre_selection, features_pipeline, post_selection
-        )
+        super().__init__(ml_algos, force_calc, pre_selection, features_pipeline, post_selection)

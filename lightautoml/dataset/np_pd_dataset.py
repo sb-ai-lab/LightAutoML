@@ -1,22 +1,31 @@
 """Internal representation of dataset in numpy, pandas and csr formats."""
 
 from copy import copy  # , deepcopy
-from typing import Any, List, Optional, Sequence, Tuple, TypeVar, Union
+from typing import Any
+from typing import List
+from typing import Optional
+from typing import Sequence
+from typing import Tuple
+from typing import TypeVar
+from typing import Union
 
 import numpy as np
 import pandas as pd
-from pandas import DataFrame, Series
+
+from pandas import DataFrame
+from pandas import Series
 from scipy import sparse
 
 from ..tasks.base import Task
-from .base import (
-    IntIdx,
-    LAMLDataset,
-    RolesDict,
-    array_attr_roles,
-    valid_array_attributes,
-)
-from .roles import ColumnRole, DropRole, NumericRole
+from .base import IntIdx
+from .base import LAMLDataset
+from .base import RolesDict
+from .base import array_attr_roles
+from .base import valid_array_attributes
+from .roles import ColumnRole
+from .roles import DropRole
+from .roles import NumericRole
+
 
 # disable warnings later
 # pd.set_option('mode.chained_assignment', None)
@@ -73,9 +82,7 @@ class NumpyDataset(LAMLDataset):
             self._features = copy(val)
         else:
             prefix = val if val is not None else "feat"
-            self._features = [
-                "{0}_{1}".format(prefix, x) for x in range(self.data.shape[1])
-            ]
+            self._features = ["{0}_{1}".format(prefix, x) for x in range(self.data.shape[1])]
 
     @property
     def roles(self) -> RolesDict:
@@ -120,9 +127,7 @@ class NumpyDataset(LAMLDataset):
         for f in self.roles:
             self._roles[f].dtype = self.dtype
 
-        assert np.issubdtype(
-            self.dtype, np.number
-        ), "Support only numeric types in numpy dataset."
+        assert np.issubdtype(self.dtype, np.number), "Support only numeric types in numpy dataset."
 
         if self.data.dtype != self.dtype:
             self.data = self.data.astype(self.dtype)
@@ -163,9 +168,7 @@ class NumpyDataset(LAMLDataset):
         if data is not None:
             self.set_data(data, features, roles)
 
-    def set_data(
-        self, data: DenseSparseArray, features: NpFeatures = (), roles: NpRoles = None
-    ):
+    def set_data(self, data: DenseSparseArray, features: NpFeatures = (), roles: NpRoles = None):
         """Inplace set data, features, roles for empty dataset.
 
         Args:
@@ -188,9 +191,7 @@ class NumpyDataset(LAMLDataset):
                 - dict.
 
         """
-        assert (
-            data is None or type(data) is np.ndarray
-        ), "Numpy dataset support only np.ndarray features"
+        assert data is None or type(data) is np.ndarray, "Numpy dataset support only np.ndarray features"
         super().set_data(data, features, roles)
         self._check_dtype()
 
@@ -377,9 +378,7 @@ class CSRSparseDataset(NumpyDataset):
         return rows, cols
 
     @staticmethod
-    def _hstack(
-        datasets: Sequence[Union[sparse.csr_matrix, np.ndarray]]
-    ) -> sparse.csr_matrix:
+    def _hstack(datasets: Sequence[Union[sparse.csr_matrix, np.ndarray]]) -> sparse.csr_matrix:
         """Concatenate function for sparse and numpy arrays.
 
         Args:
@@ -427,9 +426,7 @@ class CSRSparseDataset(NumpyDataset):
         if data is not None:
             self.set_data(data, features, roles)
 
-    def set_data(
-        self, data: DenseSparseArray, features: NpFeatures = (), roles: NpRoles = None
-    ):
+    def set_data(self, data: DenseSparseArray, features: NpFeatures = (), roles: NpRoles = None):
         """Inplace set data, features, roles for empty dataset.
 
         Args:
@@ -452,9 +449,7 @@ class CSRSparseDataset(NumpyDataset):
                 - dict.
 
         """
-        assert (
-            data is None or type(data) is sparse.csr_matrix
-        ), "CSRSparseDataset support only csr_matrix features"
+        assert data is None or type(data) is sparse.csr_matrix, "CSRSparseDataset support only csr_matrix features"
         LAMLDataset.set_data(self, data, features, roles)
         self._check_dtype()
 
@@ -527,9 +522,7 @@ class PandasDataset(LAMLDataset):
         if data is not None:
             self.set_data(data, None, roles)
 
-    def _get_cols_idx(
-        self, columns: Union[Sequence[str], str]
-    ) -> Union[Sequence[int], int]:
+    def _get_cols_idx(self, columns: Union[Sequence[str], str]) -> Union[Sequence[int], int]:
         """Get numeric index of columns by column names.
 
         Args:

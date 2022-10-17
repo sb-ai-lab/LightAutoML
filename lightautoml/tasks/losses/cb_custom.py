@@ -4,15 +4,14 @@ from typing import Callable
 
 import numpy as np
 
+
 # TODO: Calc metrics on gpu slow down warning. Check it
 
 
 class CBCustomMetric:
     """Metric wrapper class for CatBoost."""
 
-    def __init__(
-        self, metric: Callable, greater_is_better: bool = True, bw_func: Callable = None
-    ):
+    def __init__(self, metric: Callable, greater_is_better: bool = True, bw_func: Callable = None):
         """
 
         Args:

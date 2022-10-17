@@ -1,11 +1,16 @@
 """Metrics and loss functions for scikit-learn models."""
 
 import logging
-from typing import Callable, Dict, Optional, Union
+
+from typing import Callable
+from typing import Dict
+from typing import Optional
+from typing import Union
 
 import numpy as np
 
 from .base import Loss
+
 
 logger = logging.getLogger(__name__)
 
@@ -84,10 +89,6 @@ class SKLoss(Loss):
         """
         if self.loss in _sk_force_metric:
             metric, greater_is_better, metric_params = _sk_force_metric[self.loss]
-            logger.info2(
-                "For sklearn {0} callback metric switched to {1}".format(
-                    self.loss, metric
-                )
-            )
+            logger.info2("For sklearn {0} callback metric switched to {1}".format(self.loss, metric))
 
         super().set_callback_metric(metric, greater_is_better, metric_params, task_name)

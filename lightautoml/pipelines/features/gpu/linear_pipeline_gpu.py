@@ -1,30 +1,31 @@
 """Linear models features (GPU version)."""
 
-from typing import Optional, Union
+from typing import Union
+from typing import Optional
 
 import numpy as np
 
-from lightautoml.dataset.gpu.gpu_dataset import CudfDataset, CupyDataset, DaskCudfDataset
-from lightautoml.dataset.roles import CategoryRole
-from lightautoml.pipelines.features.base import FeaturesPipeline
-from lightautoml.pipelines.selection.base import ImportanceEstimator
-from lightautoml.pipelines.utils import get_columns_by_role
-from lightautoml.transformers.base import (
-    ChangeRoles,
-    LAMLTransformer,
-    SequentialTransformer,
-    UnionTransformer,
-)
-from lightautoml.transformers.gpu.categorical_gpu import LabelEncoder_gpu, OHEEncoder_gpu
-from lightautoml.transformers.gpu.numeric_gpu import (
-    FillInf_gpu,
-    FillnaMedian_gpu,
-    LogOdds_gpu,
-    NaNFlags_gpu,
-    StandardScaler_gpu,
-)
-
 from .base_gpu import TabularDataFeatures_gpu
+from lightautoml.pipelines.features.base import FeaturesPipeline
+
+from lightautoml.pipelines.selection.base import ImportanceEstimator
+
+from lightautoml.pipelines.utils import get_columns_by_role
+from lightautoml.dataset.gpu.gpu_dataset import CupyDataset
+from lightautoml.dataset.gpu.gpu_dataset import CudfDataset
+from lightautoml.dataset.gpu.gpu_dataset import DaskCudfDataset
+from lightautoml.dataset.roles import CategoryRole
+from lightautoml.transformers.base import LAMLTransformer
+from lightautoml.transformers.base import SequentialTransformer
+from lightautoml.transformers.base import UnionTransformer
+from lightautoml.transformers.base import ChangeRoles
+from lightautoml.transformers.gpu.categorical_gpu import OHEEncoder_gpu
+from lightautoml.transformers.gpu.categorical_gpu import LabelEncoder_gpu
+from lightautoml.transformers.gpu.numeric_gpu import StandardScaler_gpu
+from lightautoml.transformers.gpu.numeric_gpu import NaNFlags_gpu
+from lightautoml.transformers.gpu.numeric_gpu import FillnaMedian_gpu
+from lightautoml.transformers.gpu.numeric_gpu import LogOdds_gpu
+from lightautoml.transformers.gpu.numeric_gpu import FillInf_gpu
 
 GpuDataset = Union[CupyDataset, CudfDataset, DaskCudfDataset]
 
@@ -45,19 +46,11 @@ class LinearFeatures_gpu(FeaturesPipeline, TabularDataFeatures_gpu):
 
     """
 
-    def __init__(
-        self,
-        feats_imp: Optional[ImportanceEstimator] = None,
-        top_intersections: int = 5,
-        max_bin_count: int = 10,
-        max_intersection_depth: int = 3,
-        subsample: Optional[Union[int, float]] = None,
-        sparse_ohe: Union[str, bool] = "auto",
-        auto_unique_co: int = 50,
-        output_categories: bool = True,
-        multiclass_te_co: int = 3,
-        **kwargs
-    ):
+    def __init__(self, feats_imp: Optional[ImportanceEstimator] = None, top_intersections: int = 5,
+                 max_bin_count: int = 10,
+                 max_intersection_depth: int = 3, subsample: Optional[Union[int, float]] = None,
+                 sparse_ohe: Union[str, bool] = 'auto', auto_unique_co: int = 50, output_categories: bool = True,
+                 multiclass_te_co: int = 3, **kwargs):
         """
 
         Args:
@@ -75,23 +68,20 @@ class LinearFeatures_gpu(FeaturesPipeline, TabularDataFeatures_gpu):
               on multiclass task if number of classes is high.
 
         """
-        assert (
-            max_bin_count is None or max_bin_count > 1
-        ), "Max bin count should be >= 2 or None"
+        assert max_bin_count is None or max_bin_count > 1, 'Max bin count should be >= 2 or None'
 
-        super().__init__(
-            multiclass_te=False,
-            top_intersections=top_intersections,
-            max_intersection_depth=max_intersection_depth,
-            subsample=subsample,
-            feats_imp=feats_imp,
-            auto_unique_co=auto_unique_co,
-            output_categories=output_categories,
-            ascending_by_cardinality=True,
-            max_bin_count=max_bin_count,
-            sparse_ohe=sparse_ohe,
-            multiclass_te_co=multiclass_te_co,
-        )
+        super().__init__(multiclass_te=False,
+                         top_intersections=top_intersections,
+                         max_intersection_depth=max_intersection_depth,
+                         subsample=subsample,
+                         feats_imp=feats_imp,
+                         auto_unique_co=auto_unique_co,
+                         output_categories=output_categories,
+                         ascending_by_cardinality=True,
+                         max_bin_count=max_bin_count,
+                         sparse_ohe=sparse_ohe,
+                         multiclass_te_co=multiclass_te_co
+                         )
 
     def create_pipeline(self, train: GpuDataset) -> LAMLTransformer:
         """Create linear pipeline.
@@ -108,7 +98,7 @@ class LinearFeatures_gpu(FeaturesPipeline, TabularDataFeatures_gpu):
         sparse_list = []
         probs_list = []
         target_encoder = self.get_target_encoder(train)
-        te_list = dense_list if train.task.name == "reg" else probs_list
+        te_list = dense_list if train.task.name == 'reg' else probs_list
 
         # handle categorical feats
         # split categories by handling type. This pipe use 4 encodings - freq/label/target/ohe/ordinal
@@ -116,22 +106,18 @@ class LinearFeatures_gpu(FeaturesPipeline, TabularDataFeatures_gpu):
         dense_list.append(self.get_freq_encoding(train))
 
         # 2 - check 'auto' type (int is the same - no label encoded numbers in linear models)
-        auto = get_columns_by_role(
-            train, "Category", encoding_type="auto"
-        ) + get_columns_by_role(train, "Category", encoding_type="int")
+        auto = (get_columns_by_role(train, 'Category', encoding_type='auto') +
+                get_columns_by_role(train, 'Category', encoding_type='int'))
 
         # if self.output_categories or target_encoder is None:
         if target_encoder is None:
-            le = (
-                auto
-                + get_columns_by_role(train, "Category", encoding_type="oof")
-                + get_columns_by_role(train, "Category", encoding_type="ohe")
-            )
+            le = (auto + get_columns_by_role(train, 'Category', encoding_type='oof')
+                  + get_columns_by_role(train, 'Category', encoding_type='ohe'))
             te = []
 
         else:
-            te = get_columns_by_role(train, "Category", encoding_type="oof")
-            le = get_columns_by_role(train, "Category", encoding_type="ohe")
+            te = get_columns_by_role(train, 'Category', encoding_type='oof')
+            le = get_columns_by_role(train, 'Category', encoding_type='ohe')
             # split auto categories by unique values cnt
             un_values = self.get_uniques_cnt(train, auto)
             te = te + [x for x in un_values.index if un_values[x] > self.auto_unique_co]
@@ -183,19 +169,16 @@ class LinearFeatures_gpu(FeaturesPipeline, TabularDataFeatures_gpu):
         dense_list = [x for x in dense_list if x is not None]
         if len(dense_list) > 0:
             # standartize, fillna, add null flags
-            dense_pipe = SequentialTransformer(
-                [
-                    UnionTransformer(dense_list),
-                    UnionTransformer(
-                        [
-                            SequentialTransformer(
-                                [FillInf_gpu(), FillnaMedian_gpu(), StandardScaler_gpu()]
-                            ),
-                            NaNFlags_gpu(),
-                        ]
-                    ),
-                ]
-            )
+            dense_pipe = SequentialTransformer([
+
+                UnionTransformer(dense_list),
+                UnionTransformer([
+
+                    SequentialTransformer([FillInf_gpu(), FillnaMedian_gpu(), StandardScaler_gpu()]),
+                    NaNFlags_gpu()
+
+                ])
+            ])
             transformers_list.append(dense_pipe)
 
         # handle categories - cast to float32 if categories are inputs or make ohe
@@ -205,7 +188,7 @@ class LinearFeatures_gpu(FeaturesPipeline, TabularDataFeatures_gpu):
             if self.output_categories:
                 final = ChangeRoles(CategoryRole(np.float32))
             else:
-                if self.sparse_ohe == "auto":
+                if self.sparse_ohe == 'auto':
                     final = OHEEncoder_gpu(total_feats_cnt=train.shape[1])
                 else:
                     final = OHEEncoder_gpu(make_sparse=self.sparse_ohe)

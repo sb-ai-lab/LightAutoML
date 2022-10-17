@@ -1,30 +1,31 @@
 """Wrapped Catboost for tabular datasets (GPU version)."""
 
 import logging
-from copy import copy
-from typing import Callable, Dict, Tuple, Union
+
+from copy import copy, deepcopy
+from typing import Callable
+from typing import Dict
+from typing import Tuple
+from typing import Union
 
 import catboost as cb
 import numpy as np
 from pandas import Series
 
-from lightautoml.dataset.gpu.gpu_dataset import CudfDataset, CupyDataset
-from lightautoml.dataset.np_pd_dataset import (
-    CSRSparseDataset,
-    NumpyDataset,
-    PandasDataset,
-)
-from lightautoml.ml_algo.tuning.base import Distribution, SearchSpace
+from lightautoml.dataset.gpu.gpu_dataset import CupyDataset
+from lightautoml.dataset.gpu.gpu_dataset import CudfDataset
+from lightautoml.dataset.np_pd_dataset import NumpyDataset
+from lightautoml.dataset.np_pd_dataset import CSRSparseDataset
+from lightautoml.dataset.np_pd_dataset import PandasDataset
 from lightautoml.pipelines.selection.base import ImportanceEstimator
 from lightautoml.pipelines.utils import get_columns_by_role
 from lightautoml.validation.base import TrainValidIterator
-
 from .base_gpu import TabularMLAlgo_gpu
+from lightautoml.ml_algo.tuning.base import Distribution
+from lightautoml.ml_algo.tuning.base import SearchSpace
 
 logger = logging.getLogger(__name__)
-TabularDataset = Union[
-    NumpyDataset, CSRSparseDataset, PandasDataset, CupyDataset, CudfDataset
-]
+TabularDataset = Union[NumpyDataset, CSRSparseDataset, PandasDataset, CupyDataset, CudfDataset]
 
 
 class BoostCB_gpu(TabularMLAlgo_gpu, ImportanceEstimator):
@@ -42,8 +43,7 @@ class BoostCB_gpu(TabularMLAlgo_gpu, ImportanceEstimator):
     ``timer``: :class:`~lightautoml.utils.timer.Timer` instance or ``None``.
 
     """
-
-    _name: str = "CatBoost_gpu"
+    _name: str = 'CatBoost_gpu'
 
     _default_params = {
         "task_type": "GPU",
@@ -69,9 +69,10 @@ class BoostCB_gpu(TabularMLAlgo_gpu, ImportanceEstimator):
         "nan_mode": "Min",
         # "silent": False,
         "verbose": False,
-        "max_ctr_complexity": 1,
+        "max_ctr_complexity": 1
     }
 
+    
     def _infer_params(self) -> Tuple[dict, int, int, Callable, Callable]:
         """Infer all parameters.
 
@@ -81,25 +82,25 @@ class BoostCB_gpu(TabularMLAlgo_gpu, ImportanceEstimator):
         """
 
         params = copy(self.params)
-        early_stopping_rounds = params.pop("od_wait")
-        num_trees = params.pop("num_trees")
+        early_stopping_rounds = params.pop('od_wait')
+        num_trees = params.pop('num_trees')
 
         root_logger = logging.getLogger()
         level = root_logger.getEffectiveLevel()
 
         if level in (logging.CRITICAL, logging.ERROR, logging.WARNING):
-            params["verbose"] = False
+            params['verbose'] = False
         elif level == logging.INFO:
-            params["verbose"] = 100
+            params['verbose'] = 100
         else:
-            params["verbose"] = 10
+            params['verbose'] = 10
 
-        loss = self.task.losses["cb"]
+        loss = self.task.losses['cb']
         fobj = loss.fobj_name
         feval = loss.metric_name
 
-        if fobj not in ["RMSE", "LogLoss", "CrossEntropy", "Quantile", "MAE", "MAPE"]:
-            params.pop("boost_from_average")
+        if fobj not in ['RMSE', 'LogLoss', 'CrossEntropy', 'Quantile', 'MAE', 'MAPE']:
+            params.pop('boost_from_average')
 
         return params, num_trees, early_stopping_rounds, fobj, feval
 
@@ -118,20 +119,18 @@ class BoostCB_gpu(TabularMLAlgo_gpu, ImportanceEstimator):
         dataset = train_valid_iterator.train
         self.task = train_valid_iterator.train.task
 
-        if train_valid_iterator.train.dataset_type != "CSRSparseDataset":
+        if train_valid_iterator.train.dataset_type != 'CSRSparseDataset':
             self._nan_rate = train_valid_iterator.train.to_pandas().nan_rate()
 
         try:
-            self._le_cat_features = getattr(self, "_le_cat_features")
+            self._le_cat_features = getattr(self, '_le_cat_features')
         except AttributeError:
-            self._le_cat_features = get_columns_by_role(
-                dataset, "Category", label_encoded=True
-            )
+            self._le_cat_features = get_columns_by_role(dataset, 'Category', label_encoded=True)
 
         try:
-            self._text_features = getattr(self, "_text_features")
+            self._text_features = getattr(self, '_text_features')
         except AttributeError:
-            self._text_features = get_columns_by_role(dataset, "Text")
+            self._text_features = get_columns_by_role(dataset, 'Text')
 
         suggested_params = copy(self.default_params)
 
@@ -139,7 +138,7 @@ class BoostCB_gpu(TabularMLAlgo_gpu, ImportanceEstimator):
             return suggested_params
 
         init_lr, ntrees, es = 0.01, 2000, 100
-        if self.task.name == "binary":
+        if self.task.name == 'binary':
             # TODO: with an increase in the number of columns, the learning rate decreases
             if rows_num <= 6000:
                 init_lr = 0.02
@@ -173,7 +172,7 @@ class BoostCB_gpu(TabularMLAlgo_gpu, ImportanceEstimator):
                 init_lr = 0.05
                 ntrees = 3000
 
-        elif self.task.name == "multiclass":
+        elif self.task.name == 'multiclass':
             init_lr = 0.03
             ntrees = 4000
 
@@ -186,20 +185,18 @@ class BoostCB_gpu(TabularMLAlgo_gpu, ImportanceEstimator):
             elif rows_num <= 10000:
                 ntrees = 3000
 
-        elif self.task.name == "reg":
+        elif self.task.name == 'reg':
             init_lr = 0.05
             ntrees = 2000
             es = 300
 
-        suggested_params["learning_rate"] = init_lr
-        suggested_params["num_trees"] = ntrees
-        suggested_params["od_wait"] = es
+        suggested_params['learning_rate'] = init_lr
+        suggested_params['num_trees'] = ntrees
+        suggested_params['od_wait'] = es
 
         return suggested_params
 
-    def _get_default_search_spaces(
-        self, suggested_params: Dict, estimated_n_trials: int
-    ) -> Dict:
+    def _get_default_search_spaces(self, suggested_params: Dict, estimated_n_trials: int) -> Dict:
         """Sample hyperparameters from suggested.
 
         Args:
@@ -219,73 +216,57 @@ class BoostCB_gpu(TabularMLAlgo_gpu, ImportanceEstimator):
         except AttributeError:
             nan_rate = 0
 
-        optimization_search_space["max_depth"] = SearchSpace(
-            Distribution.INTUNIFORM, low=3, high=7
-        )
+        optimization_search_space["max_depth"] = SearchSpace(Distribution.INTUNIFORM, low=3, high=7)
 
         if nan_rate > 0:
-            optimization_search_space["nan_mode"] = SearchSpace(
-                Distribution.CHOICE, choices=["Max", "Min"]
-            )
+            optimization_search_space["nan_mode"] = SearchSpace(Distribution.CHOICE, choices=["Max", "Min"])
 
         if estimated_n_trials > 20:
             optimization_search_space["l2_leaf_reg"] = SearchSpace(
-                Distribution.LOGUNIFORM, low=1e-8, high=10.0,
+                Distribution.LOGUNIFORM,
+                low=1e-8,
+                high=10.0,
             )
-
-            # optimization_search_space['bagging_temperature'] = trial.suggest_loguniform(
-            #     name='bagging_temperature',
-            #     low=0.01,
-            #     high=10.0,
-            # )
 
         if estimated_n_trials > 50:
-            optimization_search_space["min_data_in_leaf"] = SearchSpace(
-                Distribution.INTUNIFORM, low=1, high=20
-            )
+            optimization_search_space["min_data_in_leaf"] = SearchSpace(Distribution.INTUNIFORM, low=1, high=20)
 
             # the only case when used this parameter is when categorical columns more than 0
             if len(self._le_cat_features) > 0:
-                optimization_search_space["one_hot_max_size"] = SearchSpace(
-                    Distribution.INTUNIFORM, low=3, high=10
-                )
+                optimization_search_space["one_hot_max_size"] = SearchSpace(Distribution.INTUNIFORM, low=3, high=10)
 
         return optimization_search_space
 
     def _get_pool(self, dataset: TabularDataset):
 
         try:
-            self._le_cat_features = getattr(self, "_le_cat_features")
+            self._le_cat_features = getattr(self, '_le_cat_features')
         except AttributeError:
-            self._le_cat_features = get_columns_by_role(
-                dataset, "Category", label_encoded=True
-            )
+            self._le_cat_features = get_columns_by_role(dataset, 'Category', label_encoded=True)
         self._le_cat_features = self._le_cat_features if self._le_cat_features else None
 
         try:
-            self._text_features = getattr(self, "_text_features")
+            self._text_features = getattr(self, '_text_features')
         except AttributeError:
-            self._text_features = get_columns_by_role(dataset, "Text")
+            self._text_features = get_columns_by_role(dataset, 'Text')
         self._text_features = self._text_features if self._text_features else None
 
         dataset_ = dataset.to_pandas()
         data = dataset_.data
         dtypes = data.dtypes.to_dict()
         if self._le_cat_features:
-            dtypes = {**dtypes, **{x: "int" for x in self._le_cat_features}}
+            dtypes = {**dtypes, **{x: 'int' for x in self._le_cat_features}}
         # for future
         if self._text_features:
-            dtypes = {**dtypes, **{x: "int" for x in self._text_features}}
+            dtypes = {**dtypes, **{x: 'int' for x in self._text_features}}
 
         data = data.astype(dtypes)
         if self._le_cat_features:
             # copy was made in prev astype
-            data.astype({x: "category" for x in self._le_cat_features}, copy=False)
+            data.astype({x: 'category' for x in self._le_cat_features}, copy=False)
 
         if dataset_.target is not None:
-            target, weights = self.task.losses["cb"].fw_func(
-                dataset_.target, dataset_.weights
-            )
+            target, weights = self.task.losses['cb'].fw_func(dataset_.target, dataset_.weights)
         else:
             target, weights = dataset_.target, dataset_.weights
 
@@ -295,14 +276,32 @@ class BoostCB_gpu(TabularMLAlgo_gpu, ImportanceEstimator):
             weight=weights,
             feature_names=dataset_.features,
             cat_features=self._le_cat_features,
-            text_features=self._text_features,
+            text_features=self._text_features
         )
 
         return pool
 
-    def fit_predict_single_fold(
-        self, train: TabularDataset, valid: TabularDataset, dev_id: int = None
-    ) -> Tuple[cb.CatBoost, np.ndarray]:
+    def to_cpu(self):
+        default_params = deepcopy(self._default_params)
+        default_params['task_type'] = 'CPU'
+        default_params['devices'] = None
+        task = Task(name=self.task._name,
+                    device='cpu',
+                    metric=self.task.metric_name,
+                    greater_is_better=self.task.greater_is_better)
+        algo = BoostCB(default_params=default_params,
+                       )
+        print("Models parameters:", self.models[0].__dict__)
+        print("Models type:", type(self.models[0]))
+        models = deepcopy(self.models)
+        for i in range(len(models)):
+            models[i]._init_params['task_type'] = 'CPU'
+        algo.task = task
+        algo.models = models
+        print("CB feats:", self.__dict__)
+        return algo
+
+    def fit_predict_single_fold(self, train: TabularDataset, valid: TabularDataset, dev_id: int = None) -> Tuple[cb.CatBoost, np.ndarray]:
         """Implements training and prediction on single fold.
 
         Args:
@@ -320,40 +319,24 @@ class BoostCB_gpu(TabularMLAlgo_gpu, ImportanceEstimator):
         cb_valid = self._get_pool(valid)
 
         if dev_id is None and len(self.gpu_ids) > 1:
-            model = cb.CatBoost(
-                {
-                    **params,
-                    **{
-                        "num_trees": num_trees,
-                        "objective": fobj,
-                        "eval_metric": feval,
-                        "od_wait": early_stopping_rounds,
-                    },
-                }
-            )
+            model = cb.CatBoost({**params, **{'num_trees': num_trees,
+                                              'objective': fobj,
+                                              'eval_metric': feval,
+                                              "od_wait": early_stopping_rounds}})
         else:
             cur_gpu = str(self.gpu_ids[0]) if dev_id is None else str(dev_id)
-            model = cb.CatBoost(
-                {
-                    **params,
-                    **{
-                        "devices": cur_gpu,
-                        "num_trees": num_trees,
-                        "objective": fobj,
-                        "eval_metric": feval,
-                        "od_wait": early_stopping_rounds,
-                    },
-                }
-            )
+            model = cb.CatBoost({**params, **{'devices':cur_gpu,
+                                              'num_trees': num_trees,
+                                              'objective': fobj,
+                                              'eval_metric': feval,
+                                              "od_wait": early_stopping_rounds}})
 
         model.fit(cb_train, eval_set=cb_valid)
 
         val_pred = self._predict(model, cb_valid, params)
         return model, val_pred
 
-    def predict_single_fold(
-        self, model: cb.CatBoost, dataset: TabularDataset
-    ) -> np.ndarray:
+    def predict_single_fold(self, model: cb.CatBoost, dataset: TabularDataset) -> np.ndarray:
         """Predict of target values for dataset.
 
         Args:
@@ -382,14 +365,11 @@ class BoostCB_gpu(TabularMLAlgo_gpu, ImportanceEstimator):
 
         """
         # TODO: Not worked if used text features, there is a ticket in their github
-        assert self.is_fitted, "Model must be fitted to compute importance."
+        assert self.is_fitted, 'Model must be fitted to compute importance.'
         imp = 0
         for model in self.models:
-            imp = imp + model.get_feature_importance(
-                type="FeatureImportance",
-                prettified=False,
-                thread_count=self.params["thread_count"],
-            )
+            imp = imp + model.get_feature_importance(type='FeatureImportance', prettified=False,
+                                                     thread_count=self.params['thread_count'])
 
         imp = imp / len(self.models)
 
@@ -406,27 +386,24 @@ class BoostCB_gpu(TabularMLAlgo_gpu, ImportanceEstimator):
 
     def _predict(self, model: cb.CatBoost, pool: cb.Pool, params):
         pred = None
-        if self.task.name == "multiclass":
+        if self.task.name == 'multiclass':
             pred = model.predict(
                 pool,
-                prediction_type="Probability",
-                thread_count=params["thread_count"],
-                # task_type='GPU'
+                prediction_type='Probability',
+                thread_count=params['thread_count'],
             )
-        elif self.task.name == "binary":
+        elif self.task.name == 'binary':
             pred = model.predict(
                 pool,
-                prediction_type="Probability",
-                thread_count=params["thread_count"],
-                # task_type='GPU'
+                prediction_type='Probability',
+                thread_count=params['thread_count'],
             )[..., 1]
-        elif self.task.name == "reg":
+        elif self.task.name == 'reg':
             pred = model.predict(
                 pool,
-                thread_count=params["thread_count"],
-                # task_type='GPU'
+                thread_count=params['thread_count'],
             )
 
-        pred = self.task.losses["cb"].bw_func(pred)
+        pred = self.task.losses['cb'].bw_func(pred)
 
         return pred

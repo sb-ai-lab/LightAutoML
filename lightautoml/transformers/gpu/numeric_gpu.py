@@ -2,20 +2,29 @@
 
 from typing import Union
 
-import cudf
-import cupy as cp
 import numpy as np
+import cupy as cp
+import cudf
+import dask_cudf
+from copy import deepcopy
 
-from lightautoml.dataset.gpu.gpu_dataset import CudfDataset, CupyDataset, DaskCudfDataset
-from lightautoml.dataset.np_pd_dataset import NumpyDataset, PandasDataset
-from lightautoml.dataset.roles import CategoryRole, NumericRole
 from lightautoml.transformers.base import LAMLTransformer
+from lightautoml.dataset.np_pd_dataset import PandasDataset
+from lightautoml.dataset.np_pd_dataset import NumpyDataset
+from lightautoml.dataset.gpu.gpu_dataset import CudfDataset
+from lightautoml.dataset.gpu.gpu_dataset import CupyDataset
+from lightautoml.dataset.gpu.gpu_dataset import DaskCudfDataset
+from lightautoml.dataset.roles import CategoryRole
+from lightautoml.dataset.roles import NumericRole
+
 from lightautoml.transformers.numeric import numeric_check
 
+from ..numeric import NaNFlags, FillnaMedian, FillInf, LogOdds, StandardScaler, QuantileBinning
+
+
 # type - something that can be converted to pandas dataset
-CupyTransformable = Union[
-    NumpyDataset, PandasDataset, CupyDataset, CudfDataset, DaskCudfDataset
-]
+CupyTransformable = Union[NumpyDataset, PandasDataset,
+                          CupyDataset, CudfDataset, DaskCudfDataset]
 GpuDataset = Union[CupyDataset, CudfDataset, DaskCudfDataset]
 
 
@@ -24,9 +33,9 @@ class NaNFlags_gpu(LAMLTransformer):
 
     _fit_checks = (numeric_check,)
     _transform_checks = ()
-    _fname_prefix = "nanflg_gpu"
+    _fname_prefix = 'nanflg_gpu'
 
-    def __init__(self, nan_rate: float = 0.005):
+    def __init__(self, nan_rate: float = .005):
         """
 
         Args:
@@ -35,17 +44,22 @@ class NaNFlags_gpu(LAMLTransformer):
         """
         self.nan_rate = nan_rate
 
+    def to_cpu(self):
+        nan_cols = deepcopy(self.nan_cols)
+        features = deepcopy(self._features)
+        self.__class__ = NaNFlags
+        self.features = features
+        self.nan_cols = nan_cols
+        return self
+
     def _fit_cupy(self, dataset: CupyTransformable):
 
         dataset = dataset.to_cupy()
         data = dataset.data
         # fit ...
         ds_nan_rate = cp.isnan(data).mean(axis=0)
-        self.nan_cols = [
-            name
-            for (name, nan_rate) in zip(dataset.features, ds_nan_rate)
-            if nan_rate > self.nan_rate
-        ]
+        self.nan_cols = [name for (name, nan_rate) in\
+                 zip(dataset.features, ds_nan_rate) if nan_rate > self.nan_rate]
         self._features = list(self.nan_cols)
 
         return self
@@ -53,11 +67,8 @@ class NaNFlags_gpu(LAMLTransformer):
     def _fit_daskcudf(self, dataset: DaskCudfDataset):
 
         ds_nan_rate = dataset.data.isna().mean().compute().values
-        self.nan_cols = [
-            name
-            for (name, nan_rate) in zip(dataset.features, ds_nan_rate)
-            if nan_rate > self.nan_rate
-        ]
+        self.nan_cols = [name for (name, nan_rate) in\
+                 zip(dataset.features, ds_nan_rate) if nan_rate > self.nan_rate]
         self._features = list(self.nan_cols)
 
         return self
@@ -91,9 +102,9 @@ class NaNFlags_gpu(LAMLTransformer):
 
         if len(self.nan_cols) > 0:
             nans = dataset[:, self.nan_cols].data
-
+ 
             # transform
-            # new_arr = nans.isna().astype(cp.float32)
+            #new_arr = nans.isna().astype(cp.float32)
             new_arr = cp.isnan(nans).astype(cp.float32)
 
             # create resulted
@@ -138,7 +149,15 @@ class FillnaMedian_gpu(LAMLTransformer):
 
     _fit_checks = (numeric_check,)
     _transform_checks = ()
-    _fname_prefix = "fillnamed_gpu"
+    _fname_prefix = 'fillnamed_gpu'
+
+    def to_cpu(self):
+        medians = deepcopy(cp.asnumpy(self.meds))
+        features = deepcopy(self._features)
+        self.__class__ = FillnaMedian
+        self.features = features
+        self.meds = medians
+        return self
 
     def _fit_cupy(self, dataset: CupyTransformable):
         # convert to accepted dtype and get attributes
@@ -152,9 +171,7 @@ class FillnaMedian_gpu(LAMLTransformer):
 
     def _fit_daskcudf(self, dataset: DaskCudfDataset):
 
-        self.meds = (
-            dataset.data.dropna().quantile().compute().astype(np.float32).fillna(0.0)
-        )
+        self.meds = dataset.data.dropna().quantile().compute().astype(np.float32).fillna(0.0)
 
         return self
 
@@ -184,7 +201,7 @@ class FillnaMedian_gpu(LAMLTransformer):
         data = dataset.data
         # transform
         data = cp.where(cp.isnan(data), self.meds, data)
-        # data = cudf.DataFrame(data, index=data.index, columns=self.features)
+        #data = cudf.DataFrame(data, index=data.index, columns=self.features)
 
         # create resulted
         output = dataset.empty()
@@ -225,21 +242,25 @@ class FillInf_gpu(LAMLTransformer):
 
     _fit_checks = (numeric_check,)
     _transform_checks = ()
-    _fname_prefix = "fillinf_gpu"
+    _fname_prefix = 'fillinf_gpu'
+
+    def to_cpu(self):
+        features = deepcopy(self._features)
+        self.__class__ = FillInf
+        self.features = features
+        return self
 
     def _inf_to_nan(self, data: cudf.DataFrame) -> cudf.DataFrame:
-        output = cp.where(
-            cp.isinf(data.fillna(cp.nan).values), cp.nan, data.fillna(cp.nan).values
-        )
+        output = cp.where(cp.isinf(data.fillna(cp.nan).values), cp.nan, data.fillna(cp.nan).values)
         return cudf.DataFrame(output, columns=self.features, index=data.index)
 
     def _transform_cupy(self, dataset: CupyTransformable) -> CupyDataset:
 
-        # convert to accepted dtype and get attributes
+        #convert to accepted dtype and get attributes
         dataset = dataset.to_cupy()
         data = dataset.data
 
-        # transform
+        #transform
         data = cp.where(cp.isinf(data), cp.nan, data)
 
         # create resulted
@@ -248,11 +269,11 @@ class FillInf_gpu(LAMLTransformer):
 
         return output
 
+
     def _transform_daskcudf(self, dataset: DaskCudfDataset) -> DaskCudfDataset:
 
-        data = dataset.data.map_partitions(
-            self._inf_to_nan, meta=cudf.DataFrame(columns=self.features)
-        ).persist()
+        data = dataset.data.map_partitions(self._inf_to_nan,
+                            meta=cudf.DataFrame(columns=self.features)).persist()
 
         output = dataset.empty()
         output.set_data(data, self.features, NumericRole(np.float32))
@@ -283,14 +304,20 @@ class LogOdds_gpu(LAMLTransformer):
 
     _fit_checks = (numeric_check,)
     _transform_checks = ()
-    _fname_prefix = "logodds_gpu"
+    _fname_prefix = 'logodds_gpu'
+
+    def to_cpu(self):
+        features = deepcopy(self._features)
+        self.__class__ = LogOdds
+        self.features = features
+        return self
 
     def _transform_cupy(self, dataset: CupyTransformable) -> CupyDataset:
 
         dataset = dataset.to_cupy()
         data = dataset.data
-        data = cp.clip(data, 1e-7, 1 - 1e-7)
-
+        data = cp.clip(data, 1e-7, 1-1e-7)
+        
         data = cp.log(data / (1 - data))
 
         # create resulted
@@ -301,10 +328,14 @@ class LogOdds_gpu(LAMLTransformer):
 
     def _transform_daskcudf(self, dataset: DaskCudfDataset) -> DaskCudfDataset:
 
-        out = dataset.data.persist().clip(1e-7, 1.0 - 1e-7)
-        out = (1.0 * out / (1.0 - out)).map_partitions(np.log)
-
-        out = out.rename(columns=dict(zip(dataset.features, self.features)))
+        out = dataset.data.persist().clip(1e-7, 1.-1e-7)
+        out = (1.*out/(1. - out)).map_partitions(
+            np.log
+        )
+        
+        out = out.rename(
+            columns = dict(zip(dataset.features, self.features))
+        )
 
         output = dataset.empty()
         output.set_data(out, self.features, NumericRole(np.float32))
@@ -335,7 +366,17 @@ class StandardScaler_gpu(LAMLTransformer):
 
     _fit_checks = (numeric_check,)
     _transform_checks = ()
-    _fname_prefix = "scaler_gpu"
+    _fname_prefix = 'scaler_gpu'
+
+    def to_cpu(self):
+        means = deepcopy(cp.asnumpy(self.means))
+        stds = deepcopy(cp.asnumpy(self.stds))
+        features = deepcopy(self._features)
+        self.__class__ = StandardScaler
+        self.features = features
+        self.means = means
+        self.stds = stds
+        return self
 
     def _fit_cupy(self, dataset: CupyTransformable):
 
@@ -378,7 +419,7 @@ class StandardScaler_gpu(LAMLTransformer):
         return self
 
     def _standardize(self, data):
-        output = (data.values - self.means) / self.stds
+        output = (data.values - self.means ) / self.stds
         return cudf.DataFrame(output, columns=self.features, index=data.index)
 
     def _transform_cupy(self, dataset: CupyTransformable) -> CupyDataset:
@@ -398,9 +439,8 @@ class StandardScaler_gpu(LAMLTransformer):
 
     def _transform_daskcudf(self, dataset: DaskCudfDataset) -> DaskCudfDataset:
 
-        data = dataset.data.map_partitions(
-            self._standardize, meta=cudf.DataFrame(columns=self.features)
-        ).persist()
+        data = dataset.data.map_partitions(self._standardize,
+                            meta=cudf.DataFrame(columns=self.features)).persist()
         output = dataset.empty()
         output.set_data(data, self.features, NumericRole(np.float32))
         return output
@@ -429,7 +469,7 @@ class QuantileBinning_gpu(LAMLTransformer):
 
     _fit_checks = (numeric_check,)
     _transform_checks = ()
-    _fname_prefix = "qntl_gpu"
+    _fname_prefix = 'qntl_gpu'
 
     def __init__(self, nbins: int = 10):
         """
@@ -439,6 +479,14 @@ class QuantileBinning_gpu(LAMLTransformer):
 
         """
         self.nbins = nbins
+
+    def to_cpu(self):
+        bins = deepcopy([cp.asnumpy(q) for q in self.bins])
+        features = deepcopy(self._features)
+        self.__class__ = QuantileBinning
+        self.bins = bins
+        self.features = features
+        return self
 
     def _fit_cupy(self, dataset: CupyTransformable):
 
@@ -489,12 +537,10 @@ class QuantileBinning_gpu(LAMLTransformer):
         inds = data.index
         data = cp.zeros(cp_data.shape, dtype=cp.int32)
         for n, b in enumerate(self.bins):
-            data[:, n] = (
-                cp.searchsorted(b, cp.where(sl[:, n], cp.inf, cp_data[:, n])) + 1
-            )
+            data[:, n] = cp.searchsorted(b, cp.where(sl[:, n], cp.inf, cp_data[:, n])) + 1
 
         data = cp.where(sl, 0, data)
-        output = cudf.DataFrame(data, columns=self.features, index=inds)
+        output = cudf.DataFrame(data, columns = self.features, index=inds)
         return output
 
     def _transform_cupy(self, dataset: CupyTransformable) -> CupyDataset:
@@ -508,29 +554,22 @@ class QuantileBinning_gpu(LAMLTransformer):
         new_data = cp.zeros(data.shape, dtype=cp.int32)
 
         for n, b in enumerate(self.bins):
-            new_data[:, n] = (
-                cp.searchsorted(b, cp.where(sl[:, n], cp.inf, data[:, n])) + 1
-            )
+            new_data[:, n] = cp.searchsorted(b, cp.where(sl[:, n], cp.inf, data[:, n])) + 1
 
         new_data = cp.where(sl, 0, new_data)
 
         # create resulted
         output = dataset.empty()
-        output.set_data(
-            new_data, self.features, CategoryRole(np.int32, label_encoded=True)
-        )
+        output.set_data(new_data, self.features, CategoryRole(np.int32, label_encoded=True))
 
         return output
 
     def _transform_daskcudf(self, dataset: DaskCudfDataset) -> DaskCudfDataset:
 
-        new_data = dataset.data.map_partitions(
-            self._digitize, meta=cudf.DataFrame(columns=self.features)
-        ).persist()
+        new_data = dataset.data.map_partitions(self._digitize,
+                           meta=cudf.DataFrame(columns=self.features)).persist()
         output = dataset.empty()
-        output.set_data(
-            new_data, self.features, CategoryRole(np.int32, label_encoded=True)
-        )
+        output.set_data(new_data, self.features, CategoryRole(np.int32, label_encoded=True))
         return output
 
     def transform(self, dataset: CupyTransformable) -> GpuDataset:

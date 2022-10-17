@@ -1,11 +1,17 @@
 """ Utils """
 
-from typing import Dict, Optional, Sequence, Tuple, Union
+from typing import Dict
+from typing import Optional
+from typing import Sequence
+from typing import Tuple
+from typing import Union
 
 import torch
 
 from lightautoml.automl.base import AutoML
-from lightautoml.dataset.roles import ColumnRole, TargetRole, TreatmentRole
+from lightautoml.dataset.roles import ColumnRole
+from lightautoml.dataset.roles import TargetRole
+from lightautoml.dataset.roles import TreatmentRole
 from lightautoml.ml_algo.linear_sklearn import LinearLBFGS
 from lightautoml.pipelines.features.linear_pipeline import LinearFeatures
 from lightautoml.pipelines.ml.base import MLPipeline
@@ -36,14 +42,10 @@ def create_linear_automl(
     """
     torch.set_num_threads(cpu_limit)
 
-    reader = PandasToPandasReader(
-        task, cv=n_folds, random_state=random_state, n_jobs=n_reader_jobs
-    )
+    reader = PandasToPandasReader(task, cv=n_folds, random_state=random_state, n_jobs=n_reader_jobs)
     pipe = LinearFeatures()
     model = LinearLBFGS()
-    pipeline = MLPipeline(
-        [model], pre_selection=None, features_pipeline=pipe, post_selection=None
-    )
+    pipeline = MLPipeline([model], pre_selection=None, features_pipeline=pipe, post_selection=None)
     automl = AutoML(reader, [[pipeline]], skip_conn=False)  # , verbose=0)
 
     return automl

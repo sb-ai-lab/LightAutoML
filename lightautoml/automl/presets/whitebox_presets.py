@@ -2,15 +2,22 @@
 
 import logging
 import os
+
 from copy import deepcopy
-from typing import Any, Iterable, Optional, Sequence, cast
+from typing import Any
+from typing import Iterable
+from typing import Optional
+from typing import Sequence
+from typing import cast
 
 from ...dataset.np_pd_dataset import NumpyDataset
 from ...ml_algo.whitebox import WbMLAlgo
 from ...pipelines.ml.whitebox_ml_pipe import WBPipeline
 from ...reader.base import PandasToPandasReader
 from ...tasks import Task
-from .base import AutoMLPreset, upd_params
+from .base import AutoMLPreset
+from .base import upd_params
+
 
 logger = logging.getLogger(__name__)
 _base_dir = os.path.dirname(__file__)
@@ -92,13 +99,29 @@ class WhiteBoxPreset(AutoMLPreset):
 
         """
         super().__init__(
-            task, timeout, memory_limit, cpu_limit, gpu_ids, timing_params, config_path,
+            task,
+            timeout,
+            memory_limit,
+            cpu_limit,
+            gpu_ids,
+            timing_params,
+            config_path,
         )
 
         # upd manual params
         for name, param in zip(
-            ["general_params", "reader_params", "read_csv_params", "whitebox_params"],
-            [general_params, reader_params, read_csv_params, whitebox_params],
+            [
+                "general_params",
+                "reader_params",
+                "read_csv_params",
+                "whitebox_params",
+            ],
+            [
+                general_params,
+                reader_params,
+                read_csv_params,
+                whitebox_params,
+            ],
         ):
             if param is None:
                 param = {}
@@ -185,24 +208,14 @@ class WhiteBoxPreset(AutoMLPreset):
         """
         assert cv_iter is None or len(cv_iter) == 2, "Expect custom iterator with len 2"
         if valid_data is None and cv_iter is None:
-            logger.info2(
-                "Validation data is not set. Train will be used as valid in report and valid prediction"
-            )
+            logger.info2("Validation data is not set. Train will be used as valid in report and valid prediction")
             valid_data = train_data
             valid_features = train_features
 
         self.fit_params = fit_params
         self.verbose = verbose
 
-        pred = super().fit_predict(
-            train_data,
-            roles,
-            train_features,
-            cv_iter,
-            valid_data,
-            valid_features,
-            verbose,
-        )
+        pred = super().fit_predict(train_data, roles, train_features, cv_iter, valid_data, valid_features, verbose)
 
         return cast(NumpyDataset, pred)
 

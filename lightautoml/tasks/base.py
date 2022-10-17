@@ -2,47 +2,58 @@
 
 import inspect
 import logging
+
 from functools import partial
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Union
+from typing import TYPE_CHECKING
+from typing import Any
+from typing import Callable
+from typing import Dict
+from typing import Optional
+from typing import Union
 
 import numpy as np
 
 try:
-    import cudf
     import cupy as cp
-    import dask.array as da
+    import cudf
     import dask_cudf
+    import dask.array as da
 except:
     pass
 
-from lightautoml.tasks.losses import CBLoss, LGBLoss, SKLoss, TORCHLoss
-
+from lightautoml.tasks.losses import CBLoss
+from lightautoml.tasks.losses import LGBLoss
+from lightautoml.tasks.losses import SKLoss
+from lightautoml.tasks.losses import TORCHLoss
 try:
     from lightautoml.tasks.losses import TORCHLoss_gpu
-    from lightautoml.tasks.losses.gpu import CUMLLoss, XGBLoss_gpu
+    from lightautoml.tasks.losses.gpu import CUMLLoss
+    from lightautoml.tasks.losses.gpu import XGBLoss_gpu
 except:
     pass
 
-from .common_metric import _valid_metric_args, _valid_str_metric_names
-
+from .common_metric import _valid_metric_args
+from .common_metric import _valid_str_metric_names
 try:
     from lightautoml.tasks.gpu.common_metric_gpu import _valid_str_metric_names_gpu
 except:
     pass
 
-from .utils import infer_gib, infer_gib_multiclass
+from .utils import infer_gib
+from .utils import infer_gib_multiclass
 
 try:
-    from lightautoml.tasks.gpu.utils_gpu import infer_gib_gpu, infer_gib_multiclass_gpu
+    from lightautoml.tasks.gpu.utils_gpu import infer_gib_gpu
+    from lightautoml.tasks.gpu.utils_gpu import infer_gib_multiclass_gpu
 except:
     pass
 
 if TYPE_CHECKING:
     from ..dataset.base import LAMLDataset
-    from ..dataset.np_pd_dataset import NumpyDataset, PandasDataset
-
+    from ..dataset.np_pd_dataset import NumpyDataset
+    from ..dataset.np_pd_dataset import PandasDataset
     try:
-        from ..dataset.gpu.gpu_dataset import CudfDataset, CupyDataset, DaskCudfDataset
+        from ..dataset.gpu.gpu_dataset import CupyDataset, CudfDataset, DaskCudfDataset
     except:
         pass
 
@@ -95,9 +106,7 @@ class LAMLMetric:
             AttributeError: If metric isn't defined.
 
         """
-        assert hasattr(
-            dataset, "target"
-        ), "Dataset should have target to calculate metric"
+        assert hasattr(dataset, "target"), "Dataset should have target to calculate metric"
         raise NotImplementedError
 
 
@@ -198,13 +207,9 @@ class SkMetric(LAMLMetric):
                 target specified as one-dimensioned, but it is not.
 
         """
-        assert hasattr(
-            dataset, "target"
-        ), "Dataset should have target to calculate metric"
+        assert hasattr(dataset, "target"), "Dataset should have target to calculate metric"
         if self.one_dim:
-            assert (
-                dataset.shape[1] == 1
-            ), "Dataset should have single column if metric is one_dim"
+            assert dataset.shape[1] == 1, "Dataset should have single column if metric is one_dim"
         # TODO: maybe refactor this part?
         dataset = dataset.to_numpy()
         y_true = dataset.target
@@ -233,7 +238,7 @@ class CumlMetric(SkMetric):
 
     """
 
-    def __call__(self, dataset: "CumlCompatible", dropna: bool = False) -> float:
+    def __call__(self, dataset: 'CumlCompatible', dropna: bool = False) -> float:
         """Implement call cuml metric on dataset.
 
         Args:
@@ -248,13 +253,9 @@ class CumlMetric(SkMetric):
                 target specified as one-dimensioned, but it is not.
 
         """
-        assert hasattr(
-            dataset, "target"
-        ), "Dataset should have target to calculate metric"
+        assert hasattr(dataset, 'target'), 'Dataset should have target to calculate metric'
         if self.one_dim:
-            assert (
-                dataset.shape[1] == 1
-            ), "Dataset should have single column if metric is one_dim"
+            assert dataset.shape[1] == 1, 'Dataset should have single column if metric is one_dim'
         dataset = dataset.to_cupy()
         y_true = dataset.target
         y_pred = dataset.data
@@ -282,7 +283,7 @@ class DaskmlMetric(SkMetric):
 
     """
 
-    def __call__(self, dataset: "CumlCompatible", dropna: bool = False) -> float:
+    def __call__(self, dataset: 'CumlCompatible', dropna: bool = False) -> float:
         """Implement call dask_ml metric on dataset.
 
         Args:
@@ -297,15 +298,11 @@ class DaskmlMetric(SkMetric):
                 target specified as one-dimensioned, but it is not.
 
         """
-        assert hasattr(
-            dataset, "target"
-        ), "Dataset should have target to calculate metric"
+        assert hasattr(dataset, 'target'), 'Dataset should have target to calculate metric'
         if self.one_dim:
-            assert (
-                dataset.shape[1] == 1
-            ), "Dataset should have single column if metric is one_dim"
+            assert dataset.shape[1] == 1, 'Dataset should have single column if metric is one_dim'
 
-        # in general need to check type of the dataset and act acordingly
+        #in general need to check type of the dataset and act acordingly
         if isinstance(dataset.data, cp.ndarray):
             y_true = dataset.target
             y_pred = dataset.data.astype(cp.float32)
@@ -315,7 +312,7 @@ class DaskmlMetric(SkMetric):
         else:
             raise NotImplementedError
 
-        sample_weight = None
+        sample_weight = None        
         if dataset.weights is not None:
             sample_weight = dataset.weights.values
 
@@ -352,7 +349,7 @@ class Task:
         metric: Optional[Union[str, Callable]] = None,
         metric_params: Optional[Dict] = None,
         greater_is_better: Optional[bool] = None,
-        device: Optional[str] = None,
+        device: Optional[str] = None
     ):
         """
 
@@ -433,19 +430,14 @@ class Task:
 
         """
 
-        assert (
-            name in _valid_task_names
-        ), "Invalid task name: {}, allowed task names: {}".format(
+        assert name in _valid_task_names, "Invalid task name: {}, allowed task names: {}".format(
             name, _valid_task_names
         )
         self._name = name
         if device is None:
-            device = "cpu"
-        assert device in [
-            "cpu",
-            "gpu",
-            "mgpu",
-        ], "The device must be either `cpu`, `gpu` or `mgpu`!"
+            device = 'cpu'
+        assert device in ['cpu', 'gpu', 'mgpu'],\
+            "The device must be either `cpu`, `gpu` or `mgpu`!"
 
         self.device = device
 
@@ -468,9 +460,7 @@ class Task:
                 # ??? "rewrite METRIC params" ???
                 if loss == metric:
                     metric_params = loss_params
-                    logger.info2(
-                        "As loss and metric are equal, metric params are ignored."
-                    )
+                    logger.info2("As loss and metric are equal, metric params are ignored.")
 
             else:
                 assert (
@@ -478,45 +468,31 @@ class Task:
                 ), "Loss should be defined with arguments. Ex. loss='quantile', loss_params={'q': 0.7}."
                 loss_params = None
 
-            assert (
-                loss in _valid_str_loss_names[self.name]
-            ), "Invalid loss name: {} for task {}.".format(loss, self.name)
+            assert loss in _valid_str_loss_names[self.name], "Invalid loss name: {} for task {}.".format(
+                loss, self.name
+            )
 
             for loss_key, loss_factory in zip(
                 ["lgb", "sklearn", "torch", "cb", "torch_gpu", "cuml", "xgb"],
-                [
-                    LGBLoss,
-                    SKLoss,
-                    TORCHLoss,
-                    CBLoss,
-                    TORCHLoss_gpu,
-                    CUMLLoss,
-                    XGBLoss_gpu,
-                ],
+                [LGBLoss, SKLoss, TORCHLoss, CBLoss, TORCHLoss_gpu, CUMLLoss, XGBLoss_gpu]
             ):
                 try:
-                    self.losses[loss_key] = loss_factory(loss, loss_params=loss_params)
-                except (AssertionError, TypeError, ValueError):
-                    logger.info2(
-                        "{0} doesn't support in general case {1} and will not be used.".format(
-                            loss_key, loss
-                        )
+                    self.losses[loss_key] = loss_factory(
+                        loss, loss_params=loss_params
                     )
+                except (AssertionError, TypeError, ValueError):
+                    logger.info2("{0} doesn't support in general case {1} and will not be used.".format(loss_key, loss))
 
                 # self.losses[loss_key] = loss_factory(loss, loss_params=loss_params)
 
-            assert len(self.losses) > 0, "None of frameworks supports {0} loss.".format(
-                loss
-            )
+            assert len(self.losses) > 0, "None of frameworks supports {0} loss.".format(loss)
 
         elif type(loss) is dict:
             # case - dict passed directly
             # TODO: check loss parameters?
             #  Or it there will be assert when use functools.partial
             # assert all(map(lambda x: x in _valid_loss_types, loss)), 'Invalid loss key.'
-            assert len([key for key in loss.keys() if key in _valid_loss_types]) != len(
-                loss
-            ), "Invalid loss key."
+            assert len([key for key in loss.keys() if key in _valid_loss_types]) != len(loss), "Invalid loss key."
             self.losses = loss
 
         else:
@@ -535,7 +511,7 @@ class Task:
 
             self._check_metric_from_params(metric, self.metric_params)
 
-            if self.device == "cpu":
+            if self.device == 'cpu':
                 metric_func = _valid_str_metric_names[self.name][metric]
 
             else:
@@ -554,21 +530,15 @@ class Task:
         if greater_is_better is None:
 
             if self.device == "cpu":
-                infer_gib_fn = (
-                    infer_gib_multiclass if name == "multiclass" else infer_gib
-                )
+                infer_gib_fn = infer_gib_multiclass if name == "multiclass" else infer_gib
             else:
-                infer_gib_fn = (
-                    infer_gib_multiclass_gpu if name == "multiclass" else infer_gib_gpu
-                )
+                infer_gib_fn = infer_gib_multiclass_gpu if name == "multiclass" else infer_gib_gpu
             greater_is_better = infer_gib_fn(self.metric_func)
 
         self.greater_is_better = greater_is_better
 
         for loss_key in self.losses:
-            self.losses[loss_key].set_callback_metric(
-                metric, greater_is_better, self.metric_params, self.name
-            )
+            self.losses[loss_key].set_callback_metric(metric, greater_is_better, self.metric_params, self.name)
 
     def get_dataset_metric(self) -> LAMLMetric:
         """Create metric for dataset.
@@ -588,19 +558,19 @@ class Task:
                 one_dim=one_dim,
                 greater_is_better=self.greater_is_better,
             )
-        elif self.device == "gpu":
+        elif self.device =="gpu":
             dataset_metric = CumlMetric(
                 self.metric_func,
                 name=self.metric_name,
                 one_dim=one_dim,
-                greater_is_better=self.greater_is_better,
+                greater_is_better=self.greater_is_better
             )
         else:
             dataset_metric = DaskmlMetric(
                 self.metric_func,
                 name=self.metric_name,
                 one_dim=one_dim,
-                greater_is_better=self.greater_is_better,
+                greater_is_better=self.greater_is_better
             )
         return dataset_metric
 
@@ -612,13 +582,9 @@ class Task:
             required_params = set()
         given_params = set(loss_params)
         extra_params = given_params - required_params
-        assert len(extra_params) == 0, "For loss {0} given extra params {1}".format(
-            loss_name, extra_params
-        )
+        assert len(extra_params) == 0, "For loss {0} given extra params {1}".format(loss_name, extra_params)
         needed_params = required_params - given_params
-        assert (
-            len(needed_params) == 0
-        ), "For loss {0} required params {1} are not defined".format(
+        assert len(needed_params) == 0, "For loss {0} required params {1} are not defined".format(
             loss_name, needed_params
         )
 
@@ -630,12 +596,8 @@ class Task:
             required_params = set()
         given_params = set(metric_params)
         extra_params = given_params - required_params
-        assert len(extra_params) == 0, "For metric {0} given extra params {1}".format(
-            metric_name, extra_params
-        )
+        assert len(extra_params) == 0, "For metric {0} given extra params {1}".format(metric_name, extra_params)
         needed_params = required_params - given_params
-        assert (
-            len(needed_params) == 0
-        ), "For metric {0} required params {1} are not defined".format(
+        assert len(needed_params) == 0, "For metric {0} required params {1} are not defined".format(
             metric_name, needed_params
         )

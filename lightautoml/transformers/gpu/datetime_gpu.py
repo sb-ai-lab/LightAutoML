@@ -1,19 +1,34 @@
 """Datetime features transformers."""
 
 from collections import OrderedDict
-from typing import List, Optional, Sequence, Union
+from typing import List
+from typing import Optional
+from typing import Sequence
+from typing import Union
 
-import cudf
-import cupy as cp
+from copy import deepcopy
+
 import holidays
 import numpy as np
+import cupy as cp
+import cudf
 import pandas as pd
 
 from lightautoml.dataset.base import LAMLDataset
-from lightautoml.dataset.gpu.gpu_dataset import CudfDataset, CupyDataset, DaskCudfDataset
-from lightautoml.dataset.roles import CategoryRole, ColumnRole, NumericRole
+from lightautoml.dataset.gpu.gpu_dataset import CudfDataset
+from lightautoml.dataset.gpu.gpu_dataset import CupyDataset
+from lightautoml.dataset.gpu.gpu_dataset import DaskCudfDataset
+from lightautoml.dataset.roles import CategoryRole
+from lightautoml.dataset.roles import ColumnRole
+from lightautoml.dataset.roles import NumericRole
 from lightautoml.transformers.base import LAMLTransformer
+
 from lightautoml.transformers.datetime import date_attrs, datetime_check
+
+
+from ..datetime import date_attrs, datetime_check
+from ..datetime import TimeToNum, BaseDiff, DateSeasons
+
 
 DatetimeCompatible_gpu = Union[CudfDataset]
 GpuDataset = Union[CupyDataset, CudfDataset, DaskCudfDataset]
@@ -33,8 +48,19 @@ class TimeToNum_gpu(LAMLTransformer):
     _fit_checks = (datetime_check,)
     _transform_checks = ()
 
+    def to_cpu(self):
+        basic_interval = self.basic_interval
+        basic_time = self.basic_time
+        self.__class__ = TimeToNum
+        self.basic_time = basic_time
+        self.basic_interval = basic_interval
+        return self
+
     def _standardize_date(
-        self, data: cudf.DataFrame, mean: np.datetime64, std: np.timedelta64
+        self,
+        data: cudf.DataFrame,
+        mean: np.datetime64,
+        std: np.timedelta64
     ) -> cudf.DataFrame:
         output = (data.astype(int) - mean) / std
         return output
@@ -52,12 +78,10 @@ class TimeToNum_gpu(LAMLTransformer):
 
         data = dataset.to_cudf().data
 
-        time_diff = cudf.DatetimeIndex(
-            pd.date_range(self.basic_time, periods=1, freq="d")
-        ).astype(int)[0]
+        time_diff = cudf.DatetimeIndex(pd.date_range(self.basic_time,
+                                       periods=1, freq='d')).astype(int)[0]
 
-        # bad hardcode, but unit from dataset.roles is None
-        timedelta = np.timedelta64(1, self.basic_interval) / np.timedelta64(1, "ns")
+        timedelta = np.timedelta64(1, self.basic_interval)/np.timedelta64(1, 'ns')
 
         data = self._standardize_date(data, time_diff, timedelta).values
 
@@ -70,19 +94,14 @@ class TimeToNum_gpu(LAMLTransformer):
 
         data = dataset.data
 
-        time_diff = cudf.DatetimeIndex(
-            pd.date_range(self.basic_time, periods=1, freq="d")
-        ).astype(int)[0]
+        time_diff = cudf.DatetimeIndex(pd.date_range(self.basic_time,
+                                       periods=1, freq='d')).astype(int)[0]
 
-        # bad hardcode, but unit from dataset.roles is None
-        timedelta = np.timedelta64(1, self.basic_interval) / np.timedelta64(1, "ns")
+        timedelta = np.timedelta64(1, self.basic_interval)/np.timedelta64(1, 'ns')
 
-        data = data.map_partitions(
-            self._standardize_date,
-            time_diff,
-            timedelta,
-            meta=cudf.DataFrame(columns=data.columns),
-        )
+        data = data.map_partitions(self._standardize_date,
+                    time_diff, timedelta,
+                    meta=cudf.DataFrame(columns=data.columns))
 
         output = dataset.empty()
         output.set_data(data, self.features, NumericRole(cp.float32))
@@ -106,6 +125,8 @@ class TimeToNum_gpu(LAMLTransformer):
         else:
             return self._transform_cupy(dataset)
 
+        return output
+
 
 class BaseDiff_gpu(LAMLTransformer):
     """
@@ -113,7 +134,6 @@ class BaseDiff_gpu(LAMLTransformer):
     Datetime converted to difference with basic_date.
 
     """
-
     basic_interval = "D"
 
     _fname_prefix = "basediff_gpu"
@@ -126,10 +146,9 @@ class BaseDiff_gpu(LAMLTransformer):
         return self._features
 
     def __init__(
-        self,
-        base_names: Sequence[str],
+        self, base_names: Sequence[str],
         diff_names: Sequence[str],
-        basic_interval: Optional[str] = "D",
+        basic_interval: Optional[str] = 'D'
     ):
         """
 
@@ -143,7 +162,17 @@ class BaseDiff_gpu(LAMLTransformer):
         self.diff_names = diff_names
         self.basic_interval = basic_interval
 
-    def fit(self, dataset: LAMLDataset) -> "LAMLTransformer":
+    def to_cpu(self):
+        base_names = self.base_names
+        diff_names = self.diff_names
+        basic_interval = self.basic_interval
+        self.__class__ = BaseDiff
+        self.base_names = base_names
+        self.diff_names = diff_names
+        self.basic_interval = basic_interval
+        return self
+
+    def fit(self, dataset: LAMLDataset) -> 'LAMLTransformerGPU':
         """Fit transformer and return it's instance (GPU version).
 
         Args:
@@ -156,9 +185,7 @@ class BaseDiff_gpu(LAMLTransformer):
 
         self._features = []
         for col in self.base_names:
-            self._features.extend(
-                ["basediff_{0}__{1}".format(col, x) for x in self.diff_names]
-            )
+            self._features.extend(['basediff_{0}__{1}'.format(col, x) for x in self.diff_names])
 
         for check_func in self._fit_checks:
             check_func(dataset)
@@ -168,12 +195,12 @@ class BaseDiff_gpu(LAMLTransformer):
         feats_block = []
         for col in self.base_names:
 
-            output = (
-                data[self.diff_names].astype(int).values.T - data[col].astype(int).values
-            ) / std
+            output = (data[self.diff_names].astype(int).values.T -\
+                      data[col].astype(int).values) / std
             feats_block.append(output.T)
 
         return cudf.DataFrame(cp.concatenate(feats_block, axis=1), columns=self.features)
+
 
     def _transform_cupy(self, dataset: DatetimeCompatible_gpu) -> CupyDataset:
 
@@ -181,26 +208,18 @@ class BaseDiff_gpu(LAMLTransformer):
         dataset = dataset.to_cudf()
         data = dataset.data
 
-        # shouldn't hardcode this,
-        # should take units from dataset.roles
-        # (but its unit is none currently)
-        timedelta = np.timedelta64(1, self.basic_interval) / np.timedelta64(1, "ns")
+        timedelta = np.timedelta64(1, self.basic_interval)/np.timedelta64(1, 'ns')
 
         feats_block = []
 
         for col in self.base_names:
-            output = (
-                data[self.diff_names].astype(int).values.T - data[col].astype(int).values
-            ) / timedelta
+            output = (data[self.diff_names].astype(int).values.T -\
+                      data[col].astype(int).values) / timedelta
             feats_block.append(output.T)
 
         # create resulted
         output = dataset.empty().to_cupy()
-        output.set_data(
-            cp.concatenate(feats_block, axis=1),
-            self.features,
-            NumericRole(dtype=cp.float32),
-        )
+        output.set_data(cp.concatenate(feats_block, axis=1), self.features, NumericRole(dtype=cp.float32))
 
         return output
 
@@ -208,16 +227,10 @@ class BaseDiff_gpu(LAMLTransformer):
 
         data = dataset.data
 
-        # shouldn't hardcode this,
-        # should take units from dataset.roles
-        # (but its unit is none currently)
-        timedelta = np.timedelta64(1, self.basic_interval) / np.timedelta64(1, "ns")
+        timedelta = np.timedelta64(1, self.basic_interval)/np.timedelta64(1, 'ns')
 
-        data = data.map_partitions(
-            self._standardize_date_concat,
-            timedelta,
-            meta=cudf.DataFrame(columns=self.features),
-        )
+        data = data.map_partitions(self._standardize_date_concat,
+                        timedelta, meta=cudf.DataFrame(columns=self.features))
 
         output = dataset.empty()
         output.set_data(data, self.features, NumericRole(cp.float32))
@@ -268,7 +281,18 @@ class DateSeasons_gpu(LAMLTransformer):
         if output_role is None:
             self.output_role = CategoryRole(cp.int32)
 
-    def fit(self, dataset: LAMLDataset) -> "LAMLTransformer":
+    def to_cpu(self):
+        transformations = deepcopy(self.transformations)
+        features = deepcopy(self._features)
+        output_role = deepcopy(self.output_role)
+        self.__class__ = DateSeasons
+        self.output_role = output_role
+        self.transformations = transformations
+        self._features = features
+        self.output_role = output_role
+        return self
+
+    def fit(self, dataset: LAMLDataset) -> 'LAMLTransformerGPU':
         """Fit transformer and return it's instance (GPU version).
 
         Args:
@@ -291,15 +315,13 @@ class DateSeasons_gpu(LAMLTransformer):
             seas = roles[col].seasonality
             self.transformations[col] = seas
             for s in seas:
-                self._features.append("season_{0}__{1}".format(s, col))
+                self._features.append('season_{0}__{1}'.format(s, col))
             if roles[col].country is not None:
-                self._features.append("season_hol__{0}".format(col))
+                self._features.append('season_hol__{0}'.format(col))
 
         return self
 
-    def _datetime_to_seasons(
-        self, data: cudf.DataFrame, roles, _date_attrs
-    ) -> cudf.DataFrame:
+    def _datetime_to_seasons(self, data: cudf.DataFrame, roles, _date_attrs) -> cudf.DataFrame:
         new_arr = cp.empty((data.shape[0], len(self._features)), cp.int32)
         n = 0
         for col in data.columns:
@@ -311,12 +333,8 @@ class DateSeasons_gpu(LAMLTransformer):
             if roles[col].country is not None:
                 # get years
                 years = cp.unique(data[col].dt.year)
-                hol = holidays.CountryHoliday(
-                    roles[col].country,
-                    years=years,
-                    prov=roles[col].prov,
-                    state=roles[col].state,
-                )
+                hol = holidays.CountryHoliday(roles[col].country, years=years,
+                                              prov=roles[col].prov, state=roles[col].state)
                 new_arr[:, n] = data[col].isin(cudf.Series(pd.Series(hol)))
                 n += 1
         return cudf.DataFrame(new_arr, index=data.index, columns=self.features)
@@ -337,12 +355,9 @@ class DateSeasons_gpu(LAMLTransformer):
 
     def _transform_daskcudf(self, dataset: DaskCudfDataset) -> DaskCudfDataset:
 
-        new_arr = dataset.data.map_partitions(
-            self._datetime_to_seasons,
-            dataset.roles,
-            date_attrs,
-            meta=cudf.DataFrame(columns=self.features),
-        )
+        new_arr = dataset.data.map_partitions(self._datetime_to_seasons,
+                                              dataset.roles, date_attrs,
+                                              meta=cudf.DataFrame(columns = self.features))
         output = dataset.empty()
         output.set_data(new_arr, self.features, self.output_role)
         return output
@@ -357,9 +372,8 @@ class DateSeasons_gpu(LAMLTransformer):
             Respective dataset of numeric features.
 
         """
-        assert isinstance(
-            dataset, GpuDataset.__args__
-        ), "DateSeasons_gpu works only with CupyDataset, CudfDataset, DaskCudfDataset"
+        assert isinstance(dataset , GpuDataset.__args__),\
+               'DateSeasons_gpu works only with CupyDataset, CudfDataset, DaskCudfDataset'
 
         super().transform(dataset)
 

@@ -1,24 +1,30 @@
 """Linear models based on Torch library."""
 
 import logging
-from copy import deepcopy
-from typing import Callable, Optional, Sequence, Union
 
-import cupy as cp
+from copy import deepcopy
+from typing import Callable
+from typing import Optional
+from typing import Sequence
+from typing import Union
+
 import numpy as np
 import torch
+import cupy as cp
+import cudf
+
 from cupyx.scipy import sparse as sparse_cupy
-from torch import nn, optim
+from torch import nn
+from torch import optim
 
 from lightautoml.tasks.losses import TorchLossWrapper
+
 
 logger = logging.getLogger(__name__)
 ArrayOrSparseMatrix = Union[cp.ndarray, sparse_cupy.spmatrix]
 
 
-def convert_cupy_scipy_sparse_to_torch_float(
-    matrix: sparse_cupy.spmatrix, dev_id: int
-) -> torch.Tensor:
+def convert_cupy_scipy_sparse_to_torch_float(matrix: sparse_cupy.spmatrix, dev_id: int) -> torch.Tensor:
     """Convert scipy sparse matrix to torch sparse tensor (GPU version).
 
     Args:
@@ -30,8 +36,8 @@ def convert_cupy_scipy_sparse_to_torch_float(
    """
     matrix = sparse_cupy.coo_matrix(matrix, dtype=np.float32)
     cp_idx = cp.stack([matrix.row, matrix.col], axis=0).astype(cp.int64)
-    idx = torch.as_tensor(cp_idx, device=f"cuda:{dev_id}")
-    values = torch.as_tensor(matrix.data, device=f"cuda:{dev_id}")
+    idx = torch.as_tensor(cp_idx, device=f'cuda:{dev_id}')
+    values = torch.as_tensor(matrix.data, device=f'cuda:{dev_id}')
     sparse_tensor = torch.sparse_coo_tensor(idx, values, size=matrix.shape)
 
     return sparse_tensor
@@ -44,7 +50,7 @@ class CatLinear(nn.Module):
         self,
         numeric_size: int = 0,
         embed_sizes: Sequence[int] = (),
-        output_size: int = 1,
+        output_size: int = 1
     ):
         """
         Args:
@@ -60,27 +66,20 @@ class CatLinear(nn.Module):
         # add numeric if it is defined
         self.linear = None
         if numeric_size > 0:
-            self.linear = nn.Linear(
-                in_features=numeric_size, out_features=output_size, bias=False
-            ).cuda()
+            self.linear = nn.Linear(in_features=numeric_size, out_features=output_size, bias=False).cuda()
             nn.init.zeros_(self.linear.weight)
 
         # add categories if it is defined
         self.cat_params = None
         if len(embed_sizes) > 0:
-            self.cat_params = nn.Parameter(
-                torch.zeros(embed_sizes.sum(), output_size).cuda()
-            )
-            self.register_buffer(
-                "embed_idx",
-                torch.LongTensor(embed_sizes).cumsum(dim=0)
-                - torch.LongTensor(embed_sizes),
-            )
+            self.cat_params = nn.Parameter(torch.zeros(embed_sizes.sum(), output_size).cuda())
+            self.register_buffer('embed_idx',
+                 torch.LongTensor(embed_sizes).cumsum(dim=0) - torch.LongTensor(embed_sizes))
 
     def forward(
         self,
         numbers: Optional[torch.Tensor] = None,
-        categories: Optional[torch.Tensor] = None,
+        categories: Optional[torch.Tensor] = None
     ):
         """Forward-pass.
 
@@ -104,7 +103,10 @@ class CatLogisticRegression(CatLinear):
     """Realisation of torch-based logistic regression (GPU version)."""
 
     def __init__(
-        self, numeric_size: int, embed_sizes: Sequence[int] = (), output_size: int = 1
+        self, 
+        numeric_size: int,
+        embed_sizes: Sequence[int] = (),
+        output_size: int = 1
     ):
         super().__init__(numeric_size, embed_sizes=embed_sizes, output_size=output_size)
         self.sigmoid = nn.Sigmoid()
@@ -112,7 +114,7 @@ class CatLogisticRegression(CatLinear):
     def forward(
         self,
         numbers: Optional[torch.Tensor] = None,
-        categories: Optional[torch.Tensor] = None,
+        categories: Optional[torch.Tensor] = None
     ):
         """Forward-pass. Sigmoid func at the end of linear layer.
 
@@ -132,7 +134,10 @@ class CatRegression(CatLinear):
     """Realisation of torch-based linear regreession (GPU version)."""
 
     def __init__(
-        self, numeric_size: int, embed_sizes: Sequence[int] = (), output_size: int = 1
+        self,
+        numeric_size: int,
+        embed_sizes: Sequence[int] = (),
+        output_size: int = 1
     ):
         super().__init__(numeric_size, embed_sizes=embed_sizes, output_size=output_size)
 
@@ -141,7 +146,10 @@ class CatMulticlass(CatLinear):
     """Realisation of multi-class linear classifier (GPU version)."""
 
     def __init__(
-        self, numeric_size: int, embed_sizes: Sequence[int] = (), output_size: int = 1
+        self,
+        numeric_size: int,
+        embed_sizes: Sequence[int] = (),
+        output_size: int = 1
     ):
         super().__init__(numeric_size, embed_sizes=embed_sizes, output_size=output_size)
         self.softmax = nn.Softmax(dim=1)
@@ -149,7 +157,7 @@ class CatMulticlass(CatLinear):
     def forward(
         self,
         numbers: Optional[torch.Tensor] = None,
-        categories: Optional[torch.Tensor] = None,
+        categories: Optional[torch.Tensor] = None
     ):
         x = super().forward(numbers, categories)
         x = torch.clamp(x, -50, 50)
@@ -171,28 +179,28 @@ class TorchBasedLinearEstimator:
         embed_sizes: Sequence[int] = (),
         output_size: int = 1,
         cs: Sequence[float] = (
-            0.00001,
-            0.00005,
-            0.0001,
-            0.0005,
-            0.001,
-            0.005,
-            0.01,
-            0.05,
-            0.1,
-            0.5,
-            1.0,
-            2.0,
-            5.0,
-            7.0,
-            10.0,
-            20.0,
+            .00001,
+            .00005,
+            .0001,
+            .0005,
+            .001,
+            .005,
+            .01,
+            .05,
+            .1,
+            .5,
+            1.,
+            2.,
+            5.,
+            7.,
+            10.,
+            20.
         ),
         max_iter: int = 1000,
         tol: float = 1e-5,
         early_stopping: int = 2,
         loss=Optional[Callable],
-        metric=Optional[Callable],
+        metric=Optional[Callable]
     ):
         """
         Args:
@@ -214,7 +222,7 @@ class TorchBasedLinearEstimator:
         self.embed_sizes = embed_sizes
         self.output_size = output_size
 
-        assert all([x > 0 for x in cs]), "All Cs should be greater than 0"
+        assert all([x > 0 for x in cs]), 'All Cs should be greater than 0'
 
         self.cs = cs
         self.max_iter = max_iter
@@ -240,19 +248,17 @@ class TorchBasedLinearEstimator:
 
     def _prepare_data_sparse(self, data: sparse_cupy.spmatrix, dev_id: int = 0):
         """Prepare sparse matrix.
-
+    
         Only supports numeric features.
-
+    
         Args:
             data: data to prepare.
-
+    
         Returns:
             Tuple (numeric_features, `None`).
 
         """
-        assert (
-            len(self.categorical_idx["int"]) == 0
-        ), "Support only numeric with sparse matrix"
+        assert len(self.categorical_idx['int']) == 0, 'Support only numeric with sparse matrix'
         data = convert_cupy_scipy_sparse_to_torch_float(data, dev_id)
         return data, None
 
@@ -269,28 +275,19 @@ class TorchBasedLinearEstimator:
 
         """
 
-        if 0 < len(self.categorical_idx["int"]) < data.shape[1]:
+        if 0 < len(self.categorical_idx['int']) < data.shape[1]:
 
-            data_cat = torch.as_tensor(
-                data[:, self.categorical_idx["int"]].astype(cp.int32),
-                device=f"cuda:{dev_id}",
-            )
-
-            data = torch.as_tensor(
-                data[
-                    :,
-                    np.setdiff1d(np.arange(data.shape[1]), self.categorical_idx["int"]),
-                ].astype(cp.float32),
-                device=f"cuda:{dev_id}",
-            )
+            data_cat = torch.as_tensor(data[:, self.categorical_idx['int']].astype(cp.int32), device=f'cuda:{dev_id}')
+            
+            data = torch.as_tensor(data[:, np.setdiff1d(np.arange(data.shape[1]), self.categorical_idx['int'])].astype(cp.float32), device=f'cuda:{dev_id}')
             return data, data_cat
 
-        elif len(self.categorical_idx["int"]) == 0:
-            data = torch.as_tensor(data.astype(cp.float32), device=f"cuda:{dev_id}")
+        elif len(self.categorical_idx['int']) == 0:
+            data = torch.as_tensor(data.astype(cp.float32), device=f'cuda:{dev_id}')
             return data, None
 
         else:
-            data_cat = torch.as_tensor(data.astype(cp.int32), device=f"cuda:{dev_id}")
+            data_cat = torch.as_tensor(data.astype(cp.int32), device=f'cuda:{dev_id}')
             return None, data_cat
 
     def _optimize(
@@ -299,7 +296,7 @@ class TorchBasedLinearEstimator:
         data_cat: Optional[torch.Tensor],
         y: torch.Tensor = None,
         weights: Optional[torch.Tensor] = None,
-        c: float = 1.0,
+        c: float = 1.
     ):
         """Optimize single model.
 
@@ -318,7 +315,7 @@ class TorchBasedLinearEstimator:
             max_iter=self.max_iter,
             tolerance_change=self.tol,
             tolerance_grad=self.tol,
-            line_search_fn="strong_wolfe",
+            line_search_fn='strong_wolfe'
         )
 
         # keep history
@@ -332,7 +329,6 @@ class TorchBasedLinearEstimator:
                 loss.backward()
             results.append(loss.item())
             return loss
-
         opt.step(closure)
 
     def _loss_fn(
@@ -340,7 +336,7 @@ class TorchBasedLinearEstimator:
         y_true: torch.Tensor,
         y_pred: torch.Tensor,
         weights: Optional[torch.Tensor],
-        c: float,
+        c: float
     ) -> torch.Tensor:
         """Weighted loss_fn wrapper.
 
@@ -361,13 +357,9 @@ class TorchBasedLinearEstimator:
         if weights is not None:
             n = weights.sum()
 
-        all_params = torch.cat(
-            [y.view(-1) for (x, y) in self.model.named_parameters() if x != "bias"]
-        )
-        # print("AP device:", all_params.device)
+        all_params = torch.cat([y.view(-1) for (x, y) in self.model.named_parameters() if x != 'bias'])
         penalty = torch.norm(all_params, 2).pow(2) / 2 / n
-        # print("Penalty device:", penalty.device)
-        return loss + 0.5 / c * penalty
+        return loss + .5/c * penalty
 
     def fit(
         self,
@@ -377,7 +369,7 @@ class TorchBasedLinearEstimator:
         data_val: Optional[np.ndarray] = None,
         y_val: Optional[np.ndarray] = None,
         weights_val: Optional[np.ndarray] = None,
-        dev_id: int = 0,
+        dev_id: int = 0
     ):
         """Fit method.
 
@@ -393,22 +385,18 @@ class TorchBasedLinearEstimator:
             self.
 
         """
-        assert self.model is not None, "Model should be defined"
+        assert self.model is not None, 'Model should be defined'
 
         data, data_cat = self._prepare_data(data, dev_id)
 
         if len(y.shape) == 1:
             y = y[:, cp.newaxis]
-        y = torch.as_tensor(y.astype(cp.float32), device=f"cuda:{dev_id}")
+        y = torch.as_tensor(y.astype(cp.float32), device=f'cuda:{dev_id}')
         if weights is not None:
-            weights = torch.as_tensor(
-                weights.astype(cp.float32), device=f"cuda:{dev_id}"
-            )
+            weights = torch.as_tensor(weights.astype(cp.float32), device=f'cuda:{dev_id}')
         if data_val is None and y_val is None:
-            logger.warning(
-                "Validation data should be defined. No validation will be performed and C = 1 will be used"
-            )
-            self._optimize(data, data_cat, y, weights, 1.0)
+            logger.warning('Validation data should be defined. No validation will be performed and C = 1 will be used')
+            self._optimize(data, data_cat, y, weights, 1.)
 
             return self
         data_val, data_val_cat = self._prepare_data(data_val, dev_id)
@@ -421,7 +409,7 @@ class TorchBasedLinearEstimator:
 
             val_pred = self._score(data_val, data_val_cat)
             score = self.metric(y_val, val_pred, weights_val)
-            logger.info("Linear model: C = {0} score = {1}".format(c, score))
+            logger.info('Linear model: C = {0} score = {1}'.format(c, score))
             if score > best_score:
 
                 best_score = score
@@ -461,7 +449,8 @@ class TorchBasedLinearEstimator:
         """Inference phase.
 
         Args:
-            data: Data to test.
+            data: Data to test,
+            dev_id: GPU device id.
 
         Returns:
             Predicted target values.
@@ -482,28 +471,28 @@ class TorchBasedLogisticRegression(TorchBasedLinearEstimator):
         embed_sizes: Sequence[int] = (),
         output_size: int = 1,
         cs: Sequence[float] = (
-            0.00001,
-            0.00005,
-            0.0001,
-            0.0005,
-            0.001,
-            0.005,
-            0.01,
-            0.05,
-            0.1,
-            0.5,
-            1.0,
-            2.0,
-            5.0,
-            7.0,
-            10.0,
-            20.0,
+            .00001,
+            .00005,
+            .0001,
+            .0005,
+            .001,
+            .005,
+            .01,
+            .05,
+            .1,
+            .5,
+            1.,
+            2.,
+            5.,
+            7.,
+            10.,
+            20.
         ),
         max_iter: int = 1000,
         tol: float = 1e-4,
         early_stopping: int = 2,
         loss=Optional[Callable],
-        metric=Optional[Callable],
+        metric=Optional[Callable]
     ):
         """
         Args:
@@ -529,29 +518,15 @@ class TorchBasedLogisticRegression(TorchBasedLinearEstimator):
             self._binary = False
         if loss is None:
             loss = TorchLossWrapper(_loss)
-        super().__init__(
-            data_size,
-            categorical_idx,
-            embed_sizes,
-            output_size,
-            cs,
-            max_iter,
-            tol,
-            early_stopping,
-            loss,
-            metric,
-        )
-        self.model = _model(
-            self.data_size - len(self.categorical_idx["int"]),
-            self.embed_sizes,
-            self.output_size,
-        ).cuda()
+        super().__init__(data_size, categorical_idx, embed_sizes, output_size, cs, max_iter, tol, early_stopping, loss, metric)
+        self.model = _model(self.data_size - len(self.categorical_idx['int']), self.embed_sizes, self.output_size).cuda()
 
     def predict(self, data: cp.ndarray, dev_id: int = 0) -> cp.ndarray:
         """Inference phase.
 
         Args:
-            data: data to test.
+            data: data to test,
+            dev_id: GPU device id.
 
         Returns:
             predicted target values.
@@ -571,28 +546,28 @@ class TorchBasedLinearRegression(TorchBasedLinearEstimator):
         embed_sizes: Sequence[int] = (),
         output_size: int = 1,
         cs: Sequence[float] = (
-            0.00001,
-            0.00005,
-            0.0001,
-            0.0005,
-            0.001,
-            0.005,
-            0.01,
-            0.05,
-            0.1,
-            0.5,
-            1.0,
-            2.0,
-            5.0,
-            7.0,
-            10.0,
-            20.0,
+            .00001,
+            .00005,
+            .0001,
+            .0005,
+            .001,
+            .005,
+            .01,
+            .05,
+            .1,
+            .5,
+            1.,
+            2.,
+            5.,
+            7.,
+            10.,
+            20.
         ),
         max_iter: int = 1000,
         tol: float = 1e-4,
         early_stopping: int = 2,
         loss=Optional[Callable],
-        metric=Optional[Callable],
+        metric=Optional[Callable]
     ):
         """
         Args:
@@ -620,19 +595,20 @@ class TorchBasedLinearRegression(TorchBasedLinearEstimator):
             tol,
             early_stopping,
             loss,
-            metric,
+            metric
         )
         self.model = CatRegression(
-            self.data_size - len(self.categorical_idx["int"]),
+            self.data_size - len(self.categorical_idx['int']),
             self.embed_sizes,
-            self.output_size,
+            self.output_size
         ).cuda()
 
     def predict(self, data: cp.ndarray, dev_id: int = 0) -> cp.ndarray:
         """Inference phase.
 
         Args:
-            data: data to test.
+            data: data to test,
+            dev_id: GPU device id.
 
         Returns:
             predicted target values.

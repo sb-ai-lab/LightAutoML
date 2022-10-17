@@ -1,7 +1,13 @@
 """Base class for selection pipelines."""
 
-from copy import copy, deepcopy
-from typing import Any, List, Optional, Sequence, Tuple, Union
+from copy import copy
+from copy import deepcopy
+from typing import Any
+from typing import List
+from typing import Optional
+from typing import Sequence
+from typing import Tuple
+from typing import Union
 
 from pandas import Series
 
@@ -9,7 +15,8 @@ from lightautoml.validation.base import TrainValidIterator
 
 from ...dataset.base import LAMLDataset
 from ...ml_algo.base import MLAlgo
-from ...ml_algo.tuning.base import DefaultTuner, ParamsTuner
+from ...ml_algo.tuning.base import DefaultTuner
+from ...ml_algo.tuning.base import ParamsTuner
 from ...ml_algo.utils import tune_and_fit_predict
 from ..features.base import FeaturesPipeline
 from ..utils import map_pipeline_names
@@ -175,9 +182,7 @@ class SelectionPipeline:
                         train_valid.features
                     ), "Features in feated MLAlgo should match exactly"
                 else:
-                    self.ml_algo, preds = tune_and_fit_predict(
-                        self.ml_algo, self.tuner, train_valid
-                    )
+                    self.ml_algo, preds = tune_and_fit_predict(self.ml_algo, self.tuner, train_valid)
 
             if self.imp_estimator is not None:
                 self.imp_estimator.fit(train_valid, self.ml_algo, preds)
@@ -202,7 +207,7 @@ class SelectionPipeline:
             if roles[col].force_input:
                 if col not in sl_set:
                     selected_features.append(col)
-
+        
         return dataset[:, self.selected_features]
 
     def map_raw_feature_importances(self, raw_importances: Series):
@@ -218,9 +223,7 @@ class SelectionPipeline:
         mapped = map_pipeline_names(self.in_features, raw_importances.index)
         mapped_importance = Series(raw_importances.values, index=mapped)
 
-        self.mapped_importances = (
-            mapped_importance.groupby(level=0).sum().sort_values(ascending=False)
-        )
+        self.mapped_importances = mapped_importance.groupby(level=0).sum().sort_values(ascending=False)
 
     def get_features_score(self):
         """Get input feature importances.
@@ -246,7 +249,7 @@ class EmptySelector(SelectionPipeline):
 
         """
         self._selected_features = train_valid.features
-
+    
     def select(self, dataset: LAMLDataset) -> LAMLDataset:
         """Takes only selected features from giving dataset and creates new dataset.
 

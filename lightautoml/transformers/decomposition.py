@@ -1,14 +1,21 @@
 """Dimension reduction transformers."""
 
-from typing import List, Optional, Union
+from typing import List
+from typing import Optional
+from typing import Union
 
 import numpy as np
-from sklearn.decomposition import PCA, TruncatedSVD
+
+from sklearn.decomposition import PCA
+from sklearn.decomposition import TruncatedSVD
 
 from ..dataset.base import LAMLDataset
-from ..dataset.np_pd_dataset import CSRSparseDataset, NumpyDataset, PandasDataset
+from ..dataset.np_pd_dataset import CSRSparseDataset
+from ..dataset.np_pd_dataset import NumpyDataset
+from ..dataset.np_pd_dataset import PandasDataset
 from ..dataset.roles import NumericRole
 from .base import LAMLTransformer
+
 
 # type - something that can be converted to pandas dataset
 NumpyTransformable = Union[NumpyDataset, PandasDataset]
@@ -81,9 +88,7 @@ class PCATransformer(LAMLTransformer):
         dataset = dataset.to_numpy()
         data = dataset.data
         self.n_components = np.minimum(self.n_components, data.shape[1] - 1)
-        self.pca = self._pca(
-            n_components=self.n_components, random_state=self.random_state
-        )
+        self.pca = self._pca(n_components=self.n_components, random_state=self.random_state)
         self.pca.fit(data)
 
         orig_name = dataset.features[0].split("__")[-1]
@@ -168,9 +173,7 @@ class SVDTransformer(LAMLTransformer):
         # convert to accepted dtype and get attributes
         data = dataset.data
         self.n_components = np.minimum(self.n_components, data.shape[1] - 1)
-        self.svd = self._svd(
-            n_components=self.n_components, random_state=self.random_state
-        )
+        self.svd = self._svd(n_components=self.n_components, random_state=self.random_state)
         self.svd.fit(data)
 
         orig_name = dataset.features[0].split("__")[-1]

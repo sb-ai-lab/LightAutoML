@@ -1,24 +1,27 @@
 """Pipeline for tree based models."""
 
-from typing import Optional, Union
+from typing import Optional
+from typing import Union
 
 import numpy as np
 
-from ...dataset.np_pd_dataset import NumpyDataset, PandasDataset
-from ...dataset.roles import CategoryRole, NumericRole
-from ...transformers.base import (
-    ChangeRoles,
-    ColumnsSelector,
-    ConvertDataset,
-    LAMLTransformer,
-    SequentialTransformer,
-    UnionTransformer,
-)
+from ...dataset.np_pd_dataset import NumpyDataset
+from ...dataset.np_pd_dataset import PandasDataset
+from ...dataset.roles import CategoryRole
+from ...dataset.roles import NumericRole
+from ...transformers.base import ChangeRoles
+from ...transformers.base import ColumnsSelector
+from ...transformers.base import ConvertDataset
+from ...transformers.base import LAMLTransformer
+from ...transformers.base import SequentialTransformer
+from ...transformers.base import UnionTransformer
 from ...transformers.categorical import OrdinalEncoder
 from ...transformers.datetime import TimeToNum
 from ..selection.base import ImportanceEstimator
 from ..utils import get_columns_by_role
-from .base import FeaturesPipeline, TabularDataFeatures
+from .base import FeaturesPipeline
+from .base import TabularDataFeatures
+
 
 NumpyOrPandas = Union[PandasDataset, NumpyDataset]
 
@@ -61,9 +64,7 @@ class LGBSimpleFeatures(FeaturesPipeline):
         # process datetimes
         datetimes = get_columns_by_role(train, "Datetime")
         if len(datetimes) > 0:
-            dt_processing = SequentialTransformer(
-                [ColumnsSelector(keys=datetimes), TimeToNum()]
-            )
+            dt_processing = SequentialTransformer([ColumnsSelector(keys=datetimes), TimeToNum()])
             transformers_list.append(dt_processing)
 
         # process numbers
@@ -143,9 +144,7 @@ class LGBAdvancedPipeline(FeaturesPipeline, TabularDataFeatures):
         target_encoder = self.get_target_encoder(train)
 
         output_category_role = (
-            CategoryRole(np.float32, label_encoded=True)
-            if self.output_categories
-            else NumericRole(np.float32)
+            CategoryRole(np.float32, label_encoded=True) if self.output_categories else NumericRole(np.float32)
         )
 
         # handle categorical feats
@@ -154,9 +153,9 @@ class LGBAdvancedPipeline(FeaturesPipeline, TabularDataFeatures):
         transformer_list.append(self.get_freq_encoding(train))
 
         # 2 - check different target encoding parts and split (ohe is the same as auto - no ohe in gbm)
-        auto = get_columns_by_role(
-            train, "Category", encoding_type="auto"
-        ) + get_columns_by_role(train, "Category", encoding_type="ohe")
+        auto = get_columns_by_role(train, "Category", encoding_type="auto") + get_columns_by_role(
+            train, "Category", encoding_type="ohe"
+        )
 
         if self.output_categories:
             le = (
@@ -175,18 +174,12 @@ class LGBAdvancedPipeline(FeaturesPipeline, TabularDataFeatures):
                 te = get_columns_by_role(train, "Category", encoding_type="oof")
                 # split auto categories by unique values cnt
                 un_values = self.get_uniques_cnt(train, auto)
-                te = te + [
-                    x for x in un_values.index if un_values[x] > self.auto_unique_co
-                ]
+                te = te + [x for x in un_values.index if un_values[x] > self.auto_unique_co]
                 ordinal = ordinal + list(set(auto) - set(te))
 
             else:
                 te = []
-                ordinal = (
-                    ordinal
-                    + auto
-                    + get_columns_by_role(train, "Category", encoding_type="oof")
-                )
+                ordinal = ordinal + auto + get_columns_by_role(train, "Category", encoding_type="oof")
 
             ordinal = sorted(list(set(ordinal)))
 
@@ -208,9 +201,7 @@ class LGBAdvancedPipeline(FeaturesPipeline, TabularDataFeatures):
             if target_encoder is not None:
                 ints_part = SequentialTransformer([intersections, target_encoder()])
             else:
-                ints_part = SequentialTransformer(
-                    [intersections, ChangeRoles(output_category_role)]
-                )
+                ints_part = SequentialTransformer([intersections, ChangeRoles(output_category_role)])
 
             transformer_list.append(ints_part)
 
@@ -220,9 +211,7 @@ class LGBAdvancedPipeline(FeaturesPipeline, TabularDataFeatures):
         # add difference with base date
         transformer_list.append(self.get_datetime_diffs(train))
         # add datetime seasonality
-        transformer_list.append(
-            self.get_datetime_seasons(train, NumericRole(np.float32))
-        )
+        transformer_list.append(self.get_datetime_seasons(train, NumericRole(np.float32)))
 
         # final pipeline
         union_all = UnionTransformer([x for x in transformer_list if x is not None])

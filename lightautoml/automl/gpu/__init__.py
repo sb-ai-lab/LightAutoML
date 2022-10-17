@@ -1,1 +1,3 @@
-__all__ = ["blend_gpu"]
+__all__ = [
+    'blend_gpu'
+]

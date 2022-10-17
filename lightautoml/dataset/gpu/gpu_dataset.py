@@ -1,44 +1,46 @@
 """Internal representation of dataset in cudf formats."""
 
 from copy import copy  # , deepcopy
-from typing import Any, List, Optional, Sequence, Tuple, TypeVar, Union
+from typing import Any
+from typing import List
+from typing import Optional
+from typing import Sequence
+from typing import Tuple
+from typing import TypeVar
+from typing import Union
 
 import numpy as np
 import pandas as pd
+import cupy as cp
+import dask_cudf
+import cudf
+from cupyx.scipy import sparse as sparse_cupy
 
-try:
-    import cudf
-    import cupy as cp
-    import dask_cudf
-    from cudf.core.dataframe import DataFrame
-    from cudf.core.series import Series
-    from cupyx.scipy import sparse as sparse_cupy
-    from dask_cudf.core import DataFrame as DataFrame_dask
-    from dask_cudf.core import Series as Series_dask
-except:
-    pass
+from dask_cudf.core import DataFrame as DataFrame_dask
+from dask_cudf.core import Series as Series_dask
 
-from lightautoml.dataset.base import (
-    IntIdx,
-    LAMLDataset,
-    RolesDict,
-    array_attr_roles,
-    valid_array_attributes,
-)
-from lightautoml.dataset.np_pd_dataset import (
-    CSRSparseDataset,
-    NumpyDataset,
-    PandasDataset,
-)
-from lightautoml.dataset.roles import ColumnRole, DropRole, NumericRole
+from cudf.core.dataframe import DataFrame
+from cudf.core.series import Series
+
 from lightautoml.tasks.base import Task
+from lightautoml.dataset.base import IntIdx
+from lightautoml.dataset.base import LAMLDataset
+from lightautoml.dataset.np_pd_dataset import NumpyDataset
+from lightautoml.dataset.np_pd_dataset import PandasDataset
+from lightautoml.dataset.np_pd_dataset import CSRSparseDataset
+from lightautoml.dataset.base import RolesDict
+from lightautoml.dataset.base import array_attr_roles
+from lightautoml.dataset.base import valid_array_attributes
+from lightautoml.dataset.roles import ColumnRole
+from lightautoml.dataset.roles import DropRole
+from lightautoml.dataset.roles import NumericRole
 
 NpFeatures = Union[Sequence[str], str, None]
 NpRoles = Union[Sequence[ColumnRole], ColumnRole, RolesDict, None]
 DenseSparseArray = Union[cp.ndarray, sparse_cupy.csr_matrix]
 FrameOrSeries = Union[DataFrame, Series]
 FrameOrSeries_dask = Union[DataFrame_dask, Series_dask]
-Dataset = TypeVar("Dataset", bound=LAMLDataset)
+Dataset = TypeVar('Dataset', bound=LAMLDataset)
 
 
 class CupyDataset(NumpyDataset):
@@ -46,14 +48,9 @@ class CupyDataset(NumpyDataset):
 
     _dataset_type = "CupyDataset"
 
-    def __init__(
-        self,
-        data: Optional[DenseSparseArray],
-        features: NpFeatures = (),
-        roles: NpRoles = None,
-        task: Optional[Task] = None,
-        **kwargs: np.ndarray
-    ):
+    def __init__(self, data: Optional[DenseSparseArray],
+                 features: NpFeatures = (), roles: NpRoles = None,
+                 task: Optional[Task] = None, **kwargs: np.ndarray):
         """Create dataset from numpy/cupy arrays.
 
         Args:
@@ -91,22 +88,23 @@ class CupyDataset(NumpyDataset):
             AttributeError: If there is non-numeric type in dataset.
 
         """
-        # dtypes = list(set(map(lambda x: x.dtype, self.roles.values())))
         dtypes = list(set([i.dtype for i in self.roles.values()]))
         self.dtype = cp.find_common_type(dtypes, [])
 
         for f in self.roles:
             self._roles[f].dtype = self.dtype
 
-        assert cp.issubdtype(
-            self.dtype, cp.number
-        ), "Support only numeric types in Cupy dataset."
+        assert cp.issubdtype(self.dtype, cp.number), \
+            'Support only numeric types in Cupy dataset.'
 
         if self.data.dtype != self.dtype:
             self.data = self.data.astype(self.dtype)
 
     def set_data(
-        self, data: DenseSparseArray, features: NpFeatures = (), roles: NpRoles = None
+            self,
+            data: DenseSparseArray,
+            features: NpFeatures = (),
+            roles: NpRoles = None
     ):
         """Inplace set data, features, roles for empty dataset.
 
@@ -130,9 +128,7 @@ class CupyDataset(NumpyDataset):
                 - dict.
 
         """
-        assert (
-            data is None or type(data) is cp.ndarray
-        ), "Cupy dataset support only cp.ndarray features"
+        assert data is None or type(data) is cp.ndarray, "Cupy dataset support only cp.ndarray features"
         super(CupyDataset.__bases__[0], self).set_data(data, features, roles)
         self._check_dtype()
 
@@ -156,23 +152,22 @@ class CupyDataset(NumpyDataset):
             Numpy dataset
         """
 
-        assert all(
-            [self.roles[x].name == "Numeric" for x in self.features]
-        ), "Only numeric data accepted in numpy dataset"
+        assert all([self.roles[x].name == 'Numeric'
+                    for x in self.features]), \
+            'Only numeric data accepted in numpy dataset'
 
         data = None if self.data is None else cp.asnumpy(self.data)
 
         roles = self.roles
         features = self.features
         # target and etc ..
-        params = dict(
-            ((x, cp.asnumpy(self.__dict__[x])) for x in self._array_like_attrs)
-        )
+        params = dict(((x, cp.asnumpy(self.__dict__[x])) \
+                       for x in self._array_like_attrs))
         task = self.task
 
         return NumpyDataset(data, features, roles, task, **params)
 
-    def to_cupy(self) -> "CupyDataset":
+    def to_cupy(self) -> 'CupyDataset':
         """Empty method to convert to cupy.
 
         Returns:
@@ -199,14 +194,13 @@ class CupyDataset(NumpyDataset):
 
         return self.to_numpy().to_csr()
 
-    def to_cudf(self) -> "CudfDataset":
+    def to_cudf(self) -> 'CudfDataset':
         """Convert to CudfDataset.
 
         Returns:
             Same dataset in CudfDataset format.
         """
         # check for empty case
-        # data = None if self.data is None else cudf.DataFrame(self.data, columns=self.features)
         data = None if self.data is None else cudf.DataFrame()
         if data is not None:
             data_gpu = cudf.DataFrame()
@@ -215,14 +209,13 @@ class CupyDataset(NumpyDataset):
             data = data_gpu
         roles = self.roles
         # target and etc ..
-        params = dict(
-            ((x, cudf.Series(self.__dict__[x])) for x in self._array_like_attrs)
-        )
+        params = dict(((x, cudf.Series(self.__dict__[x])) \
+                       for x in self._array_like_attrs))
         task = self.task
 
         return CudfDataset(data, roles, task, **params)
 
-    def to_daskcudf(self, nparts: int = 1, index_ok: bool = True) -> "DaskCudfDataset":
+    def to_daskcudf(self, nparts: int = 1, index_ok: bool = True) -> 'DaskCudfDataset':
         """Convert dataset to daskcudf.
 
         Returns:
@@ -231,14 +224,13 @@ class CupyDataset(NumpyDataset):
         """
         return self.to_cudf().to_daskcudf(nparts, index_ok)
 
-    def to_sparse_gpu(self) -> "CupySparseDataset":
+    def to_sparse_gpu(self) -> 'CupySparseDataset':
         """Convert to cupy-based csr.
         Returns:
             Same dataset in CupySparseDataset format (CSR).
         """
-        assert all(
-            [self.roles[x].name == "Numeric" for x in self.features]
-        ), "Only numeric data accepted in sparse dataset"
+        assert all([self.roles[x].name == 'Numeric' for x in self.features]), \
+            'Only numeric data accepted in sparse dataset'
         data = None if self.data is None else sparse_cupy.csr_matrix(self.data)
 
         roles = self.roles
@@ -250,7 +242,7 @@ class CupyDataset(NumpyDataset):
         return CupySparseDataset(data, features, roles, task, **params)
 
     @staticmethod
-    def from_dataset(dataset: Dataset) -> "CupyDataset":
+    def from_dataset(dataset: Dataset) -> 'CupyDataset':
         """Convert random dataset to cupy.
 
         Returns:
@@ -263,7 +255,7 @@ class CupyDataset(NumpyDataset):
 class CupySparseDataset(CupyDataset):
     """Dataset that contains sparse features on GPU and cp.ndarray targets."""
 
-    _dataset_type = "CupySparseDataset"
+    _dataset_type = 'CupySparseDataset'
 
     @staticmethod
     def _get_cols(data: Any, k: Any):
@@ -279,16 +271,14 @@ class CupySparseDataset(CupyDataset):
         """Not implemented."""
         raise NotImplementedError
 
-    def to_cupy(self) -> "CupyDataset":
+    def to_cupy(self) -> 'CupyDataset':
         """Convert to CupyDataset.
         Returns:
             CupyDataset.
         """
         # check for empty
         data = None if self.data is None else self.data.toarray()
-        assert (
-            type(data) is cp.ndarray
-        ), "Data conversion failed! Check types of datasets."
+        assert type(data) is cp.ndarray, "Data conversion failed! Check types of datasets."
         roles = self.roles
         features = self.features
         # target and etc ..
@@ -312,25 +302,17 @@ class CupySparseDataset(CupyDataset):
         return rows, cols
 
     @staticmethod
-    def _hstack(
-        datasets: Sequence[Union[sparse_cupy.csr_matrix, cp.ndarray]]
-    ) -> sparse_cupy.csr_matrix:
+    def _hstack(datasets: Sequence[Union[sparse_cupy.csr_matrix, cp.ndarray]]) -> sparse_cupy.csr_matrix:
         """Concatenate function for sparse and numpy arrays.
         Args:
             datasets: Sequence of csr_matrix or np.ndarray.
         Returns:
             Sparse matrix.
         """
-        return sparse_cupy.hstack(datasets, format="csr")
+        return sparse_cupy.hstack(datasets, format='csr')
 
-    def __init__(
-        self,
-        data: Optional[DenseSparseArray],
-        features: NpFeatures = (),
-        roles: NpRoles = None,
-        task: Optional[Task] = None,
-        **kwargs: np.ndarray
-    ):
+    def __init__(self, data: Optional[DenseSparseArray], features: NpFeatures = (), roles: NpRoles = None,
+                 task: Optional[Task] = None, **kwargs: np.ndarray):
         """Create dataset from csr_matrix.
         Args:
             data: csr_matrix of features.
@@ -353,9 +335,7 @@ class CupySparseDataset(CupyDataset):
         if data is not None:
             self.set_data(data, features, roles)
 
-    def set_data(
-        self, data: DenseSparseArray, features: NpFeatures = (), roles: NpRoles = None
-    ):
+    def set_data(self, data: DenseSparseArray, features: NpFeatures = (), roles: NpRoles = None):
         """Inplace set data, features, roles for empty dataset.
         Args:
             data: csr_matrix of features.
@@ -372,21 +352,18 @@ class CupySparseDataset(CupyDataset):
                 - ColumnRole - single role.
                 - dict.
         """
-        assert (
-            data is None or type(data) is sparse_cupy.csr_matrix
-        ), "CSRSparseDataset support only csr_matrix features"
+        assert data is None or type(data) is sparse_cupy.csr_matrix, \
+            'CSRSparseDataset support only csr_matrix features'
         LAMLDataset.set_data(self, data, features, roles)
         self._check_dtype()
 
     @staticmethod
-    def from_dataset(dataset: Dataset) -> "CSRSparseDataset":
+    def from_dataset(dataset: Dataset) -> 'CSRSparseDataset':
         """Convert dataset to sparse dataset.
         Returns:
             Dataset in sparse form.
         """
-        assert (
-            type(dataset) in DenseSparseArray
-        ), "Only Numpy/Cupy based datasets can be converted to sparse datasets!"
+        assert type(dataset) in DenseSparseArray, 'Only Numpy/Cupy based datasets can be converted to sparse datasets!'
         return dataset.to_sparse_gpu()
 
 
@@ -394,15 +371,11 @@ class CudfDataset(PandasDataset):
     """Dataset that contains `cudf.core.dataframe.DataFrame` features and
        ` cudf.core.series.Series` targets."""
 
-    _dataset_type = "CudfDataset"
+    _dataset_type = 'CudfDataset'
 
-    def __init__(
-        self,
-        data: Optional[DataFrame] = None,
-        roles: Optional[RolesDict] = None,
-        task: Optional[Task] = None,
-        **kwargs: Series
-    ):
+    def __init__(self, data: Optional[DataFrame] = None,
+                 roles: Optional[RolesDict] = None, task: Optional[Task] = None,
+                 **kwargs: Series):
         """Create dataset from `cudf.core.dataframe.DataFrame` and
            ` cudf.core.series.Series`
 
@@ -474,7 +447,7 @@ class CudfDataset(PandasDataset):
 
         self.dtypes = {}
         for f in self.roles:
-            if self.roles[f].name == "Datetime":
+            if self.roles[f].name == 'Datetime':
                 date_columns.append(f)
             else:
                 self.dtypes[f] = self.roles[f].dtype
@@ -487,7 +460,8 @@ class CudfDataset(PandasDataset):
         for i in date_columns:
             self.dtypes[i] = np.datetime64
 
-    def _convert_datetime(self, data: DataFrame, date_cols: List[str]) -> DataFrame:
+    def _convert_datetime(self, data: DataFrame,
+                          date_cols: List[str]) -> DataFrame:
         """Convert the listed columns of the DataFrame to DateTime type
            according to the defined roles.
 
@@ -503,17 +477,12 @@ class CudfDataset(PandasDataset):
             dt_role = self.roles[i]
             if not data.dtypes[i] is np.datetime64:
                 if dt_role.unit is None:
-                    data[i] = cudf.to_datetime(
-                        data[i], format=dt_role.format, origin=dt_role.origin, cache=True
-                    )
+                    data[i] = cudf.to_datetime(data[i], format=dt_role.format,
+                                               origin=dt_role.origin, cache=True)
                 else:
-                    data[i] = cudf.to_datetime(
-                        data[i],
-                        format=dt_role.format,
-                        unit=dt_role.unit,
-                        origin=dt_role.origin,
-                        cache=True,
-                    )
+                    data[i] = cudf.to_datetime(data[i], format=dt_role.format,
+                                               unit=dt_role.unit,
+                                               origin=dt_role.origin, cache=True)
         return data
 
     @staticmethod
@@ -597,7 +566,8 @@ class CudfDataset(PandasDataset):
         roles = self.roles
         features = self.features
         # target and etc ..
-        params = dict(((x, self.__dict__[x].values) for x in self._array_like_attrs))
+        params = dict(((x, self.__dict__[x].values) \
+                       for x in self._array_like_attrs))
         task = self.task
 
         return CupyDataset(data, features, roles, task, **params)
@@ -623,16 +593,12 @@ class CudfDataset(PandasDataset):
         roles = self.roles
         task = self.task
 
-        params = dict(
-            (
-                (x, pd.Series(cp.asnumpy(self.__dict__[x].values)))
-                for x in self._array_like_attrs
-            )
-        )
+        params = dict(((x, pd.Series(cp.asnumpy(self.__dict__[x].values))) \
+                       for x in self._array_like_attrs))
 
         return PandasDataset(data, roles, task, **params)
 
-    def to_cudf(self) -> "CudfDataset":
+    def to_cudf(self) -> 'CudfDataset':
         """Empty method to return self
 
         Returns:
@@ -641,11 +607,11 @@ class CudfDataset(PandasDataset):
 
         return self
 
-    def to_sparse_gpu(self) -> "CupySparseDataset":
+    def to_sparse_gpu(self) -> 'CupySparseDataset':
 
         return self.to_cupy().to_sparse_gpu()
 
-    def to_daskcudf(self, nparts: int = 1, index_ok=True) -> "DaskCudfDataset":
+    def to_daskcudf(self, nparts: int = 1, index_ok=True) -> 'DaskCudfDataset':
         """Convert dataset to daskcudf.
 
         Returns:
@@ -658,17 +624,14 @@ class CudfDataset(PandasDataset):
         roles = self.roles
         task = self.task
 
-        params = dict(
-            (
-                (x, dask_cudf.from_cudf(self.__dict__[x], npartitions=nparts))
-                for x in self._array_like_attrs
-            )
-        )
+        params = dict(((x, dask_cudf.from_cudf(self.__dict__[x],
+                                               npartitions=nparts)) \
+                       for x in self._array_like_attrs))
 
         return DaskCudfDataset(data, roles, task, index_ok=index_ok, **params)
 
     @staticmethod
-    def from_dataset(dataset: Dataset) -> "CudfDataset":
+    def from_dataset(dataset: Dataset) -> 'CudfDataset':
         """Convert random dataset (if it has .to_cudf() member) to cudf dataset.
 
         Returns:
@@ -682,16 +645,13 @@ class DaskCudfDataset(CudfDataset):
     """Dataset that contains `dask_cudf.core.DataFrame` features and
        `dask_cudf.Series` targets."""
 
-    _dataset_type = "DaskCudfDataset"
+    _dataset_type = 'DaskCudfDataset'
 
-    def __init__(
-        self,
-        data: Optional[DataFrame_dask] = None,
-        roles: Optional[RolesDict] = None,
-        task: Optional[Task] = None,
-        index_ok: bool = False,
-        **kwargs: Series_dask
-    ):
+    def __init__(self, data: Optional[DataFrame_dask] = None,
+                 roles: Optional[RolesDict] = None,
+                 task: Optional[Task] = None,
+                 index_ok: bool = False,
+                 **kwargs: Series_dask):
         """Dataset that contains `dask_cudf.core.DataFrame` and
            `dask_cudf.core.Series` target
 
@@ -714,18 +674,16 @@ class DaskCudfDataset(CudfDataset):
                     roles[f] = DropRole()
         if not index_ok:
             size = len(data.index)
-            data["index"] = data.index
+            data['index'] = data.index
             mapping = dict(zip(data.index.compute().values_host, np.arange(size)))
-            data["index"] = data["index"].map(mapping).persist()
-            data = data.set_index("index", drop=True, sorted=True)
+            data['index'] = data['index'].map(mapping).persist()
+            data = data.set_index('index', drop=True, sorted=True)
             data = data.persist()
             for val in kwargs:
                 col_name = kwargs[val].name
                 kwargs[val] = kwargs[val].reset_index(drop=False)
-                kwargs[val]["index"] = kwargs[val]["index"].map(mapping).persist()
-                kwargs[val] = kwargs[val].set_index("index", drop=True, sorted=True)[
-                    col_name
-                ]
+                kwargs[val]['index'] = kwargs[val]['index'].map(mapping).persist()
+                kwargs[val] = kwargs[val].set_index('index', drop=True, sorted=True)[col_name]
 
         self._initialize(task, **kwargs)
         if data is not None:
@@ -736,7 +694,7 @@ class DaskCudfDataset(CudfDataset):
         date_columns = []
         self.dtypes = {}
         for f in self.roles:
-            if self.roles[f].name == "Datetime":
+            if self.roles[f].name == 'Datetime':
                 date_columns.append(f)
             else:
                 self.dtypes[f] = self.roles[f].dtype
@@ -744,9 +702,8 @@ class DaskCudfDataset(CudfDataset):
         self.data = self.data.astype(self.dtypes).persist()
         # handle dates types
 
-        self.data = self.data.map_partitions(
-            self._convert_datetime, date_columns, meta=self.data
-        ).persist()
+        self.data = self.data.map_partitions(self._convert_datetime,
+                                             date_columns, meta=self.data).persist()
 
         for i in date_columns:
             self.dtypes[i] = np.datetime64
@@ -778,10 +735,11 @@ class DaskCudfDataset(CudfDataset):
         roles = self.roles
         task = self.task
 
-        params = dict(((x, self.__dict__[x].compute()) for x in self._array_like_attrs))
+        params = dict(((x, self.__dict__[x].compute()) \
+                       for x in self._array_like_attrs))
         return CudfDataset(data, roles, task, **params)
 
-    def to_numpy(self) -> "NumpyDataset":
+    def to_numpy(self) -> 'NumpyDataset':
         """Convert to class:`NumpyDataset`.
 
         Returns:
@@ -791,7 +749,7 @@ class DaskCudfDataset(CudfDataset):
 
         return self.to_cudf().to_numpy()
 
-    def to_cupy(self) -> "CupyDataset":
+    def to_cupy(self) -> 'CupyDataset':
         """Convert dataset to cupy.
 
         Returns:
@@ -801,11 +759,11 @@ class DaskCudfDataset(CudfDataset):
 
         return self.to_cudf().to_cupy()
 
-    def to_sparse_gpu(self) -> "CupySparseDataset":
+    def to_sparse_gpu(self) -> 'CupySparseDataset':
 
         return self.to_cupy().to_sparse_gpu()
 
-    def to_pandas(self) -> "PandasDataset":
+    def to_pandas(self) -> 'PandasDataset':
         """Convert dataset to pandas.
 
         Returns:
@@ -815,9 +773,7 @@ class DaskCudfDataset(CudfDataset):
 
         return self.to_cudf().to_pandas()
 
-    def to_daskcudf(
-        self, npartitions: int = 1, index_ok: bool = True
-    ) -> "DaskCudfDataset":
+    def to_daskcudf(self, npartitions: int = 1, index_ok: bool = True) -> 'DaskCudfDataset':
         """Empty method to return self
 
         Returns:
@@ -850,9 +806,7 @@ class DaskCudfDataset(CudfDataset):
         return res
 
     @staticmethod
-    def from_dataset(
-        dataset: "DaskCudfDataset", npartitions: int = 1, index_ok: bool = True
-    ) -> "DaskCudfDataset":
+    def from_dataset(dataset: 'DaskCudfDataset', npartitions: int = 1, index_ok: bool = True) -> 'DaskCudfDataset':
         """Convert DaskCudfDataset to DaskCudfDataset
         (for now, later we add  , npartitionsto_daskcudf() to other classes
         using from_pandas and from_cudf.

@@ -3,16 +3,23 @@
 import logging
 import os
 import shutil
-from typing import Any, Iterable, Optional, Sequence
+
+from typing import Any
+from typing import Iterable
+from typing import Optional
+from typing import Sequence
 
 import torch
 import yaml
 
 from ...dataset.base import LAMLDataset
 from ...tasks import Task
-from ...utils.logging import add_filehandler, set_stdout_level, verbosity_to_loglevel
+from ...utils.logging import add_filehandler
+from ...utils.logging import set_stdout_level
+from ...utils.logging import verbosity_to_loglevel
 from ...utils.timer import PipelineTimer
 from ..base import AutoML
+
 
 logger = logging.getLogger(__name__)
 
@@ -204,29 +211,19 @@ class AutoMLPreset(AutoML):
             verbose=verbose,
         )
 
-        logger.info(
-            "\x1b[1mAutoml preset training completed in {:.2f} seconds\x1b[0m\n".format(
-                self.timer.time_spent
-            )
-        )
+        logger.info("\x1b[1mAutoml preset training completed in {:.2f} seconds\x1b[0m\n".format(self.timer.time_spent))
         logger.info(f"Model description:\n{self.create_model_str_desc()}\n")
 
         return result
 
-    def create_model_str_desc(
-        self, pref_tab_num: int = 0, split_line_len: int = 0
-    ) -> str:
+    def create_model_str_desc(self, pref_tab_num: int = 0, split_line_len: int = 0) -> str:
         prefix = "\t" * pref_tab_num
         splitter = prefix + "=" * split_line_len + "\n"
         model_stats = sorted(list(self.collect_model_stats().items()))
 
         last_lvl = model_stats[-1][0].split("_")[1]
-        last_lvl_models = [
-            ms for ms in model_stats if ms[0].startswith("Lvl_" + last_lvl)
-        ]
-        notlast_lvl_models = [
-            ms for ms in model_stats if not ms[0].startswith("Lvl_" + last_lvl)
-        ]
+        last_lvl_models = [ms for ms in model_stats if ms[0].startswith("Lvl_" + last_lvl)]
+        notlast_lvl_models = [ms for ms in model_stats if not ms[0].startswith("Lvl_" + last_lvl)]
 
         res = ""
         if len(notlast_lvl_models) > 0:
@@ -238,19 +235,13 @@ class AutoMLPreset(AutoML):
                 if level != cur_level:
                     cur_level = level
                     res += "\n" + prefix + "Models on level {}:\n".format(cur_level)
-                res += prefix + "\t {} averaged models {}\n".format(
-                    cnt_folds, model_name
-                )
+                res += prefix + "\t {} averaged models {}\n".format(cnt_folds, model_name)
             res += "\n"
 
-        res += prefix + "Final prediction for new objects (level {}) = \n".format(
-            last_lvl
-        )
+        res += prefix + "Final prediction for new objects (level {}) = \n".format(last_lvl)
         for model_stat, weight in zip(last_lvl_models, self.blender.wts):
             model_name, cnt_folds = model_stat
-            res += prefix + "\t {:.5f} * ({} averaged models {}) +\n".format(
-                weight, cnt_folds, model_name
-            )
+            res += prefix + "\t {:.5f} * ({} averaged models {}) +\n".format(weight, cnt_folds, model_name)
 
         if split_line_len == 0:
             return res[:-2]

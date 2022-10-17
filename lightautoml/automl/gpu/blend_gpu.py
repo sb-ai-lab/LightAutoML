@@ -1,20 +1,31 @@
 """Blenders (GPU version)."""
-
+import copy
 import logging
-from typing import List, Optional, Sequence, Tuple, Union, cast
 
-import cudf
+from typing import List
+from typing import Optional
+from typing import Sequence
+from typing import Tuple
+from typing import cast
+from typing import Union
+
+import numpy as np
 import cupy as cp
 import dask.array as da
 import dask.dataframe as dd
-import numpy as np
+import cudf
+
 from scipy.optimize import minimize_scalar
 
-from lightautoml.automl.blend import MeanBlender, WeightedBlender
 from lightautoml.dataset.base import LAMLDataset
-from lightautoml.dataset.gpu.gpu_dataset import CudfDataset, CupyDataset, DaskCudfDataset
+from lightautoml.dataset.gpu.gpu_dataset import CupyDataset
+from lightautoml.dataset.gpu.gpu_dataset import CudfDataset
+from lightautoml.dataset.gpu.gpu_dataset import DaskCudfDataset
 from lightautoml.dataset.roles import NumericRole
 from lightautoml.pipelines.ml.base import MLPipeline
+
+from lightautoml.automl.blend import WeightedBlender
+from lightautoml.automl.blend import MeanBlender
 
 logger = logging.getLogger(__name__)
 
@@ -39,13 +50,16 @@ class MeanBlender_gpu(MeanBlender):
             dask_array = [x.data.to_dask_array(lengths=True) for x in splitted_preds]
             pred = da.nanmean([x for x in dask_array], axis=0)
 
-            cols = ["MeanBlend_gpu_{0}".format(x) for x in range(pred.shape[1])]
+            cols = ['MeanBlend_gpu_{0}'.format(x) for x in range(pred.shape[1])]
             index = splitted_preds[0].data.index
             pred = dd.from_dask_array(
-                pred, columns=cols, index=index, meta=cudf.DataFrame()
+                pred,
+                columns = cols,
+                index = index,
+                meta=cudf.DataFrame()
             ).persist()
         else:
-            pred = cp.nanmean(cp.array([x.data for x in splitted_preds]), axis=0)
+            pred = cp.nanmean([x.data for x in splitted_preds], axis=0)
 
         outp.set_data(
             pred,
@@ -64,9 +78,18 @@ class WeightedBlender_gpu(WeightedBlender):
 
     """
 
-    def _get_weighted_pred(
-        self, splitted_preds: Sequence[GpuDataset], wts: Optional[cp.ndarray]
-    ) -> GpuDataset:
+    def to_cpu(self):
+        wts = copy.deepcopy(cp.asnumpy(self.wts))
+        blender = WeightedBlender(max_iters=self.max_iters,
+                                  max_inner_iters=self.max_inner_iters,
+                                  max_nonzero_coef=self.max_nonzero_coef)
+        blender.wts = wts
+        blender._outp_dim = self._outp_dim
+        blender._outp_prob = self._outp_prob
+        return blender
+
+    def _get_weighted_pred(self, splitted_preds: Sequence[GpuDataset],
+                           wts: Optional[cp.ndarray]) -> GpuDataset:
         length = len(splitted_preds)
         if wts is None:
             wts = cp.ones(length, dtype=cp.float32) / length
@@ -74,46 +97,33 @@ class WeightedBlender_gpu(WeightedBlender):
         weighted_pred = None
         if type(splitted_preds[0]) == DaskCudfDataset:
             dask_array = [x.data.to_dask_array(lengths=True) for x in splitted_preds]
-            weighted_pred = da.nansum(
-                da.array([x * w for (x, w) in zip(dask_array, wts)]), axis=0
-            ).astype(cp.float32)
+            weighted_pred = da.nansum(da.array([x * w for (x, w)\
+                                      in zip(dask_array, wts)]), axis=0)\
+                                      .astype(cp.float32)
 
-            not_nulls = da.sum(
-                da.array(
-                    [
-                        da.logical_not(da.isnan(x).any(axis=1)) * w
-                        for (x, w) in zip(dask_array, wts)
-                    ]
-                ),
-                axis=0,
-            ).astype(cp.float32)
+            not_nulls = da.sum(da.array([da.logical_not(da.isnan(x).any(axis=1)) * w\
+                               for (x, w) in zip(dask_array, wts)]), axis=0).\
+                               astype(cp.float32)
             not_nulls = not_nulls[:, cp.newaxis]
 
             weighted_pred /= not_nulls
             weighted_pred = da.where(not_nulls == 0, cp.nan, weighted_pred)
 
-            cols = [
-                "WeightedBlend_gpu_{0}".format(x) for x in range(weighted_pred.shape[1])
-            ]
+            cols = ['WeightedBlend_gpu_{0}'.format(x) for x in range(weighted_pred.shape[1])]
             index = splitted_preds[0].data.index
-            weighted_pred = dd.from_dask_array(
-                weighted_pred, columns=cols, index=index, meta=cudf.DataFrame()
-            )
+            weighted_pred = dd.from_dask_array(weighted_pred,
+                                               columns = cols,
+                                               index = index,
+                                               meta=cudf.DataFrame())
 
         else:
-            weighted_pred = cp.nansum(
-                cp.array([x.data * w for (x, w) in zip(splitted_preds, wts)]), axis=0
-            ).astype(cp.float32)
+            weighted_pred = cp.nansum(cp.array([x.data * w for (x, w)\
+                                      in zip(splitted_preds, wts)]), axis=0)\
+                                      .astype(cp.float32)
 
-            not_nulls = cp.sum(
-                cp.array(
-                    [
-                        cp.logical_not(cp.isnan(x.data).any(axis=1)) * w
-                        for (x, w) in zip(splitted_preds, wts)
-                    ]
-                ),
-                axis=0,
-            ).astype(cp.float32)
+            not_nulls = cp.sum(cp.array([cp.logical_not(cp.isnan(x.data).any(axis=1)) * w\
+                               for (x, w) in zip(splitted_preds, wts)]), axis=0)\
+                               .astype(cp.float32)
             not_nulls = not_nulls[:, cp.newaxis]
 
             weighted_pred /= not_nulls
@@ -121,8 +131,9 @@ class WeightedBlender_gpu(WeightedBlender):
 
         outp = splitted_preds[0].empty()
 
-        cols = ["WeightedBlend_gpu_{0}".format(x) for x in range(weighted_pred.shape[1])]
-        outp.set_data(weighted_pred, cols, NumericRole(cp.float32, prob=self._outp_prob))
+        cols = ['WeightedBlend_gpu_{0}'.format(x) for x in range(weighted_pred.shape[1])]
+        outp.set_data(weighted_pred, cols,
+                      NumericRole(cp.float32, prob=self._outp_prob))
 
         return outp
 
@@ -152,11 +163,7 @@ class WeightedBlender_gpu(WeightedBlender):
         best_pred = self._get_weighted_pred(splitted_preds, candidate)
 
         best_score = self.score(best_pred)
-        logger.info(
-            "Blending: Optimization starts with equal weights and score {0}".format(
-                best_score
-            )
-        )
+        logger.info('Blending: Optimization starts with equal weights and score {0}'.format(best_score))
         score = best_score
         for _ in range(self.max_iters):
             flg_no_upd = True
@@ -165,12 +172,8 @@ class WeightedBlender_gpu(WeightedBlender):
                     continue
 
                 obj = self._get_scorer(splitted_preds, i, candidate)
-                opt_res = minimize_scalar(
-                    obj,
-                    method="Bounded",
-                    bounds=(0, 1),
-                    options={"disp": False, "maxiter": self.max_inner_iters},
-                )
+                opt_res = minimize_scalar(obj, method='Bounded', bounds=(0, 1),
+                                          options={'disp': False, 'maxiter': self.max_inner_iters})
                 w = opt_res.x
                 score = -opt_res.fun
                 if score > best_score:
@@ -181,14 +184,10 @@ class WeightedBlender_gpu(WeightedBlender):
 
                     candidate = self._get_candidate(candidate, i, w)
 
-            logger.info(
-                "Blending, iter {0}: score = {1}, weights = {2}".format(
-                    _, score, candidate
-                )
-            )
+            logger.info('Blending, iter {0}: score = {1}, weights = {2}'.format(_, score, candidate))
 
             if flg_no_upd:
-                logger.info("No score update. Terminated")
+                logger.info('No score update. Terminated')
                 break
 
         return candidate
@@ -228,9 +227,7 @@ class WeightedBlender_gpu(WeightedBlender):
 
         """
         self._set_metadata(predictions, pipes)
-        splitted_preds, _, pipe_idx = cast(
-            List[GpuDataset], self.split_models(predictions)
-        )
+        splitted_preds, _, pipe_idx = cast(List[GpuDataset], self.split_models(predictions))
 
         wts = self._optimize(splitted_preds)
         splitted_preds = [x for (x, w) in zip(splitted_preds, wts) if w > 0]

@@ -1,31 +1,30 @@
 """Utilities for working with the structure of a dataset."""
 
-from typing import Callable, Dict, Optional, Sequence, Tuple, Union
+from typing import Callable
+from typing import Dict
+from typing import Optional
+from typing import Sequence
+from typing import Tuple
+from typing import Union
 
 from lightautoml.dataset.base import LAMLDataset
-from lightautoml.dataset.np_pd_dataset import (
-    CSRSparseDataset,
-    NumpyDataset,
-    PandasDataset,
-)
-
+from lightautoml.dataset.np_pd_dataset import CSRSparseDataset
+from lightautoml.dataset.np_pd_dataset import NumpyDataset
+from lightautoml.dataset.np_pd_dataset import PandasDataset
 try:
-    from lightautoml.dataset.gpu.gpu_dataset import (
-        CudfDataset,
-        CupyDataset,
-        DaskCudfDataset,
-    )
+    from lightautoml.dataset.gpu.gpu_dataset import CupyDataset
+    from lightautoml.dataset.gpu.gpu_dataset import CudfDataset
+    from lightautoml.dataset.gpu.gpu_dataset import DaskCudfDataset
 except:
     print("No GPUs detected. Switching  to CPU...")
 
 from lightautoml.dataset.roles import ColumnRole
 
+
 # RoleType = TypeVar("RoleType", bound=ColumnRole)
 
 
-def roles_parser(
-    init_roles: Dict[Union[ColumnRole, str], Union[str, Sequence[str]]]
-) -> Dict[str, ColumnRole]:
+def roles_parser(init_roles: Dict[Union[ColumnRole, str], Union[str, Sequence[str]]]) -> Dict[str, ColumnRole]:
     """Parser of roles.
 
     Parse roles from old format numeric:
@@ -86,17 +85,13 @@ def get_common_concat(
     elif dataset_types == {CudfDataset, CupyDataset}:
         return cupy_and_cudf_concat, None
 
-    # elif dataset_types == {DaskCudfDataset, CupyDataset}:
+    #elif dataset_types == {DaskCudfDataset, CupyDataset}:
     #    return daskcudf_and_cupy_concat, None
 
-    raise TypeError(
-        "Unable to concatenate dataset types {0}".format(list(dataset_types))
-    )
+    raise TypeError("Unable to concatenate dataset types {0}".format(list(dataset_types)))
 
 
-def cupy_and_cudf_concat(
-    datasets: Sequence[Union[CupyDataset, CudfDataset]]
-) -> CudfDataset:
+def cupy_and_cudf_concat(datasets: Sequence[Union[CupyDataset, CudfDataset]]) -> CudfDataset:
     """Concat of cupy and cudf dataset.
 
     Args:
@@ -107,16 +102,14 @@ def cupy_and_cudf_concat(
 
     """
 
-    # is it better to convert to cudf?
-    # concating to cudf made problem with convert_to_holdout_iterator (shape difference)
+    #is it better to convert to cudf?
+    #concating to cudf made problem with convert_to_holdout_iterator (shape difference)
     datasets = [x.to_cupy() for x in datasets]
 
     return CupyDataset.concat(datasets)
 
 
-def daskcudf_and_cupy_concat(
-    datasets: Sequence[Union[DaskCudfDataset, CupyDataset]]
-) -> CudfDataset:
+def daskcudf_and_cupy_concat(datasets: Sequence[Union[DaskCudfDataset, CupyDataset]]) -> CudfDataset:
     """Concat of daskcudf and cupy dataset.
 
         Args:
@@ -126,19 +119,17 @@ def daskcudf_and_cupy_concat(
             Concatenated dataset.
 
         """
-    # raise ValueError("TestException")
+    #raise ValueError("TestException")
     for x in datasets:
         if type(x) is DaskCudfDataset:
             n_parts = len(x.data._divisions) - 1
     datasets = [x.to_daskcudf(n_parts) for x in datasets]
-
+    
     out = DaskCudfDataset.concat(datasets)
     return out
 
 
-def numpy_and_pandas_concat(
-    datasets: Sequence[Union[NumpyDataset, PandasDataset]]
-) -> PandasDataset:
+def numpy_and_pandas_concat(datasets: Sequence[Union[NumpyDataset, PandasDataset]]) -> PandasDataset:
     """Concat of numpy and pandas dataset.
 
     Args:

@@ -2,6 +2,7 @@ from typing import Optional
 
 import torch
 import torch.nn.functional as F
+
 from torch import nn
 from torch.distributions.utils import clamp_probs
 
@@ -22,9 +23,7 @@ class TIModel(nn.Module):
     ):
         super(TIModel, self).__init__()
 
-        self.lookup = create_emb_layer(
-            weights_matrix, voc_size, embed_dim, trainable_embeds
-        )
+        self.lookup = create_emb_layer(weights_matrix, voc_size, embed_dim, trainable_embeds)
 
         embed_dim = self.lookup.embedding_dim
         self.drop1 = nn.Dropout(p=drop_rate)
@@ -187,9 +186,7 @@ class DistilPredictor(nn.Module):
     ):
         super(DistilPredictor, self).__init__()
 
-        self.lookup = create_emb_layer(
-            weights_matrix, voc_size, embed_dim, trainable_embeds
-        )
+        self.lookup = create_emb_layer(weights_matrix, voc_size, embed_dim, trainable_embeds)
         embed_dim = self.lookup.embedding_dim
         self.fc1 = nn.Linear(embed_dim, hidden_dim)
         self.act = nn.ReLU()

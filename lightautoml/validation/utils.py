@@ -1,18 +1,26 @@
 """Validation utils."""
 
-from typing import Callable, Optional, Union, cast
-
-from lightautoml.dataset.gpu.gpu_dataset import CudfDataset, CupyDataset, DaskCudfDataset
-from lightautoml.validation.gpu.gpu_iterators import get_gpu_iterator
+from typing import Callable
+from typing import Optional
+from typing import Union
+from typing import cast
 
 from ..dataset.base import LAMLDataset
-from ..dataset.np_pd_dataset import CSRSparseDataset, NumpyDataset, PandasDataset
-from .base import DummyIterator, HoldoutIterator, TrainValidIterator
+from ..dataset.np_pd_dataset import CSRSparseDataset
+from ..dataset.np_pd_dataset import NumpyDataset
+from ..dataset.np_pd_dataset import PandasDataset
+from lightautoml.dataset.gpu.gpu_dataset import CupyDataset
+from lightautoml.dataset.gpu.gpu_dataset import CudfDataset
+from lightautoml.dataset.gpu.gpu_dataset import DaskCudfDataset
+from .base import DummyIterator
+from .base import HoldoutIterator
+from .base import TrainValidIterator
 from .np_iterators import get_numpy_iterator
+from lightautoml.validation.gpu.gpu_iterators import get_gpu_iterator
+
 
 NpDataset = Union[CSRSparseDataset, NumpyDataset, PandasDataset]
 GpuDataset = Union[CupyDataset, CudfDataset, DaskCudfDataset]
-
 
 def create_validation_iterator(
     train: LAMLDataset,

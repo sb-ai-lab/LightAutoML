@@ -1,15 +1,23 @@
 """Blenders."""
 
 import logging
-from typing import Callable, List, Optional, Sequence, Tuple, cast
+
+from typing import Callable
+from typing import List
+from typing import Optional
+from typing import Sequence
+from typing import Tuple
+from typing import cast
 
 import numpy as np
+
 from scipy.optimize import minimize_scalar
 
 from ..dataset.base import LAMLDataset
 from ..dataset.np_pd_dataset import NumpyDataset
 from ..dataset.roles import NumericRole
 from ..pipelines.ml.base import MLPipeline
+
 
 logger = logging.getLogger(__name__)
 
@@ -99,9 +107,7 @@ class Blender:
         """
         raise NotImplementedError
 
-    def split_models(
-        self, predictions: Sequence[LAMLDataset]
-    ) -> Tuple[Sequence[LAMLDataset], List[int], List[int]]:
+    def split_models(self, predictions: Sequence[LAMLDataset]) -> Tuple[Sequence[LAMLDataset], List[int], List[int]]:
         """Split predictions by single model prediction datasets.
 
         Args:
@@ -121,18 +127,14 @@ class Blender:
             n_models = len(features) // self.outp_dim
 
             for k in range(n_models):
-                curr_pred = preds[
-                    :, features[k * self.outp_dim : (k + 1) * self.outp_dim]
-                ]
+                curr_pred = preds[:, features[k * self.outp_dim : (k + 1) * self.outp_dim]]
                 splitted_preds.append(curr_pred)
                 model_idx.append(k)
                 pipe_idx.append(n)
 
         return splitted_preds, model_idx, pipe_idx
 
-    def _set_metadata(
-        self, predictions: Sequence[LAMLDataset], pipes: Sequence[MLPipeline]
-    ):
+    def _set_metadata(self, predictions: Sequence[LAMLDataset], pipes: Sequence[MLPipeline]):
 
         pred0 = predictions[0]
         pipe0 = pipes[0]
@@ -302,22 +304,15 @@ class WeightedBlender(Blender):
         self.max_nonzero_coef = max_nonzero_coef
         self.wts = [1]
 
-    def _get_weighted_pred(
-        self, splitted_preds: Sequence[NumpyDataset], wts: Optional[np.ndarray]
-    ) -> NumpyDataset:
+    def _get_weighted_pred(self, splitted_preds: Sequence[NumpyDataset], wts: Optional[np.ndarray]) -> NumpyDataset:
         length = len(splitted_preds)
         if wts is None:
             wts = np.ones(length, dtype=np.float32) / length
 
-        weighted_pred = np.nansum(
-            [x.data * w for (x, w) in zip(splitted_preds, wts)], axis=0
-        ).astype(np.float32)
+        weighted_pred = np.nansum([x.data * w for (x, w) in zip(splitted_preds, wts)], axis=0).astype(np.float32)
 
         not_nulls = np.sum(
-            [
-                np.logical_not(np.isnan(x.data).any(axis=1)) * w
-                for (x, w) in zip(splitted_preds, wts)
-            ],
+            [np.logical_not(np.isnan(x.data).any(axis=1)) * w for (x, w) in zip(splitted_preds, wts)],
             axis=0,
         ).astype(np.float32)
 
@@ -354,9 +349,7 @@ class WeightedBlender(Blender):
 
         return candidate
 
-    def _get_scorer(
-        self, splitted_preds: Sequence[NumpyDataset], idx: int, wts: np.ndarray
-    ) -> Callable:
+    def _get_scorer(self, splitted_preds: Sequence[NumpyDataset], idx: int, wts: np.ndarray) -> Callable:
         def scorer(x):
             candidate = self._get_candidate(wts, idx, x)
 
@@ -374,11 +367,7 @@ class WeightedBlender(Blender):
         best_pred = self._get_weighted_pred(splitted_preds, candidate)
 
         best_score = self.score(best_pred)
-        logger.info(
-            "Blending: optimization starts with equal weights and score \x1b[1m{0}\x1b[0m".format(
-                best_score
-            )
-        )
+        logger.info("Blending: optimization starts with equal weights and score \x1b[1m{0}\x1b[0m".format(best_score))
         score = best_score
         for _ in range(self.max_iters):
             flg_no_upd = True
@@ -450,9 +439,7 @@ class WeightedBlender(Blender):
 
         """
         self._set_metadata(predictions, pipes)
-        splitted_preds, _, pipe_idx = cast(
-            List[NumpyDataset], self.split_models(predictions)
-        )
+        splitted_preds, _, pipe_idx = cast(List[NumpyDataset], self.split_models(predictions))
 
         wts = self._optimize(splitted_preds)
         splitted_preds = [x for (x, w) in zip(splitted_preds, wts) if w > 0]

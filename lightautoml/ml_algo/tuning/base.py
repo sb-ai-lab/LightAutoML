@@ -1,8 +1,12 @@
 """Base classes to implement hyperparameter tuning."""
 
-from abc import ABC, abstractmethod
+from abc import ABC
+from abc import abstractmethod
 from enum import Enum
-from typing import Dict, Optional, Tuple, overload
+from typing import Dict
+from typing import Optional
+from typing import Tuple
+from typing import overload
 
 from lightautoml.dataset.base import LAMLDataset
 
@@ -99,7 +103,5 @@ class DefaultTuner(ParamsTuner):
         Returns:s
             Tuple (None, None).
         """
-        self._best_params = ml_algo.init_params_on_input(
-            train_valid_iterator=train_valid_iterator
-        )
+        self._best_params = ml_algo.init_params_on_input(train_valid_iterator=train_valid_iterator)
         return None, None

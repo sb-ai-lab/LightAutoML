@@ -1,8 +1,13 @@
 """Metrics and loss functions for LightGBM."""
 
 import logging
+
 from functools import partial
-from typing import Callable, Dict, Optional, Tuple, Union
+from typing import Callable
+from typing import Dict
+from typing import Optional
+from typing import Tuple
+from typing import Union
 
 import lightgbm as lgb
 import numpy as np
@@ -12,6 +17,7 @@ from ..utils import infer_gib
 from .base import Loss
 from .lgb_custom import lgb_f1_loss_multiclass  # , F1Factory
 from .lgb_custom import softmax_ax1
+
 
 logger = logging.getLogger(__name__)
 
@@ -230,9 +236,7 @@ class LGBLoss(Loss):
         if self.fobj_name in _lgb_force_metric:
             metric, greater_is_better, metric_params = _lgb_force_metric[self.fobj_name]
             logger.info2(
-                "For lgbm {0} callback metric switched to {1}".format(
-                    self.fobj_name, metric
-                ),
+                "For lgbm {0} callback metric switched to {1}".format(self.fobj_name, metric),
                 UserWarning,
             )
 
@@ -258,6 +262,4 @@ class LGBLoss(Loss):
         else:
             self.metric_name = None
             # metric = CustomWrapper(metric)
-            self.feval = self.metric_wrapper(
-                metric, greater_is_better, self.metric_params
-            )
+            self.feval = self.metric_wrapper(metric, greater_is_better, self.metric_params)

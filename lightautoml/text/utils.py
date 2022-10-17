@@ -2,11 +2,16 @@
 
 import os
 import random
-from typing import Dict, List, Sequence
+
+from typing import Dict
+from typing import List
+from typing import Sequence
 
 import numpy as np
 import torch
+
 from sklearn.utils.murmurhash import murmurhash3_32
+
 
 _dtypes_mapping = {
     "label": "float",
@@ -149,9 +154,7 @@ def custom_collate(batch: List[np.ndarray]) -> torch.Tensor:
 def collate_dict(batch: List[Dict[str, np.ndarray]]) -> Dict[str, torch.Tensor]:
     """custom_collate for dicts."""
     keys = list(batch[0].keys())
-    transposed_data = list(
-        map(list, zip(*[tuple([i[name] for name in i.keys()]) for i in batch]))
-    )
+    transposed_data = list(map(list, zip(*[tuple([i[name] for name in i.keys()]) for i in batch])))
     return {key: custom_collate(transposed_data[n]) for n, key in enumerate(keys)}
 
 

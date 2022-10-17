@@ -1,13 +1,22 @@
-from collections import Counter, defaultdict
+from collections import Counter
+from collections import defaultdict
 from random import shuffle
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any
+from typing import Callable
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Tuple
 
 import numpy as np
 import pandas as pd
 import torch
+
 from torch import nn
 from torch.nn.utils.rnn import pad_sequence
-from torch.utils.data import DataLoader, Dataset, Sampler
+from torch.utils.data import DataLoader
+from torch.utils.data import Dataset
+from torch.utils.data import Sampler
 
 
 class LengthDataset(Dataset):
@@ -107,9 +116,7 @@ class BySequenceLengthSampler(Sampler):
         return len(self.data_source) // self.batch_size + 1
 
     def to_bucket(self, seq_length):
-        valid_buckets = (seq_length >= self.buckets_min) * (
-            seq_length < self.buckets_max
-        )
+        valid_buckets = (seq_length >= self.buckets_min) * (seq_length < self.buckets_max)
         bucket_id = torch.nonzero(valid_buckets, as_tuple=True)[0].item()
 
         return bucket_id
@@ -147,9 +154,7 @@ def pad_max_len(batch: List[Dict[str, Any]]) -> Dict[str, Any]:
     }
 
 
-def get_tokenized(
-    data: pd.DataFrame, tokenized_col: str, tokenizer: Callable
-) -> List[List[str]]:
+def get_tokenized(data: pd.DataFrame, tokenized_col: str, tokenizer: Callable) -> List[List[str]]:
     """
     Get tokenized column.
 
@@ -169,9 +174,7 @@ def get_tokenized(
     return tokenized
 
 
-def get_vocab(
-    tokenized: List[List[str]], max_len_vocab: int
-) -> Tuple[Dict[str, int], Dict[int, str]]:
+def get_vocab(tokenized: List[List[str]], max_len_vocab: int) -> Tuple[Dict[str, int], Dict[int, str]]:
     """
     Get vocabulary dataset.
 
@@ -189,17 +192,13 @@ def get_vocab(
     max_len_vocab = len(counter) if max_len_vocab == -1 else max_len_vocab
     max_len_vocab = min(max_len_vocab, len(counter))
     word_to_id = {"<PAD>": 0, "<START>": 1, "<UNK>": 2}
-    word_to_id.update(
-        {v: i + 3 for i, (v, _) in enumerate(counter.most_common(max_len_vocab))}
-    )
+    word_to_id.update({v: i + 3 for i, (v, _) in enumerate(counter.most_common(max_len_vocab))})
     id_to_word = {w: k for k, w in word_to_id.items()}
 
     return word_to_id, id_to_word
 
 
-def get_embedding_matrix(
-    id_to_word: Dict[int, str], embedder: Any, embedder_dim: int
-) -> torch.FloatTensor:
+def get_embedding_matrix(id_to_word: Dict[int, str], embedder: Any, embedder_dim: int) -> torch.FloatTensor:
     """Create embedding matrix from lookup table and (optionaly) embedder.
 
     Args:
@@ -271,11 +270,7 @@ def get_len_dataset(tokenized: List[List[str]], target: np.ndarray) -> LengthDat
 
     """
     if len(tokenized) != len(target):
-        raise ValueError(
-            "Missmatch of lengths tokenized ({}) and target ({})".format(
-                len(tokenized), len(target)
-            )
-        )
+        raise ValueError("Missmatch of lengths tokenized ({}) and target ({})".format(len(tokenized), len(target)))
     return LengthDataset(tokenized, target)
 
 
@@ -299,28 +294,18 @@ def get_len_dataloader(
 
     """
     if mode == "train":
-        sampler = BySequenceLengthSampler(
-            dataset, boundaries, batch_size, drop_last=True
-        )
-        dataloader = DataLoader(
-            dataset, batch_size=1, batch_sampler=sampler, collate_fn=pad_max_len
-        )
+        sampler = BySequenceLengthSampler(dataset, boundaries, batch_size, drop_last=True)
+        dataloader = DataLoader(dataset, batch_size=1, batch_sampler=sampler, collate_fn=pad_max_len)
     elif mode == "valid":
-        sampler = BySequenceLengthSampler(
-            dataset, boundaries, batch_size, drop_last=False, shuffle=False
-        )
-        dataloader = DataLoader(
-            dataset, batch_size=1, batch_sampler=sampler, collate_fn=pad_max_len
-        )
+        sampler = BySequenceLengthSampler(dataset, boundaries, batch_size, drop_last=False, shuffle=False)
+        dataloader = DataLoader(dataset, batch_size=1, batch_sampler=sampler, collate_fn=pad_max_len)
     elif mode == "test":
         dataloader = DataLoader(dataset, batch_size=batch_size, collate_fn=pad_max_len)
 
     return dataloader
 
 
-def create_emb_layer(
-    weights_matrix=None, voc_size=None, embed_dim=None, trainable_embeds=True
-) -> torch.nn.Embedding:
+def create_emb_layer(weights_matrix=None, voc_size=None, embed_dim=None, trainable_embeds=True) -> torch.nn.Embedding:
     """Create initialized embedding layer.
 
     Args:

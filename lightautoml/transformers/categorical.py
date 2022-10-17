@@ -1,17 +1,27 @@
 """Categorical features transformerrs."""
 
 from itertools import combinations
-from typing import List, Optional, Sequence, Union, cast
+from typing import List
+from typing import Optional
+from typing import Sequence
+from typing import Union
+from typing import cast
 
 import numpy as np
-from pandas import DataFrame, Series
+
+from pandas import DataFrame
+from pandas import Series
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.utils.murmurhash import murmurhash3_32
 
 from ..dataset.base import LAMLDataset
-from ..dataset.np_pd_dataset import CSRSparseDataset, NumpyDataset, PandasDataset
-from ..dataset.roles import CategoryRole, NumericRole
+from ..dataset.np_pd_dataset import CSRSparseDataset
+from ..dataset.np_pd_dataset import NumpyDataset
+from ..dataset.np_pd_dataset import PandasDataset
+from ..dataset.roles import CategoryRole
+from ..dataset.roles import NumericRole
 from .base import LAMLTransformer
+
 
 # type - something that can be convered to pandas dataset
 NumpyOrPandas = Union[NumpyDataset, PandasDataset]
@@ -30,9 +40,7 @@ def categorical_check(dataset: LAMLDataset):
     roles = dataset.roles
     features = dataset.features
     for f in features:
-        assert (
-            roles[f].name == "Category"
-        ), "Only categories accepted in this transformer"
+        assert roles[f].name == "Category", "Only categories accepted in this transformer"
 
 
 def oof_task_check(dataset: LAMLDataset):
@@ -59,9 +67,7 @@ def multiclass_task_check(dataset: LAMLDataset):
 
     """
     task = dataset.task
-    assert task.name in [
-        "multiclass"
-    ], "Only multiclass tasks supported in this transformer"
+    assert task.name in ["multiclass"], "Only multiclass tasks supported in this transformer"
 
 
 def encoding_check(dataset: LAMLDataset):
@@ -159,9 +165,7 @@ class LabelEncoder(LAMLTransformer):
                 .set_index("index")
             )
             vals = cnts[cnts > co].index.values
-            self.dicts[i] = Series(
-                np.arange(vals.shape[0], dtype=np.int32) + 1, index=vals
-            )
+            self.dicts[i] = Series(np.arange(vals.shape[0], dtype=np.int32) + 1, index=vals)
 
         return self
 
@@ -231,9 +235,7 @@ class OHEEncoder(LAMLTransformer):
         self.dtype = dtype
 
         if self.make_sparse is None:
-            assert (
-                self.total_feats_cnt is not None
-            ), "Param total_feats_cnt should be defined if make_sparse is None"
+            assert self.total_feats_cnt is not None, "Param total_feats_cnt should be defined if make_sparse is None"
 
     def fit(self, dataset: NumpyOrPandas):
         """Calc output shapes.
@@ -261,16 +263,12 @@ class OHEEncoder(LAMLTransformer):
 
         # infer make sparse
         if self.make_sparse is None:
-            fill_rate = self.total_feats_cnt / (
-                self.total_feats_cnt - max_idx.shape[0] + max_idx.sum()
-            )
+            fill_rate = self.total_feats_cnt / (self.total_feats_cnt - max_idx.shape[0] + max_idx.sum())
             self.make_sparse = fill_rate < 0.2
 
         # create ohe
         self.ohe = OneHotEncoder(
-            categories=[
-                np.arange(x, y + 1, dtype=np.int32) for (x, y) in zip(min_idx, max_idx)
-            ],
+            categories=[np.arange(x, y + 1, dtype=np.int32) for (x, y) in zip(min_idx, max_idx)],
             # drop=np.ones(max_idx.shape[0], dtype=np.int32),
             dtype=self.dtype,
             sparse=self.make_sparse,
@@ -377,9 +375,7 @@ class TargetEncoder(LAMLTransformer):
     _transform_checks = ()
     _fname_prefix = "oof"
 
-    def __init__(
-        self, alphas: Sequence[float] = (0.5, 1.0, 2.0, 5.0, 10.0, 50.0, 250.0, 1000.0)
-    ):
+    def __init__(self, alphas: Sequence[float] = (0.5, 1.0, 2.0, 5.0, 10.0, 50.0, 250.0, 1000.0)):
         """
 
         Args:
@@ -401,9 +397,7 @@ class TargetEncoder(LAMLTransformer):
 
         """
         target = target[:, np.newaxis]
-        scores = -(
-            target * np.log(candidates) + (1 - target) * np.log(1 - candidates)
-        ).mean(axis=0)
+        scores = -(target * np.log(candidates) + (1 - target) * np.log(1 - candidates)).mean(axis=0)
         idx = scores.argmin()
 
         return idx
@@ -448,11 +442,7 @@ class TargetEncoder(LAMLTransformer):
         dataset = dataset.to_numpy()
         data = dataset.data
         target = dataset.target.astype(np.int32)
-        score_func = (
-            self.binary_score_func
-            if dataset.task.name == "binary"
-            else self.reg_score_func
-        )
+        score_func = self.binary_score_func if dataset.task.name == "binary" else self.reg_score_func
 
         folds = dataset.folds
         n_folds = folds.max() + 1
@@ -490,10 +480,7 @@ class TargetEncoder(LAMLTransformer):
             oof_count = t_count - f_count
             # calc candidates alpha
             candidates = (
-                (
-                    oof_sum[vec, folds, np.newaxis]
-                    + alphas * folds_prior[folds, np.newaxis]
-                )
+                (oof_sum[vec, folds, np.newaxis] + alphas * folds_prior[folds, np.newaxis])
                 / (oof_count[vec, folds, np.newaxis] + alphas)
             ).astype(np.float32)
             idx = score_func(candidates, target)
@@ -501,9 +488,7 @@ class TargetEncoder(LAMLTransformer):
             # write best alpha
             oof_feats[:, n] = candidates[:, idx]
             # calc best encoding
-            enc = (
-                (t_sum[:, 0] + alphas[0, idx] * prior) / (t_count[:, 0] + alphas[0, idx])
-            ).astype(np.float32)
+            enc = ((t_sum[:, 0] + alphas[0, idx] * prior) / (t_count[:, 0] + alphas[0, idx])).astype(np.float32)
 
             self.encodings.append(enc)
 
@@ -560,9 +545,7 @@ class MultiClassTargetEncoder(LAMLTransformer):
     def features(self) -> List[str]:
         return self._features
 
-    def __init__(
-        self, alphas: Sequence[float] = (0.5, 1.0, 2.0, 5.0, 10.0, 50.0, 250.0, 1000.0)
-    ):
+    def __init__(self, alphas: Sequence[float] = (0.5, 1.0, 2.0, 5.0, 10.0, 50.0, 250.0, 1000.0)):
         self.alphas = alphas
 
     @staticmethod
@@ -612,9 +595,7 @@ class MultiClassTargetEncoder(LAMLTransformer):
 
         self.encodings = []
         # prior
-        prior = cast(np.ndarray, np.arange(n_classes)[:, np.newaxis] == target).mean(
-            axis=1
-        )
+        prior = cast(np.ndarray, np.arange(n_classes)[:, np.newaxis] == target).mean(axis=1)
         # folds prior
         f_sum = np.zeros((n_classes, n_folds), dtype=np.float64)
         f_count = np.zeros((1, n_folds), dtype=np.float64)
@@ -623,10 +604,7 @@ class MultiClassTargetEncoder(LAMLTransformer):
         np.add.at(f_count, (0, folds), 1)
 
         # N_classes x N_folds
-        folds_prior = (
-            (f_sum.sum(axis=1, keepdims=True) - f_sum)
-            / (f_count.sum(axis=1, keepdims=True) - f_count)
-        ).T
+        folds_prior = ((f_sum.sum(axis=1, keepdims=True) - f_sum) / (f_count.sum(axis=1, keepdims=True) - f_count)).T
         oof_feats = np.zeros(data.shape + (n_classes,), dtype=np.float32)
 
         self._features = []
@@ -655,10 +633,7 @@ class MultiClassTargetEncoder(LAMLTransformer):
 
             # (N x N_classes x 1 + 1 x 1 x N_alphas * N x N_classes x 1) / (N x 1 x 1 + N x 1 x 1) -> N x N_classes x N_alphas
             candidates = (
-                (
-                    oof_sum[vec, :, folds, np.newaxis]
-                    + alphas * folds_prior[folds, :, np.newaxis]
-                )
+                (oof_sum[vec, :, folds, np.newaxis] + alphas * folds_prior[folds, :, np.newaxis])
                 / (oof_count[vec, :, folds, np.newaxis] + alphas)
             ).astype(np.float32)
 
@@ -667,10 +642,9 @@ class MultiClassTargetEncoder(LAMLTransformer):
 
             idx = self.score_func(candidates, target)
             oof_feats[:, n] = candidates[..., idx]
-            enc = (
-                (t_sum[..., 0] + alphas[0, 0, idx] * prior)
-                / (t_count[..., 0] + alphas[0, 0, idx])
-            ).astype(np.float32)
+            enc = ((t_sum[..., 0] + alphas[0, 0, idx] * prior) / (t_count[..., 0] + alphas[0, 0, idx])).astype(
+                np.float32
+            )
             enc /= enc.sum(axis=1, keepdims=True)
 
             self.encodings.append(enc)
@@ -868,9 +842,7 @@ class OrdinalEncoder(LabelEncoder):
                 co = role.unknown
                 cnts = subs[i].value_counts(dropna=True)
                 cnts = cnts[cnts > co].reset_index()
-                cnts = Series(
-                    cnts["index"].astype(str).rank().values, index=cnts["index"].values
-                )
+                cnts = Series(cnts["index"].astype(str).rank().values, index=cnts["index"].values)
                 cnts = cnts.append(Series([cnts.shape[0] + 1], index=[np.nan]))
                 self.dicts[i] = cnts
 

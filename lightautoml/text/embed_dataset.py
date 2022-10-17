@@ -1,8 +1,12 @@
 """Pytorch Datasets for text features."""
 
-from typing import Any, Dict, Sequence, Union
+from typing import Any
+from typing import Dict
+from typing import Sequence
+from typing import Union
 
 import numpy as np
+
 
 try:
     from transformers import AutoTokenizer
@@ -15,9 +19,7 @@ except:
 class BertDataset:
     """Dataset class with transformers tokenization."""
 
-    def __init__(
-        self, sentences: Sequence[str], max_length: int, model_name: str, **kwargs: Any
-    ):
+    def __init__(self, sentences: Sequence[str], max_length: int, model_name: str, **kwargs: Any):
         """Class for preparing transformers input.
 
         Args:
@@ -35,11 +37,7 @@ class BertDataset:
         _split = sent.split("[SEP]")
         sent = _split if len(_split) == 2 else (sent,)
         data = self.tokenizer.encode_plus(
-            *sent,
-            add_special_tokens=True,
-            max_length=self.max_length,
-            padding="max_length",
-            truncation=True
+            *sent, add_special_tokens=True, max_length=self.max_length, padding="max_length", truncation=True
         )
         return {i: np.array(data[i]) for i in data.keys()}
 
@@ -50,14 +48,7 @@ class BertDataset:
 class EmbedDataset:
     """Dataset class for extracting word embeddings."""
 
-    def __init__(
-        self,
-        sentences: Sequence[str],
-        embedding_model: Dict,
-        max_length: int,
-        embed_size: int,
-        **kwargs
-    ):
+    def __init__(self, sentences: Sequence[str], embedding_model: Dict, max_length: int, embed_size: int, **kwargs):
         """Class for transforming list of tokens to dict of embeddings and sentence length.
 
         Args:

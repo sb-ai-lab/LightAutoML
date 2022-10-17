@@ -1,18 +1,21 @@
 """Metrics and loss functions for xgboost (GPU version)."""
 
 import logging
+
 from functools import partial
-from typing import Callable, Dict, Optional, Tuple, Union
+from typing import Callable
+from typing import Tuple
+from typing import Union
+from typing import Optional
+from typing import Dict
 
 import numpy as np
+
+from lightautoml.tasks.losses.base import Loss
+from lightautoml.tasks.gpu.common_metric_gpu import _valid_str_multiclass_metric_names_gpu
+
 import xgboost as xgb
 from xgboost import dask as dxgb
-
-from lightautoml.tasks.gpu.common_metric_gpu import (
-    _valid_str_multiclass_metric_names_gpu,
-)
-from lightautoml.tasks.losses.base import Loss
-from lightautoml.tasks.gpu.utils_gpu import infer_gib_gpu
 
 XGBMatrix = Union[xgb.DMatrix, dxgb.DaskDeviceQuantileDMatrix]
 
@@ -20,49 +23,69 @@ logger = logging.getLogger(__name__)
 
 
 _xgb_binary_metrics_dict = {
-    "auc": "auc",
-    "logloss": "logloss",
-    "accuracy": "error",
+    'auc': 'auc',
+    'logloss': 'logloss',
+    'accuracy': 'error',
 }
 
 _xgb_reg_metrics_dict = {
-    "mse": "rmse",
-    "mae": "mae",
-    "r2": "rmse",
-    "rmsle": "rmsle",
-    "mape": "mape",
-    "quantile": "quantile",
-    "huber": "huber",
-    "fair": "fair",
+    'mse': 'rmse',
+    'mae': 'mae',
+    'r2': 'rmse',
+    'rmsle': 'rmsle',
+    'mape': 'mape',
+    'quantile': 'quantile',
+    'huber': 'huber',
+    'fair': 'fair',
 }
 
 _xgb_multiclass_metrics_dict_gpu = {
-    "auc": _valid_str_multiclass_metric_names_gpu["auc"],
-    "crossentropy": "mlogloss",
-    "accuracy": "merror",
+    'auc': _valid_str_multiclass_metric_names_gpu['auc'],
+    #'auc_mu': _valid_str_multiclass_metric_names_gpu['auc_mu'],
+    'crossentropy': 'mlogloss',
+    'accuracy': 'merror',
+
+    #'f1_macro': _valid_str_multiclass_metric_names_gpu['f1_macro'],
+    #'f1_micro': _valid_str_multiclass_metric_names_gpu['f1_micro'],
+    #'f1_weighted': _valid_str_multiclass_metric_names_gpu['f1_weighted'],
 }
 
 
 _xgb_metrics_dict_gpu = {
-    "binary": _xgb_binary_metrics_dict,
-    "reg": _xgb_reg_metrics_dict,
-    "multiclass": _xgb_multiclass_metrics_dict_gpu,
+    'binary': _xgb_binary_metrics_dict,
+    'reg': _xgb_reg_metrics_dict,
+    'multiclass': _xgb_multiclass_metrics_dict_gpu
 }
 
 _xgb_loss_mapping = {
-    "logloss": ("binary:logistic", None, None),
-    "mse": ("reg:squarederror", None, None),
-    "crossentropy": ("multi:softprob", None, None),
+
+    'logloss': ('binary:logistic', None, None),
+    'mse': ('reg:squarederror', None, None),
+    #'mae': ('l1', None, None),
+    #'mape': ('mape', None, None),
+    'crossentropy': ('multi:softprob', None, None),
+    #'rmsle': ('mse', fw_rmsle, np.expm1),
+    #'quantile': ('quantile', None, None),
+    #'huber': ('huber', None, None),
+    #'fair': ('fair', None, None),
+    #'f1': (lgb_f1_loss_multiclass, None, softmax_ax1)
+
 }
 
 _xgb_loss_params_mapping = {
-    "quantile": {"q": "alpha"},
-    "huber": {"a": "alpha"},
-    "fair_c": {"c": "fair_c"},
+    'quantile': {
+        'q': 'alpha'
+    },
+    'huber': {
+        'a': 'alpha'
+    },
+    'fair_c': {
+        'c': 'fair_c'
+    }
 }
 
 _xgb_force_metric = {
-    "rmsle": ("rmsle", None, None),
+    'rmsle': ('rmsle', None, None),
 }
 
 
@@ -70,7 +93,6 @@ class XGBFunc_gpu:
     """
     Wrapper of metric function for LightGBM.
     """
-
     def __init__(self, metric_func, greater_is_better, bw_func):
         self.metric_func = metric_func
         self.greater_is_better = greater_is_better
@@ -83,7 +105,7 @@ class XGBFunc_gpu:
         weights = dtrain.get_weight()
 
         if label.shape[0] != pred.shape[0]:
-            pred = pred.reshape((label.shape[0], -1), order="F")
+            pred = pred.reshape((label.shape[0], -1), order='F')
             label = label.astype(np.int32)
 
         label = self.bw_func(label)
@@ -97,19 +119,14 @@ class XGBFunc_gpu:
 
         # TODO: what if grouped case
 
-        return "Opt metric", val, self.greater_is_better
+        return 'Opt metric', val, self.greater_is_better
 
 
 class XGBLoss_gpu(Loss):
     """Loss used for LightGBM."""
 
-    def __init__(
-        self,
-        loss: Union[str, Callable],
-        loss_params: Optional[Dict] = None,
-        fw_func: Optional[Callable] = None,
-        bw_func: Optional[Callable] = None,
-    ):
+    def __init__(self, loss: Union[str, Callable], loss_params: Optional[Dict] = None,
+                 fw_func: Optional[Callable] = None, bw_func: Optional[Callable] = None):
         """
 
         Args:
@@ -165,12 +182,8 @@ class XGBLoss_gpu(Loss):
 
         self.metric = None
 
-    def metric_wrapper(
-        self,
-        metric_func: Callable,
-        greater_is_better: Optional[bool],
-        metric_params: Optional[Dict] = None,
-    ) -> Callable:
+    def metric_wrapper(self, metric_func: Callable, greater_is_better: Optional[bool],
+                       metric_params: Optional[Dict] = None) -> Callable:
         """Customize metric.
 
         Args:
@@ -183,20 +196,15 @@ class XGBLoss_gpu(Loss):
 
         """
         if greater_is_better is None:
-            greater_is_better = infer_gib_gpu(metric_func)
+            greater_is_better = infer_gib(metric_func)
 
         if metric_params is not None:
             metric_func = partial(metric_func, **metric_params)
 
         return XGBFunc_gpu(metric_func, greater_is_better, self._bw_func)
 
-    def set_callback_metric(
-        self,
-        metric: Union[str, Callable],
-        greater_is_better: Optional[bool] = None,
-        metric_params: Optional[Dict] = None,
-        task_name: Optional[str] = None,
-    ):
+    def set_callback_metric(self, metric: Union[str, Callable], greater_is_better: Optional[bool] = None,
+                            metric_params: Optional[Dict] = None, task_name: Optional[str] = None):
         """Callback metric setter.
 
         Args:
@@ -217,12 +225,7 @@ class XGBLoss_gpu(Loss):
         # what about task_name? in this case?
         if self.fobj_name in _xgb_force_metric:
             metric, greater_is_better, metric_params = _xgb_force_metric[self.fobj_name]
-            logger.warning(
-                "For xgb {0} callback metric switched to {1}".format(
-                    self.fobj_name, metric
-                ),
-                UserWarning,
-            )
+            logger.warning('For xgb {0} callback metric switched to {1}'.format(self.fobj_name, metric), UserWarning)
 
         self.metric_params = {}
 
@@ -246,6 +249,5 @@ class XGBLoss_gpu(Loss):
         else:
             self.metric_name = None
             # metric = CustomWrapper(metric)
-            self.feval = self.metric_wrapper(
-                metric, greater_is_better, self.metric_params
-            )
+            self.feval = self.metric_wrapper(metric, greater_is_better, self.metric_params)
+
