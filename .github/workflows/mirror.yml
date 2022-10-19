@@ -1,6 +1,10 @@
 name: Mirror repo
 
-on: [push]
+on:
+  push:
+
+  # Manually triggerable in github
+  workflow_dispatch:
 
 jobs:
   mirror:
@@ -31,7 +35,8 @@ jobs:
           git config --global user.email "bot@example.com"
 
           BRANCH=${{ github.head_ref || github.ref_name }}
-          if [[ "$branch" == "master" ]] || [[ $branch == "developer" ]]
+          EVENT_ACTION=${{ github.event_name }}
+          if [[ "$branch" == "master" ]] || [[ "$branch" == "developer" ]] || [[ "$EVENT_ACTION" == "workflow_dispatch" ]]
           then
               FORCE_FLAG="--force"
           else
