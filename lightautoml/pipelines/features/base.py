@@ -494,6 +494,8 @@ class TabularDataFeatures:
             if len(categories) <= 1:
                 return
 
+            if self.max_intersection_depth <= 1 or self.top_intersections <= 1:
+                return
             elif len(categories) > self.top_intersections:
                 feats_to_select = self.get_top_categories(train, self.top_intersections)
 
@@ -554,8 +556,6 @@ class TabularDataFeatures:
             List.
 
         """
-        if self.max_intersection_depth <= 1 or self.top_intersections <= 1:
-            return []
 
         cats = get_columns_by_role(train, "Category")
         if len(cats) == 0:
