@@ -14,6 +14,8 @@ import optuna
 
 from lightautoml.dataset.base import LAMLDataset
 from lightautoml.ml_algo.base import MLAlgo
+from lightautoml.ml_algo.base import Choice
+from lightautoml.ml_algo.base import Uniform
 from lightautoml.ml_algo.tuning.base import Distribution
 from lightautoml.ml_algo.tuning.base import ParamsTuner
 from lightautoml.validation.base import HoldoutIterator
@@ -27,12 +29,24 @@ optuna.logging.set_verbosity(optuna.logging.DEBUG)
 
 TunableAlgo = TypeVar("TunableAlgo", bound=MLAlgo)
 
+class ChoiceWrap:
+    def __init__(self, choice) -> None:
+        self.choice = choice
+        
+    def __call__(self, name, trial):
+        return trial.suggest_categorical(name=name, choices=self.choice.options)
+
+class UniformWrap:
+    def __init__(self, choice) -> None:
+        self.choice = choice
+        
+    def __call__(self, name, trial):
+        return trial.suggest_float(name=name, low=self.choice.low, high=self.choice.high, step=self.choice.q, log=self.choice.log)
+
+
 OPTUNA_DISTRIBUTIONS_MAP = {
-    Distribution.CHOICE: "suggest_categorical",
-    Distribution.UNIFORM: "suggest_uniform",
-    Distribution.LOGUNIFORM: "suggest_loguniform",
-    Distribution.INTUNIFORM: "suggest_int",
-    Distribution.DISCRETEUNIFORM: "suggest_discrete_uniform",
+    Choice: ChoiceWrap,
+    Uniform: UniformWrap
 }
 
 
@@ -197,7 +211,7 @@ class OptunaTuner(ParamsTuner):
                     estimated_n_trials=estimated_n_trials,
                 )
 
-            if callable(optimization_search_space):
+            if callable(optimization_search_space): # TODO: ЧТО ЭТО
                 _ml_algo.params = optimization_search_space(
                     trial=trial,
                     optimization_search_space=optimization_search_space,
@@ -226,13 +240,13 @@ class OptunaTuner(ParamsTuner):
 
         trial_values = copy(suggested_params)
 
-        for parameter, SearchSpace in optimization_search_space.items():
-            if SearchSpace.distribution_type in OPTUNA_DISTRIBUTIONS_MAP:
-                trial_values[parameter] = getattr(trial, OPTUNA_DISTRIBUTIONS_MAP[SearchSpace.distribution_type])(
-                    name=parameter, **SearchSpace.params
+        for parameter_name, search_space in optimization_search_space.items():
+            if search_space.distribution_type in OPTUNA_DISTRIBUTIONS_MAP:
+                trial_values[parameter_name] = getattr(trial, OPTUNA_DISTRIBUTIONS_MAP[search_space.distribution_type])(
+                    name=parameter_name, **search_space.params
                 )
             else:
-                raise ValueError(f"Optuna does not support distribution {SearchSpace.distribution_type}")
+                raise ValueError(f"Optuna does not support distribution {search_space.distribution_type}")
 
         return trial_values
 

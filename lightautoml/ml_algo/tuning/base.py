@@ -19,16 +19,24 @@ class Distribution(Enum):
     """Set of distributions."""
 
     CHOICE = 0
-
     UNIFORM = 1
-    INTUNIFORM = 2
-    QUNIFORM = 3
-    LOGUNIFORM = 4
-    DISCRETEUNIFORM = 5
+    NORMAL = 2
 
-    NORMAL = 6
-    QNORMAL = 7
-    LOGNORMAL = 8
+class Choice:
+    def __init__(self, options) -> None:
+        pass
+
+DISTIBUTION_PARAMETERS = {
+    Distribution.CHOICE: ['options'],
+    
+    Distribution.UNIFORM: ['low', 'hight', 'q', 'log'],
+    Distribution.QUNIFORM: [],
+    Distribution.LOGUNIFORM: [],
+    
+    Distribution.NORMAL: [],
+    Distribution.QNORMAL: [],
+    Distribution.LOGNORMAL: [],   
+}
 
 
 class SearchSpace:

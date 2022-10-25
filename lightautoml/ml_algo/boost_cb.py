@@ -21,8 +21,8 @@ from ..pipelines.utils import get_columns_by_role
 from ..utils.logging import LoggerStream
 from ..validation.base import TrainValidIterator
 from .base import TabularMLAlgo
-from .tuning.base import Distribution
-from .tuning.base import SearchSpace
+from .tuning.base import Choice
+from .tuning.base import Uniform
 
 
 logger = logging.getLogger(__name__)
@@ -204,16 +204,16 @@ class BoostCB(TabularMLAlgo, ImportanceEstimator):
         except AttributeError:
             nan_rate = 0
 
-        optimization_search_space["max_depth"] = SearchSpace(Distribution.INTUNIFORM, low=3, high=7)
+        optimization_search_space["max_depth"] = Uniform(low=3, high=7, q=1)
 
         if nan_rate > 0:
-            optimization_search_space["nan_mode"] = SearchSpace(Distribution.CHOICE, choices=["Max", "Min"])
+            optimization_search_space["nan_mode"] = Choice(choices=["Max", "Min"])
 
         if estimated_n_trials > 20:
-            optimization_search_space["l2_leaf_reg"] = SearchSpace(
-                Distribution.LOGUNIFORM,
+            optimization_search_space["l2_leaf_reg"] = Uniform(
                 low=1e-8,
                 high=10.0,
+                log=True
             )
 
             # optimization_search_space['bagging_temperature'] = trial.suggest_loguniform(
@@ -223,11 +223,11 @@ class BoostCB(TabularMLAlgo, ImportanceEstimator):
             # )
 
         if estimated_n_trials > 50:
-            optimization_search_space["min_data_in_leaf"] = SearchSpace(Distribution.INTUNIFORM, low=1, high=20)
+            optimization_search_space["min_data_in_leaf"] = Uniform(low=1, high=20, q=1)
 
             # the only case when used this parameter is when categorical columns more than 0
             if len(self._le_cat_features) > 0:
-                optimization_search_space["one_hot_max_size"] = SearchSpace(Distribution.INTUNIFORM, low=3, high=10)
+                optimization_search_space["one_hot_max_size"] = Uniform(low=3, high=10, q=1)
 
         return optimization_search_space
 

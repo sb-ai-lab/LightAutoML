@@ -19,8 +19,8 @@ from ..utils.logging import LoggerStream
 from ..validation.base import TrainValidIterator
 from .base import TabularDataset
 from .base import TabularMLAlgo
-from .tuning.base import Distribution
-from .tuning.base import SearchSpace
+from .tuning.base import Choice
+from .tuning.base import Uniform
 
 
 logger = logging.getLogger(__name__)
@@ -189,41 +189,39 @@ class BoostLGBM(TabularMLAlgo, ImportanceEstimator):
         """
         optimization_search_space = {}
 
-        optimization_search_space["feature_fraction"] = SearchSpace(
-            Distribution.UNIFORM,
+        optimization_search_space["feature_fraction"] = Uniform(
             low=0.5,
             high=1.0,
         )
 
-        optimization_search_space["num_leaves"] = SearchSpace(
-            Distribution.INTUNIFORM,
+        optimization_search_space["num_leaves"] = Uniform(
             low=16,
             high=255,
+            q=1,
         )
 
         if estimated_n_trials > 30:
-            optimization_search_space["bagging_fraction"] = SearchSpace(
-                Distribution.UNIFORM,
+            optimization_search_space["bagging_fraction"] = Uniform(
                 low=0.5,
                 high=1.0,
             )
 
-            optimization_search_space["min_sum_hessian_in_leaf"] = SearchSpace(
-                Distribution.LOGUNIFORM,
+            optimization_search_space["min_sum_hessian_in_leaf"] = Uniform(
                 low=1e-3,
                 high=10.0,
+                log=True,
             )
 
         if estimated_n_trials > 100:
-            optimization_search_space["reg_alpha"] = SearchSpace(
-                Distribution.LOGUNIFORM,
+            optimization_search_space["reg_alpha"] = Uniform(
                 low=1e-8,
                 high=10.0,
+                log=True,
             )
-            optimization_search_space["reg_lambda"] = SearchSpace(
-                Distribution.LOGUNIFORM,
+            optimization_search_space["reg_lambda"] = Uniform(
                 low=1e-8,
                 high=10.0,
+                log=True,
             )
 
         return optimization_search_space
