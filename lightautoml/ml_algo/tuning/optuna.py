@@ -30,8 +30,7 @@ TunableAlgo = TypeVar("TunableAlgo", bound=MLAlgo)
 
 
 class ChoiceWrap:
-    """TODO.
-    """
+    """TODO."""
 
     def __init__(self, choice) -> None:
         self.choice = choice
@@ -50,8 +49,7 @@ class ChoiceWrap:
 
 
 class UniformWrap:
-    """TODO.
-    """
+    """TODO."""
 
     def __init__(self, choice) -> None:
         self.choice = choice

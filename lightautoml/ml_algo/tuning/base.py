@@ -20,6 +20,7 @@ class DistributionBase(ABC):
     Args:
         ABC (_type_): _description_
     """
+
     pass
 
 
@@ -46,7 +47,7 @@ class Uniform(DistributionBase):
 
 
 class Normal(DistributionBase):
-    """_summary_
+    """_summary_.
 
     Args:
         DistributionBase (_type_): _description_
