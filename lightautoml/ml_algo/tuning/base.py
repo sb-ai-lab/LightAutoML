@@ -15,11 +15,16 @@ from lightautoml.validation.base import TrainValidIterator
 
 
 class DistributionBase(ABC):
+    """_summary_.
+
+    Args:
+        ABC (_type_): _description_
+    """
     pass
 
 
 class Choice(DistributionBase):
-    """_summary_
+    """_summary_.
 
     Args:
         DistributionBase (_type_): _description_
@@ -30,7 +35,7 @@ class Choice(DistributionBase):
 
 
 class Uniform(DistributionBase):
-    """_summary_
+    """_summary_.
 
     Args:
         DistributionBase (_type_): _description_

@@ -30,13 +30,14 @@ TunableAlgo = TypeVar("TunableAlgo", bound=MLAlgo)
 
 
 class ChoiceWrap:
-    """"""
+    """TODO.
+    """
 
     def __init__(self, choice) -> None:
         self.choice = choice
 
     def __call__(self, name, trial):
-        """_summary_
+        """_summary_.
 
         Args:
             name (_type_): _description_
@@ -49,13 +50,14 @@ class ChoiceWrap:
 
 
 class UniformWrap:
-    """"""
+    """TODO.
+    """
 
     def __init__(self, choice) -> None:
         self.choice = choice
 
     def __call__(self, name, trial):
-        """_summary_
+        """_summary_.
 
         Args:
             name (_type_): _description_

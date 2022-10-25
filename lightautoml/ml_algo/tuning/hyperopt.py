@@ -1,4 +1,4 @@
-# """Classes to implement hyperparameter tuning using Optuna."""
+"""Classes to implement hyperparameter tuning using HyperOpt."""
 
 # import logging
 

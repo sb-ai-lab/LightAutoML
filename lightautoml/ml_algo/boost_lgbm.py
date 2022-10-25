@@ -19,7 +19,6 @@ from ..utils.logging import LoggerStream
 from ..validation.base import TrainValidIterator
 from .base import TabularDataset
 from .base import TabularMLAlgo
-from .tuning.base import Choice
 from .tuning.base import Uniform
 
 
