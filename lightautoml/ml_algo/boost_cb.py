@@ -210,11 +210,7 @@ class BoostCB(TabularMLAlgo, ImportanceEstimator):
             optimization_search_space["nan_mode"] = Choice(choices=["Max", "Min"])
 
         if estimated_n_trials > 20:
-            optimization_search_space["l2_leaf_reg"] = Uniform(
-                low=1e-8,
-                high=10.0,
-                log=True
-            )
+            optimization_search_space["l2_leaf_reg"] = Uniform(low=1e-8, high=10.0, log=True)
 
             # optimization_search_space['bagging_temperature'] = trial.suggest_loguniform(
             #     name='bagging_temperature',

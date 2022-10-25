@@ -13,8 +13,8 @@ from typing import Union
 import optuna
 
 from lightautoml.dataset.base import LAMLDataset
-from lightautoml.ml_algo.base import MLAlgo
 from lightautoml.ml_algo.base import Choice
+from lightautoml.ml_algo.base import MLAlgo
 from lightautoml.ml_algo.base import Uniform
 from lightautoml.ml_algo.tuning.base import ParamsTuner
 from lightautoml.validation.base import HoldoutIterator
@@ -28,12 +28,13 @@ optuna.logging.set_verbosity(optuna.logging.DEBUG)
 
 TunableAlgo = TypeVar("TunableAlgo", bound=MLAlgo)
 
+
 class ChoiceWrap:
-    """
-    """
+    """"""
+
     def __init__(self, choice) -> None:
         self.choice = choice
-        
+
     def __call__(self, name, trial):
         """_summary_
 
@@ -46,12 +47,13 @@ class ChoiceWrap:
         """
         return trial.suggest_categorical(name=name, choices=self.choice.options)
 
+
 class UniformWrap:
-    """
-    """
+    """"""
+
     def __init__(self, choice) -> None:
         self.choice = choice
-        
+
     def __call__(self, name, trial):
         """_summary_
 
@@ -62,13 +64,12 @@ class UniformWrap:
         Returns:
             _type_: _description_
         """
-        return trial.suggest_float(name=name, low=self.choice.low, high=self.choice.high, step=self.choice.q, log=self.choice.log)
+        return trial.suggest_float(
+            name=name, low=self.choice.low, high=self.choice.high, step=self.choice.q, log=self.choice.log
+        )
 
 
-OPTUNA_DISTRIBUTIONS_MAP = {
-    Choice: ChoiceWrap,
-    Uniform: UniformWrap
-}
+OPTUNA_DISTRIBUTIONS_MAP = {Choice: ChoiceWrap, Uniform: UniformWrap}
 
 
 class OptunaTuner(ParamsTuner):

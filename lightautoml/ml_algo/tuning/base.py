@@ -13,8 +13,10 @@ from lightautoml.dataset.base import LAMLDataset
 from lightautoml.ml_algo.base import MLAlgo
 from lightautoml.validation.base import TrainValidIterator
 
+
 class DistributionBase(ABC):
-        pass
+    pass
+
 
 class Choice(DistributionBase):
     """_summary_
@@ -22,17 +24,21 @@ class Choice(DistributionBase):
     Args:
         DistributionBase (_type_): _description_
     """
+
     def __init__(self, options) -> None:
         pass
- 
+
+
 class Uniform(DistributionBase):
     """_summary_
 
     Args:
         DistributionBase (_type_): _description_
     """
+
     def __init__(self, low, high, q=None, log=False) -> None:
         pass
+
 
 class Normal(DistributionBase):
     """_summary_
@@ -40,6 +46,7 @@ class Normal(DistributionBase):
     Args:
         DistributionBase (_type_): _description_
     """
+
     def __init__(self, low, high, q=None, log=False) -> None:
         pass
 

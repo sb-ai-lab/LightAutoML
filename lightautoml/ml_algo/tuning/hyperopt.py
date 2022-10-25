@@ -29,14 +29,14 @@
 # class ChoiceWrap:
 #     def __init__(self, choice) -> None:
 #         self.choice = choice
-        
+
 #     def __call__(self, name):
 #         return hp.choice(name=name, options=self.choice.options)
 
 # class UniformWrap:
 #     def __init__(self, choice) -> None:
 #         self.choice = choice
-        
+
 #     def __call__(self, name):
 #         if self.choice.q:
 #             return hp.quniform(label=name, low=self.choice.low, high=self.choice.high, q=self.choice.q)
@@ -112,23 +112,23 @@
 
 #         space = self._get_search_space()
 #         objective = self._get_objective(ml_algo, train_valid_iterator)
-        
+
 #         if self.direction == 'maximize':
 #             directed_optimize = fmax
-            
+
 #         elif self.direction == 'minimize':
-#             directed_optimize = fmin 
+#             directed_optimize = fmin
 
 #         else:
 #             raise
 
 #         best = directed_optimize(
-#             objective, 
-#             space, 
-#             algo=tpe.suggest, 
+#             objective,
+#             space,
+#             algo=tpe.suggest,
 #             max_evals=self.n_trials
 #         )
-        
+
 #         self._best_params = best # hp.space_eval(space, best)
 #         ml_algo.params = self._best_params
 #         preds_ds = ml_algo.fit_predict(train_valid_iterator)
@@ -154,7 +154,7 @@
 
 #         """
 #         assert isinstance(ml_algo, MLAlgo)
-        
+
 #         # define an objective function
 #         def objective(args) -> float:
 #             _ml_algo = deepcopy(ml_algo)
@@ -163,7 +163,7 @@
 #             return _ml_algo.score(output_dataset)
 
 #         return objective
-    
+
 #     def _get_search_space(self,):
 #         # hp.choice('a',
 #         #     [
@@ -176,7 +176,7 @@
 #         for parameter_name, search_space in optimization_search_space.items():
 #             if search_space.distribution_type in OPTUNA_DISTRIBUTIONS_MAP:
 #                 trial_values[parameter_name] = getattr(
-#                     trial, 
+#                     trial,
 #                     OPTUNA_DISTRIBUTIONS_MAP[search_space.distribution_type]
 #                 )(
 #                     name=parameter_name, **search_space.params
