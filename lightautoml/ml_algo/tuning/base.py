@@ -2,7 +2,6 @@
 
 from abc import ABC
 from abc import abstractmethod
-from enum import Enum
 from typing import Dict
 from typing import Optional
 from typing import Tuple
@@ -14,40 +13,35 @@ from lightautoml.dataset.base import LAMLDataset
 from lightautoml.ml_algo.base import MLAlgo
 from lightautoml.validation.base import TrainValidIterator
 
-
-class Distribution(Enum):
-    """Set of distributions."""
-
-    CHOICE = 0
-    UNIFORM = 1
-    NORMAL = 2
-
-class Choice:
-    def __init__(self, options) -> None:
+class DistributionBase(ABC):
         pass
 
-DISTIBUTION_PARAMETERS = {
-    Distribution.CHOICE: ['options'],
-    
-    Distribution.UNIFORM: ['low', 'hight', 'q', 'log'],
-    Distribution.QUNIFORM: [],
-    Distribution.LOGUNIFORM: [],
-    
-    Distribution.NORMAL: [],
-    Distribution.QNORMAL: [],
-    Distribution.LOGNORMAL: [],   
-}
+class Choice(DistributionBase):
+    """_summary_
 
+    Args:
+        DistributionBase (_type_): _description_
+    """
+    def __init__(self, options) -> None:
+        pass
+ 
+class Uniform(DistributionBase):
+    """_summary_
 
-class SearchSpace:
-    """Search space."""
+    Args:
+        DistributionBase (_type_): _description_
+    """
+    def __init__(self, low, high, q=None, log=False) -> None:
+        pass
 
-    distribution_type: Distribution = None
-    params: Dict = {}
+class Normal(DistributionBase):
+    """_summary_
 
-    def __init__(self, distribution_type: Distribution, *args, **kwargs):
-        self.distribution_type = distribution_type
-        self.params = kwargs
+    Args:
+        DistributionBase (_type_): _description_
+    """
+    def __init__(self, low, high, q=None, log=False) -> None:
+        pass
 
 
 class ParamsTuner(ABC):
