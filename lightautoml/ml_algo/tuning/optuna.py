@@ -15,8 +15,8 @@ import optuna
 from lightautoml.dataset.base import LAMLDataset
 from lightautoml.ml_algo.base import MLAlgo
 from lightautoml.ml_algo.tuning.base import Choice
-from lightautoml.ml_algo.tuning.base import Uniform
 from lightautoml.ml_algo.tuning.base import ParamsTuner
+from lightautoml.ml_algo.tuning.base import Uniform
 from lightautoml.validation.base import HoldoutIterator
 from lightautoml.validation.base import TrainValidIterator
 
@@ -64,12 +64,8 @@ class UniformWrapOptuna:
         Returns:
             _type_: _description_
         """
-
-
         if (self.choice.q is not None) and float(self.choice.q).is_integer() and (self.choice.q == 1):
-            result = trial.suggest_int(
-                name=name, low=self.choice.low, high=self.choice.high
-            )
+            result = trial.suggest_int(name=name, low=self.choice.low, high=self.choice.high)
         else:
             result = trial.suggest_float(
                 name=name, low=self.choice.low, high=self.choice.high, step=self.choice.q, log=self.choice.log
@@ -78,10 +74,7 @@ class UniformWrapOptuna:
         return result
 
 
-OPTUNA_DISTRIBUTIONS_MAP = {
-    Choice: ChoiceWrapOptuna, 
-    Uniform: UniformWrapOptuna
-}
+OPTUNA_DISTRIBUTIONS_MAP = {Choice: ChoiceWrapOptuna, Uniform: UniformWrapOptuna}
 
 
 class OptunaTuner(ParamsTuner):
@@ -280,7 +273,8 @@ class OptunaTuner(ParamsTuner):
                 if isinstance(search_space, key_class):
                     wrapped_search_space = OPTUNA_DISTRIBUTIONS_MAP[key_class](search_space)
                     trial_values[parameter_name] = wrapped_search_space(
-                        name=parameter_name, trial=trial,
+                        name=parameter_name,
+                        trial=trial,
                     )
                     not_supported = False
             if not_supported:

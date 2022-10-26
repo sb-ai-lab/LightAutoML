@@ -132,13 +132,13 @@ class RandomForestSklearn(TabularMLAlgo, ImportanceEstimator):
         """
         optimization_search_space = {}
 
-        optimization_search_space["min_samples_leaf"] = Unoform(
+        optimization_search_space["min_samples_leaf"] = Uniform(
             low=1,
             high=256,
             q=1,
         )
 
-        optimization_search_space["max_depth"] = Unoform(
+        optimization_search_space["max_depth"] = Uniform(
             low=1,
             high=10,
             q=1,
