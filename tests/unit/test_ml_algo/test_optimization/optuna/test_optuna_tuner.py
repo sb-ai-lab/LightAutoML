@@ -3,8 +3,8 @@ from unittest import mock
 import pytest
 
 from lightautoml.ml_algo.boost_lgbm import BoostLGBM
-from lightautoml.ml_algo.tuning.base import Uniform
 from lightautoml.ml_algo.tuning.base import Normal
+from lightautoml.ml_algo.tuning.base import Uniform
 from lightautoml.ml_algo.tuning.optuna import OptunaTuner
 
 
@@ -72,12 +72,11 @@ def test_invalid_distributions():
     iterator_mock = mock.MagicMock()
 
     model = BoostLGBM(
-        
         default_params={"num_trees": 1, "random_state": 42},
         freeze_defaults=True,
         optimization_search_space={
             "feature_fraction": Uniform(low=0.5, high=1.0),
-            "min_sum_hessian_in_leaf": Normal(low=1, high=2) # distribution is not supported by Optuna
+            "min_sum_hessian_in_leaf": Normal(low=1, high=2),  # distribution is not supported by Optuna
         },
     )
 
