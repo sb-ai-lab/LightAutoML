@@ -72,6 +72,7 @@ def test_invalid_distributions():
     iterator_mock = mock.MagicMock()
 
     model = BoostLGBM(
+        
         default_params={"num_trees": 1, "random_state": 42},
         freeze_defaults=True,
         optimization_search_space={
