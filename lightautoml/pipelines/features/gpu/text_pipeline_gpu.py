@@ -59,6 +59,7 @@ class NLPDataFeatures_gpu:
         self.n_components = 100
         self.is_concat = True
         self.tfidf_params = None
+        self.word_vectors_cache = None
         self.cache_dir = None
         self.train_fasttext = False
         self.embedding_model = None  # path to fasttext model or model with dict interface
@@ -124,6 +125,7 @@ class TextAutoFeatures_gpu(FeaturesPipeline, NLPDataFeatures_gpu):
                 AutoNLPWrap_gpu(
                     model_name=self.model_name,
                     embedding_model=self.embedding_model,
+                    word_vectors_cache=self.word_vectors_cache,
                     cache_dir=self.cache_dir,
                     bert_model=self.bert_model,
                     transformer_params=self.transformer_params,

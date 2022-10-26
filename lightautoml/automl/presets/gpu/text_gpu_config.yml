@@ -4,7 +4,7 @@ general_params:
   # or 'auto' - configuration will be infered from data
   # ex.[['xgb', 'xgb_tuned', 'linear_l2', 'cb', 'cb_tuned'], ['lgb', 'linear_l2']] is 3 algos on 1 level, 2 algos on 2 level and blender on 3 level
   # to define more than 1 level nested_cv_params.cv should be > 1
-  use_algos: 'auto'
+  use_algos: [['linear_l2']]
   # nested_cv - True/False. If true, check nested_cv params. Use folds-in-folds cross-validation scheme
   # May performs better but take much more time to run (train and inference)
   nested_cv: False
@@ -227,7 +227,7 @@ text_params:
   # 'multi' - 'bert-base-multilingual-cased'
   bert_model: null
   # progress bar for embedding model and prints during dl models
-  verbose: True
+  verbose: False
   random_state: 42
   # if is_tokenize_autonlp is True or in tfidf
   # use SnowballStemmer in tfidf or autonlp if tokenizer is enabled

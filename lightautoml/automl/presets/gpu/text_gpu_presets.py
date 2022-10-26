@@ -25,6 +25,7 @@ from lightautoml.ml_algo.gpu.boost_xgb_gpu import BoostXGB
 from lightautoml.ml_algo.gpu.boost_xgb_gpu import BoostXGB_dask
 from lightautoml.ml_algo.gpu.linear_gpu import LinearLBFGS_gpu
 from lightautoml.ml_algo.dl_model import TorchModel
+from lightautoml.ml_algo.gpu.dl_model_gpu import TorchModel_gpu
 from lightautoml.ml_algo.tuning.optuna import OptunaTuner
 from lightautoml.ml_algo.tuning.gpu.optuna_gpu import OptunaTuner_gpu
 from lightautoml.ml_algo.tuning.gpu.optuna_gpu import GpuQueue
@@ -272,7 +273,8 @@ class TabularNLPAutoML_gpu(TabularAutoML_gpu):
         # nn model
         time_score = self.get_time_score(n_level, "nn")
         nn_timer = self.timer.get_task_timer("reg_nn", time_score)
-        nn_model = TorchModel(timer=nn_timer, default_params=self.nn_params)
+        # nn_model = TorchModel(timer=nn_timer, default_params=self.nn_params)
+        nn_model = TorchModel_gpu(timer=nn_timer, default_params=self.nn_params)
 
         text_nn_feats = self.get_nlp_pipe(self.nn_pipeline_params["text_features"])
         nn_feats = LinearFeatures_gpu(output_categories=True, **self.linear_pipeline_params)
@@ -282,6 +284,7 @@ class TabularNLPAutoML_gpu(TabularAutoML_gpu):
         nn_pipe = NestedTabularMLPipeline(
             [nn_model], pre_selection=None, features_pipeline=nn_feats, **self.nested_cv_params
         )
+        print("Created nn pipe")
         return nn_pipe
 
     def get_linear(self, n_level: int = 1, pre_selector: Optional[SelectionPipeline] = None) -> NestedTabularMLPipeline:

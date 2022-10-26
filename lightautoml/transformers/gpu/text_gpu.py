@@ -15,14 +15,6 @@ from typing import Optional
 from typing import Union
 from typing import Tuple
 
-
-# try:
-#     import gensim
-# except:
-#     import warnings
-#
-#     warnings.warn("'gensim' - package isn't installed")
-
 import numpy as np
 import cupy as cp
 import pandas as pd
@@ -46,14 +38,7 @@ import torchnlp
 from torchnlp.word_to_vector import BPEmb
 from torchnlp.word_to_vector import FastText
 
-# necessary for custom torch.svd_lowrank realization
-# from torch import Tensor
-# from torch import _linalg_utils as _utils
-
 from cuml.feature_extraction.text import TfidfVectorizer
-# from cuml.feature_extraction.text import CountVectorizer
-# from cuml.dask.feature_extraction.text import TfidfTransformer as TfidfTransformer_mgpu
-# from cuml.dask.common import to_sparse_dask_array
 
 from lightautoml.dataset.gpu.gpu_dataset import CudfDataset
 from lightautoml.dataset.gpu.gpu_dataset import CupyDataset
@@ -99,7 +84,7 @@ model_by_name = {
             "max_length": 200,
             "embed_size": 300,
         },
-        "loader_params": {"batch_size": 1024, "shuffle": False, "num_workers": 4},
+        "loader_params": {"batch_size": 1024, "shuffle": False, "num_workers": 1},
         "embedding_model_params": {},
     },
     "random_lstm_bert": {
@@ -112,7 +97,7 @@ model_by_name = {
         },
         "dataset": BertDataset_gpu,
         "dataset_params": {"max_length": 256, "model_name": "bert-base-cased"},
-        "loader_params": {"batch_size": 320, "shuffle": False, "num_workers": 4},
+        "loader_params": {"batch_size": 320, "shuffle": False, "num_workers": 1},
         "embedding_model": BertEmbedder_gpu,
         "embedding_model_params": {"model_name": "bert-base-cased", "pooling": "none"},
     },
@@ -132,7 +117,7 @@ model_by_name = {
             "max_length": 200,
             "embed_size": 300,
         },
-        "loader_params": {"batch_size": 1024, "shuffle": False, "num_workers": 4},
+        "loader_params": {"batch_size": 1024, "shuffle": False, "num_workers": 1},
         "embedding_model_params": {},
     },
     "pooled_bert": {
@@ -140,7 +125,7 @@ model_by_name = {
         "model_params": {"model_name": "bert-base-cased", "pooling": "mean"},
         "dataset": BertDataset_gpu,
         "dataset_params": {"max_length": 256, "model_name": "bert-base-cased"},
-        "loader_params": {"batch_size": 320, "shuffle": False, "num_workers": 4},
+        "loader_params": {"batch_size": 320, "shuffle": False, "num_workers": 1},
         "embedding_model_params": {},
     },
     "wat": {
@@ -207,7 +192,7 @@ class TunableTransformer_gpu(LAMLTransformer):
 
 
 class TfidfTextTransformer_gpu(TunableTransformer_gpu):
-    """Simple Tfidf vectorizer (GPU)."""
+    """Simple Tfidf vectorizer followed by SVD (GPU)."""
 
     _fit_checks = (text_check,)
     _transform_checks = ()
@@ -274,7 +259,6 @@ class TfidfTextTransformer_gpu(TunableTransformer_gpu):
         """Get transformer parameters depending on dataset parameters.
 
         Args:
-        client: Any = None
             dataset: Dataset used for model parmaeters initialization.
 
         Returns:
@@ -301,6 +285,7 @@ class TfidfTextTransformer_gpu(TunableTransformer_gpu):
         coo = torch.cuda.sparse.FloatTensor(i, v, torch.Size(coo.shape))
         return coo
 
+    # calculate tfidf (followed by SVD if flag 'svd=True')
     def _calc_tfidf(self, df, svd=False):
         outputs = []
         for col in df.columns:
@@ -378,10 +363,10 @@ class TfidfTextTransformer_gpu(TunableTransformer_gpu):
         return self
 
     def fit(self, dataset: GpuNumericalDataset):
-        """Fit tfidf vectorizer.
+        """Fit tfidf vectorizer (GPU version).
 
         Args:
-            dataset: Pandas or Numpy dataset of text features.
+            dataset: Cudf or Daskcudf dataset of text features.
 
         Returns:
             self.
@@ -433,13 +418,14 @@ class TfidfTextTransformer_gpu(TunableTransformer_gpu):
         return output
 
     def transform(self, dataset: GpuNumericalDataset) -> CupyDataset:
-        """Transform text dataset to sparse tfidf representation.
+        """Transform text dataset to sparse tfidf representation which is made dense by SVD transform.
 
         Args:
-            dataset: Cupy or Cudf or DaskCudf dataset of text features.
+            dataset: Cudf or DaskCudf dataset of text features.
 
         Returns:
-            Sparse dataset with encoded text.
+            For Cudf dataset it returns Cupy dataset obtained by tfidf transformer and SVD.
+            For Daskcudf dataset it returns Daskcudf dataset obtained by tfidf transformer and SVD.
 
         """
 
@@ -544,13 +530,15 @@ class TfidfTextTransformer_gpu(TunableTransformer_gpu):
         return output
 
     def fit_transform(self, dataset: GpuNumericalDataset) -> CupySparseDataset:
-        """Transform text dataset to sparse tfidf representation.
+        """Fit and transform text dataset to sparse tfidf representation which is made dense by SVD transform.
+        This 'fit_transform' method is much more efficient than 'fit' followed by 'transform' method.
 
         Args:
-            dataset: Cupy or Cudf or DaskCudf dataset of text features.
+            dataset: Cudf or DaskCudf dataset of text features.
 
         Returns:
-            Sparse dataset with encoded text.
+            For Cudf dataset it returns Cupy dataset obtained by tfidf transformer and SVD.
+            For Daskcudf dataset it returns Daskcudf dataset obtained by tfidf transformer and SVD.
 
         """
 
@@ -586,6 +574,7 @@ class TokenizerTransformer_gpu(LAMLTransformer):
         """
         self.tokenizer = tokenizer
 
+    # apply tokenization to each text column
     def tokenize_columns(self, df):
         outputs = []
         for col in df.columns:
@@ -636,7 +625,7 @@ class TokenizerTransformer_gpu(LAMLTransformer):
         """Transform text dataset to tokenized text dataset.
 
         Args:
-            dataset: Cudf or Cupy or DaskCudf dataset of text features.
+            dataset: Cudf or DaskCudf dataset of text features.
 
         Returns:
             Respective dataset with tokenized text.
@@ -656,7 +645,7 @@ class SubwordTokenizerTransformer_gpu(LAMLTransformer):
 
     _fit_checks = (text_check,)
     _transform_checks = ()
-    _fname_prefix = "tokenized_gpu"
+    _fname_prefix = "subword_tokenized_gpu"
 
     def __init__(self, vocab_path: str = None, data_path: Any = None, is_hash: bool = False, max_length: int = 300,
                  tokenizer: str = "bpe", vocab_size: int = 30000,
@@ -709,6 +698,7 @@ class SubwordTokenizerTransformer_gpu(LAMLTransformer):
         # SOS, EOS, padding tokens to filter
         self.targets = ['101', '102', '0']
 
+    # concatenate text columns
     @staticmethod
     def concat_columns(df, col_name):
         outputs = df[df.columns[0]].fillna("").astype(str)
@@ -717,6 +707,7 @@ class SubwordTokenizerTransformer_gpu(LAMLTransformer):
         new_df = cudf.DataFrame({col_name: outputs})
         return new_df
 
+    # subword tokenize text columns
     def subword_tokenize_columns(self, df):
         outputs = []
         subword_gpu = SubwordTokenizer(self.vocab_path)
@@ -760,13 +751,14 @@ class SubwordTokenizerTransformer_gpu(LAMLTransformer):
         return output
 
     def transform(self, dataset: GpuNumericalDataset) -> GpuNumericalDataset:
-        """Transform text dataset to tokenized text dataset.
+        """Transform text dataset to subword_tokenized dataset (encode each token with number, bert-like input).
+        E.g., "Nice weather today" -> "145 177 267"
 
         Args:
-            dataset: Cudf or Cupy or DaskCudf dataset of text features.
+            dataset: Cudf or DaskCudf dataset of text features.
 
         Returns:
-            Respective dataset with tokenized text.
+            Respective subword_tokenized dataset.
 
         """
 
@@ -794,11 +786,14 @@ class ConcatTextTransformer_gpu(LAMLTransformer):
         """
         self.special_token = special_token
 
+    # concatenate text columns
     def concat_columns(self, df):
-        col_name = self._fname_prefix + "__" + "__".join(df.columns)
+        col_name = self._fname_prefix + "__" +\
+                   "__".join(df.columns)
         outputs = df[df.columns[0]].fillna("").astype(str)
         for col in df.columns[1:]:
-            outputs = outputs + f"{self.special_token}" + df[col].fillna("").astype(str)
+            outputs = outputs + f"{self.special_token}" +\
+                      df[col].fillna("").astype(str)
         new_df = cudf.DataFrame({col_name: outputs})
         return new_df
 
@@ -829,10 +824,10 @@ class ConcatTextTransformer_gpu(LAMLTransformer):
         """Transform text dataset to one text column.
 
         Args:
-            dataset: Cupy or Cudf or Daskcudf dataset of text features.
+            dataset: Cudf or Daskcudf dataset of text features.
 
         Returns:
-            Pandas dataset with one text column.
+            Cudf or Daskcudf dataset with one text column.
 
         """
 
@@ -864,6 +859,7 @@ class AutoNLPWrap_gpu(LAMLTransformer):
         self,
         model_name: str,
         embedding_model: Optional[str] = None,
+        word_vectors_cache: str = None,
         cache_dir: str = "./cache_NLP",
         bert_model: Optional[str] = None,
         transformer_params: Optional[Dict] = None,
@@ -885,16 +881,16 @@ class AutoNLPWrap_gpu(LAMLTransformer):
             model_name: Method for aggregating word embeddings
               into sentence embedding.
             transformer_params: Aggregating model parameters.
-            embedding_model: Word level embedding model with dict
-              interface or path to gensim fasttext model.
+            embedding_model: 'fasttext' or 'bpe' - one of torch-nlp word embedding pre-trained models.
+            word_vectors_cache: path to cached word embeddings for 'embedding_model'.
             cache_dir: If ``None`` - do not cache transformed datasets.
             bert_model: Name of HuggingFace transformer model.
             subs: Subsample to calculate freqs. If None - full data.
             multigpu: Use Data Parallel.
             random_state: Random state to take subsample.
-            train_fasttext: Train fasttext.
-            fasttext_params: Fasttext init params.
-            fasttext_epochs: Number of epochs to train.
+            train_fasttext: Train fasttext. ### not used anymore
+            fasttext_params: Fasttext init params. ### not used anymore
+            fasttext_epochs: Number of epochs to train. ### not used anymore
             verbose: Verbosity.
             device: Torch device or str.
             **kwargs: Unused params.
@@ -906,10 +902,11 @@ class AutoNLPWrap_gpu(LAMLTransformer):
         assert model_name in self._names, f"Model name must be one of {self._names}"
         self.device = device
         self.multigpu = multigpu
+        self.word_vectors_cache = word_vectors_cache
         self.cache_dir = cache_dir
         self.random_state = random_state
         self.subs = subs
-        self.train_fasttext = train_fasttext
+        self.train_fasttext = train_fasttext # outdated parameter, available word vectors are pretrained
         self.fasttext_epochs = fasttext_epochs
         if fasttext_params is not None:
             self.fasttext_params.update(fasttext_params)
@@ -928,29 +925,11 @@ class AutoNLPWrap_gpu(LAMLTransformer):
             assert embedding_model in ["fasttext", "bpe"], f"embedding model must be in [fasttext, bpe]" \
                                                            f"but you passed {embedding_model}"
             if embedding_model == "fasttext":
-                embedding_model = FastText(language=self.lang)
+                embedding_model = FastText(language=self.lang, cache=self.word_vectors_cache)
             elif embedding_model == "bpe":
-                embedding_model = BPEmb(language=self.lang, dim=300)
+                embedding_model = BPEmb(language=self.lang, dim=300, cache=self.word_vectors_cache)
 
             self.transformer_params = self._update_transformers_emb_model(self.transformer_params, embedding_model, 300)
-
-        # elif type(embedding_model) == str:
-        #     self.transformer_params = self._update_transformers_emb_model(self.transformer_params, embedding_model, 300)
-        # if embedding_model is not 'sent_scaler': 'l2'None:
-        #     if isinstance(embedding_model, str):
-        #         try:
-        #             embedding_model = gensim.models.FastText.load(embedding_model)
-        #         except:
-        #             try:
-        #                 embedding_model = gensim.models.FastText.load_fasttext_format(embedding_model)
-        #             except:
-        #                 embedding_model = gensim.models.KeyedVectors.load(embedding_model)
-        #
-        #     self.transformer_params = self._update_transformers_emb_model(self.transformer_params, embedding_model)
-        #
-        # else:
-        #
-        #     self.train_fasttext = self.model_name in self._trainable
 
         if self.model_name == "wat":
             self.transformer = WeightedAverageTransformer_gpu
@@ -970,29 +949,6 @@ class AutoNLPWrap_gpu(LAMLTransformer):
     def _update_transformers_emb_model(
         self, params: Dict, model: Any, emb_size: Optional[int] = None
     ) -> Dict[str, Any]:
-        # if emb_size is None:
-        #     try:
-        #         # Gensim checker [1]
-        #         emb_size = model.vector_size
-        #     except:
-        #         try:
-        #             # Gensim checker[2]
-        #             emb_size = model.vw.vector_size
-        #         except:
-        #             try:
-        #                 # Natasha checker
-        #                 emb_size = model[model.vocab.words[0]].shape[0]
-        #             except:
-        #                 try:
-        #                     # Dict of embeddings checker
-        #                     emb_size = next(iter(model.values())).shape[0]
-        #                 except:
-        #                     raise ValueError("Unrecognized embedding dimention, please specify it in model_params")
-        # try:
-        #     model = model.wv
-        # except:
-        #     pass
-
         if self.model_name == "wat":
             params["embed_size"] = emb_size
             params["embedding_model"] = model
@@ -1015,20 +971,6 @@ class AutoNLPWrap_gpu(LAMLTransformer):
         names = []
         for n, i in enumerate(subs.columns):
             transformer_params = deepcopy(self.transformer_params)
-            # if self.train_fasttext:
-            #     embedding_model = gensim.models.FastText(**self.fasttext_params)
-            #     common_texts = [i.split(" ") for i in subs[i].values]
-            #     # common_texts = []
-            #     # for k in range(subs[i].shape[0]):
-            #     #     common_texts.append(subs[i][k].split(" "))
-            #     # common_texts = [i.split(" ") for i in subs[i].to_pandas().values]
-            #     embedding_model.build_vocab(corpus_iterable=common_texts)
-            #     embedding_model.train(
-            #         corpus_iterable=common_texts,
-            #         total_examples=len(common_texts),
-            #         epochs=self.fasttext_epochs,
-            #     )
-            #     transformer_params = self._update_transformers_emb_model(transformer_params, embedding_model)
             transformer = self.transformer(
                 verbose=self.verbose,
                 device=self.device,
@@ -1065,19 +1007,6 @@ class AutoNLPWrap_gpu(LAMLTransformer):
         names = []
         for n, i in enumerate(subs.columns):
             transformer_params = deepcopy(self.transformer_params)
-            # if self.train_fasttext:
-            #     embedding_model = gensim.models.FastText(**self.fasttext_params)
-            #     common_texts = []
-            #     for k in range(subs[i].shape[0].compute()):
-            #         common_texts.append(subs[i][k].compute().iloc[0].split(" "))
-            #     embedding_model.build_vocab(corpus_iterable=common_texts)
-            #     embedding_model.train(
-            #         corpus_iterable=common_texts,
-            #         total_examples=len(common_texts),
-            #         epochs=self.fasttext_epochs,
-            #     )
-            #     transformer_params = self._update_transformers_emb_model(transformer_params, embedding_model)
-
             transformer = self.transformer(
                 verbose=self.verbose,
                 device=self.device,
