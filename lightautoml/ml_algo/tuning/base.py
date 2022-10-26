@@ -32,7 +32,7 @@ class Choice(DistributionBase):
     """
 
     def __init__(self, options) -> None:
-        pass
+        self.options = options
 
 
 class Uniform(DistributionBase):
@@ -43,7 +43,10 @@ class Uniform(DistributionBase):
     """
 
     def __init__(self, low, high, q=None, log=False) -> None:
-        pass
+        self.low = low
+        self.high = high
+        self.q = q
+        self.log = log
 
 
 class Normal(DistributionBase):
@@ -54,7 +57,10 @@ class Normal(DistributionBase):
     """
 
     def __init__(self, low, high, q=None, log=False) -> None:
-        pass
+        self.low = low
+        self.high = high
+        self.q = q
+        self.log = log
 
 
 class ParamsTuner(ABC):

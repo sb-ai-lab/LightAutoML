@@ -13,9 +13,9 @@ from typing import Union
 import optuna
 
 from lightautoml.dataset.base import LAMLDataset
-from lightautoml.ml_algo.base import Choice
 from lightautoml.ml_algo.base import MLAlgo
-from lightautoml.ml_algo.base import Uniform
+from lightautoml.ml_algo.tuning.base import Choice
+from lightautoml.ml_algo.tuning.base import Uniform
 from lightautoml.ml_algo.tuning.base import ParamsTuner
 from lightautoml.validation.base import HoldoutIterator
 from lightautoml.validation.base import TrainValidIterator
@@ -29,7 +29,7 @@ optuna.logging.set_verbosity(optuna.logging.DEBUG)
 TunableAlgo = TypeVar("TunableAlgo", bound=MLAlgo)
 
 
-class ChoiceWrap:
+class ChoiceWrapOptuna:
     """TODO."""
 
     def __init__(self, choice) -> None:
@@ -48,7 +48,7 @@ class ChoiceWrap:
         return trial.suggest_categorical(name=name, choices=self.choice.options)
 
 
-class UniformWrap:
+class UniformWrapOptuna:
     """TODO."""
 
     def __init__(self, choice) -> None:
@@ -64,12 +64,24 @@ class UniformWrap:
         Returns:
             _type_: _description_
         """
-        return trial.suggest_float(
-            name=name, low=self.choice.low, high=self.choice.high, step=self.choice.q, log=self.choice.log
-        )
 
 
-OPTUNA_DISTRIBUTIONS_MAP = {Choice: ChoiceWrap, Uniform: UniformWrap}
+        if (self.choice.q is not None) and float(self.choice.q).is_integer() and (self.choice.q == 1):
+            result = trial.suggest_int(
+                name=name, low=self.choice.low, high=self.choice.high
+            )
+        else:
+            result = trial.suggest_float(
+                name=name, low=self.choice.low, high=self.choice.high, step=self.choice.q, log=self.choice.log
+            )
+
+        return result
+
+
+OPTUNA_DISTRIBUTIONS_MAP = {
+    Choice: ChoiceWrapOptuna, 
+    Uniform: UniformWrapOptuna
+}
 
 
 class OptunaTuner(ParamsTuner):
@@ -263,12 +275,16 @@ class OptunaTuner(ParamsTuner):
         trial_values = copy(suggested_params)
 
         for parameter_name, search_space in optimization_search_space.items():
-            if search_space.distribution_type in OPTUNA_DISTRIBUTIONS_MAP:
-                trial_values[parameter_name] = getattr(trial, OPTUNA_DISTRIBUTIONS_MAP[search_space.distribution_type])(
-                    name=parameter_name, **search_space.params
-                )
-            else:
-                raise ValueError(f"Optuna does not support distribution {search_space.distribution_type}")
+            not_supported = True
+            for key_class in OPTUNA_DISTRIBUTIONS_MAP:
+                if isinstance(search_space, key_class):
+                    wrapped_search_space = OPTUNA_DISTRIBUTIONS_MAP[key_class](search_space)
+                    trial_values[parameter_name] = wrapped_search_space(
+                        name=parameter_name, trial=trial,
+                    )
+                    not_supported = False
+            if not_supported:
+                raise ValueError(f"Optuna does not support distribution {search_space}")
 
         return trial_values
 

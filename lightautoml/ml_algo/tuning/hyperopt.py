@@ -25,19 +25,40 @@
 
 # TunableAlgo = TypeVar("TunableAlgo", bound=MLAlgo)
 
+# class ChoiceWrapHyperOpt:
+#     """TODO."""
 
-# class ChoiceWrap:
 #     def __init__(self, choice) -> None:
 #         self.choice = choice
 
-#     def __call__(self, name):
+#     def __call__(self, name, trial):
+#         """_summary_.
+
+#         Args:
+#             name (_type_): _description_
+#             trial (_type_): _description_
+
+#         Returns:
+#             _type_: _description_
+#         """
 #         return hp.choice(name=name, options=self.choice.options)
 
-# class UniformWrap:
+# class UniformWrapHyperOpt:
+#     """TODO."""
+
 #     def __init__(self, choice) -> None:
 #         self.choice = choice
 
-#     def __call__(self, name):
+#     def __call__(self, name, trial):
+#         """_summary_.
+
+#         Args:
+#             name (_type_): _description_
+#             trial (_type_): _description_
+
+#         Returns:
+#             _type_: _description_
+#         """
 #         if self.choice.q:
 #             return hp.quniform(label=name, low=self.choice.low, high=self.choice.high, q=self.choice.q)
 #         elif self.choice.log:
@@ -46,9 +67,30 @@
 #             return hp.qloguniform(label=name, low=self.choice.low, high=self.choice.high, q=self.choice.q)
 
 
-# OPTUNA_DISTRIBUTIONS_MAP = {
-#     Choice: ChoiceWrap,
-#     Uniform: UniformWrap
+# class NormalWrapHyperOpt:
+#     """TODO."""
+
+#     def __init__(self, choice) -> None:
+#         self.choice = choice
+
+#     def __call__(self, name, trial):
+#         """_summary_.
+
+#         Args:
+#             name (_type_): _description_
+#             trial (_type_): _description_
+
+#         Returns:
+#             _type_: _description_
+#         """
+#         pass # TODO
+
+
+
+# HYPEROPT_DISTRIBUTIONS_MAP = {
+#     Choice: ChoiceWrapHyperOpt,
+#     Uniform: UniformWrapHyperOpt,
+#     Normal: NormalWrapHyperOpt,
 # }
 
 
