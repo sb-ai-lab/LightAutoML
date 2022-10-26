@@ -434,7 +434,7 @@ class TabularAutoML(AutoMLPreset):
                 ):
                     selector = pre_selector
                 lvl.append(self.get_linear(n + 1, selector))
-                
+
             rf_models = [x for x in ["rf", "rf_tuned"] if x in names]
 
             if len(rf_models) > 0:
