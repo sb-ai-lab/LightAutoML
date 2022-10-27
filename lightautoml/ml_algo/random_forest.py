@@ -17,8 +17,7 @@ from ..pipelines.selection.base import ImportanceEstimator
 from ..validation.base import TrainValidIterator
 from .base import TabularDataset
 from .base import TabularMLAlgo
-from .tuning.base import Distribution
-from .tuning.base import SearchSpace
+from .tuning.base import Uniform
 
 
 logger = logging.getLogger(__name__)
@@ -133,16 +132,16 @@ class RandomForestSklearn(TabularMLAlgo, ImportanceEstimator):
         """
         optimization_search_space = {}
 
-        optimization_search_space["min_samples_leaf"] = SearchSpace(
-            Distribution.INTUNIFORM,
+        optimization_search_space["min_samples_leaf"] = Uniform(
             low=1,
             high=256,
+            q=1,
         )
 
-        optimization_search_space["max_depth"] = SearchSpace(
-            Distribution.INTUNIFORM,
+        optimization_search_space["max_depth"] = Uniform(
             low=1,
             high=10,
+            q=1,
         )
 
         return optimization_search_space
