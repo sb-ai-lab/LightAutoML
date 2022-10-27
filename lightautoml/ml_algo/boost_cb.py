@@ -207,7 +207,7 @@ class BoostCB(TabularMLAlgo, ImportanceEstimator):
         optimization_search_space["max_depth"] = Uniform(low=3, high=7, q=1)
 
         if nan_rate > 0:
-            optimization_search_space["nan_mode"] = Choice(choices=["Max", "Min"])
+            optimization_search_space["nan_mode"] = Choice(options=["Max", "Min"])
 
         if estimated_n_trials > 20:
             optimization_search_space["l2_leaf_reg"] = Uniform(low=1e-8, high=10.0, log=True)
