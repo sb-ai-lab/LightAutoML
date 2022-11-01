@@ -207,6 +207,7 @@ class BaseAutoUplift(metaclass=abc.ABCMeta):
             value of calculated metric.
 
         """
+        normed = self.base_task._name == "binary"
         if isinstance(self.metric, str):
             try:
                 auc = calculate_uplift_auc(
@@ -214,7 +215,7 @@ class BaseAutoUplift(metaclass=abc.ABCMeta):
                     uplift_pred,
                     treatment,
                     self.metric,
-                    False,
+                    normed,
                 )
             except ConstPredictError as e:
                 logger.error(str(e) + "\nMetric set to zero.")
@@ -249,7 +250,7 @@ class BaseAutoUplift(metaclass=abc.ABCMeta):
             treatment_col,
         ) = uplift_utils._get_treatment_role(roles)
 
-        stratify_value = data[[target_col, treatment_col]]
+        stratify_value = None if self.base_task._name == 'reg' else data[[target_col, treatment_col]]
 
         train_data, test_data = train_test_split(
             data,
@@ -349,7 +350,7 @@ class AutoUplift(BaseAutoUplift):
         self.candidate_holdout_metrics: List[Union[float, None]] = []
         self._threshold_imbalance_treatment = threshold_imbalance_treatment
 
-    def fit(self, data: DataFrame, roles: Dict, verbose: int = 0):
+    def fit(self, data: DataFrame = None, roles: Dict = None, verbose: int = 0, train_data: DataFrame = None, test_data: DataFrame = None):
         """Fit AutoUplift.
 
         Choose best metalearner and fit it.
@@ -360,12 +361,26 @@ class AutoUplift(BaseAutoUplift):
             verbose: Verbose.
 
         """
-        (
-            train_data,
-            test_data,
-            test_treatment,
-            test_target,
-        ) = self._prepare_data(data, roles)
+        if test_data is None:
+            (
+                train_data,
+                test_data,
+                test_treatment,
+                test_target,
+            ) = self._prepare_data(data, roles)
+        else:
+            (
+                _,
+                target_col,
+            ) = uplift_utils._get_target_role(roles)
+            (
+                _,
+                treatment_col,
+            ) = uplift_utils._get_treatment_role(roles)
+            test_treatment = test_data[treatment_col].ravel()
+            test_target = test_data[target_col].ravel()
+
+
 
         best_metalearner: Optional[MetaLearner] = None
         best_metalearner_candidate_info: Optional[MetaLearnerWrapper] = None
@@ -502,7 +517,7 @@ class AutoUplift(BaseAutoUplift):
 
         return best_metalearner
 
-    def get_metalearners_ranting(self) -> DataFrame:
+    def get_metalearners_rating(self) -> DataFrame:
         """Get rating of metalearners.
 
         Returns:
@@ -1114,7 +1129,7 @@ class AutoUpliftTX(BaseAutoUplift):
 
         return best_metalearner_raw
 
-    def get_metalearners_ranting(self) -> DataFrame:
+    def get_metalearners_rating(self) -> DataFrame:
         """Get rating of metalearners.
 
         Returns:

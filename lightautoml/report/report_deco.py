@@ -29,6 +29,7 @@ from sklearn.metrics import r2_score
 from sklearn.metrics import recall_score
 from sklearn.metrics import roc_auc_score
 from sklearn.metrics import roc_curve
+from sklearn.utils.multiclass import type_of_target
 
 from lightautoml.addons.uplift import metrics as uplift_metrics
 from lightautoml.addons.uplift.metalearners import TLearner
@@ -1432,10 +1433,15 @@ class ReportDecoNLP(ReportDeco):
 
 
 def get_uplift_data(test_target, uplift_pred, test_treatment, mode):
-    perfect = uplift_metrics.perfect_uplift_curve(test_target, test_treatment)
+    try:
+        perfect = uplift_metrics.perfect_uplift_curve(test_target, test_treatment)
+        xs_perfect, ys_perfect = uplift_metrics.calculate_graphic_uplift_curve(test_target, perfect, test_treatment, mode)
+    except NotImplementedError as e:
+        xs_perfect, ys_perfect = None, None
+
     xs, ys = uplift_metrics.calculate_graphic_uplift_curve(test_target, uplift_pred, test_treatment, mode)
-    xs_perfect, ys_perfect = uplift_metrics.calculate_graphic_uplift_curve(test_target, perfect, test_treatment, mode)
-    uplift_auc = uplift_metrics.calculate_uplift_auc(test_target, uplift_pred, test_treatment, mode, normed=True)
+    normed = type_of_target(test_target) == "binary"
+    uplift_auc = uplift_metrics.calculate_uplift_auc(test_target, uplift_pred, test_treatment, mode, normed=normed)
     return xs, ys, xs_perfect, ys_perfect, uplift_auc
 
 
@@ -1446,7 +1452,8 @@ def plot_uplift_curve(test_target, uplift_pred, test_treatment, path):
     # qini
     xs, ys, xs_perfect, ys_perfect, uplift_auc = get_uplift_data(test_target, uplift_pred, test_treatment, mode="qini")
     axs[0].plot(xs, ys, color="blue", lw=2, label="qini mode")
-    axs[0].plot(xs_perfect, ys_perfect, color="black", lw=1, label="perfect uplift")
+    if xs_perfect is not None and ys_perfect is not None:
+        axs[0].plot(xs_perfect, ys_perfect, color="black", lw=1, label="perfect uplift")
     axs[0].plot(
         (0, xs[-1]),
         (0, ys[-1]),
@@ -1462,7 +1469,8 @@ def plot_uplift_curve(test_target, uplift_pred, test_treatment, path):
         test_target, uplift_pred, test_treatment, mode="cum_gain"
     )
     axs[1].plot(xs, ys, color="red", lw=2, label="cum_gain model")
-    axs[1].plot(xs_perfect, ys_perfect, color="black", lw=1, label="perfect uplift")
+    if xs_perfect is not None and ys_perfect is not None:
+        axs[1].plot(xs_perfect, ys_perfect, color="black", lw=1, label="perfect uplift")
     axs[1].plot(
         (0, xs[-1]),
         (0, ys[-1]),
@@ -1478,7 +1486,8 @@ def plot_uplift_curve(test_target, uplift_pred, test_treatment, path):
         test_target, uplift_pred, test_treatment, mode="adj_qini"
     )
     axs[2].plot(xs, ys, color="green", lw=2, label="adj_qini mode")
-    axs[2].plot(xs_perfect, ys_perfect, color="black", lw=1, label="perfect uplift")
+    if xs_perfect is not None and ys_perfect is not None:
+        axs[2].plot(xs_perfect, ys_perfect, color="black", lw=1, label="perfect uplift")
     axs[2].plot(
         (0, xs[-1]),
         (0, ys[-1]),
