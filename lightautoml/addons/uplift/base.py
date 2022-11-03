@@ -46,6 +46,7 @@ logger = logging.getLogger(__name__)
 
 
 def noner(x, f):
+    """None."""
     return None if x is None else f(x)
 
 
