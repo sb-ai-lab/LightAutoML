@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "LightAutoML"
-version = "0.3.7.1"
+version = "0.3.7.2"
 description = "Fast and customizable framework for automatic ML model creation (AutoML)"
 authors = [
     "Alexander Ryzhkov <alexmryzhkov@gmail.com>",
