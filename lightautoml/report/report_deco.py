@@ -1435,7 +1435,9 @@ class ReportDecoNLP(ReportDeco):
 def get_uplift_data(test_target, uplift_pred, test_treatment, mode):
     try:
         perfect = uplift_metrics.perfect_uplift_curve(test_target, test_treatment)
-        xs_perfect, ys_perfect = uplift_metrics.calculate_graphic_uplift_curve(test_target, perfect, test_treatment, mode)
+        xs_perfect, ys_perfect = uplift_metrics.calculate_graphic_uplift_curve(
+            test_target, perfect, test_treatment, mode
+        )
     except NotImplementedError as e:
         xs_perfect, ys_perfect = None, None
 
