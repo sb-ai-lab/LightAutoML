@@ -45,7 +45,7 @@ catboost = ">=0.26.1"
 optuna = "*"
 torch = [
     {platform = "win32", python = "3.6.1", version = "1.7.0"},
-    {platform = "*", version = "<1.9"}
+    {platform = "*", version = "<=1.13"}
 ]
 dataclasses = {version = "0.6", python = "<3.7"}
 holidays = "*"
