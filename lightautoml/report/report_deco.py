@@ -1438,7 +1438,7 @@ def get_uplift_data(test_target, uplift_pred, test_treatment, mode):
         xs_perfect, ys_perfect = uplift_metrics.calculate_graphic_uplift_curve(
             test_target, perfect, test_treatment, mode
         )
-    except NotImplementedError as e:
+    except NotImplementedError as e:  # noqa: F841
         xs_perfect, ys_perfect = None, None
 
     xs, ys = uplift_metrics.calculate_graphic_uplift_curve(test_target, uplift_pred, test_treatment, mode)

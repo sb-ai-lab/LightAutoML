@@ -366,6 +366,8 @@ class AutoUplift(BaseAutoUplift):
             data: Dataset to train.
             roles: Roles dict with 'treatment' roles.
             verbose: Verbose.
+            train_data: Train data.
+            test_data: Test data.
 
         """
         if test_data is None:
