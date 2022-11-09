@@ -90,7 +90,7 @@ class LinearLBFGS_gpu(TabularMLAlgo_gpu):
         params["loss"] = self.task.losses["torch_gpu"].loss
         params["metric"] = self.task.losses["torch_gpu"].metric_func
         model = None
-        if self.task.name in ["binary", "multiclass"]:
+        if self.task.name in ["binary", "multiclass", "multilabel"]:
             if self.task.device == "gpu":
                 model = TorchBasedLogisticRegression(
                     output_size=self.n_classes, **params
@@ -116,6 +116,14 @@ class LinearLBFGS_gpu(TabularMLAlgo_gpu):
                     model = TLinR_dask(output_size=1, gpu_ids=self.gpu_ids, **params)
             else:
                 raise ValueError("Device not supported")
+        elif self.task.name == "multi:reg":
+            if self.task.device == "gpu":
+                model = TorchBasedLinearRegression(output_size=self.n_classes, **params)
+            elif self.task.device == "mgpu":
+                if self.parallel_folds:
+                    model = TorchBasedLinearRegression(output_size=self.n_classes, **params)
+                else:
+                    model = TLinR_dask(output_size=self.n_classes, gpu_ids=self.gpu_ids, **params)
         else:
             raise ValueError("Task not supported")
         return model
@@ -215,6 +223,7 @@ class LinearLBFGS_gpu(TabularMLAlgo_gpu):
         model.model = model.model.to(f"cuda:{dev_id}")
         print(perf_counter() - st, "transfering model")
         st = perf_counter()
+
         model.fit(
             train_data,
             train_target,
@@ -329,7 +338,7 @@ class LinearL1CD_gpu(TabularMLAlgo_gpu):
         elif self.task.name == "reg":
             pred = model.predict(data)
 
-        elif self.task.name == "multiclass":
+        elif (self.task.name == "multiclass") or (self.task.name == "multilabel"):
             pred = model.predict_proba(data)
 
         else:
@@ -545,7 +554,7 @@ class LinearL1CD_mgpu(LinearL1CD_gpu):
             pred = model.predict(data, delayed=False)
             pred.compute_chunk_sizes()
 
-        elif self.task.name == "multiclass":
+        elif (self.task.name == "multiclass") or (self.task.name == "multilabel"):
             pred = model.predict_proba(data)
 
         else:

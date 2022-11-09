@@ -50,9 +50,7 @@ class TORCHLoss_gpu(Loss):
         """
         if greater_is_better is None:
             greater_is_better = infer_gib_gpu(metric_func)
-
         m = 2 * float(greater_is_better) - 1
-
         if metric_params is not None:
             metric_func = partial(metric_func, **metric_params)
 
@@ -86,7 +84,9 @@ class TORCHLoss_gpu(Loss):
         assert task_name in [
             "binary",
             "reg",
+            "multi:reg",
             "multiclass",
+            "multilabel",
         ], "Incorrect task name: {}".format(task_name)
         self.metric = metric
 

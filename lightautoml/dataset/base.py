@@ -1,13 +1,19 @@
 """Contains base classes for internal dataset interface."""
 
-from copy import copy
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from copy import copy  # , deepcopy
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Sequence
+from typing import Tuple
+from typing import Union
 
 from ..tasks.base import Task
 from .roles import ColumnRole
 
-valid_array_attributes = ("target", "group", "folds", "weights", "treatment")
-array_attr_roles = ("Target", "Group", "Folds", "Weights", "Treatment")
+valid_array_attributes = ("target", "group", "folds", "weights", "date", "id", "treatment")
+array_attr_roles = ("Target", "Group", "Folds", "Weights", "Date", "Id", "Treatment")
 # valid_tasks = ('reg', 'binary', 'multiclass') # TODO: Add multiclass and multilabel. Refactor for some dataset and pipes needed
 # valid_tasks = ('reg', 'binary')
 
@@ -97,9 +103,7 @@ class LAMLDataset:
         return self.data.__repr__()
 
     # default behavior and abstract methods
-    def __getitem__(
-        self, k: Tuple[RowSlice, ColSlice]
-    ) -> Union["LAMLDataset", LAMLColumn]:
+    def __getitem__(self, k: Tuple[RowSlice, ColSlice]) -> Union["LAMLDataset", LAMLColumn]:
         """Select a subset of dataset.
 
         Define how to slice a dataset
@@ -108,7 +112,10 @@ class LAMLDataset:
 
         Args:
             k: First element optional integer columns indexes,
-              second - optional feature name or list of features names.
+                second - optional feature name or list of features names.
+
+        Returns:
+            Subdataset.
 
         """
         # TODO: Maybe refactor this part?
@@ -125,9 +132,7 @@ class LAMLDataset:
 
             # case of single column - return LAMLColumn
             if isinstance(cols, str):
-                dataset = LAMLColumn(
-                    self._get_2d(self.data, (rows, idx)), role=self.roles[cols]
-                )
+                dataset = LAMLColumn(self._get_2d(self.data, (rows, idx)), role=self.roles[cols])
 
                 return dataset
 
@@ -142,12 +147,7 @@ class LAMLDataset:
             dataset = self.empty()
         else:
             dataset = copy(self)
-            params = dict(
-                (
-                    (x, self._get_rows(self.__dict__[x], rows))
-                    for x in self._array_like_attrs
-                )
-            )
+            params = dict(((x, self._get_rows(self.__dict__[x], rows)) for x in self._array_like_attrs))
             dataset._initialize(self.task, **params)
             data = self._get_rows(data, rows)
 
@@ -161,18 +161,14 @@ class LAMLDataset:
         Args:
             k: Feature name.
             val: :class:`~lightautoml.dataset.base.LAMLColumn`
-              or 1d array like.
+                or 1d array like.
 
         """
-        assert (
-            k in self.features
-        ), "Can only replace existed columns in default implementations."
+        assert k in self.features, "Can only replace existed columns in default implementations."
         idx = self._get_cols_idx(k)
         # for case when setting col and change role
         if type(val) is LAMLColumn:
-            assert (
-                val.role.dtype == self.roles[k].dtype
-            ), "Inplace changing types unavaliable."
+            assert val.role.dtype == self.roles[k].dtype, "Inplace changing types unavaliable."
             self._set_col(self.data, idx, val.data)
             self.roles[k] = val.role
         # for case only changing column values
@@ -241,7 +237,6 @@ class LAMLDataset:
             Dict of feature roles.
 
         """
-
         return copy(self._roles)
 
     @roles.setter
@@ -283,9 +278,9 @@ class LAMLDataset:
             **kwargs: 1d arrays like attrs like target, group etc.
 
         """
-        assert all(
-            [x in valid_array_attributes for x in kwargs]
-        ), "Unknown array attribute. Valid are {0}".format(valid_array_attributes)
+        assert all([x in valid_array_attributes for x in kwargs]), "Unknown array attribute. Valid are {0}".format(
+            valid_array_attributes
+        )
 
         self.task = task
         # here we set target and group and so ...
@@ -376,7 +371,7 @@ class LAMLDataset:
         Args:
             datasets: Sequence of feature arrays.
 
-        Returns:
+        Returns:  # noqa DAR202
             Single feature array.
 
         """
@@ -390,7 +385,7 @@ class LAMLDataset:
             data: 2d feature array.
             k: Sequence of int indexes or int.
 
-        Returns:
+        Returns:  # noqa DAR202
             2d feature array.
 
         """
@@ -404,7 +399,7 @@ class LAMLDataset:
             data: 2d feature array.
             k: Sequence indexes or single index.
 
-        Returns:
+        Returns:  # noqa DAR202
             2d feature array.
 
         """
@@ -461,13 +456,20 @@ class LAMLDataset:
         features = []
         roles = {}
 
+        atrs = set(dataset._array_like_attrs)
         for ds in datasets:
             data.append(ds.data)
             features.extend(ds.features)
             roles = {**roles, **ds.roles}
+            for atr in ds._array_like_attrs:
+                if atr not in atrs:
+                    dataset._array_like_attrs.append(atr)
+                    dataset.__dict__[atr] = ds.__dict__[atr]
+                    atrs.update({atr})
 
         data = cls._hstack(data)
         dataset.set_data(data, features, roles)
+
         return dataset
 
     def drop_features(self, droplist: Sequence[str]):
@@ -491,7 +493,7 @@ class LAMLDataset:
         Args:
             dataset: Original type dataset.
 
-        Returns:
+        Returns:  # noqa DAR202
             Converted type dataset.
 
         """
@@ -499,4 +501,5 @@ class LAMLDataset:
 
     @property
     def dataset_type(self):
+        """Get type of dataset."""
         return self._dataset_type

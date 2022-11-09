@@ -41,7 +41,17 @@
                     </ul>
                 </li>
                 <li>
-                    <h4 class="caret" id="section2_2_4">Dropped features</h4>
+                    <h4 class="caret" id="section2_2_4">Textual features</h4>
+                    <ul class="nested">
+                        {% if text_features_table is not none %}
+                        {{ text_features_table }}
+                        {% else %}
+                        <p>No textual features.</p>
+                        {% endif %}
+                    </ul>
+                </li>
+                <li>
+                    <h4 class="caret" id="section2_2_5">Dropped features</h4>
                     <ul class="nested">
                         {% if dropped_features_table is not none %}
                         <p>Some features were excluded from the training set.</p>

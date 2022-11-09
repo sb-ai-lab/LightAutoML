@@ -1,7 +1,6 @@
 """Dask_cudf reader."""
 
 import logging
-from time import perf_counter
 from typing import Any, Dict, Optional, Sequence, TypeVar, Union
 
 import cudf
@@ -121,8 +120,6 @@ class DaskCudfReader(CudfReader):
             Dataset with selected features.
 
         """
-
-        st = perf_counter()
 
         logger.info("Train data shape: {}".format(train_data.shape))
         parsed_roles, kwargs = self._prepare_roles_and_kwargs(
@@ -255,8 +252,6 @@ class DaskCudfReader(CudfReader):
                 **kwargs
             )
 
-        print("daskcudf reader:", perf_counter() - st)
-
         return dataset
 
     def _create_target(self, target: Series):
@@ -270,29 +265,45 @@ class DaskCudfReader(CudfReader):
 
         """
         self.class_mapping = None
-        if self.task.name != "reg":
-            # expect binary or multiclass here
-            cnts = target.value_counts(dropna=False).compute()
-            assert not cnts.index.isna().any(), "Nan in target detected"
-            unqiues = cnts.index.values
-            srtd = cp.sort(unqiues)
-            self._n_classes = len(unqiues)
-            # case - target correctly defined and no mapping
-            if (cp.arange(srtd.shape[0]) == srtd).all():
 
-                assert srtd.shape[0] > 1, "Less than 2 unique values in target"
-                if self.task.name == "binary":
-                    assert (
-                        srtd.shape[0] == 2
-                    ), "Binary task and more than 2 values in target"
-                return target.persist()
+        if (self.task.name == "binary") or (self.task.name == "multiclass"):
+            # expect binary or multiclass here
+            target, self.class_mapping = self.check_class_target(target)
+
+        elif self.task.name == "multilabel":
+            self.class_mapping = {}
+
+            for col in target.columns:
+                target_col, class_mapping = self.check_class_target(target[col])
+                self.class_mapping[col] = class_mapping
+                target[col] = target_col.values
+
+            self._n_classes = len(target.columns) * 2
+
+        else:
+            assert not target.isna().any().compute().any(), "Nan in target detected"
+        return target.persist()
+
+    def check_class_target(self, target):
+
+        cnts = target.value_counts(dropna=False).compute()
+        assert not cnts.index.isna().any(), "Nan in target detected"
+        unqiues = cnts.index.values
+        srtd = cp.sort(unqiues)
+        self._n_classes = len(unqiues)
+        # case - target correctly defined and no mapping
+        if (cp.arange(srtd.shape[0]) == srtd).all():
+
+            assert srtd.shape[0] > 1, "Less than 2 unique values in target"
+            if self.task.name == "binary":
+                assert (
+                    srtd.shape[0] == 2
+                ), "Binary task and more than 2 values in target"
+            return target.persist(), None
 
             # case - create mapping
             self.class_mapping = {n: x for (x, n) in enumerate(cp.asnumpy(unqiues))}
-            return target.astype(np.int32).persist()
-
-        assert not target.isna().any().compute().any(), "Nan in target detected"
-        return target.persist()
+            return target.map(class_mapping).astype(np.int32).persist(), class_mapping
 
     def read(
         self, data: DataFrame, features_names: Any = None, add_array_attrs: bool = False

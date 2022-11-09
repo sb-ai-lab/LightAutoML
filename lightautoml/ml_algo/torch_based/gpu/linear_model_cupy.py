@@ -415,10 +415,8 @@ class TorchBasedLinearEstimator:
         best_score = -np.inf
         best_model = None
         es = 0
-
         for c in self.cs:
             self._optimize(data, data_cat, y, weights, c)
-
             val_pred = self._score(data_val, data_val_cat)
             score = self.metric(y_val, val_pred, weights_val)
             logger.info("Linear model: C = {0} score = {1}".format(c, score))

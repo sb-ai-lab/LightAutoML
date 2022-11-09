@@ -1,17 +1,23 @@
 """Reader utils."""
 
-from typing import Callable, Optional, Union
+from typing import Callable
+from typing import Optional
+from typing import Union
 
 import numpy as np
 
+gpu_available = True
 try:
     import cudf
     import cupy as cp
     import dask_cudf
 except ModuleNotFoundError:
+    gpu_available = False
     print("Warning: GPU is not supported on this machine")
 
-from sklearn.model_selection import GroupKFold, KFold, StratifiedKFold
+from sklearn.model_selection import GroupKFold
+from sklearn.model_selection import KFold
+from sklearn.model_selection import StratifiedKFold
 
 from ..tasks import Task
 
@@ -38,44 +44,42 @@ def set_sklearn_folds(
         Array with fold indices.
 
     """
+    # GPU PART 
+    if (gpu_available) and (isinstance(target, (cp.ndarray, cudf.Series, cudf.DataFrame, dask_cudf.Series, dask_cudf.DataFrame))):
+        def KFolds_gpu(
+            target: cudf.Series,
+            n_splits: int = 5,
+            shuffle: bool = True,
+            random_state: int = 42,
+        ) -> cudf.Series:
+            """Performs regular KFolds
 
-    # GPU PART
-    def KFolds_gpu(
-        target: cudf.Series,
-        n_splits: int = 5,
-        shuffle: bool = True,
-        random_state: int = 42,
-    ) -> cudf.Series:
-        """Performs regular KFolds
+            Args:
+                target: Target values.
+                shuffle: If data needs to shuffled.
+                random_state: Determines random number generation.
+                n_splits: Number of splits
 
-        Args:
-            target: Target values.
-            shuffle: If data needs to shuffled.
-            random_state: Determines random number generation.
-            n_splits: Number of splits
+            Returns:
+                Array with fold indices.
 
-        Returns:
-            Array with fold indices.
+            """
+            cp.random.seed(seed=random_state)
+            n_samples = len(target)
+            indices = cp.arange(n_samples)
+            if shuffle:
+                cp.random.shuffle(indices)
+            fold_sizes = cp.full(n_splits, n_samples // n_splits, dtype=int)
+            fold_sizes[: n_samples % n_splits] += 1
+            current = 0
+            output = cp.zeros(n_samples, dtype="i")
+            for i, fold_size in enumerate(fold_sizes):
+                start, stop = current, current + fold_size
+                output[indices[start:stop]] = i
+                current = stop
+            output = cudf.Series(output, index=target.index, name="folds")
+            return output
 
-        """
-        cp.random.seed(seed=random_state)
-        n_samples = len(target)
-        indices = cp.arange(n_samples)
-        if shuffle:
-            cp.random.shuffle(indices)
-        fold_sizes = cp.full(n_splits, n_samples // n_splits, dtype=int)
-        fold_sizes[: n_samples % n_splits] += 1
-        current = 0
-        output = cp.zeros(n_samples, dtype="i")
-        for i, fold_size in enumerate(fold_sizes):
-            start, stop = current, current + fold_size
-            output[indices[start:stop]] = i
-            current = stop
-        output = cudf.Series(output, index=target.index, name="folds")
-        return output
-
-    # GPU PART
-    if isinstance(target, (cp.ndarray, cudf.Series, dask_cudf.Series)):
         if type(cv) is int:
             output = None
             if isinstance(target, (dask_cudf.Series, dask_cudf.DataFrame)):
@@ -139,25 +143,20 @@ def set_sklearn_folds(
                 output = KFolds_gpu(target, cv, shuffle, random_state)
 
             return output
-    # CPU PART
+    #CPU PART
     else:
         if type(cv) is int:
             if group is not None:
                 split = GroupKFold(cv).split(group, group, group)
             elif task.name in ["binary", "multiclass"]:
 
-                split = StratifiedKFold(
-                    cv, random_state=random_state, shuffle=True
-                ).split(target, target)
+                split = StratifiedKFold(cv, random_state=random_state, shuffle=True).split(target, target)
             else:
-                split = KFold(cv, random_state=random_state, shuffle=True).split(
-                    target, target
-                )
+                split = KFold(cv, random_state=random_state, shuffle=True).split(target, target)
 
             folds = np.zeros(target.shape[0], dtype=np.int32)
             for n, (f0, f1) in enumerate(split):
                 folds[f1] = n
-
             return folds
 
     return

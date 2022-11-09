@@ -1,18 +1,41 @@
+"""Lime explanation method for texts."""
+
 from functools import partial
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
+from typing import Any
+from typing import Callable
+from typing import Dict
+from typing import Iterable
+from typing import List
+from typing import Optional
+from typing import Tuple
+from typing import Union
 
 import numpy as np
 import pandas as pd
-from sklearn.linear_model import Ridge, lars_path
+
+from sklearn.linear_model import Ridge
+from sklearn.linear_model import lars_path
 from sklearn.metrics import pairwise_distances
 from sklearn.utils import check_random_state
 
 from ...pipelines.features.text_pipeline import _tokenizer_by_lang
-from .utils import IndexedString, draw_html
+from .utils import IndexedString
+from .utils import draw_html
 
 
 class TextExplanation:
-    """Explanation of object for textual data."""
+    """Explanation of object for textual data.
+
+    Args:
+        index_string: Pertrubing string object.
+        task_name: Task name. Can be
+            one of ['binary', 'multiclass', 'reg'].
+        prediction:
+        class_names: List of class names.
+        random_state: Random seed for perturbation generation.
+        draw_prediction:
+
+    """
 
     def __init__(
         self,
@@ -23,16 +46,6 @@ class TextExplanation:
         random_state=None,
         draw_prediction: bool = False,
     ):
-        """
-
-        Args:
-            index_string: Pertrubing string object.
-            task_name: Task name. Can be
-                one of ['binary', 'multiclass', 'reg'].
-            class_names: List of class names.
-            random_state: Random seed for perturbation generation.
-
-        """
         self.idx_str = index_string
         assert task_name in ["binary", "multiclass", "reg"]
         self.task_name = task_name
@@ -80,12 +93,10 @@ class TextExplanation:
                 for regression. By default, for
                 regression 0 will be used, and 1 for
                 other task types.
-
             add_not_rel: The not relevalt tokens will be
                 added in explanation with zero feature weights.
                 Using this flag it is convenient to visualize
                 the predictions.
-
             normalize: Normalization by the maximum
                 absolute value of the importance of the feature.
 
@@ -105,9 +116,7 @@ class TextExplanation:
             for k, v in fw.items():
                 weights[self.idx_str.pos[k]] = v
 
-            ans = [
-                (k, float(w) * norm_const) for k, w in zip(self.idx_str.as_np_, weights)
-            ]
+            ans = [(k, float(w) * norm_const) for k, w in zip(self.idx_str.as_np_, weights)]
         else:
             ans = [(self.idx_str.word(k), float(v) * norm_const) for k, v in fw.items()]
 
@@ -128,10 +137,7 @@ class TextExplanation:
 
         """
         label = self._label(label)
-        return {
-            f"{k}_{i}": v
-            for i, (k, v) in enumerate(self.instance[label]["feature_weights"])
-        }
+        return {f"{k}_{i}": v for i, (k, v) in enumerate(self.instance[label]["feature_weights"])}
 
     def as_html(self, label: Optional[int] = None) -> str:
         """Generates inline HTML with colors.
@@ -146,7 +152,6 @@ class TextExplanation:
             HTML code.
 
         """
-
         label = self._label(label)
         weight_string = self.as_features(label, add_not_rel=True, normalize=False)
         prediction = self.prediction[label]
@@ -183,7 +188,8 @@ class TextExplanation:
                 other task types.
 
         """
-        from IPython.display import HTML, display_html
+        from IPython.display import HTML
+        from IPython.display import display_html
 
         label = self._label(label)
         raw_html = self.as_html(label)
@@ -196,6 +202,7 @@ class TextExplanation:
         return label
 
     def get_label(self, name):
+        """Return label of class."""
         return self.class_names.index(name)
 
 
@@ -228,6 +235,22 @@ class LimeTextExplainer:
         >>> explanation = lime.explain_instance(train.iloc[0], perturb_column='message')
         >>> explanation.visualize_in_notebook()
 
+    Args:
+        automl: Automl object.
+        kernel: Callable object with parameter `kernel_width`.
+            By default, the squared-exponential kernel will be used.
+        kernel_width: Kernel width.
+        feature_selection: Feature selection type. For now,
+            'none', 'lasso' are availiable.
+        force_order: Whether to follow the word order.
+        model_regressor: Model distilator. By default,
+            Ridge regression will be used.
+        distance_metric: Distance type between binary vectors.
+        random_state: Random seed used,
+            for sampling perturbation of text column.
+        draw_prediction:
+
+
     """
 
     def __init__(
@@ -242,23 +265,6 @@ class LimeTextExplainer:
         random_state: Union[int, np.random.RandomState] = 0,
         draw_prediction: bool = False,
     ):
-        """
-
-        Args:
-            automl: Automl object.
-            kernel: Callable object with parameter `kernel_width`.
-                By default, the squared-exponential kernel will be used.
-            kernel_width: Kernel width.
-            feature_selection: Feature selection type. For now,
-                'none', 'lasso' are availiable.
-            force_order: Whether to follow the word order.
-            model_regressor: Model distilator. By default,
-                Ridge regression will be used.
-            distance_metric: Distance type between binary vectors.
-            random_state: Random seed used,
-                for sampling perturbation of text column.
-
-        """
         self.automl = automl
         self.task_name = automl.reader.task.name
 
@@ -277,9 +283,7 @@ class LimeTextExplainer:
         self.random_state = check_random_state(random_state)
 
         if model_regressor is None:
-            model_regressor = Ridge(
-                alpha=1, fit_intercept=True, random_state=self.random_state
-            )
+            model_regressor = Ridge(alpha=1, fit_intercept=True, random_state=self.random_state)
 
         self.distil_model = model_regressor
 
@@ -316,7 +320,7 @@ class LimeTextExplainer:
         n_features: int = 10,
         n_samples: int = 5000,
     ) -> "TextExplanation":
-        """
+        """Create instance of TextExplanation.
 
         Args:
             data: Data sample to explain.
@@ -366,13 +370,9 @@ class LimeTextExplainer:
         if self.task_name == "binary":
             pred = np.concatenate([1 - pred, pred], axis=1)
 
-        distance = pairwise_distances(
-            dataset, dataset[0].reshape(1, -1), metric=self.distance_metric
-        ).ravel()
+        distance = pairwise_distances(dataset, dataset[0].reshape(1, -1), metric=self.distance_metric).ravel()
 
-        expl = TextExplanation(
-            idx_str, self.task_name, pred[0], self.class_names, self.random_state
-        )
+        expl = TextExplanation(idx_str, self.task_name, pred[0], self.class_names, self.random_state)
 
         return dataset, pred, distance * 100, expl
 
@@ -386,17 +386,13 @@ class LimeTextExplainer:
     ) -> Dict[str, Union[float, np.array]]:
         weights = self.kernel_fn(dst)
         y = y[:, label]
-        features = self._feature_selection(
-            data, y, weights, n_features, mode=self.feature_selection
-        )
+        features = self._feature_selection(data, y, weights, n_features, mode=self.feature_selection)
         model = self.distil_model
         model.fit(data[:, features], y, sample_weight=weights)
         score = model.score(data[:, features], y, sample_weight=weights)
 
         pred = model.predict(data[0, features].reshape(1, -1))
-        feature_weights = list(
-            sorted(zip(features, model.coef_), key=lambda x: np.abs(x[1]), reverse=True)
-        )
+        feature_weights = list(sorted(zip(features, model.coef_), key=lambda x: np.abs(x[1]), reverse=True))
         res = {
             "bias": model.intercept_,
             "feature_weights": feature_weights,
@@ -417,15 +413,11 @@ class LimeTextExplainer:
         if mode == "none":
             return np.arange(data.shape[1])
         if mode == "lasso":
-            weighted_data = (data - np.average(data, axis=0, weights=weights)) * np.sqrt(
-                weights[:, np.newaxis]
-            )
+            weighted_data = (data - np.average(data, axis=0, weights=weights)) * np.sqrt(weights[:, np.newaxis])
             weighted_y = (y - np.average(y, weights=weights)) * np.sqrt(weights)
 
             features = np.arange(weighted_data.shape[1])
-            _, _, coefs = lars_path(
-                weighted_data, weighted_y, method="lasso", verbose=False
-            )
+            _, _, coefs = lars_path(weighted_data, weighted_y, method="lasso", verbose=False)
 
             for i in range(len(coefs.T) - 1, 0, -1):
                 features = coefs.T[i].nonzero()[0]

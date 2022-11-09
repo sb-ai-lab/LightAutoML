@@ -85,6 +85,12 @@ cb_params:
     thread_count: 100
   freeze_defaults: False
 
+# params for RandomForest MLAlgo. Note - params are default and may be changed during train if not freeze_defaults
+rf_params:
+  # Look for RF train params here. (thread_count will be rewrited by global preset's cpu limit)
+  default_params:
+  freeze_defaults: False
+
 # params for LinearLBFGS MLAlgo
 # no tuner needed for this algo - regularization params are found during fit
 linear_l2_params:

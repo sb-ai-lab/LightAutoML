@@ -35,6 +35,7 @@ try:
         MultiClassTargetEncoder_gpu,
         OrdinalEncoder_gpu,
         TargetEncoder_gpu,
+        MultioutputTargetEncoder_gpu
     )
     from lightautoml.transformers.gpu.datetime_gpu import BaseDiff_gpu, DateSeasons_gpu
     from lightautoml.transformers.gpu.numeric_gpu import QuantileBinning_gpu
@@ -242,6 +243,14 @@ class TabularDataFeatures_gpu(TabularDataFeatures):
         if train.folds is not None:
             if train.task.name in ["binary", "reg"]:
                 target_encoder = TargetEncoder_gpu
+            elif (train.task.name == "multi:reg") or (train.task.name == "multilabel"):
+                n_classes = train.target.shape
+                if type(train) == DaskCudfDataset:
+                    n_classes = n_classes.compute()[1]
+                else:
+                    n_classes = n_classes[1]
+                if n_classes <= self.multiclass_te_co:
+                    target_encoder = MultioutputTargetEncoder_gpu
             else:
                 target_max = train.target.max()
                 if type(train) == DaskCudfDataset:

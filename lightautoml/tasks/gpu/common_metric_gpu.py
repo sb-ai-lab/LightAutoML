@@ -15,23 +15,28 @@ from cuml.metrics.regression import (
 from dask_ml.metrics import accuracy_score as dask_accuracy_score
 from dask_ml.metrics import mean_absolute_error as dask_mean_absolute_error
 
+def log_loss_raw(y_true, y_pred, sample_weight=None, eps = 1e-15):
+    y_pred /= y_pred.sum(axis=1)[:, cp.newaxis]
+    loss = -(y_true * cp.log(y_pred)).sum(axis=1)
+    if sample_weight is None:
+        return loss.sum()/len(loss)
+    else:
+        return (loss*sample_weight).sum()/len(loss)
+
 
 def log_loss_gpu(y_true, y_pred, sample_weight=None, eps: float = 1e-15) -> float:
 
     res = None
+
     if isinstance(y_true, da.Array):
-
-        # res = da.map_blocks(log_loss, y_true, y_pred,
-        #                sample_weight=sample_weight, eps=eps,
-        #                meta=cp.array((), dtype=cp.float32), drop_axis=1)
-
-        # res = cp.array(res.compute()).mean()
-
-        res = log_loss(
-            y_true.compute(), y_pred.compute(), sample_weight=sample_weight, eps=eps
-        )
+        y_true = y_true.compute()
+        y_pred = y_pred.compute()
+    if y_true.shape == y_pred.shape:
+        func = log_loss_raw
     else:
-        res = log_loss(y_true, y_pred, sample_weight=sample_weight, eps=eps)
+        func = log_loss
+
+    res = func(y_true, y_pred, sample_weight=sample_weight, eps=eps)
     return res
 
 
@@ -528,8 +533,14 @@ _valid_str_multiclass_metric_names_gpu = {
     # 'f1_weighted': BestClassMulticlassWrapper_gpu(F1Factory('weighted')),
 }
 
+_valid_str_multireg_metric_names_gpu = {"mse": mean_squared_error_gpu, "mae": mean_absolute_error_gpu}
+
+_valid_str_multilabel_metric_names_gpu = {"logloss": partial(log_loss_gpu, eps=1e-7)}
+
 _valid_str_metric_names_gpu = {
     "binary": _valid_str_binary_metric_names_gpu,
     "reg": _valid_str_reg_metric_names_gpu,
     "multiclass": _valid_str_multiclass_metric_names_gpu,
+    "multi:reg": _valid_str_multireg_metric_names_gpu,
+    "multilabel": _valid_str_multilabel_metric_names_gpu,
 }

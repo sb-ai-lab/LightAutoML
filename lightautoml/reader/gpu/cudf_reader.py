@@ -2,8 +2,7 @@
 
 import logging
 from copy import deepcopy
-from time import perf_counter
-from typing import Any, Dict, Optional, Sequence, TypeVar, Union, cast
+from typing import Any, Dict, Optional, Sequence, TypeVar, Union, Tuple, Mapping, cast
 
 import cudf
 import cupy as cp
@@ -33,6 +32,7 @@ from lightautoml.reader.guess_roles import (
 from lightautoml.tasks import Task
 
 from ..utils import set_sklearn_folds
+
 from .guess_roles_gpu import (
     get_category_roles_stat_gpu,
     get_null_scores_gpu,
@@ -100,22 +100,35 @@ class CudfReader(PandasToPandasReader):
 
             # check if column is defined like target/group/weight etc ...
             if r.name in attrs_dict:
-                self._used_array_attrs[attrs_dict[r.name]] = feat
-                kwargs[attrs_dict[r.name]] = train_data[feat]
+                if ((self.task.name == "multi:reg") or (self.task.name == "multilabel")) and (
+                    attrs_dict[r.name] == "target"
+                ):
+                    if attrs_dict[r.name] in kwargs:
+                        kwargs[attrs_dict[r.name]].append(feat)
+                        self._used_array_attrs[attrs_dict[r.name]].append(feat)
+                    else:
+                        kwargs[attrs_dict[r.name]] = [feat]
+                        self._used_array_attrs[attrs_dict[r.name]] = [feat]
+                else:
+                    self._used_array_attrs[attrs_dict[r.name]] = feat
+                    kwargs[attrs_dict[r.name]] = train_data[feat]
                 r = DropRole()
 
             # add new role
             parsed_roles[feat] = r
 
         assert "target" in kwargs, "Target should be defined"
-        self.target = kwargs["target"].name
+        if self.task.name in ["multi:reg", "multilabel"]:
+            kwargs["target"] = train_data[kwargs["target"]]
+        self.target = kwargs["target"].name if isinstance(kwargs["target"], (pd.Series, cudf.Series, dask_cudf.Series, dd.Series)) else kwargs["target"].columns
 
         return parsed_roles, kwargs
 
     def _prepare_data_and_target(self, train_data, **kwargs):
 
         if isinstance(train_data, (pd.DataFrame, pd.Series)):
-            cp.cuda.runtime.setDevice(self.device_num)
+            if self.task == "mgpu":
+                cp.cuda.runtime.setDevice(self.device_num)
             train_data = cudf.from_pandas(train_data, nan_as_null=False)
             for col in train_data.columns:
                 if pd.api.types.is_bool_dtype(train_data[col]):
@@ -126,7 +139,8 @@ class CudfReader(PandasToPandasReader):
             pass
 
         elif isinstance(train_data, (dask_cudf.DataFrame, dask_cudf.Series)):
-            cp.cuda.runtime.setDevice(self.device_num)
+            if self.task == "mgpu":
+                cp.cuda.runtime.setDevice(self.device_num)
             train_data = train_data.compute()
             kwargs["target"] = train_data[self.target]
 
@@ -156,13 +170,14 @@ class CudfReader(PandasToPandasReader):
             features_names: Ignored. Just to keep signature.
             roles: Dict of features roles in format
               ``{RoleX: ['feat0', 'feat1', ...], RoleY: 'TARGET', ....}``.
+            roles_parsed: True if roles are already parsed into reader format
+              ``{RoleX: feat0, RoleY: feat1, RoleX: feat2, ...}
             **kwargs: Can be used for target/group/weights.
 
         Returns:
             Dataset with selected features.
 
         """
-        st = perf_counter()
 
         logger.info("Train data shape: {}".format(train_data.shape))
         parsed_roles, kwargs = self._prepare_roles_and_kwargs(
@@ -237,7 +252,6 @@ class CudfReader(PandasToPandasReader):
         dataset = CudfDataset(
             train_data[self.used_features], self.roles, task=self.task, **kwargs
         )
-
         if self.advanced_roles:
             new_roles = self.advanced_roles_guess(dataset, manual_roles=parsed_roles)
 
@@ -253,7 +267,6 @@ class CudfReader(PandasToPandasReader):
                 train_data[self.used_features], self.roles, task=self.task, **kwargs
             )
 
-        print("cudf reader:", perf_counter() - st)
         return dataset
 
     def _create_target(self, target: Series):
@@ -268,29 +281,42 @@ class CudfReader(PandasToPandasReader):
         """
         self.class_mapping = None
 
-        if self.task.name != "reg":
+        if (self.task.name == "binary") or (self.task.name == "multiclass"):
             # expect binary or multiclass here
-            cnts = target.value_counts(dropna=False)
-            assert not cnts.index.isna().any(), "Nan in target detected"
-            unqiues = cnts.index.values
-            srtd = cp.sort(unqiues)
-            self._n_classes = len(unqiues)
-            # case - target correctly defined and no mapping
-            if (cp.arange(srtd.shape[0]) == srtd).all():
+            target, self.class_mapping = self.check_class_target(target)
+            
+        elif self.task.name == "multilabel":
+            self.class_mapping = {}
 
-                assert srtd.shape[0] > 1, "Less than 2 unique values in target"
-                if self.task.name == "binary":
-                    assert (
-                        srtd.shape[0] == 2
-                    ), "Binary task and more than 2 values in target"
-                return target
+            for col in target.columns:
+                target_col, class_mapping = self.check_class_target(target[col])
+                self.class_mapping[col] = class_mapping
+                target[col] = target_col.values
 
-            # case - create mapping
-            self.class_mapping = {n: x for (x, n) in enumerate(cp.asnumpy(unqiues))}
-            return target.map(self.class_mapping).astype(cp.int32)
-
-        assert not target.isna().any(), "Nan in target detected"
+            self._n_classes = len(target.columns) * 2
+        else:
+            assert not target.isna().values.any(), "Nan in target detected"
         return target
+
+    def check_class_target(self, target) -> Tuple[cudf.Series, Optional[Union[Mapping, Dict[str, Mapping]]]]:
+        """Validate target values."""
+        target = cudf.Series(target)
+        cnts = target.value_counts(dropna=False)
+        assert not cnts.index.isna().any(), "Nan in target detected"
+        unqiues = cnts.index.values
+        srtd = cp.sort(unqiues)
+        self._n_classes = len(unqiues)
+        # case - target correctly defined and no mapping
+        if (cp.arange(srtd.shape[0]) == srtd).all():
+
+            assert srtd.shape[0] > 1, "Less than 2 unique values in target"
+        if (self.task.name == "binary") or (self.task.name == "multilabel"):
+            assert srtd.shape[0] == 2, "Binary task and more than 2 values in target"
+            return target, None
+
+        # case - create mapping
+        self.class_mapping = {n: x for (x, n) in enumerate(cp.asnumpy(unqiues))}
+        return target.map(self.class_mapping).astype(cp.int32), class_mapping
 
     def _guess_role(self, feature: Series) -> RoleType:
         """Try to infer role, simple way.
@@ -439,23 +465,23 @@ class CudfReader(PandasToPandasReader):
             # upd stat with rules
 
             stat = calc_category_rules(stat)
-            # stat['dtype'] = dtypes
+            stat['dtype'] = dtypes
             new_roles_dict = {
                 **new_roles_dict,
-                **rule_based_cat_handler_guess(stat, dtypes),
+                **rule_based_cat_handler_guess(stat),#, dtypes),
             }
             top_scores.append(stat["max_score"])
 
         # # get top scores of feature
         if len(top_scores) > 0:
-            top_scores = cudf.concat(top_scores, axis=0).to_pandas()
+            top_scores = pd.concat(top_scores, axis=0)#.to_pandas()
 
             null_scores = get_null_scores_gpu(
                 dataset,
                 top_scores.index.values,
                 random_state=self.random_state,
                 subsample=self.samples,
-            ).to_pandas()
+            )#.to_pandas()
             top_scores = pd.concat([null_scores, top_scores], axis=1).max(axis=1)
 
             rejected = list(top_scores[top_scores < drop_co].index.values)

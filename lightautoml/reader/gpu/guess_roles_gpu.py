@@ -1,6 +1,6 @@
 """Roles guess on gpu."""
 
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 import cudf
 import cupy as cp
@@ -22,11 +22,12 @@ from lightautoml.transformers.gpu.categorical_gpu import (
     MultiClassTargetEncoder_gpu,
     OrdinalEncoder_gpu,
     TargetEncoder_gpu,
+    MultioutputTargetEncoder_gpu
 )
 from lightautoml.transformers.gpu.numeric_gpu import QuantileBinning_gpu
 
 RolesDict = Dict[str, ColumnRole]
-Encoder_gpu = Union[TargetEncoder_gpu, MultiClassTargetEncoder_gpu]
+Encoder_gpu = Union[TargetEncoder_gpu, MultiClassTargetEncoder_gpu,MultioutputTargetEncoder_gpu]
 GpuFrame = Union[cudf.DataFrame]
 GpuDataset = Union[CudfDataset, CupyDataset]
 
@@ -228,13 +229,16 @@ def get_target_and_encoder_gpu(train: GpuDataset) -> Tuple[Any, type]:
     """
 
     target = train.target
-    if isinstance(target, cudf.Series):
+    if isinstance(target, (cudf.Series, cudf.DataFrame)):
         target = target.values
 
     if train.task.name == "multiclass":
         n_out = cp.max(target) + 1
         target = target[:, cp.newaxis] == cp.arange(n_out)[cp.newaxis, :]
         encoder = MultiClassTargetEncoder_gpu
+    elif (train.task.name == "multi:reg") or (train.task.name == "multilabel"):
+        target = cast(cp.ndarray, target).astype(cp.float32)
+        encoder = MultioutputTargetEncoder_gpu
     else:
         encoder = TargetEncoder_gpu
     return target, encoder
@@ -275,6 +279,7 @@ def calc_ginis_gpu(
     ind = index // len_ratio
     sl = empty_slice[:, ind]
 
+    #scores = gini_normalized_gpu(data, target, sl)
     scores = gini_normalized_gpu_new(data, target, sl)
 
     if len_ratio != 1:
@@ -339,18 +344,18 @@ def rule_based_roles_guess_gpu(stat: cudf.DataFrame) -> Dict[str, ColumnRole]:
 
     # numbers with discrete features
     role = NumericRole(np.float32, discretization=True)
-    feats = numbers[numbers["discrete_rule"]].to_pandas().index
+    feats = numbers[numbers["discrete_rule"]].index#.to_pandas().index
     roles_dict = {**roles_dict, **{x: role for x in feats}}
 
     # classic numbers
     role = NumericRole(np.float32)
-    feats = numbers[~numbers["discrete_rule"]].to_pandas().index
+    feats = numbers[~numbers["discrete_rule"]].index#.to_pandas().index
     roles_dict = {**roles_dict, **{x: role for x in feats}}
 
     # low cardinal categories
     # role = CategoryRole(np.float32, encoding_type='int')
-    feats = categories[categories["int_rule"]].to_pandas().index
-    ordinal = categories["ord_rule"][categories["int_rule"]].to_pandas().values
+    feats = categories[categories["int_rule"]].index#.to_pandas().index
+    ordinal = categories["ord_rule"][categories["int_rule"]].index#.to_pandas().values
     roles_dict = {
         **roles_dict,
         **{
@@ -361,8 +366,8 @@ def rule_based_roles_guess_gpu(stat: cudf.DataFrame) -> Dict[str, ColumnRole]:
 
     # frequency encoded feats
     # role = CategoryRole(np.float32, encoding_type='freq')
-    feats = categories[categories["freq_rule"]].to_pandas().index
-    ordinal = categories["ord_rule"][categories["freq_rule"]].to_pandas().values
+    feats = categories[categories["freq_rule"]].index#.to_pandas().index
+    ordinal = categories["ord_rule"][categories["freq_rule"]].index#.to_pandas().values
     roles_dict = {
         **roles_dict,
         **{
@@ -375,12 +380,12 @@ def rule_based_roles_guess_gpu(stat: cudf.DataFrame) -> Dict[str, ColumnRole]:
     # role = CategoryRole(np.float32)
     feats = (
         categories[(~categories["freq_rule"]) & (~categories["int_rule"])]
-        .to_pandas()
+        #.to_pandas()
         .index
     )
     ordinal = (
         categories["ord_rule"][(~categories["freq_rule"]) & (~categories["int_rule"])]
-        .to_pandas()
+        #.to_pandas()
         .values
     )
     roles_dict = {
@@ -441,7 +446,7 @@ def get_numeric_roles_stat_gpu(
     random_state: int = 42,
     manual_roles: Optional[RolesDict] = None,
     n_jobs: int = 1,
-) -> cudf.DataFrame:
+) -> pd.DataFrame:
     """Calculate statistics about different encodings performances.
 
     We need it to calculate rules about advanced roles guessing.
@@ -469,7 +474,7 @@ def get_numeric_roles_stat_gpu(
         if role.name == "Numeric":  # and f != train.target.name:
             roles_to_identify.append(f)
             flg_manual_set.append(f in manual_roles)
-    res = cudf.DataFrame(
+    res = pd.DataFrame(
         columns=[
             "flg_manual",
             "unique",
@@ -503,11 +508,9 @@ def get_numeric_roles_stat_gpu(
     target, encoder = get_target_and_encoder_gpu(train)
     empty_slice = train.data.isna()
     # check scores as is
-
-    res["raw_scores"] = get_score_from_pipe_gpu(
+    res["raw_scores"] = cp.asnumpy(get_score_from_pipe_gpu(
         train, target, empty_slice=empty_slice, n_jobs=n_jobs
-    )
-
+    ))
     # check unique values
     unique_values = None
     top_freq_values = None
@@ -515,8 +518,8 @@ def get_numeric_roles_stat_gpu(
     if isinstance(train.data, cudf.DataFrame):
 
         desc = train.data.nans_to_nulls().astype(object).describe(include="all")
-        unique_values = desc.loc["unique"].astype(cp.int32).values[0]
-        top_freq_values = desc.loc["freq"].astype(cp.int32).values[0]
+        unique_values = cp.asnumpy(desc.loc["unique"].astype(cp.int32).values[0])
+        top_freq_values = cp.asnumpy(desc.loc["freq"].astype(cp.int32).values[0])
     else:
         raise NotImplementedError
     res["unique"] = unique_values
@@ -525,31 +528,31 @@ def get_numeric_roles_stat_gpu(
 
     # check binned categorical score
     trf = SequentialTransformer([QuantileBinning_gpu(), encoder()])
-
-    res["binned_scores"] = get_score_from_pipe_gpu(
+    res["binned_scores"] = cp.asnumpy(get_score_from_pipe_gpu(
         train, target, pipe=trf, empty_slice=empty_slice, n_jobs=n_jobs
-    )
+    ))
     # check label encoded scores
     trf = SequentialTransformer(
         [ChangeRoles(CategoryRole(np.float32)), LabelEncoder_gpu(), encoder()]
     )
 
-    res["encoded_scores"] = get_score_from_pipe_gpu(
+    res["encoded_scores"] = cp.asnumpy(get_score_from_pipe_gpu(
         train, target, pipe=trf, empty_slice=empty_slice, n_jobs=n_jobs
-    )
+    ))
     # check frequency encoding
     trf = SequentialTransformer(
         [ChangeRoles(CategoryRole(np.float32)), FreqEncoder_gpu()]
     )
 
-    res["freq_scores"] = get_score_from_pipe_gpu(
+    res["freq_scores"] = cp.asnumpy(get_score_from_pipe_gpu(
         train, target, pipe=trf, empty_slice=empty_slice, n_jobs=n_jobs
-    )
+    ))
 
     if isinstance(empty_slice, cudf.DataFrame):
         res["nan_rate"] = empty_slice.mean(axis=0).values_host
     else:
         raise NotImplementedError
+    res = res.fillna(np.nan)
     return res
 
 
@@ -558,7 +561,7 @@ def get_category_roles_stat_gpu(
     subsample: Optional[Union[float, int]] = 100000,
     random_state: int = 42,
     n_jobs: int = 1,
-) -> cudf.DataFrame:
+) -> pd.DataFrame:
     """Search for optimal processing of categorical values.
 
     Categorical means defined by user or object types.
@@ -585,7 +588,7 @@ def get_category_roles_stat_gpu(
             roles_to_identify.append(f)
             dtypes.append(role.dtype)
 
-    res = cudf.DataFrame(
+    res = pd.DataFrame(
         columns=["unique", "top_freq_values", "dtype", "encoded_scores", "freq_scores"],
         index=roles_to_identify,
     )
@@ -613,19 +616,19 @@ def get_category_roles_stat_gpu(
 
     # check label encoded scores
     trf = SequentialTransformer([LabelEncoder_gpu(), encoder()])
-    res["encoded_scores"] = get_score_from_pipe_gpu(
+    res["encoded_scores"] = cp.asnumpy(get_score_from_pipe_gpu(
         train, target, pipe=trf, empty_slice=empty_slice, n_jobs=n_jobs
-    )
+    ))
     # check frequency encoding
     trf = FreqEncoder_gpu()
-    res["freq_scores"] = get_score_from_pipe_gpu(
+    res["freq_scores"] = cp.asnumpy(get_score_from_pipe_gpu(
         train, target, pipe=trf, empty_slice=empty_slice, n_jobs=n_jobs
-    )
+    ))
     # check ordinal encoding
     trf = OrdinalEncoder_gpu()
-    res["ord_scores"] = get_score_from_pipe_gpu(
+    res["ord_scores"] = cp.asnumpy(get_score_from_pipe_gpu(
         train, target, pipe=trf, empty_slice=empty_slice, n_jobs=n_jobs
-    )
+    ))
     return res, dtypes
 
 
@@ -664,10 +667,8 @@ def get_null_scores_gpu(
     empty_slice = train.data.isnull()
     notnan = empty_slice.sum(axis=0)
     notnan = (notnan != shape[0]) & (notnan != 0)
-
     notnan_inds = empty_slice.columns[notnan.values_host]
     empty_slice = empty_slice[notnan_inds]
-
     scores = cp.zeros(shape[1])
 
     if len(notnan_inds) != 0:
@@ -675,5 +676,6 @@ def get_null_scores_gpu(
         scores_ = calc_ginis_gpu(empty_slice, target, empty_slice)
         scores[notnan.values_host] = scores_
 
-    res = cudf.Series(scores, index=train.features, name="max_score_2")
+    res = pd.Series(cp.asnumpy(scores), index=train.features, name="max_score_2")
+    
     return res

@@ -42,16 +42,26 @@ _xgb_multiclass_metrics_dict_gpu = {
     "accuracy": "merror",
 }
 
+_xgb_multilabel_metric_dict_gpu = {"logloss": "logloss"}
+
+_xgb_multireg_metric_dict_gpu = {
+    "rmse": "rmse",
+    "mse": "rmse",
+    "mae": "reg:squarederror",
+}
 
 _xgb_metrics_dict_gpu = {
     "binary": _xgb_binary_metrics_dict,
     "reg": _xgb_reg_metrics_dict,
     "multiclass": _xgb_multiclass_metrics_dict_gpu,
+    "multilabel" : _xgb_multilabel_metric_dict_gpu,
+    "multi:reg" : _xgb_multireg_metric_dict_gpu,
 }
 
 _xgb_loss_mapping = {
     "logloss": ("binary:logistic", None, None),
     "mse": ("reg:squarederror", None, None),
+    "mae": ("reg:squarederror", None, None),
     "crossentropy": ("multi:softprob", None, None),
 }
 
@@ -77,7 +87,6 @@ class XGBFunc_gpu:
         self.bw_func = bw_func
 
     def __call__(self, pred: np.ndarray, dtrain: XGBMatrix) -> Tuple[str, float, bool]:
-
         label = dtrain.get_label()
 
         weights = dtrain.get_weight()

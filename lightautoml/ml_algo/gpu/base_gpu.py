@@ -71,6 +71,11 @@ class TabularMLAlgo_gpu(TabularMLAlgo):
                 outp_dim = int(val_data.target.max().compute() + 1)
             else:
                 outp_dim = int(val_data.target.max()) + 1
+        elif (self.task.name == "multi:reg") or (self.task.name == "multilabel"):
+            if type(val_data) == DaskCudfDataset:
+                outp_dim = val_data.target.shape.compute()[1]
+            else:
+                outp_dim = val_data.target.shape[1]
         # save n_classes to infer params
         self.n_classes = outp_dim
 

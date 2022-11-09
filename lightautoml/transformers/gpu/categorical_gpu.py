@@ -178,7 +178,7 @@ class LabelEncoder_gpu(LAMLTransformer):
         # data = self.encode_labels(data).values
         data = self.encode_labels(data)
         data = data.astype(cp.float64)
-        data = data.fillna(cp.nan).values
+        data = data.fillna(cp.nan).values.reshape(data.shape)
         # data
         # create resulted
         output = dataset.empty().to_cupy()
@@ -186,7 +186,6 @@ class LabelEncoder_gpu(LAMLTransformer):
         return output
 
     def _transform_daskcudf(self, dataset: DaskCudfDataset) -> DaskCudfDataset:
-
         data = dataset.data
         data = data.map_partitions(
             self.encode_labels,
@@ -1344,6 +1343,449 @@ class MultiClassTargetEncoder_gpu(LAMLTransformer):
 
         return output
 
+class MultioutputTargetEncoder_gpu(LAMLTransformer):
+    """Out-of-fold target encoding for multi:reg and multilabel task. (GPU version)
+
+    Limitation:
+
+        - Required .folds attribute in dataset - array of int from 0 to n_folds-1.
+        - Working only after label encoding
+
+    """
+
+    _fit_checks = ()
+    _transform_checks = ()
+    _fname_prefix = "multioutgoof_gpu"
+
+    @property
+    def features(self) -> List[str]:
+        return self._features
+
+    def __init__(
+        self, alphas: Sequence[float] = (0.5, 1.0, 2.0, 5.0, 10.0, 50.0, 250.0, 1000.0)
+    ):
+        self.alphas = alphas
+
+    @staticmethod
+    def reg_score_func(candidates: cp.ndarray, target: cp.ndarray) -> int:
+        """Compute statistics for regression tasks.
+
+
+        Args:
+            candidates: cp.ndarray.
+            target: cp.ndarray.
+
+        Returns:
+            index of best encoder.
+
+        """
+        target = target[:, :, cp.newaxis]
+        scores = ((target - candidates) ** 2).mean(axis=0)
+        idx = scores[0].argmin()
+
+        return idx
+
+    @staticmethod
+    def class_score_func(candidates: cp.ndarray, target: cp.ndarray) -> int:
+        """Compute statistics for each class.
+
+        Args:
+            candidates: np.ndarray.
+            target: np.ndarray.
+
+        Returns:
+            index of best encoder.
+
+        """
+        target = target[:, :, cp.newaxis]
+        scores = -(target * cp.log(candidates) + (1 - target) * cp.log(1 - candidates)).mean(axis=0)
+        idx = scores[0].argmin()
+
+        return idx
+
+    @staticmethod
+    def dask_class_score_func(data: cudf.DataFrame, target_cols: List[str], shape) -> cudf.DataFrame:
+        """Score candidates alpha with logloss metric.
+
+        Args:
+            data: Candidate oof encoders.
+            target_col: column name with target.
+
+        Returns:
+            cudf.DataFrame with scores
+
+        """
+
+        target = data[target_cols].values[:, :, cp.newaxis]
+        candidates = data[data.columns.difference(target_cols)].values
+        candidates = candidates.reshape(data.shape[0], shape[0], shape[1])
+        scores = -(
+            target * cp.log(candidates) + (1 - target) * cp.log(1 - candidates)
+        ).mean(axis=0)[0]
+        return cudf.DataFrame([scores])
+
+    @staticmethod
+    def dask_reg_score_func(data: cudf.DataFrame, target_cols: List[str], shape) -> cudf.DataFrame:
+        """Score candidates alpha with mse metric.
+
+        Args:
+            data: Candidate oof encoders.
+            target_col: column name with target.
+
+        Returns:
+            cudf.DataFrame with scores
+
+        """
+
+        target = data[target_cols].values[:, :, cp.newaxis]
+
+        candidates = data[data.columns.difference(target_cols)].values
+        candidates = candidates.reshape(data.shape[0], shape[0], shape[1])
+        scores = ((target - candidates) ** 2).mean(axis=0)[0]
+        return cudf.DataFrame([scores])
+
+    def fit_transform(self, dataset):
+        # set transformer names and add checks
+        for check_func in self._fit_checks:
+            check_func(dataset)
+
+        if isinstance(dataset, DaskCudfDataset):
+            return self._fit_transform_daskcudf(dataset)
+        else:
+            return self._fit_transform_cupy(dataset)
+
+    def transform(self, dataset):
+        if isinstance(dataset, DaskCudfDataset):
+            return self._transform_daskcudf(dataset)
+        else:
+            return self._transform_cupy(dataset)
+
+    def _fit_transform_cupy(self, dataset):
+
+        # convert to accepted dtype and get attributes
+        dataset = dataset.to_cupy()
+
+        score_func = self.class_score_func if dataset.task.name == "multilabel" else self.reg_score_func
+        data = dataset.data
+        target = dataset.target.astype(cp.float32)
+        n_classes = int(target.shape[1])
+        self.n_classes = n_classes
+        folds = dataset.folds.astype(int)
+        n_folds = int(folds.max() + 1)
+        alphas = cp.array(self.alphas)[cp.newaxis, cp.newaxis, :]
+        self.encodings = []
+        # prior
+        prior = cast(cp.ndarray, target).mean(axis=0)
+        # folds prior
+
+        f_sum = cp.zeros((n_folds, n_classes), dtype=cp.float64)
+        f_count = cp.zeros((1, n_folds), dtype=cp.float64)
+
+        scatter_add(f_sum, (folds,), target)
+        scatter_add(f_count, (0, folds), 1)
+
+        f_sum = f_sum.T
+        # N_classes x N_folds
+        folds_prior = ((f_sum.sum(axis=1, keepdims=True) - f_sum) / (f_count.sum(axis=1, keepdims=True) - f_count)).T
+        oof_feats = cp.zeros(data.shape + (n_classes,), dtype=cp.float32)
+
+        self._features = []
+        for i in dataset.features:
+            for j in range(n_classes):
+                self._features.append("{0}_{1}__{2}".format("multioof", j, i))
+
+        for n in range(data.shape[1]):
+            vec = data[:, n].astype(int)
+
+            # calc folds stats
+            enc_dim = int(vec.max() + 1)
+            f_sum = cp.zeros((enc_dim, n_folds, n_classes), dtype=cp.float64)
+            f_count = cp.zeros((enc_dim, 1, n_folds), dtype=cp.float64)
+
+            scatter_add(
+                f_sum,
+                (
+                    vec,
+                    folds,
+                ),
+                target,
+            )
+            scatter_add(f_count, (vec, 0, folds), 1)
+
+            f_sum = cp.moveaxis(f_sum, 2, 1)
+            # calc total stats
+            t_sum = f_sum.sum(axis=2, keepdims=True)
+            t_count = f_count.sum(axis=2, keepdims=True)
+
+            # calc oof stats
+            oof_sum = t_sum - f_sum
+            oof_count = t_count - f_count
+
+            candidates = (
+                (oof_sum[vec, :, folds, cp.newaxis] + alphas * folds_prior[folds, :, cp.newaxis])
+                / (oof_count[vec, :, folds, cp.newaxis] + alphas)
+            ).astype(cp.float32)
+
+            # norm over 1 axis
+            candidates /= candidates.sum(axis=1, keepdims=True)
+            idx = score_func(candidates, target)
+            oof_feats[:, n] = candidates[..., idx]
+            enc = ((t_sum[..., 0] + alphas[0, 0, idx] * prior) / (t_count[..., 0] + alphas[0, 0, idx])).astype(
+                cp.float32
+            )
+            enc /= enc.sum(axis=1, keepdims=True)
+            self.encodings.append(enc)
+
+        output = dataset.empty()
+        output.set_data(
+            oof_feats.reshape((data.shape[0], -1)),
+            self.features,
+            NumericRole(cp.float32, prob=dataset.task.name == "multilabel"),
+        )
+        return output
+
+    @staticmethod
+    def dask_add_at_2d(data, cols, val, shape):
+        output = cp.zeros(shape, dtype=cp.float32)
+        if isinstance(cols[0], int):
+            scatter_add(output, (cols[0], data[cols[-1]].values), val)
+        else:
+            scatter_add(output, (data[cols[-1]].values,), data[cols[0]].values)
+        return cudf.DataFrame(output)
+
+    @staticmethod
+    def dask_add_at_3d(data, cols, val, shape):
+        output = cp.zeros(shape, dtype=cp.float32)
+        if isinstance(cols[1], int):
+            scatter_add(
+                output, (data[cols[0]].values, cols[1], data[cols[-1]].values), val
+            )
+        else:
+            scatter_add(
+                output,
+                (data[cols[0]].values, data[cols[-1]].values),
+                data[cols[1]].values
+            )
+
+        output = output.reshape((shape[0], shape[1] * shape[2]))
+        return cudf.DataFrame(output)
+
+    @staticmethod
+    def find_candidates(
+        data, vec_col, fold_col, oof_sum, oof_count, alphas, folds_prior
+    ):
+        vec = data[vec_col].values
+        folds = data[fold_col].values
+        candidates = (
+            (
+                oof_sum[vec, :, folds, cp.newaxis]
+                + alphas * folds_prior[folds, :, cp.newaxis]
+            )
+            / (oof_count[vec, :, folds, cp.newaxis] + alphas)
+        ).astype(cp.float32)
+
+        candidates /= candidates.sum(axis=1, keepdims=True)
+        candidates = candidates.reshape(data.shape[0], -1)
+        return cudf.DataFrame(candidates, index=data.index)
+
+    def _fit_transform_daskcudf(self, dataset):
+
+        score_func = self.dask_class_score_func if dataset.task.name == "multilabel" else self.dask_reg_score_func
+
+        target_name = dataset.target.name if isinstance(dataset.target, dask_cudf.Series) else list(dataset.target.columns)
+        folds_name = dataset.folds.name
+
+        data = dataset.data.persist()
+        data[folds_name] = dataset.folds.persist()
+        data[target_name] = dataset.target.persist()
+
+        n_classes = int(dataset.target.shape[1])
+        self.n_classes = n_classes
+        n_folds = int(data[folds_name].max().compute() + 1)
+        alphas = cp.array(self.alphas)[cp.newaxis, cp.newaxis, :]
+        self.encodings = []
+
+        # prior
+        prior = dataset.target.mean(axis=0).compute().values
+        # folds prior
+
+        f_sum = cp.zeros((n_folds, n_classes), dtype=cp.float64)
+        f_count = cp.zeros((1, n_folds), dtype=cp.float64)
+
+        f_sum = data.map_partitions(
+            self.dask_add_at_2d,
+            [target_name, folds_name],
+            1,
+            (n_folds, n_classes),
+            meta=cudf.DataFrame(columns=np.arange(n_classes), dtype="f8"),
+        ).compute()
+        f_count = data.map_partitions(
+            self.dask_add_at_2d,
+            [0, folds_name],
+            1,
+            (1, n_folds),
+            meta=cudf.DataFrame(columns=np.arange(n_folds), dtype="i8"),
+        )
+
+        f_sum_final = cp.zeros((n_folds, n_classes))
+        f_count_final = cp.zeros((1, n_folds))
+
+        for i in range(n_folds):
+            f_sum_final[i] = (
+                f_sum[f_sum.columns][f_sum.index.values == i]
+                .sum()
+                .values
+            )
+
+        f_count_final[0] = f_count.sum(axis=0).compute().values
+
+        f_sum_final = f_sum_final.T
+
+        folds_prior = (
+            (f_sum_final.sum(axis=1, keepdims=True) - f_sum_final)
+            / (f_count_final.sum(axis=1, keepdims=True) - f_count_final)
+        ).T
+
+        oof_feats = []#cp.zeros((data.shape[0].compute(), data.shape[1]) + (n_classes,), dtype=cp.float32)
+
+        self._features = []
+        for i in dataset.features:
+            for j in range(n_classes):
+                self._features.append("{0}_{1}__{2}".format("multioof", j, i))
+
+        for n, col in enumerate(dataset.features):
+            vec_col = col  # data.columns[n]
+
+            enc_dim = int(data[vec_col].max().compute() + 1)
+
+            f_sum = cp.zeros((enc_dim, n_folds, n_classes), dtype=cp.float64)
+            f_count = cp.zeros((enc_dim, 1, n_folds), dtype=cp.float64)
+
+            f_sum = (
+                data.map_partitions(
+                    self.dask_add_at_3d,
+                    [vec_col, target_name, folds_name],
+                    1,
+                    (enc_dim, n_folds, n_classes),
+                    meta=cudf.DataFrame(
+                        np.empty((enc_dim, n_folds * n_classes)), dtype="f8"
+                    ),
+                )
+                .compute().values
+            )
+            f_count = (
+                data.map_partitions(
+                    self.dask_add_at_3d,
+                    [vec_col, 0, folds_name],
+                    1,
+                    (enc_dim, 1, n_folds),
+                    meta=cudf.DataFrame(np.empty((enc_dim, n_folds)), dtype="i8"),
+                )
+                .compute().values
+            )
+
+            f_sum_final = f_sum.reshape((-1, enc_dim, n_folds * n_classes)).sum(axis=0)
+            f_count_final = f_count.reshape((-1, enc_dim, n_folds)).sum(axis=0)
+
+            f_sum_final = f_sum_final.reshape((enc_dim, n_folds, n_classes))
+            f_count_final = f_count_final.reshape((enc_dim, 1, n_folds))
+
+            f_sum_final = cp.moveaxis(f_sum_final, 2, 1)
+            # calc total stats
+            t_sum = f_sum_final.sum(axis=2, keepdims=True)
+            t_count = f_count_final.sum(axis=2, keepdims=True)
+
+            oof_sum = t_sum - f_sum_final
+            oof_count = t_count - f_count_final
+            candidates = data.map_partitions(
+                self.find_candidates,
+                vec_col,
+                folds_name,
+                oof_sum,
+                oof_count,
+                alphas,
+                folds_prior,
+                meta=cudf.DataFrame(
+                    columns=np.arange(len(self.alphas) * n_classes), dtype="f8"
+                ),
+            )
+            candidates[target_name] = data[target_name]
+
+            scores = (
+                candidates.map_partitions(
+                    score_func,
+                    target_name,
+                    (n_classes, len(self.alphas)),
+                    meta=cudf.DataFrame(columns=np.arange(len(self.alphas)), dtype="f8"),
+                )
+                .compute()
+                .mean(axis=0)
+                .values
+            )
+            idx = scores.argmin().get()
+            orig_cols = [idx+i*len(self.alphas) for i in range(n_classes)]
+
+            new_cols = self.features[n * n_classes : (n + 1) * n_classes]
+
+            col_map = dict(zip(orig_cols, new_cols))
+            oof_feats.append(
+                candidates[
+                    candidates.columns[orig_cols]
+                ].rename(columns=col_map)
+            )
+            enc = (
+                (t_sum[..., 0] + alphas[0, 0, idx] * prior)
+                / (t_count[..., 0] + alphas[0, 0, idx])
+            ).astype(cp.float32)
+            enc /= enc.sum(axis=1, keepdims=True)
+
+            self.encodings.append(enc)
+
+        orig_cols = np.arange(n_classes * len(dataset.features))
+        col_map = dict(zip(orig_cols, self.features))
+        oof_feats = dask_cudf.concat(oof_feats, axis=1).rename(columns=col_map)
+        output = dataset.empty()
+        output.set_data(oof_feats, self.features, NumericRole(cp.float32, prob=dataset.task.name == "multilabel"))
+        return output
+
+    def _transform_cupy(self, dataset):
+        super().transform(dataset)
+        dataset = dataset.to_cupy()
+        data = dataset.data
+
+        # transform
+        out = cp.zeros(data.shape + (self.n_classes,), dtype=cp.float32)
+        for n, enc in enumerate(self.encodings):
+            out[:, n] = enc[data[:, n].astype(int)]
+
+        out = out.reshape((data.shape[0], -1))
+
+        # create resulted
+        output = dataset.empty()
+        output.set_data(out, self.features, NumericRole(cp.float32, prob=dataset.task.name == "multilabel"))
+
+    def _transform_daskcudf(self, dataset):
+        super().transform(dataset)
+        data = dataset.data
+
+        def get_encodings(data, encodings, features):
+            data = data.values
+            out = cp.zeros(data.shape + (self.n_classes,), dtype=cp.float32)
+            for n, enc in enumerate(encodings):
+                out[:, n] = enc[data[:, n].astype(int)]
+            out = out.reshape((data.shape[0], -1))
+            return cudf.DataFrame(out, columns=features)
+
+        res = data.map_partitions(
+            get_encodings,
+            self.encodings,
+            self.features,
+            meta=cudf.DataFrame(columns=self.features),
+        ).persist()
+        
+        # create resulted
+        output = dataset.empty()
+        output.set_data(res, self.features, NumericRole(cp.float32, prob=dataset.task.name == "multilabel"))
 
 class CatIntersections_gpu(LabelEncoder_gpu):
     """Build label encoded intersections of categorical variables (GPU version)."""

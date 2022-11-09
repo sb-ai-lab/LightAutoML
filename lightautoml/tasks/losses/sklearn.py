@@ -1,17 +1,19 @@
 """Metrics and loss functions for scikit-learn models."""
 
 import logging
-from typing import Callable, Dict, Optional, Union
+
+from typing import Callable
+from typing import Dict
+from typing import Optional
+from typing import Union
 
 import numpy as np
 
 from .base import Loss
+from .base import fw_rmsle
+
 
 logger = logging.getLogger(__name__)
-
-
-def fw_rmsle(x, y):
-    return np.log1p(x), y
 
 
 _sk_loss_mapping = {"rmsle": ("mse", fw_rmsle, np.expm1)}
@@ -22,7 +24,18 @@ _sk_force_metric = {
 
 
 class SKLoss(Loss):
-    """Loss used for scikit-learn."""
+    """Loss used for scikit-learn.
+
+    Args:
+        loss: One of default loss function.
+            Valid are: 'logloss', 'mse', 'crossentropy', 'rmsle'.
+        loss_params: Addtional loss parameters.
+        fw_func: Forward transformation.
+            Used for transformation of target and item weights.
+        bw_func: backward transformation.
+            Used for predict values transformation.
+
+    """
 
     def __init__(
         self,
@@ -31,21 +44,10 @@ class SKLoss(Loss):
         fw_func: Optional[Callable] = None,
         bw_func: Optional[Callable] = None,
     ):
-        """
-
-        Args:
-            loss: One of default loss function.
-              Valid are: 'logloss', 'mse', 'crossentropy', 'rmsle'.
-            loss_params: Addtional loss parameters.
-            fw_func: Forward transformation.
-              Used for transformation of target and item weights.
-            bw_func: backward transformation.
-              Used for predict values transformation.
-
-        """
         assert loss in [
             "logloss",
             "mse",
+            "mae",
             "crossentropy",
             "rmsle",
         ], "Not supported in sklearn in general case."
@@ -70,8 +72,7 @@ class SKLoss(Loss):
         metric_params: Optional[Dict] = None,
         task_name: Optional[str] = None,
     ):
-        """
-        Callback metric setter.
+        """Callback metric setter.
 
         Uses default callback of parent class `Loss`.
 
@@ -84,10 +85,6 @@ class SKLoss(Loss):
         """
         if self.loss in _sk_force_metric:
             metric, greater_is_better, metric_params = _sk_force_metric[self.loss]
-            logger.info2(
-                "For sklearn {0} callback metric switched to {1}".format(
-                    self.loss, metric
-                )
-            )
+            logger.info2("For sklearn {0} callback metric switched to {1}".format(self.loss, metric))
 
         super().set_callback_metric(metric, greater_is_better, metric_params, task_name)

@@ -1,14 +1,21 @@
 """Dimension reduction transformers."""
 
-from typing import List, Optional, Union
+from typing import List
+from typing import Optional
+from typing import Union
 
 import numpy as np
-from sklearn.decomposition import PCA, TruncatedSVD
+
+from sklearn.decomposition import PCA
+from sklearn.decomposition import TruncatedSVD
 
 from ..dataset.base import LAMLDataset
-from ..dataset.np_pd_dataset import CSRSparseDataset, NumpyDataset, PandasDataset
+from ..dataset.np_pd_dataset import CSRSparseDataset
+from ..dataset.np_pd_dataset import NumpyDataset
+from ..dataset.np_pd_dataset import PandasDataset
 from ..dataset.roles import NumericRole
 from .base import LAMLTransformer
+
 
 # type - something that can be converted to pandas dataset
 NumpyTransformable = Union[NumpyDataset, PandasDataset]
@@ -34,7 +41,14 @@ def numeric_check(dataset: LAMLDataset):
 
 # TODO: merge into one transformer
 class PCATransformer(LAMLTransformer):
-    """PCA."""
+    """PCA.
+
+    Args:
+        subs: Subsample to fit algorithm. If None - full data.
+        random_state: Random state to take subsample.
+        n_components: Number of PCA components
+
+    """
 
     _fit_checks = (numeric_check,)
     _transform_checks = ()
@@ -51,14 +65,6 @@ class PCATransformer(LAMLTransformer):
         random_state: int = 42,
         n_components: int = 500,
     ):
-        """
-
-        Args:
-            subs: Subsample to fit algorithm. If None - full data.
-            random_state: Random state to take subsample.
-            n_components: Number of PCA components
-
-        """
         self.subs = subs
         self.random_state = random_state
         self.n_components = n_components
@@ -71,6 +77,9 @@ class PCATransformer(LAMLTransformer):
         Args:
             dataset: Sparse or Numpy dataset of text features.
 
+        Returns:
+            Self.
+
         """
         # set transformer names and add checks
         for check_func in self._fit_checks:
@@ -81,9 +90,7 @@ class PCATransformer(LAMLTransformer):
         dataset = dataset.to_numpy()
         data = dataset.data
         self.n_components = np.minimum(self.n_components, data.shape[1] - 1)
-        self.pca = self._pca(
-            n_components=self.n_components, random_state=self.random_state
-        )
+        self.pca = self._pca(n_components=self.n_components, random_state=self.random_state)
         self.pca.fit(data)
 
         orig_name = dataset.features[0].split("__")[-1]
@@ -122,7 +129,14 @@ class PCATransformer(LAMLTransformer):
 
 
 class SVDTransformer(LAMLTransformer):
-    """TruncatedSVD."""
+    """TruncatedSVD.
+
+    Args:
+        subs: Subsample to fit algorithm. If None - full data.
+        random_state: Random state to take subsample.
+        n_components: Number of SVD components.
+
+    """
 
     _fit_checks = (numeric_check,)
     _transform_checks = ()
@@ -139,14 +153,6 @@ class SVDTransformer(LAMLTransformer):
         random_state: int = 42,
         n_components: int = 100,
     ):
-        """
-
-        Args:
-            subs: Subsample to fit algorithm. If None - full data.
-            random_state: Random state to take subsample.
-            n_components: Number of SVD components.
-
-        """
         self.subs = subs
         self.random_state = random_state
         self.n_components = n_components
@@ -159,6 +165,9 @@ class SVDTransformer(LAMLTransformer):
         Args:
             dataset: Sparse or Numpy dataset of text features.
 
+        Returns:
+            self.
+
         """
         # set transformer names and add checks
         for check_func in self._fit_checks:
@@ -168,9 +177,7 @@ class SVDTransformer(LAMLTransformer):
         # convert to accepted dtype and get attributes
         data = dataset.data
         self.n_components = np.minimum(self.n_components, data.shape[1] - 1)
-        self.svd = self._svd(
-            n_components=self.n_components, random_state=self.random_state
-        )
+        self.svd = self._svd(n_components=self.n_components, random_state=self.random_state)
         self.svd.fit(data)
 
         orig_name = dataset.features[0].split("__")[-1]

@@ -1,9 +1,14 @@
 """Metrics and loss functions for Torch based models."""
 
 from functools import partial
-from typing import Any, Callable, Dict, Optional, Union
+from typing import Any
+from typing import Callable
+from typing import Dict
+from typing import Optional
+from typing import Union
 
 import torch
+
 from torch import nn
 
 from .base import Loss
@@ -33,6 +38,7 @@ class TorchLossWrapper(nn.Module):
         y_pred: torch.Tensor,
         sample_weight: Optional[torch.Tensor] = None,
     ):
+        """Forward-pass."""
         if self.flatten:
             y_true = y_true[:, 0].type(torch.int64)
 
@@ -203,9 +209,7 @@ def torch_f1(
         sm = sample_weight.mean()
         tp = (tp * sample_weight).mean(dim=0) / sm
         f1 = (2 * tp) / (
-            (y_pred * sample_weight).mean(dim=0) / sm
-            + (y_true_ohe * sample_weight).mean(dim=0) / sm
-            + 1e-7
+            (y_pred * sample_weight).mean(dim=0) / sm + (y_true_ohe * sample_weight).mean(dim=0) / sm + 1e-7
         )
 
         return -f1.mean()
@@ -263,16 +267,15 @@ _torch_loss_dict = {
 
 
 class TORCHLoss(Loss):
-    """Loss used for PyTorch."""
+    """Loss used for PyTorch.
+
+    Args:
+        loss: name or callable objective function.
+        loss_params: additional loss parameters.
+
+    """
 
     def __init__(self, loss: Union[str, Callable], loss_params: Optional[Dict] = None):
-        """
-
-        Args:
-            loss: name or callable objective function.
-            loss_params: additional loss parameters.
-
-        """
         self.loss_params = {}
         if loss_params is not None:
             self.loss_params = loss_params

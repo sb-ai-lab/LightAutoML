@@ -35,7 +35,7 @@ def set_sklearn_folds_gpu(
     """
 
     def KFolds_gpu(
-        target: cudf.Series,
+        target: Union[cudf.Series, cudf.DataFrame],
         n_splits: int = 5,
         shuffle: bool = True,
         random_state: int = 42,

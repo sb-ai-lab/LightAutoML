@@ -4,9 +4,12 @@ import numpy as np
 
 from ...dataset.np_pd_dataset import PandasDataset
 from ...dataset.roles import NumericRole
-from ...transformers.base import ColumnsSelector, LAMLTransformer, UnionTransformer
+from ...transformers.base import ColumnsSelector
+from ...transformers.base import LAMLTransformer
+from ...transformers.base import UnionTransformer
 from ..utils import get_columns_by_role
-from .base import FeaturesPipeline, TabularDataFeatures
+from .base import FeaturesPipeline
+from .base import TabularDataFeatures
 
 
 class WBFeatures(FeaturesPipeline, TabularDataFeatures):
@@ -26,9 +29,7 @@ class WBFeatures(FeaturesPipeline, TabularDataFeatures):
             Transformer.
 
         """
-        others = get_columns_by_role(train, "Category") + get_columns_by_role(
-            train, "Numeric"
-        )
+        others = get_columns_by_role(train, "Category") + get_columns_by_role(train, "Numeric")
 
         transformer_list = [
             self.get_datetime_diffs(train),

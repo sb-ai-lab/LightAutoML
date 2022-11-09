@@ -3,26 +3,25 @@
 from typing import Any
 
 from ...dataset.base import LAMLDataset
-from ...text.tokenizer import BaseTokenizer, SimpleEnTokenizer, SimpleRuTokenizer
-from ...transformers.base import (
-    ColumnsSelector,
-    LAMLTransformer,
-    SequentialTransformer,
-    UnionTransformer,
-)
+from ...text.tokenizer import BaseTokenizer
+from ...text.tokenizer import SimpleEnTokenizer
+from ...text.tokenizer import SimpleRuTokenizer
+from ...transformers.base import ColumnsSelector
+from ...transformers.base import LAMLTransformer
+from ...transformers.base import SequentialTransformer
+from ...transformers.base import UnionTransformer
 from ...transformers.decomposition import SVDTransformer
 from ...transformers.numeric import StandardScaler
-from ...transformers.text import (
-    AutoNLPWrap,
-    ConcatTextTransformer,
-    TfidfTextTransformer,
-    TokenizerTransformer,
-)
+from ...transformers.text import AutoNLPWrap
+from ...transformers.text import ConcatTextTransformer
+from ...transformers.text import TfidfTextTransformer
+from ...transformers.text import TokenizerTransformer
 from ..utils import get_columns_by_role
 from .base import FeaturesPipeline
 
+
 _model_name_by_lang = {
-    "ru": "DeepPavlov/rubert-base-cased-conversational",  # "sberbank-ai/sbert_large_nlu_ru" - sberdevices
+    "ru": "DeepPavlov/rubert-base-cased-conversational",
     "en": "bert-base-cased",
     "multi": "bert-base-multilingual-cased",
 }
@@ -35,19 +34,11 @@ _tokenizer_by_lang = {
 
 
 class NLPDataFeatures:
-    """
-    Class contains basic features transformations for text data.
-    """
+    """Class contains basic features transformations for text data."""
 
     _lang = {"en", "ru", "multi"}
 
     def __init__(self, **kwargs: Any):
-        """Set default parameters for nlp pipeline constructor.
-
-        Args:
-            **kwargs: default params.
-
-        """
         if "lang" in kwargs:
             assert kwargs["lang"] in self._lang, f"Language must be one of: {self._lang}"
 
@@ -66,12 +57,8 @@ class NLPDataFeatures:
         self.tfidf_params = None
         self.cache_dir = None
         self.train_fasttext = False
-        self.embedding_model = (
-            None  # path to fasttext model or model with dict interface
-        )
-        self.transformer_params = (
-            None  # params of random_lstm, bert_embedder, borep or wat
-        )
+        self.embedding_model = None  # path to fasttext model or model with dict interface
+        self.transformer_params = None  # params of random_lstm, bert_embedder, borep or wat
         self.fasttext_params = None  # init fasttext params
         self.fasttext_epochs = 2
         self.stopwords = False
@@ -99,9 +86,7 @@ class NLPDataFeatures:
 
 
 class TextAutoFeatures(FeaturesPipeline, NLPDataFeatures):
-    """
-    Class contains embedding features for text data.
-    """
+    """Class contains embedding features for text data."""
 
     def create_pipeline(self, train: LAMLDataset) -> LAMLTransformer:
         """Create pipeline for textual data.
@@ -123,9 +108,7 @@ class TextAutoFeatures(FeaturesPipeline, NLPDataFeatures):
             if self.is_tokenize_autonlp:
                 transforms.append(
                     TokenizerTransformer(
-                        tokenizer=_tokenizer_by_lang[self.lang](
-                            is_stemmer=self.use_stem, stopwords=self.stopwords
-                        )
+                        tokenizer=_tokenizer_by_lang[self.lang](is_stemmer=self.use_stem, stopwords=self.stopwords)
                     )
                 )
             transforms.append(
@@ -157,9 +140,7 @@ class TextAutoFeatures(FeaturesPipeline, NLPDataFeatures):
 
 
 class NLPTFiDFFeatures(FeaturesPipeline, NLPDataFeatures):
-    """
-    Class contains tfidf features for text data.
-    """
+    """Class contains tfidf features for text data."""
 
     def create_pipeline(self, train: LAMLDataset) -> LAMLTransformer:
         """Create pipeline for textual data.
@@ -179,13 +160,9 @@ class NLPTFiDFFeatures(FeaturesPipeline, NLPDataFeatures):
             transforms = [
                 ColumnsSelector(keys=texts),
                 TokenizerTransformer(
-                    tokenizer=_tokenizer_by_lang[self.lang](
-                        is_stemmer=self.use_stem, stopwords=self.stopwords
-                    )
+                    tokenizer=_tokenizer_by_lang[self.lang](is_stemmer=self.use_stem, stopwords=self.stopwords)
                 ),
-                TfidfTextTransformer(
-                    default_params=self.tfidf_params, subs=None, random_state=42
-                ),
+                TfidfTextTransformer(default_params=self.tfidf_params, subs=None, random_state=42),
             ]
             if self.svd:
                 transforms.append(SVDTransformer(n_components=self.n_components))
@@ -199,9 +176,7 @@ class NLPTFiDFFeatures(FeaturesPipeline, NLPDataFeatures):
 
 
 class TextBertFeatures(FeaturesPipeline, NLPDataFeatures):
-    """
-    Features pipeline for BERT.
-    """
+    """Features pipeline for BERT."""
 
     def create_pipeline(self, train: LAMLDataset) -> LAMLTransformer:
         """Create pipeline for BERT.
@@ -219,7 +194,10 @@ class TextBertFeatures(FeaturesPipeline, NLPDataFeatures):
         texts = get_columns_by_role(train, "Text")
         if len(texts) > 0:
             text_processing = SequentialTransformer(
-                [ColumnsSelector(keys=texts), ConcatTextTransformer()]
+                [
+                    ColumnsSelector(keys=texts),
+                    ConcatTextTransformer(),
+                ]
             )
             transformers_list.append(text_processing)
 

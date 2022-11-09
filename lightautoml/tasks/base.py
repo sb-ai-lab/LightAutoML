@@ -2,48 +2,53 @@
 
 import inspect
 import logging
+
 from functools import partial
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Union
+from typing import TYPE_CHECKING
+from typing import Any
+from typing import Callable
+from typing import Dict
+from typing import Optional
+from typing import Union
 
 import numpy as np
 
+gpu_available = True
 try:
     import cudf
     import cupy as cp
     import dask.array as da
     import dask_cudf
-except:
+except ModuleNotFoundError:
+    gpu_available = False
+    print("Warning: GPU backed libraries could not be loaded. Switching to GPU version")
     pass
 
-from lightautoml.tasks.losses import CBLoss, LGBLoss, SKLoss, TORCHLoss
+from .common_metric import _valid_metric_args
+from .common_metric import _valid_str_metric_names
+from .losses import CBLoss
+from .losses import LGBLoss
+from .losses import SKLoss
+from .losses import TORCHLoss
+from .utils import infer_gib
+from .utils import infer_gib_multiclass
 
 try:
-    from lightautoml.tasks.losses import TORCHLoss_gpu
+    from lightautoml.tasks.losses.gpu import TORCHLoss_gpu
     from lightautoml.tasks.losses.gpu import CUMLLoss, XGBLoss_gpu
-except:
-    pass
-
-from .common_metric import _valid_metric_args, _valid_str_metric_names
-
-try:
     from lightautoml.tasks.gpu.common_metric_gpu import _valid_str_metric_names_gpu
-except:
-    pass
-
-from .utils import infer_gib, infer_gib_multiclass
-
-try:
     from lightautoml.tasks.gpu.utils_gpu import infer_gib_gpu, infer_gib_multiclass_gpu
-except:
+except ModuleNotFoundError:
     pass
 
 if TYPE_CHECKING:
     from ..dataset.base import LAMLDataset
-    from ..dataset.np_pd_dataset import NumpyDataset, PandasDataset
+    from ..dataset.np_pd_dataset import NumpyDataset
+    from ..dataset.np_pd_dataset import PandasDataset
 
     try:
         from ..dataset.gpu.gpu_dataset import CudfDataset, CupyDataset, DaskCudfDataset
-    except:
+    except ModuleNotFoundError:
         pass
 
     SklearnCompatible = Union[NumpyDataset, PandasDataset]
@@ -54,12 +59,24 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_valid_task_names = ["binary", "reg", "multiclass"]
+_valid_task_names = ["binary", "reg", "multiclass", "multi:reg", "multilabel"]
 _one_dim_output_tasks = ["binary", "reg"]
 
-_default_losses = {"binary": "logloss", "reg": "mse", "multiclass": "crossentropy"}
+_default_losses = {
+    "binary": "logloss",
+    "reg": "mse",
+    "multiclass": "crossentropy",
+    "multi:reg": "mae",
+    "multilabel": "logloss",
+}
 
-_default_metrics = {"binary": "auc", "reg": "mse", "multiclass": "crossentropy"}
+_default_metrics = {
+    "binary": "auc",
+    "reg": "mse",
+    "multiclass": "crossentropy",
+    "multi:reg": "mae",
+    "multilabel": "logloss",
+}
 
 _valid_loss_types = ["lgb", "sklearn", "torch", "cb"]
 
@@ -67,6 +84,8 @@ _valid_str_loss_names = {
     "binary": ["logloss"],
     "reg": ["mse", "mae", "mape", "rmsle", "quantile", "huber", "fair"],
     "multiclass": ["crossentropy", "f1"],
+    "multi:reg": ["mae", "mse"],
+    "multilabel": ["logloss"],
 }
 
 
@@ -74,9 +93,10 @@ _valid_loss_args = {"quantile": ["q"], "huber": ["a"], "fair": ["c"]}
 
 
 class LAMLMetric:
-    """
-    Abstract class for metric.
+    """Abstract class for metric.
+
     Metric should be called on dataset.
+
     """
 
     greater_is_better = True
@@ -88,30 +108,27 @@ class LAMLMetric:
             dataset: Table with data.
             dropna: To ignore NaN in metric calculation.
 
-        Returns:
+        Returns:  # noqa DAR202
             Metric value.
 
         Raises:
             AttributeError: If metric isn't defined.
 
         """
-        assert hasattr(
-            dataset, "target"
-        ), "Dataset should have target to calculate metric"
+        assert hasattr(dataset, "target"), "Dataset should have target to calculate metric"
         raise NotImplementedError
 
 
 class ArgsWrapper:
-    """Wrapper - ignore sample_weight if metric not accepts."""
+    """Wrapper - ignore sample_weight if metric not accepts.
+
+    Args:
+        func: Metric function.
+        metric_params: Additional metric parameters.
+
+    """
 
     def __init__(self, func: Callable, metric_params: dict):
-        """
-
-        Args:
-            func: Metric function.
-            metric_params: Additional metric parameters.
-
-        """
         keys = inspect.signature(func).parameters
         self.flg = "sample_weight" in keys
         self.func = partial(func, **metric_params)
@@ -126,17 +143,29 @@ class ArgsWrapper:
             y_pred: Estimated target values.
             sample_weight: Sample weights.
 
+        Returns:
+            Metric value.
+
         """
         if self.flg:
             return self.func(y_true, y_pred, sample_weight=sample_weight)
 
         return self.func(y_true, y_pred)
 
-
 class SkMetric(LAMLMetric):
     """Abstract class for scikit-learn compatible metric.
 
     Implements metric calculation in sklearn format on numpy/pandas datasets.
+
+
+    Args:
+        metric: Specifies metric. Format:
+            ``func(y_true, y_false, Optional[sample_weight], **kwargs)`` -> `float`.
+        name: Name of metric.
+        greater_is_better: Whether or not higher metric value is better.
+        one_dim: `True` for single class, False for multiclass.
+        weighted: Weights of classes.
+        **kwargs: Other parameters for metric.
 
     """
 
@@ -160,20 +189,8 @@ class SkMetric(LAMLMetric):
         name: Optional[str] = None,
         greater_is_better: bool = True,
         one_dim: bool = True,
-        **kwargs: Any
+        **kwargs: Any,
     ):
-        """
-
-        Args:
-            metric: Specifies metric. Format:
-                ``func(y_true, y_false, Optional[sample_weight], **kwargs)`` -> `float`.
-            name: Name of metric.
-            greater_is_better: Whether or not higher metric value is better.
-            one_dim: `True` for single class, False for multiclass.
-            weighted: Weights of classes.
-            **kwargs: Other parameters for metric.
-
-        """
         self._metric = metric
         self._name = name
 
@@ -198,13 +215,9 @@ class SkMetric(LAMLMetric):
                 target specified as one-dimensioned, but it is not.
 
         """
-        assert hasattr(
-            dataset, "target"
-        ), "Dataset should have target to calculate metric"
+        assert hasattr(dataset, "target"), "Dataset should have target to calculate metric"
         if self.one_dim:
-            assert (
-                dataset.shape[1] == 1
-            ), "Dataset should have single column if metric is one_dim"
+            assert dataset.shape[1] == 1, "Dataset should have single column if metric is one_dim"
         # TODO: maybe refactor this part?
         dataset = dataset.to_numpy()
         y_true = dataset.target
@@ -224,7 +237,6 @@ class SkMetric(LAMLMetric):
         value = self.metric(y_true, y_pred, sample_weight=sample_weight)
         sign = 2 * float(self.greater_is_better) - 1
         return value * sign
-
 
 class CumlMetric(SkMetric):
     """Abstract class for cuml compatible metric.
@@ -333,15 +345,88 @@ class DaskmlMetric(SkMetric):
         sign = 2 * float(self.greater_is_better) - 1
         return value * sign
 
-
 class Task:
-    """
-    Specify task (binary classification, multiclass classification, regression), metrics, losses.
+    """Specify task (binary classification, multiclass classification, regression), metrics, losses.
+
+    Args:
+        name: Task name.
+        loss: Objective function or dict of functions.
+        loss_params: Additional loss parameters,
+            if dict there is no presence check for loss_params.
+        metric: String name or callable.
+        metric_params: Additional metric parameters.
+        greater_is_better: Whether or not higher value is better.
+        device: Which mode (CPU or GPU or Multi-GPU) is used for the task.
+
+    Note:
+        There is 3 different task types:
+
+            - `'binary'` - for binary classification.
+            - `'reg'` - for regression.
+            - `'multiclass'` - for multiclass classification.
+
+        Avaliable losses for binary task:
+
+            - `'logloss'` - (uses by default) Standard logistic loss.
+
+        Avaliable losses for regression task:
+
+            - `'mse'` - (uses by default) Mean Squared Error.
+            - `'mae'` - Mean Absolute Error.
+            - `'mape'` - Mean Absolute Percentage Error.
+            - `'rmsle'` - Root Mean Squared Log Error.
+            - `'huber'` - Huber loss, reqired params:
+                ``a`` - threshold between MAE and MSE losses.
+            - `'fair'` - Fair loss, required params:
+                ``c`` - sets smoothness.
+            - `'quantile'` - Quantile loss, required params:
+                ``q`` - sets quantile.
+
+        Avaliable losses for multi-classification task:
+
+            - `'crossentropy'` - (uses by default) Standard crossentropy function.
+            - `'f1'` - Optimizes F1-Macro Score, now avaliable for
+                LightGBM and NN models. Here we implicitly assume
+                that the prediction lies not in the set ``{0, 1}``,
+                but in the interval ``[0, 1]``.
+
+        Available metrics for binary task:
+
+            - `'auc'` - (uses by default) ROC-AUC score.
+            - `'accuracy'` - Accuracy score (uses argmax prediction).
+            - `'logloss'` - Standard logistic loss.
+
+        Avaliable metrics for regression task:
+
+            - `'mse'` - (uses by default) Mean Squared Error.
+            - `'mae'` - Mean Absolute Error.
+            - `'mape'` - Mean Absolute Percentage Error.
+            - `'rmsle'` - Root Mean Squared Log Error.
+            - `'huber'` - Huber loss, reqired params:
+                ``a`` - threshold between MAE and MSE losses.
+            - `'fair'` - Fair loss, required params:
+                ``c`` - sets smoothness.
+            - `'quantile'` - Quantile loss, required params:
+                ``q`` - sets quantile.
+
+        Avaliable metrics for multi-classification task:
+
+            - `'crossentropy'` - (uses by default) Standard cross-entropy loss.
+            - `'auc'` - ROC-AUC of each class against the rest.
+            - `'auc_mu'` - AUC-Mu. Multi-class extension of standard AUC
+                for binary classification. In short,
+                mean of n_classes * (n_classes - 1) / 2 binary AUCs.
+                More info on http://proceedings.mlr.press/v97/kleiman19a/kleiman19a.pdf
+
+
+    Example:
+        >>> task = Task('binary', metric='auc')
+
     """
 
     @property
     def name(self) -> str:
-        """ Name of task."""
+        """Name of task."""
         return self._name
 
     def __init__(
@@ -354,88 +439,8 @@ class Task:
         greater_is_better: Optional[bool] = None,
         device: Optional[str] = None,
     ):
-        """
 
-        Args:
-            name: Task name.
-            loss: Objective function or dict of functions.
-            loss_params: Additional loss parameters,
-                if dict there is no presence check for loss_params.
-            metric: String name or callable.
-            metric_params: Additional metric parameters.
-            greater_is_better: Whether or not higher value is better.
-            device: Which mode (CPU or GPU or Multi-GPU) is used for the task.
-
-        Note:
-            There is 3 different task types:
-
-                - `'binary'` - for binary classification.
-                - `'reg'` - for regression.
-                - `'multiclass'` - for multiclass classification.
-
-            Avaliable losses for binary task:
-
-                - `'logloss'` - (uses by default) Standard logistic loss.
-
-            Avaliable losses for regression task:
-
-                - `'mse'` - (uses by default) Mean Squared Error.
-                - `'mae'` - Mean Absolute Error.
-                - `'mape'` - Mean Absolute Percentage Error.
-                - `'rmsle'` - Root Mean Squared Log Error.
-                - `'huber'` - Huber loss, reqired params:
-                  ``a`` - threshold between MAE and MSE losses.
-                - `'fair'` - Fair loss, required params:
-                  ``c`` - sets smoothness.
-                - `'quantile'` - Quantile loss, required params:
-                  ``q`` - sets quantile.
-
-            Avaliable losses for multi-classification task:
-
-                - `'crossentropy'` - (uses by default) Standard crossentropy function.
-                - `'f1'` - Optimizes F1-Macro Score, now avaliable for
-                  LightGBM and NN models. Here we implicitly assume
-                  that the prediction lies not in the set ``{0, 1}``,
-                  but in the interval ``[0, 1]``.
-
-            Available metrics for binary task:
-
-                - `'auc'` - (uses by default) ROC-AUC score.
-                - `'accuracy'` - Accuracy score (uses argmax prediction).
-                - `'logloss'` - Standard logistic loss.
-
-            Avaliable metrics for regression task:
-
-                - `'mse'` - (uses by default) Mean Squared Error.
-                - `'mae'` - Mean Absolute Error.
-                - `'mape'` - Mean Absolute Percentage Error.
-                - `'rmsle'` - Root Mean Squared Log Error.
-                - `'huber'` - Huber loss, reqired params:
-                  ``a`` - threshold between MAE and MSE losses.
-                - `'fair'` - Fair loss, required params:
-                  ``c`` - sets smoothness.
-                - `'quantile'` - Quantile loss, required params:
-                  ``q`` - sets quantile.
-
-            Avaliable metrics for multi-classification task:
-
-                - `'crossentropy'` - (uses by default) Standard cross-entropy loss.
-                - `'auc'` - ROC-AUC of each class against the rest.
-                - `'auc_mu'` - AUC-Mu. Multi-class extension of standard AUC
-                  for binary classification. In short,
-                  mean of n_classes * (n_classes - 1) / 2 binary AUCs.
-                  More info on http://proceedings.mlr.press/v97/kleiman19a/kleiman19a.pdf
-
-
-        Example:
-
-            >>> task = Task('binary', metric='auc')
-
-        """
-
-        assert (
-            name in _valid_task_names
-        ), "Invalid task name: {}, allowed task names: {}".format(
+        assert name in _valid_task_names, "Invalid task name: {}, allowed task names: {}".format(
             name, _valid_task_names
         )
         self._name = name
@@ -468,9 +473,7 @@ class Task:
                 # ??? "rewrite METRIC params" ???
                 if loss == metric:
                     metric_params = loss_params
-                    logger.info2(
-                        "As loss and metric are equal, metric params are ignored."
-                    )
+                    logger.info2("As loss and metric are equal, metric params are ignored.")
 
             else:
                 assert (
@@ -478,45 +481,30 @@ class Task:
                 ), "Loss should be defined with arguments. Ex. loss='quantile', loss_params={'q': 0.7}."
                 loss_params = None
 
-            assert (
-                loss in _valid_str_loss_names[self.name]
-            ), "Invalid loss name: {} for task {}.".format(loss, self.name)
+            assert loss in _valid_str_loss_names[self.name], "Invalid loss name: {} for task {}.".format(
+                loss, self.name
+            )
 
-            for loss_key, loss_factory in zip(
-                ["lgb", "sklearn", "torch", "cb", "torch_gpu", "cuml", "xgb"],
-                [
-                    LGBLoss,
-                    SKLoss,
-                    TORCHLoss,
-                    CBLoss,
-                    TORCHLoss_gpu,
-                    CUMLLoss,
-                    XGBLoss_gpu,
-                ],
-            ):
+            loss_factories = [LGBLoss, SKLoss, TORCHLoss, CBLoss]
+            loss_keys = ["lgb", "sklearn", "torch", "cb"]
+            if gpu_available:
+                loss_factories.extend([TORCHLoss_gpu, CUMLLoss, XGBLoss_gpu])
+                loss_keys.extend(["torch_gpu", "cuml", "xgb"])
+            for loss_key, loss_factory in zip(loss_keys, loss_factories):
                 try:
                     self.losses[loss_key] = loss_factory(loss, loss_params=loss_params)
                 except (AssertionError, TypeError, ValueError):
-                    logger.info2(
-                        "{0} doesn't support in general case {1} and will not be used.".format(
-                            loss_key, loss
-                        )
-                    )
+                    print("{0} doesn't support in general case {1} and will not be used.".format(loss_key, loss))
 
-                # self.losses[loss_key] = loss_factory(loss, loss_params=loss_params)
 
-            assert len(self.losses) > 0, "None of frameworks supports {0} loss.".format(
-                loss
-            )
+            assert len(self.losses) > 0, "None of frameworks supports {0} loss.".format(loss)
 
         elif type(loss) is dict:
             # case - dict passed directly
             # TODO: check loss parameters?
             #  Or it there will be assert when use functools.partial
             # assert all(map(lambda x: x in _valid_loss_types, loss)), 'Invalid loss key.'
-            assert len([key for key in loss.keys() if key in _valid_loss_types]) != len(
-                loss
-            ), "Invalid loss key."
+            assert len([key for key in loss.keys() if key in _valid_loss_types]) != len(loss), "Invalid loss key."
             self.losses = loss
 
         else:
@@ -554,21 +542,19 @@ class Task:
         if greater_is_better is None:
 
             if self.device == "cpu":
-                infer_gib_fn = (
-                    infer_gib_multiclass if name == "multiclass" else infer_gib
-                )
+                infer_gib_fn = infer_gib_multiclass if (name == "multiclass" or name == "multilabel") else infer_gib
             else:
-                infer_gib_fn = (
-                    infer_gib_multiclass_gpu if name == "multiclass" else infer_gib_gpu
-                )
+                infer_gib_fn = infer_gib_multiclass_gpu if (name == "multiclass" or name == "multilabel") else infer_gib_gpu
+
             greater_is_better = infer_gib_fn(self.metric_func)
 
         self.greater_is_better = greater_is_better
 
         for loss_key in self.losses:
-            self.losses[loss_key].set_callback_metric(
-                metric, greater_is_better, self.metric_params, self.name
-            )
+            try:
+                self.losses[loss_key].set_callback_metric(metric, greater_is_better, self.metric_params, self.name)
+            except:
+                print(f"{self.name} isn`t supported in {loss_key}")
 
     def get_dataset_metric(self) -> LAMLMetric:
         """Create metric for dataset.
@@ -602,6 +588,7 @@ class Task:
                 one_dim=one_dim,
                 greater_is_better=self.greater_is_better,
             )
+
         return dataset_metric
 
     @staticmethod
@@ -612,13 +599,9 @@ class Task:
             required_params = set()
         given_params = set(loss_params)
         extra_params = given_params - required_params
-        assert len(extra_params) == 0, "For loss {0} given extra params {1}".format(
-            loss_name, extra_params
-        )
+        assert len(extra_params) == 0, "For loss {0} given extra params {1}".format(loss_name, extra_params)
         needed_params = required_params - given_params
-        assert (
-            len(needed_params) == 0
-        ), "For loss {0} required params {1} are not defined".format(
+        assert len(needed_params) == 0, "For loss {0} required params {1} are not defined".format(
             loss_name, needed_params
         )
 
@@ -630,12 +613,8 @@ class Task:
             required_params = set()
         given_params = set(metric_params)
         extra_params = given_params - required_params
-        assert len(extra_params) == 0, "For metric {0} given extra params {1}".format(
-            metric_name, extra_params
-        )
+        assert len(extra_params) == 0, "For metric {0} given extra params {1}".format(metric_name, extra_params)
         needed_params = required_params - given_params
-        assert (
-            len(needed_params) == 0
-        ), "For metric {0} required params {1} are not defined".format(
+        assert len(needed_params) == 0, "For metric {0} required params {1} are not defined".format(
             metric_name, needed_params
         )

@@ -181,6 +181,9 @@ class TabularAutoML_gpu(TabularAutoML):
             # self.general_params["use_algos"] = [["xgb", "xgb_tuned", "linear_l2", "cb", "cb_tuned"]]
             if self.task.name == "multiclass" and multilevel_avail:
                 self.general_params["use_algos"].append(["linear_l2", "cb"])
+            if (self.task.name == "multi:reg") or (self.task.name == "multilabel"):
+                self.general_params["use_algos"] = [["linear_l2", "cb", "cb_tuned"]]
+                #[["linear_l2", "cb", "pb", "pb_tuned", "cb_tuned"]]
 
         if not self.general_params["nested_cv"]:
             self.nested_cv_params["cv"] = 1
@@ -306,7 +309,8 @@ class TabularAutoML_gpu(TabularAutoML):
             sel_timer_0 = self.timer.get_task_timer("cb", time_score)
             selection_feats = LGBSimpleFeatures_gpu()
 
-            selection_gbm = BoostCB_gpu(timer=sel_timer_0, **self.cb_params)
+            selection_gbm = BoostXGB(timer=sel_timer_0, **self.xgb_params)
+            #selection_gbm = BoostCB_gpu(timer=sel_timer_0, **self.cb_params)
             selection_gbm.set_prefix("Selector")
 
             if selection_params["importance_type"] == "permutation":
@@ -326,7 +330,8 @@ class TabularAutoML_gpu(TabularAutoML):
 
                 sel_timer_1 = self.timer.get_task_timer("cb", time_score)
                 selection_feats = LGBSimpleFeatures_gpu()
-                selection_gbm = BoostCB_gpu(timer=sel_timer_1, **self.cb_params)
+                selection_gbm = BoostXGB(timer=sel_timer_1, **self.xgb_params)
+                #selection_gbm = BoostCB_gpu(timer=sel_timer_1, **self.cb_params)
                 selection_gbm.set_prefix("Selector")
 
                 # TODO: Check about reusing permutation importance

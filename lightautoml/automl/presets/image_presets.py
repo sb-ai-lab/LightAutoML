@@ -2,13 +2,17 @@
 
 from lightautoml.utils.installation import __validate_extra_deps
 
+
 __validate_extra_deps("cv", error=True)
 
 
 import os
-from typing import Optional, Sequence
+
+from typing import Optional
+from typing import Sequence
 
 import torch
+
 from pandas import DataFrame
 
 from ...ml_algo.boost_cb import BoostCB
@@ -16,7 +20,8 @@ from ...ml_algo.boost_lgbm import BoostLGBM
 from ...ml_algo.linear_sklearn import LinearLBFGS
 from ...ml_algo.tuning.optuna import OptunaTuner
 from ...pipelines.features.base import FeaturesPipeline
-from ...pipelines.features.image_pipeline import ImageAutoFeatures, ImageSimpleFeatures
+from ...pipelines.features.image_pipeline import ImageAutoFeatures
+from ...pipelines.features.image_pipeline import ImageSimpleFeatures
 from ...pipelines.features.lgb_pipeline import LGBAdvancedPipeline
 from ...pipelines.features.linear_pipeline import LinearFeatures
 from ...pipelines.ml.nested_ml_pipe import NestedTabularMLPipeline
@@ -26,39 +31,57 @@ from ...reader.tabular_batch_generator import ReadableToDf
 from ...tasks import Task
 from ..blend import WeightedBlender
 from .base import upd_params
-from .tabular_presets import NumpyDataset, TabularAutoML
+from .tabular_presets import NumpyDataset
+from .tabular_presets import TabularAutoML
+
 
 _base_dir = os.path.dirname(__file__)
 # set initial runtime rate guess for first level models
-_time_scores = {
-    "lgb": 1,
-    "lgb_tuned": 3,
-    "linear_l2": 0.7,
-    "cb": 2,
-    "cb_tuned": 6,
-    "nn": 1,
-}
+_time_scores = {"lgb": 1, "lgb_tuned": 3, "linear_l2": 0.7, "cb": 2, "cb_tuned": 6, "nn": 1, "rf": 5, "rf_tuned": 10}
 
 
 # TODO: add text feature selection
 class TabularCVAutoML(TabularAutoML):
     """Classic preset - work with tabular and image data.
 
-    Supported data roles - numbers, dates, categories, images.
-    Limitations - no memory management.
+    Supported data roles - numbers, dates, categories, images. Limitations - no memory management.
     GPU support in catboost/lightgbm (if installed for GPU).
+
+    Commonly _params kwargs (ex. timing_params) set via config file (config_path argument).
+    If you need to change just few params, it's possible to pass it as dict of dicts, like json.
+    To get available params please look on default config template. Also you can find there param description.
+    To generate config template call :func:`TabularCVAutoML.get_config('config_path.yml')`.
+
+    Args:
+        task: Task to solve.
+        timeout: Timeout in seconds.
+        memory_limit: Memory limit that are passed to each automl.
+        cpu_limit: CPU limit that that are passed to each automl.
+        gpu_ids: GPU IDs that are passed to each automl.
+        timing_params: Timing param dict.
+        config_path: Path to config file.
+        general_params: General param dict
+        reader_params: Reader param dict.
+        read_csv_params: Params to pass :func:`pandas.read_csv`
+            (case of train/predict from file).
+        nested_cv_params: Param dict for nested cross-validation.
+        tuning_params: Params of Optuna tuner.
+        selection_params: Params of feature selection.
+        lgb_params: Params of lightgbm model.
+        cb_params: Params of catboost model.
+        linear_l2_params: Params of linear model.
+        gbm_pipeline_params: Params of feature generation
+            for boosting models.
+        linear_pipeline_params: Params of feature generation
+            for linear models.
+        cv_simple_features: Params of color histogram features.
+        autocv_features: Params of image embeddings features.
 
     """
 
     _default_config_path = "image_config.yml"
 
-    _time_scores = {
-        "lgb": 1,
-        "lgb_tuned": 3,
-        "linear_l2": 0.7,
-        "cb": 2,
-        "cb_tuned": 6,
-    }
+    _time_scores = {"lgb": 1, "lgb_tuned": 3, "linear_l2": 0.7, "cb": 2, "cb_tuned": 6, "rf": 5, "rf_tuned": 10}
 
     def __init__(
         self,
@@ -67,7 +90,6 @@ class TabularCVAutoML(TabularAutoML):
         memory_limit: int = 16,
         cpu_limit: int = 4,
         gpu_ids: Optional[str] = "all",
-        verbose: int = 2,
         timing_params: Optional[dict] = None,
         config_path: Optional[str] = None,
         general_params: Optional[dict] = None,
@@ -78,63 +100,19 @@ class TabularCVAutoML(TabularAutoML):
         selection_params: Optional[dict] = None,
         lgb_params: Optional[dict] = None,
         cb_params: Optional[dict] = None,
+        rf_params: Optional[dict] = None,
         linear_l2_params: Optional[dict] = None,
         gbm_pipeline_params: Optional[dict] = None,
         linear_pipeline_params: Optional[dict] = None,
         cv_simple_features: Optional[dict] = None,
         autocv_features: Optional[dict] = None,
     ):
-
-        """
-
-        Commonly _params kwargs (ex. timing_params)
-        set via config file (config_path argument).
-        If you need to change just few params,
-        it's possible to pass it as dict of dicts, like json.
-        To get available params please look on default config template.
-        Also you can find there param description.
-        To generate config template call
-        :func:`TabularCVAutoML.get_config('config_path.yml')`.
-
-        Args:
-            task: Task to solve.
-            timeout: Timeout in seconds.
-            memory_limit: Memory limit that are passed to each automl.
-            cpu_limit: CPU limit that that are passed to each automl.
-            gpu_ids: GPU IDs that are passed to each automl.
-            verbose: Controls the verbosity: the higher, the more messages.
-                <1  : messages are not displayed;
-                >=1 : the computation process for layers is displayed;
-                >=2 : the information about folds processing is also displayed;
-                >=3 : the hyperparameters optimization process is also displayed;
-                >=4 : the training process for every algorithm is displayed;
-            timing_params: Timing param dict.
-            config_path: Path to config file.
-            general_params: General param dict
-            reader_params: Reader param dict.
-            read_csv_params: Params to pass :func:`pandas.read_csv`
-              (case of train/predict from file).
-            nested_cv_params: Param dict for nested cross-validation.
-            tuning_params: Params of Optuna tuner.
-            selection_params: Params of feature selection.
-            lgb_params: Params of lightgbm model.
-            cb_params: Params of catboost model.
-            linear_l2_params: Params of linear model.
-            gbm_pipeline_params: Params of feature generation
-              for boosting models.
-            linear_pipeline_params: Params of feature generation
-              for linear models.
-            cv_simple_features: Params of color histogram features.
-            autocv_features: Params of image embeddings features.
-
-        """
         super().__init__(
             task,
             timeout,
             memory_limit,
             cpu_limit,
             gpu_ids,
-            verbose,
             timing_params,
             config_path,
         )
@@ -150,6 +128,7 @@ class TabularCVAutoML(TabularAutoML):
                 "selection_params",
                 "lgb_params",
                 "cb_params",
+                "rf_params",
                 "linear_l2_params",
                 "gbm_pipeline_params",
                 "linear_pipeline_params",
@@ -165,6 +144,7 @@ class TabularCVAutoML(TabularAutoML):
                 selection_params,
                 lgb_params,
                 cb_params,
+                rf_params,
                 linear_l2_params,
                 gbm_pipeline_params,
                 linear_pipeline_params,
@@ -177,7 +157,7 @@ class TabularCVAutoML(TabularAutoML):
             self.__dict__[name] = upd_params(self.__dict__[name], param)
 
     def infer_auto_params(self, train_data: DataFrame, multilevel_avail: bool = False):
-
+        """Infer automatic parameters."""
         # infer gpu params
         gpu_cnt = torch.cuda.device_count()
         gpu_ids = self.gpu_ids
@@ -206,9 +186,7 @@ class TabularCVAutoML(TabularAutoML):
             self.autocv_features["n_jobs"] = cpu_cnt
 
         if "n_jobs" in self.cv_simple_features:
-            self.cv_simple_features["n_jobs"] = min(
-                self.cv_simple_features["n_jobs"], cpu_cnt
-            )
+            self.cv_simple_features["n_jobs"] = min(self.cv_simple_features["n_jobs"], cpu_cnt)
         else:
             self.cv_simple_features["n_jobs"] = cpu_cnt
 
@@ -216,6 +194,7 @@ class TabularCVAutoML(TabularAutoML):
         super().infer_auto_params(train_data, multilevel_avail)
 
     def get_cv_pipe(self, type: str = "simple") -> Optional[FeaturesPipeline]:
+        """Get CV pipeline."""
         if type == "simple":
             return ImageSimpleFeatures(**self.cv_simple_features)
         elif type == "embed":
@@ -223,19 +202,15 @@ class TabularCVAutoML(TabularAutoML):
         else:
             return None
 
-    def get_linear(
-        self, n_level: int = 1, pre_selector: Optional[SelectionPipeline] = None
-    ) -> NestedTabularMLPipeline:
-
+    def get_linear(self, n_level: int = 1, pre_selector: Optional[SelectionPipeline] = None) -> NestedTabularMLPipeline:
+        """Get linear pipeline."""
         # linear model with l2
         time_score = self.get_time_score(n_level, "linear_l2")
         linear_l2_timer = self.timer.get_task_timer("reg_l2", time_score)
         linear_l2_model = LinearLBFGS(timer=linear_l2_timer, **self.linear_l2_params)
 
         cv_l2_feats = self.get_cv_pipe(self.linear_pipeline_params["cv_features"])
-        linear_l2_feats = LinearFeatures(
-            output_categories=True, **self.linear_pipeline_params
-        )
+        linear_l2_feats = LinearFeatures(output_categories=True, **self.linear_pipeline_params)
         if cv_l2_feats is not None:
             linear_l2_feats.append(cv_l2_feats)
 
@@ -254,11 +229,9 @@ class TabularCVAutoML(TabularAutoML):
         n_level: int = 1,
         pre_selector: Optional[SelectionPipeline] = None,
     ):
-
+        """Get gbm pipeline."""
         cv_gbm_feats = self.get_cv_pipe(self.gbm_pipeline_params["cv_features"])
-        gbm_feats = LGBAdvancedPipeline(
-            output_categories=False, **self.gbm_pipeline_params
-        )
+        gbm_feats = LGBAdvancedPipeline(output_categories=False, **self.gbm_pipeline_params)
         if cv_gbm_feats is not None:
             gbm_feats.append(cv_gbm_feats)
 
@@ -287,11 +260,7 @@ class TabularCVAutoML(TabularAutoML):
             force_calc.append(force)
 
         gbm_pipe = NestedTabularMLPipeline(
-            ml_algos,
-            force_calc,
-            pre_selection=pre_selector,
-            features_pipeline=gbm_feats,
-            **self.nested_cv_params
+            ml_algos, force_calc, pre_selection=pre_selector, features_pipeline=gbm_feats, **self.nested_cv_params
         )
 
         return gbm_pipe
@@ -305,7 +274,6 @@ class TabularCVAutoML(TabularAutoML):
             **fit_args: params that are passed to ``.fit_predict`` method.
 
         """
-
         train_data = fit_args["train_data"]
         self.infer_auto_params(train_data)
         reader = PandasToPandasReader(task=self.task, **self.reader_params)
@@ -326,16 +294,12 @@ class TabularCVAutoML(TabularAutoML):
                 lvl.append(self.get_linear(n + 1, selector))
 
             gbm_models = [
-                x
-                for x in ["lgb", "lgb_tuned", "cb", "cb_tuned"]
-                if x in names and x.split("_")[0] in self.task.losses
+                x for x in ["lgb", "lgb_tuned", "cb", "cb_tuned"] if x in names and x.split("_")[0] in self.task.losses
             ]
 
             if len(gbm_models) > 0:
                 selector = None
-                if "gbm" in self.selection_params["select_algos"] and (
-                    self.general_params["skip_conn"] or n == 0
-                ):
+                if "gbm" in self.selection_params["select_algos"] and (self.general_params["skip_conn"] or n == 0):
                     selector = pre_selector
                 lvl.append(self.get_gbms(gbm_models, n + 1, selector))
 
@@ -345,14 +309,7 @@ class TabularCVAutoML(TabularAutoML):
         blender = WeightedBlender()
 
         # initialize
-        self._initialize(
-            reader,
-            levels,
-            skip_conn=self.general_params["skip_conn"],
-            blender=blender,
-            timer=self.timer,
-            verbose=self.verbose,
-        )
+        self._initialize(reader, levels, skip_conn=self.general_params["skip_conn"], blender=blender, timer=self.timer)
 
     def predict(
         self,
@@ -383,7 +340,7 @@ class TabularCVAutoML(TabularAutoML):
         Args:
             data: Dataset to perform inference.
             features_names: Optional features names,
-              if cannot be inferred from `train_data`.
+                if cannot be inferred from `train_data`.
             batch_size: Batch size or ``None``.
             n_jobs: Number of jobs.
 

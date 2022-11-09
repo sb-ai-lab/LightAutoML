@@ -1,14 +1,28 @@
 """Metrics and loss functions for Catboost."""
 
-from typing import Callable, Dict, Optional, Union
+import logging
+
+from typing import Callable
+from typing import Dict
+from typing import Optional
+from typing import Union
 
 import numpy as np
 
 from .base import Loss
+from .base import fw_rmsle
 
 
-def cb_str_loss_wrapper(name: str, **params: Optional[Dict]):
-    """CatBoost loss name wrapper, if it has keyword args.
+logger = logging.getLogger(__name__)
+
+
+def bw_clipping(x):
+    """Clip to [0, 1]."""
+    return np.clip(x, 0, 1)
+
+
+def cb_str_loss_wrapper(name: str, **params: Optional[Dict]) -> str:
+    """CatBoost loss name wrapper, if it has keyword args.  # noqa D403
 
     Args:
         name: One of CatBoost loss names.
@@ -19,10 +33,6 @@ def cb_str_loss_wrapper(name: str, **params: Optional[Dict]):
 
     """
     return name + ":" + ";".join([k + "=" + str(v) for (k, v) in params.items()])
-
-
-def fw_rmsle(x, y):
-    return np.log1p(x), y
 
 
 _cb_loss_mapping = {
@@ -69,11 +79,20 @@ _cb_multiclass_metrics_dict = {
     "f1_micro": "TotalF1:average=Micro",
     "f1_weighted": "TotalF1:average=Weighted",
 }
+_cb_multireg_metric_dict = {
+    "rmse": "MultiRMSE",
+    "mse": "MultiRMSE",
+    "mae": "MultiRMSE",
+}
+
+_cb_multilabel_metric_dict = {"logloss": "MultiCrossEntropy"}
 
 _cb_metrics_dict = {
     "binary": _cb_binary_metrics_dict,
     "reg": _cb_reg_metrics_dict,
     "multiclass": _cb_multiclass_metrics_dict,
+    "multi:reg": _cb_multireg_metric_dict,
+    "multilabel": _cb_multilabel_metric_dict,
 }
 
 
@@ -85,7 +104,18 @@ _cb_metric_params_mapping = {
 
 
 class CBLoss(Loss):
-    """Loss used for CatBoost."""
+    """Loss used for CatBoost.
+
+    Args:
+        loss: String with one of default losses.
+        loss_params: additional loss parameters.
+            Format like in :mod:`lightautoml.tasks.custom_metrics`.
+        fw_func: Forward transformation.
+            Used for transformation of target and item weights.
+        bw_func: Backward transformation.
+            Used for predict values transformation.
+
+    """
 
     def __init__(
         self,
@@ -94,18 +124,6 @@ class CBLoss(Loss):
         fw_func: Optional[Callable] = None,
         bw_func: Optional[Callable] = None,
     ):
-        """
-
-        Args:
-            loss: String with one of default losses.
-            loss_params: additional loss parameters.
-              Format like in :mod:`lightautoml.tasks.custom_metrics`.
-            fw_func: Forward transformation.
-              Used for transformation of target and item weights.
-            bw_func: Backward transformation.
-              Used for predict values transformation.
-
-        """
         self.loss_params = {}
         if loss_params is not None:
             self.loss_params = loss_params
@@ -114,10 +132,7 @@ class CBLoss(Loss):
             if loss in _cb_loss_mapping:
                 loss_name, fw_func, bw_func = _cb_loss_mapping[loss]
                 if loss in _cb_loss_params_mapping:
-                    mapped_params = {
-                        _cb_loss_params_mapping[loss][k]: v
-                        for (k, v) in self.loss_params.items()
-                    }
+                    mapped_params = {_cb_loss_params_mapping[loss][k]: v for (k, v) in self.loss_params.items()}
                     self.fobj = None
                     self.fobj_name = cb_str_loss_wrapper(loss_name, **mapped_params)
 
@@ -154,8 +169,7 @@ class CBLoss(Loss):
         metric_params: Optional[Dict] = None,
         task_name: str = None,
     ):
-        """
-        Callback metric setter.
+        """Callback metric setter.
 
         Args:
             metric: Callback metric.
@@ -167,11 +181,9 @@ class CBLoss(Loss):
         # TODO: for what cb_utils
         # How to say that this metric is special class if there any task type?
 
-        assert task_name in [
-            "binary",
-            "reg",
-            "multiclass",
-        ], "Unknown task name: {}".format(task_name)
+        assert task_name in ["binary", "reg", "multiclass", "multi:reg", "multilabel"], "Unknown task name: {}".format(
+            task_name
+        )
 
         self.metric_params = {}
         if metric_params is not None:
@@ -180,14 +192,18 @@ class CBLoss(Loss):
         if type(metric) is str:
             self.metric = None
             _metric_dict = _cb_metrics_dict[task_name]
+            if task_name == "multi:reg":
+                print("CatBoost supports only MultiRMSE metric and loss for multi:reg task.")
+                self.fobj = None
+                self.fobj_name = "MultiRMSE"
+            if task_name == "multilabel":
+                print("CatBoost uses as obj. MultiCrossEntropy.")
+                self.fobj = None
+                self.fobj_name = "MultiCrossEntropy"
+
             if metric in _cb_metric_params_mapping:
-                metric_params = {
-                    _cb_metric_params_mapping[metric][k]: v
-                    for (k, v) in self.metric_params.items()
-                }
-                self.metric_name = cb_str_loss_wrapper(
-                    _metric_dict[metric], **metric_params
-                )
+                metric_params = {_cb_metric_params_mapping[metric][k]: v for (k, v) in self.metric_params.items()}
+                self.metric_name = cb_str_loss_wrapper(_metric_dict[metric], **metric_params)
             else:
                 self.metric_name = _metric_dict[metric]
 

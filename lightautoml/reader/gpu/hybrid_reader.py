@@ -2,7 +2,6 @@
 
 import logging
 import os
-from time import perf_counter
 from typing import Any, Union
 
 import numpy as np
@@ -92,7 +91,6 @@ class HybridReader(CudfReader):
             Dataset with selected features.
 
         """
-        st = perf_counter()
 
         parsed_roles, kwargs = self._prepare_roles_and_kwargs(
             roles, train_data, **kwargs
@@ -130,10 +128,6 @@ class HybridReader(CudfReader):
             self.num_cpu_readers = 0
             gpu_num_cols = num_features
             cpu_num_cols = 0
-
-        print("READER:")
-        print("  num_gpu_readers:", self.num_gpu_readers)
-        print("  num_cpu_readers:", self.num_cpu_readers)
 
         single_gpu_num_cols = 0
         single_cpu_num_cols = 0
@@ -225,7 +219,6 @@ class HybridReader(CudfReader):
 
         self.final_roles.update({self.target: "target"})
 
-        print("self output is", self.output, flush=True)
         if self.output == "gpu":
             self.final_reader = CudfReader(
                 self.task,
@@ -254,8 +247,6 @@ class HybridReader(CudfReader):
         output = self.final_reader.fit_read(
             train_data, roles=self.final_roles, roles_parsed=True
         )
-
-        print("hybrid reader:", perf_counter() - st)
 
         return output
 

@@ -6,28 +6,28 @@ import torch
 
 from ...dataset.base import LAMLDataset
 from ...image.utils import pil_loader
-from ...transformers.base import (
-    ColumnsSelector,
-    LAMLTransformer,
-    SequentialTransformer,
-    UnionTransformer,
-)
-from ...transformers.image import AutoCVWrap, ImageFeaturesTransformer
-from ...transformers.numeric import FillInf, FillnaMedian, StandardScaler
+from ...transformers.base import ColumnsSelector
+from ...transformers.base import LAMLTransformer
+from ...transformers.base import SequentialTransformer
+from ...transformers.base import UnionTransformer
+from ...transformers.image import AutoCVWrap
+from ...transformers.image import ImageFeaturesTransformer
+from ...transformers.numeric import FillInf
+from ...transformers.numeric import FillnaMedian
+from ...transformers.numeric import StandardScaler
 from ..utils import get_columns_by_role
 from .base import FeaturesPipeline
 
 
 class ImageDataFeatures:
-    """Class contains basic features transformations for image data."""
+    """Class contains basic features transformations for image data.
+
+    Args:
+        **kwargs: Default parameters.
+
+    """
 
     def __init__(self, **kwargs: Any):
-        """Set default parameters for image pipeline constructor.
-
-        Args:
-            **kwargs: Default parameters.
-
-        """
         self.hist_size = 30
         self.is_hsv = True
         self.n_jobs = 4
@@ -37,9 +37,7 @@ class ImageDataFeatures:
         self.weights_path = None
         self.subs = 10000
         self.cache_dir = "../cache_CV"
-        self.device = (
-            torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
-        )
+        self.device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
         self.is_advprop = True
         self.batch_size = 128
         self.verbose = True
@@ -54,6 +52,15 @@ class ImageSimpleFeatures(FeaturesPipeline, ImageDataFeatures):
     """Class contains simple color histogram features for image data."""
 
     def create_pipeline(self, train: LAMLDataset) -> LAMLTransformer:
+        """Create pipeline for images data.
+
+        Args:
+            train: Dataset with train features.
+
+        Returns:
+            Transformer.
+
+        """
         transformers_list = []
 
         # process texts
@@ -62,9 +69,7 @@ class ImageSimpleFeatures(FeaturesPipeline, ImageDataFeatures):
             imgs_processing = SequentialTransformer(
                 [
                     ColumnsSelector(keys=imgs),
-                    ImageFeaturesTransformer(
-                        self.hist_size, self.is_hsv, self.n_jobs, self.loader
-                    ),
+                    ImageFeaturesTransformer(self.hist_size, self.is_hsv, self.n_jobs, self.loader),
                     SequentialTransformer([FillInf(), FillnaMedian(), StandardScaler()]),
                 ]
             )
@@ -79,6 +84,15 @@ class ImageAutoFeatures(FeaturesPipeline, ImageDataFeatures):
     """Class contains efficient-net embeddings features for image data."""
 
     def create_pipeline(self, train: LAMLDataset) -> LAMLTransformer:
+        """Create pipeline for images data.
+
+        Args:
+            train: Dataset with train features.
+
+        Returns:
+            Transformer.
+
+        """
         transformers_list = []
         # process texts
         imgs = get_columns_by_role(train, "Path")

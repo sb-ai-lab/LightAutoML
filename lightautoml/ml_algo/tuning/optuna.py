@@ -1,15 +1,24 @@
-""""Classes to implement hyperparameter tuning using Optuna."""
+"""Classes to implement hyperparameter tuning using Optuna."""
 
 import logging
-from copy import copy, deepcopy
-from typing import Callable, Optional, Tuple, TypeVar, Union
+
+from copy import copy
+from copy import deepcopy
+from typing import Callable
+from typing import Optional
+from typing import Tuple
+from typing import TypeVar
+from typing import Union
 
 import optuna
 
 from lightautoml.dataset.base import LAMLDataset
 from lightautoml.ml_algo.base import MLAlgo
-from lightautoml.ml_algo.tuning.base import Distribution, ParamsTuner
-from lightautoml.validation.base import HoldoutIterator, TrainValidIterator
+from lightautoml.ml_algo.tuning.base import Distribution
+from lightautoml.ml_algo.tuning.base import ParamsTuner
+from lightautoml.validation.base import HoldoutIterator
+from lightautoml.validation.base import TrainValidIterator
+
 
 logger = logging.getLogger(__name__)
 optuna.logging.enable_propagation()
@@ -28,7 +37,18 @@ OPTUNA_DISTRIBUTIONS_MAP = {
 
 
 class OptunaTuner(ParamsTuner):
-    """Wrapper for optuna tuner."""
+    """Wrapper for optuna tuner.
+
+    Args:
+        timeout: Maximum learning time.
+        n_trials: Maximum number of trials.
+        direction: Direction of optimization.
+            Set ``minimize`` for minimization
+            and ``maximize`` for maximization.
+        fit_on_holdout: Will be used holdout cv-iterator.
+        random_state: Seed for optuna sampler.
+
+    """
 
     _name: str = "OptunaTuner"
 
@@ -45,19 +65,6 @@ class OptunaTuner(ParamsTuner):
         fit_on_holdout: bool = True,
         random_state: int = 42,
     ):
-        """
-
-        Args:
-            timeout: Maximum learning time.
-            n_trials: Maximum number of trials.
-            direction: Direction of optimization.
-              Set ``minimize`` for minimization
-              and ``maximize`` for maximization.
-            fit_on_holdout: Will be used holdout cv-iterator.
-            random_state: Seed for optuna sampler.
-
-        """
-
         self.timeout = timeout
         self.n_trials = n_trials
         self.estimated_n_trials = n_trials
@@ -89,9 +96,7 @@ class OptunaTuner(ParamsTuner):
         assert not ml_algo.is_fitted, "Fitted algo cannot be tuned."
         # optuna.logging.set_verbosity(logger.getEffectiveLevel())
         # upd timeout according to ml_algo timer
-        estimated_tuning_time = ml_algo.timer.estimate_tuner_time(
-            len(train_valid_iterator)
-        )
+        estimated_tuning_time = ml_algo.timer.estimate_tuner_time(len(train_valid_iterator))
         if estimated_tuning_time:
             # TODO: Check for minimal runtime!
             estimated_tuning_time = max(estimated_tuning_time, 1)
@@ -110,9 +115,7 @@ class OptunaTuner(ParamsTuner):
             flg_new_iterator = True
 
         # TODO: Check if time estimation will be ok with multiprocessing
-        def update_trial_time(
-            study: optuna.study.Study, trial: optuna.trial.FrozenTrial
-        ):
+        def update_trial_time(study: optuna.study.Study, trial: optuna.trial.FrozenTrial):
             """Callback for number of iteration with time cut-off.
 
             Args:
@@ -120,12 +123,8 @@ class OptunaTuner(ParamsTuner):
                 trial: Optuna trial object.
 
             """
-            ml_algo.mean_trial_time = (
-                study.trials_dataframe()["duration"].mean().total_seconds()
-            )
-            self.estimated_n_trials = min(
-                self.n_trials, self.timeout // ml_algo.mean_trial_time
-            )
+            ml_algo.mean_trial_time = study.trials_dataframe()["duration"].mean().total_seconds()
+            self.estimated_n_trials = min(self.n_trials, self.timeout // ml_algo.mean_trial_time)
 
             logger.info3(
                 f"\x1b[1mTrial {len(study.trials)}\x1b[0m with hyperparameters {trial.params} scored {trial.value} in {trial.duration}"
@@ -147,13 +146,12 @@ class OptunaTuner(ParamsTuner):
                 callbacks=[update_trial_time],
                 # show_progress_bar=True,
             )
+
             # need to update best params here
             self._best_params = self.study.best_params
             ml_algo.params = self._best_params
 
-            logger.info(
-                f"Hyperparameters optimization for \x1b[1m{ml_algo._name}\x1b[0m completed"
-            )
+            logger.info(f"Hyperparameters optimization for \x1b[1m{ml_algo._name}\x1b[0m completed")
             logger.info2(
                 f"The set of hyperparameters \x1b[1m{self._best_params}\x1b[0m\n achieve {self.study.best_value:.4f} {metric_name}"
             )
@@ -177,9 +175,10 @@ class OptunaTuner(ParamsTuner):
         """Get objective.
 
         Args:
+            ml_algo: Tunable algorithm.
             estimated_n_trials: Maximum number of hyperparameter estimations.
             train_valid_iterator: Used for getting parameters
-              depending on dataset.
+                depending on dataset.
 
         Returns:
             Callable objective.
@@ -189,6 +188,7 @@ class OptunaTuner(ParamsTuner):
 
         def objective(trial: optuna.trial.Trial) -> float:
             _ml_algo = deepcopy(ml_algo)
+
             optimization_search_space = _ml_algo.optimization_search_space
 
             if not optimization_search_space:
@@ -210,9 +210,8 @@ class OptunaTuner(ParamsTuner):
                     suggested_params=_ml_algo.init_params_on_input(train_valid_iterator),
                 )
 
-            output_dataset = _ml_algo.fit_predict(
-                train_valid_iterator=train_valid_iterator
-            )
+            output_dataset = _ml_algo.fit_predict(train_valid_iterator=train_valid_iterator)
+
             return _ml_algo.score(output_dataset)
 
         return objective
@@ -229,13 +228,11 @@ class OptunaTuner(ParamsTuner):
 
         for parameter, SearchSpace in optimization_search_space.items():
             if SearchSpace.distribution_type in OPTUNA_DISTRIBUTIONS_MAP:
-                trial_values[parameter] = getattr(
-                    trial, OPTUNA_DISTRIBUTIONS_MAP[SearchSpace.distribution_type]
-                )(name=parameter, **SearchSpace.params)
-            else:
-                raise ValueError(
-                    f"Optuna does not support distribution {SearchSpace.distribution_type}"
+                trial_values[parameter] = getattr(trial, OPTUNA_DISTRIBUTIONS_MAP[SearchSpace.distribution_type])(
+                    name=parameter, **SearchSpace.params
                 )
+            else:
+                raise ValueError(f"Optuna does not support distribution {SearchSpace.distribution_type}")
 
         return trial_values
 

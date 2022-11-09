@@ -1,8 +1,12 @@
 """Base classes to implement hyperparameter tuning."""
 
-from abc import ABC, abstractmethod
+from abc import ABC
+from abc import abstractmethod
 from enum import Enum
-from typing import Dict, Optional, Tuple, overload
+from typing import Dict
+from typing import Optional
+from typing import Tuple
+from typing import overload
 
 from lightautoml.dataset.base import LAMLDataset
 
@@ -12,6 +16,8 @@ from lightautoml.validation.base import TrainValidIterator
 
 
 class Distribution(Enum):
+    """Set of distributions."""
+
     CHOICE = 0
 
     UNIFORM = 1
@@ -26,6 +32,8 @@ class Distribution(Enum):
 
 
 class SearchSpace:
+    """Search space."""
+
     distribution_type: Distribution = None
     params: Dict = {}
 
@@ -89,17 +97,14 @@ class DefaultTuner(ParamsTuner):
         ml_algo: "MLAlgo",
         train_valid_iterator: Optional[TrainValidIterator] = None,
     ) -> Tuple[None, None]:
-        """
-        Default fit method - just save defaults.
+        """Default fit method - just save defaults.
 
         Args:
             ml_algo: Algorithm that is tuned.
             train_valid_iterator: Empty.
 
-        Returns:s
+        Returns:
             Tuple (None, None).
         """
-        self._best_params = ml_algo.init_params_on_input(
-            train_valid_iterator=train_valid_iterator
-        )
+        self._best_params = ml_algo.init_params_on_input(train_valid_iterator=train_valid_iterator)
         return None, None

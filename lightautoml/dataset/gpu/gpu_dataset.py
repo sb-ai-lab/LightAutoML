@@ -1,7 +1,9 @@
 """Internal representation of dataset in cudf formats."""
 
-from copy import copy  # , deepcopy
+from copy import copy, deepcopy
 from typing import Any, List, Optional, Sequence, Tuple, TypeVar, Union
+
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -216,7 +218,10 @@ class CupyDataset(NumpyDataset):
         roles = self.roles
         # target and etc ..
         params = dict(
-            ((x, cudf.Series(self.__dict__[x])) for x in self._array_like_attrs)
+            (
+                (x, cudf.Series(self.__dict__[x]) if len(self.__dict__[x].shape) == 1 else cudf.DataFrame(self.__dict__[x]))
+                for x in self._array_like_attrs
+            )
         )
         task = self.task
 
@@ -541,7 +546,6 @@ class CudfDataset(PandasDataset):
             Sliced rows.
 
         """
-
         return data.iloc[k]
 
     @staticmethod
@@ -571,6 +575,7 @@ class CudfDataset(PandasDataset):
 
         """
         rows, cols = k
+
         return data.iloc[rows, cols]
 
     @staticmethod
@@ -625,8 +630,9 @@ class CudfDataset(PandasDataset):
 
         params = dict(
             (
-                (x, pd.Series(cp.asnumpy(self.__dict__[x].values)))
-                for x in self._array_like_attrs
+                (x, pd.Series(cp.asnumpy(self.__dict__[x].values))
+                    if len(self.__dict__[x].shape) == 1 else pd.DataFrame(cp.asnumpy(self.__dict__[x].values)))
+                    for x in self._array_like_attrs
             )
         )
 
@@ -678,9 +684,333 @@ class CudfDataset(PandasDataset):
         return dataset.to_cudf()
 
 
+class SeqCudfDataset(CudfDataset):
+
+    _dataset_type = "SeqCudfDatset"
+
+    def _initialize(self, task, **kwargs):
+        super()._initialize(task, **kwargs)
+        self._idx = None
+
+    @property
+    def idx(self) -> Any:
+        """Get idx attribute.
+
+        Returns:
+            Any, array like or ``None``.
+
+        """
+        return self._idx
+
+    @idx.setter
+    def idx(self, val: Any):
+        """Set idx array or ``None``.
+
+        Args:
+            val: Some idx or ``None``.
+
+        """
+        self._idx = val
+
+    def __init__(
+        self,
+        data: Optional[DenseSparseArray],
+        features: NpFeatures = (),
+        roles: NpRoles = None,
+        idx: List = (),
+        task: Optional[Task] = None,
+        name: Optional[str] = "seq",
+        scheme: Optional[dict] = None,
+        **kwargs: Series
+    ):
+        self.name = name
+        if scheme is not None:
+            self.scheme = scheme
+        else:
+            self.scheme = {}
+
+        self._initialize(task, **kwargs)
+        if data is not None:
+            self.set_data(data, roles, idx)
+
+    def set_data(self, data: DenseSparseArray, roles: NpRoles = None, idx: Optional[List] = None):
+        """Inplace set data, features, roles for empty dataset.
+
+        Args:
+            data: 2d array like or ``None``.
+            roles: roles dict.
+            idx: list.
+
+        """
+        # assert data is None or type(data) is np.ndarray, 'Numpy dataset support only np.ndarray features'
+        super().set_data(data, None, roles)
+        if idx is None:
+            idx = np.arange(len(data)).reshape(-1, 1)
+        self.idx = idx
+        self._check_dtype()
+
+    def __len__(self):
+        return len(self.idx)
+
+    def _get_cols_idx(self, columns: Union[Sequence[str], str]) -> Union[Sequence[int], int]:
+        """Get numeric index of columns by column names.
+
+        Args:
+            columns: sequence of columns of single column.
+
+        Returns:
+            sequence of int indexes or single int.
+
+        """
+        if type(columns) is str:
+            idx = self.data.columns.get_loc(columns)
+
+        else:
+            idx = self.data.columns.get_indexer(columns)
+
+        return idx
+
+    def __getitem__(self, k):
+        """Select a subset of dataset.
+
+        Define how to slice a dataset
+        in way ``dataset[[1, 2, 3...], ['feat_0', 'feat_1'...]]``.
+        Default behavior based on ``._get_cols``, ``._get_rows``, ``._get_2d``.
+
+        Args:
+            k: First element optional integer columns indexes,
+                second - optional feature name or list of features names.
+
+        Returns:
+            Subset.
+
+        """
+        # TODO: Maybe refactor this part?
+        if type(k) is tuple:
+            rows, cols = k
+            if isinstance(cols, str):
+                cols = [cols]
+        else:
+            rows = k
+            cols = None
+
+        is_slice = False
+        if isinstance(rows, slice):
+            is_slice = True
+
+        rows = [rows] if isinstance(rows, int) else np.arange(self.__len__()) if isinstance(rows, slice) else rows
+        temp_idx = self.idx[rows]
+        rows = []
+        idx_new = []
+        _c = 0
+        for i in temp_idx:
+            rows.extend(list(i))
+            idx_new.append(list(np.arange(len(i)) + _c))
+            _c += len(i)
+        idx_new = np.array(idx_new, dtype=object)
+
+        rows = np.array(sorted(list(set(rows))))
+
+        if is_slice:
+            idx_new = self.idx
+            rows = np.arange(len(self.data))
+        else:
+            warnings.warn(
+                "Resulted sequential dataset may have different structure. It's not recommended to slice new dataset"
+            )
+
+        # case when columns are defined
+        if cols is not None:
+            idx = self._get_cols_idx(cols)
+            data = self._get_2d(self.data, (rows, idx))
+
+            # case of multiple columns - return LAMLDataset
+            roles = dict(((x, self.roles[x]) for x in self.roles if x in cols))
+        else:
+            roles = self.roles
+            data = self._get_rows(self.data, rows)
+
+        # case when rows are defined
+        if rows is None:
+            dataset = self.empty()
+        else:
+            dataset = copy(self)
+            params = dict(((x, self._get_rows(self.__dict__[x], rows)) for x in self._array_like_attrs))
+            dataset._initialize(self.task, **params)
+
+        dataset.set_data(data, roles, idx=idx_new)
+
+        return dataset
+
+    def get_first_frame(self, k = None):
+        """Select a subset of dataset and transform it to sequence.
+
+        Define how to slice a dataset in way ``dataset[[1, 2, 3...], ['feat_0', 'feat_1'...]]``.
+        Default behavior based on ``._get_cols``, ``._get_rows``, ``._get_2d``.
+
+        Args:
+            k: First element optional integer columns indexes,
+                second - optional feature name or list of features names.
+
+        Returns:
+            respective Dataset with new sequential dimension.
+
+        """
+        self._check_dtype()
+        if k is None:
+            k = slice(None, None, None)
+
+        # TODO: Maybe refactor this part?
+        if type(k) is tuple:
+            rows, cols = k
+            if isinstance(cols, str):
+                cols = [cols]
+        else:
+            rows = k
+            cols = None
+
+        rows = [rows] if isinstance(rows, int) else np.arange(self.__len__()) if isinstance(rows, slice) else rows
+
+        # case when columns are defined
+        if cols is not None:
+            idx = self._get_cols_idx(cols)
+            roles = dict(((x, self.roles[x]) for x in self.roles if x in cols))
+            features = [x for x in cols if x in set(self.features)]
+        else:
+            roles, features = self.roles, self.features
+            idx = self._get_cols_idx(self.data.columns)
+
+        first_frame_idx = [self.idx[i][0] for i in rows]
+        data = self._get_slice(self.data, (first_frame_idx, idx))
+
+        if rows is None:
+            dataset = CudfDataset(None, deepcopy(roles), task=self.task)
+        else:
+            dataset = CudfDataset(data, deepcopy(roles), task=self.task) 
+        return dataset
+
+    def apply_func(self, k = None, func = None) -> np.ndarray:
+        """Apply function to each sequence.
+
+        Args:
+            k: First element optional integer columns indexes,
+                second - optional feature name or list of features names.
+            func: any callable function
+
+        Returns:
+            output np.ndarray
+
+        """
+        self._check_dtype()
+        if k is None:
+            k = slice(None, None, None)
+
+        # TODO: Maybe refactor this part?
+        if type(k) is tuple:
+            rows, cols = k
+            if isinstance(cols, str):
+                cols = [cols]
+        else:
+            rows = k
+            cols = None
+
+        rows = [rows] if isinstance(rows, int) else np.arange(self.__len__()) if isinstance(rows, slice) else rows
+
+        # case when columns are defined
+        if cols is not None:
+            idx = self._get_cols_idx(cols)
+
+            # case when seqs have different shape, return array with arrays
+            data = []
+            _d = self.data[cols].values
+            for row in rows:
+                data.append(func(_d[self.idx[row]]))
+        else:
+            data = []
+            _d = self.data.values
+            for row in rows:
+                data.append(func(_d[self.idx[row]]))
+
+        return cudf.DataFrame(data)
+
+    def _get_slice(self, data, k) -> np.ndarray:
+        """Get 3d slice.
+
+        Args:
+            data: Data.
+            k: Tuple of integer sequences.
+
+        Returns:
+            3d slice.
+
+        """
+        rows, cols = k
+        if isinstance(data, cudf.DataFrame):
+            return data.iloc[rows, cols]
+        else:
+            raise TypeError("wrong data type for _get_slice() in "+
+                            self.__class__.__name__)
+
+    def to_cudf(self) -> "PandasDataset":
+        """Convert to plain PandasDataset.
+
+        Returns:
+            Same dataset in PandasDataset format without sequential features.
+
+        """
+        # check for empty case
+        data = None if self.data is None else cudf.DataFrame(self.data, columns=self.features)
+        roles = self.roles
+        # target and etc ..
+        params = dict(((x, cudf.Series(self.__dict__[x])) for x in self._array_like_attrs))
+        task = self.task
+
+        return CudfDataset(data, roles, task, **params)
+
+
+    @classmethod
+    def concat(cls, datasets: Sequence["LAMLDataset"]) -> "LAMLDataset":
+        """Concat multiple dataset.
+
+        Default behavior - takes empty dataset from datasets[0]
+        and concat all features from others.
+
+        Args:
+            datasets: Sequence of datasets.
+
+        Returns:
+            Concated dataset.
+
+        """
+        for check in cls._concat_checks:
+            check(datasets)
+
+        idx = datasets[0].idx
+        dataset = datasets[0].empty()
+        data = []
+        features = []
+        roles = {}
+
+        atrs = set(dataset._array_like_attrs)
+        for ds in datasets:
+            data.append(ds.data)
+            features.extend(ds.features)
+            roles = {**roles, **ds.roles}
+            for atr in ds._array_like_attrs:
+                if atr not in atrs:
+                    dataset._array_like_attrs.append(atr)
+                    dataset.__dict__[atr] = ds.__dict__[atr]
+                    atrs.update({atr})
+
+        data = cls._hstack(data)
+        dataset.set_data(data, roles, idx=idx)
+
+        return dataset
+
+
 class DaskCudfDataset(CudfDataset):
     """Dataset that contains `dask_cudf.core.DataFrame` features and
-       `dask_cudf.Series` targets."""
+       `dask_cudf.Series` or `dask_cudf.DataFrame` targets."""
 
     _dataset_type = "DaskCudfDataset"
 
@@ -718,9 +1048,11 @@ class DaskCudfDataset(CudfDataset):
             mapping = dict(zip(data.index.compute().values_host, np.arange(size)))
             data["index"] = data["index"].map(mapping).persist()
             data = data.set_index("index", drop=True, sorted=True)
+            if 'index' in data.columns.to_list():
+                data = data.drop(['index'], axis=1)
             data = data.persist()
             for val in kwargs:
-                col_name = kwargs[val].name
+                col_name = kwargs[val].name if isinstance(kwargs[val], dask_cudf.Series) else list(kwargs[val].columns)
                 kwargs[val] = kwargs[val].reset_index(drop=False)
                 kwargs[val]["index"] = kwargs[val]["index"].map(mapping).persist()
                 kwargs[val] = kwargs[val].set_index("index", drop=True, sorted=True)[
@@ -729,7 +1061,7 @@ class DaskCudfDataset(CudfDataset):
 
         self._initialize(task, **kwargs)
         if data is not None:
-            self.set_data(data, None, roles)
+            self.set_data(data, data.columns, roles)
 
     def _check_dtype(self):
         """Check if dtype in .set_data is ok and cast if not."""
@@ -752,6 +1084,61 @@ class DaskCudfDataset(CudfDataset):
             self.dtypes[i] = np.datetime64
 
     @staticmethod
+    def slice_cudf(data, rows, cols):
+        mini = data.index[0]
+        maxi = data.index[-1]
+        step = data.index[1]-data.index[0]
+        new_rows = [x for x in rows if x>=mini and x<=maxi]
+        inds = [int((x-mini)/step) for x in new_rows]
+        return data.iloc[inds, cols]
+
+    def _get_slice(self, data, k) -> np.ndarray:
+        """Get 3d slice.
+
+        Args:
+            data: Data.
+            k: Tuple of integer sequences.
+
+        Returns:
+            3d slice.
+
+        """
+        rows, cols = k
+
+        if isinstance(data, dask_cudf.DataFrame):
+
+            return data.loc[rows][data.columns[cols]]
+            #data = data.map_partitions(self.slice_cudf, rows, cols,
+            #           meta=cudf.DataFrame(columns=data.columns[cols])
+            #       ).persist().repartition(npartitions=data.npartitions)
+            #return data.persist()
+        else:
+            raise TypeError("wrong data type for _get_slice() in "+
+                            self.__class__.__name__)
+
+    def _get_2d(self, data: DataFrame, k: Tuple[IntIdx, IntIdx]) -> FrameOrSeries:
+        """Define 2d slice of table.
+
+        Args:
+            data: Table with data.
+            k: Sequence of `int` indexes or `int`.
+
+        Returns:
+            2d sliced table.
+
+        """
+        
+        rows, cols = k
+        if cols.size==0:
+            if isinstance(rows,slice):
+                return data[cols]
+            return self._get_slice(data, k)
+        if isinstance(rows, np.ndarray) and\
+           isinstance(cols, np.ndarray):
+            return self._get_slice(data, k)
+        return data.iloc[rows, cols]
+
+    @staticmethod
     def _get_rows(data: DataFrame_dask, k) -> FrameOrSeries_dask:
         """Define how to get rows slice.
 
@@ -763,7 +1150,10 @@ class DaskCudfDataset(CudfDataset):
             Sliced rows.
 
         """
-
+        if isinstance(k, cp.ndarray):
+            k = cp.asnumpy(k)
+        if isinstance(k, slice):
+            return data.persist()
         return data.loc[k].persist()
 
     def to_cudf(self) -> CudfDataset:
@@ -873,3 +1263,309 @@ class DaskCudfDataset(CudfDataset):
         """
         rows, cols = self.data.shape[0].compute(), len(self.features)
         return rows, cols
+
+
+class SeqDaskCudfDataset(DaskCudfDataset):
+
+    _dataset_type = "SeqCudfDatset"
+
+    def _initialize(self, task, **kwargs):
+        super()._initialize(task, **kwargs)
+        self._idx = None
+
+    @property
+    def idx(self) -> Any:
+        """Get idx attribute.
+
+        Returns:
+            Any, array like or ``None``.
+
+        """
+        return self._idx
+
+    @idx.setter
+    def idx(self, val: Any):
+        """Set idx array or ``None``.
+
+        Args:
+            val: Some idx or ``None``.
+
+        """
+        self._idx = val
+
+    def __init__(
+        self,
+        data: Optional[DenseSparseArray],
+        features: NpFeatures = (),
+        roles: NpRoles = None,
+        idx: List = (),
+        task: Optional[Task] = None,
+        name: Optional[str] = "seq",
+        scheme: Optional[dict] = None,
+        **kwargs: Series
+    ):
+        self.name = name
+        if scheme is not None:
+            self.scheme = scheme
+        else:
+            self.scheme = {}
+
+        super().__init__(data, roles, task, **kwargs)
+        if data is not None:
+            self.set_idx(data, idx)
+
+    def set_idx(self, data: DenseSparseArray, idx: Optional[List] = None):
+        """Inplace set data, features, roles for empty dataset.
+
+        Args:
+            data: 2d array like or ``None``.
+            roles: roles dict.
+            idx: list.
+
+        """
+        if idx is None:
+            idx = np.arange(len(data)).reshape(-1, 1)
+        self.idx = idx
+        self._check_dtype()
+
+    def __len__(self):
+        return len(self.idx)
+
+    def _get_cols_idx(self, columns: Union[Sequence[str], str]) -> Union[Sequence[int], int]:
+        """Get numeric index of columns by column names.
+
+        Args:
+            columns: sequence of columns of single column.
+
+        Returns:
+            sequence of int indexes or single int.
+
+        """
+        if type(columns) is str:
+            idx = self.data.columns.get_loc(columns)
+
+        else:
+            idx = self.data.columns.get_indexer(columns)
+
+        return idx
+
+    def __getitem__(self, k):
+        """Select a subset of dataset.
+
+        Define how to slice a dataset
+        in way ``dataset[[1, 2, 3...], ['feat_0', 'feat_1'...]]``.
+        Default behavior based on ``._get_cols``, ``._get_rows``, ``._get_2d``.
+
+        Args:
+            k: First element optional integer columns indexes,
+                second - optional feature name or list of features names.
+
+        Returns:
+            Subset.
+
+        """
+        # TODO: Maybe refactor this part?
+        if type(k) is tuple:
+            rows, cols = k
+            if isinstance(cols, str):
+                cols = [cols]
+        else:
+            rows = k
+            cols = None
+
+        is_slice = False
+        if isinstance(rows, slice):
+            is_slice = True
+
+        rows = [rows] if isinstance(rows, int) else np.arange(self.__len__()) if isinstance(rows, slice) else rows
+        temp_idx = self.idx[rows]
+        rows = []
+        idx_new = []
+        _c = 0
+        for i in temp_idx:
+            rows.extend(list(i))
+            idx_new.append(list(np.arange(len(i)) + _c))
+            _c += len(i)
+        idx_new = np.array(idx_new, dtype=object)
+
+        rows = np.array(sorted(list(set(rows))))
+
+        if is_slice:
+            idx_new = self.idx
+            rows = np.arange(len(self.data))
+        else:
+            warnings.warn(
+                "Resulted sequential dataset may have different structure. It's not recommended to slice new dataset"
+            )
+
+        # case when columns are defined
+        if cols is not None:
+            idx = self._get_cols_idx(cols)
+            data = self._get_2d(self.data, (rows, idx))
+
+            # case of multiple columns - return LAMLDataset
+            roles = dict(((x, self.roles[x]) for x in self.roles if x in cols))
+        else:
+            roles = self.roles
+            data = self._get_rows(self.data, rows)
+
+        # case when rows are defined
+        if rows is None:
+            dataset = self.empty()
+        else:
+            dataset = copy(self)
+            params = dict(((x, self._get_rows(self.__dict__[x], rows)) for x in self._array_like_attrs))
+            dataset._initialize(self.task, **params)
+
+        dataset.set_data(data, None, roles)
+        dataset.set_idx(data, idx_new)
+
+        return dataset
+
+    def get_first_frame(self, k = None):
+        """Select a subset of dataset and transform it to sequence.
+
+        Define how to slice a dataset in way ``dataset[[1, 2, 3...], ['feat_0', 'feat_1'...]]``.
+        Default behavior based on ``._get_cols``, ``._get_rows``, ``._get_2d``.
+
+        Args:
+            k: First element optional integer columns indexes,
+                second - optional feature name or list of features names.
+
+        Returns:
+            respective Dataset with new sequential dimension.
+
+        """
+        self._check_dtype()
+        if k is None:
+            k = slice(None, None, None)
+
+        # TODO: Maybe refactor this part?
+        if type(k) is tuple:
+            rows, cols = k
+            if isinstance(cols, str):
+                cols = [cols]
+        else:
+            rows = k
+            cols = None
+
+        rows = [rows] if isinstance(rows, int) else np.arange(self.__len__()) if isinstance(rows, slice) else rows
+
+        # case when columns are defined
+        if cols is not None:
+            idx = self._get_cols_idx(cols)
+            roles = dict(((x, self.roles[x]) for x in self.roles if x in cols))
+            features = [x for x in cols if x in set(self.features)]
+        else:
+            roles, features = self.roles, self.features
+            idx = self._get_cols_idx(self.data.columns)
+
+        first_frame_idx = [self.idx[i][0] for i in rows]
+        data = self._get_slice(self.data, (first_frame_idx, idx))
+        if rows is None:
+            dataset = DaskCudfDataset(None, deepcopy(roles), task=self.task)
+        else:
+            dataset = DaskCudfDataset(data, deepcopy(roles), task=self.task) 
+        return dataset
+
+    def apply_func(self, k = None, func = None) -> np.ndarray:
+        """Apply function to each sequence.
+
+        Args:
+            k: First element optional integer columns indexes,
+                second - optional feature name or list of features names.
+            func: any callable function
+
+        Returns:
+            output np.ndarray
+
+        """
+        self._check_dtype()
+        if k is None:
+            k = slice(None, None, None)
+
+        # TODO: Maybe refactor this part?
+        if type(k) is tuple:
+            rows, cols = k
+            if isinstance(cols, str):
+                cols = [cols]
+        else:
+            rows = k
+            cols = None
+
+        rows = [rows] if isinstance(rows, int) else np.arange(self.__len__()) if isinstance(rows, slice) else rows
+
+        # case when columns are defined
+        if cols is not None:
+            idx = self._get_cols_idx(cols)
+
+            # case when seqs have different shape, return array with arrays
+            #should be able to write this with map_partitions
+            data = []
+            _d = self.data[cols].values
+            for row in rows:
+                data.append(func(_d[self.idx[row]].compute()))
+        else:
+            data = []
+            _d = self.data.values
+            for row in rows:
+                data.append(func(_d[self.idx[row]].compute()))
+
+        return dask_cudf.from_cudf(cudf.DataFrame(data), npartitions=self.data.npartitions)
+
+    def to_daskcudf(self) -> "PandasDataset":
+        """Convert to plain PandasDataset.
+
+        Returns:
+            Same dataset in PandasDataset format without sequential features.
+
+        """
+        # check for empty case
+        data = None if self.data is None else dask_cudf.DataFrame(self.data, columns=self.features)
+        roles = self.roles
+        # target and etc ..
+        params = dict(((x, dask_cudf.Series(self.__dict__[x])) for x in self._array_like_attrs))
+        task = self.task
+
+        return DaskCudfDataset(data, roles, task, **params)
+
+    @classmethod
+    def concat(cls, datasets: Sequence["LAMLDataset"]) -> "LAMLDataset":
+        """Concat multiple dataset.
+
+        Default behavior - takes empty dataset from datasets[0]
+        and concat all features from others.
+
+        Args:
+            datasets: Sequence of datasets.
+
+        Returns:
+            Concated dataset.
+
+        """
+        for check in cls._concat_checks:
+            check(datasets)
+
+        idx = datasets[0].idx
+        dataset = datasets[0].empty()
+        data = []
+        features = []
+        roles = {}
+
+        atrs = set(dataset._array_like_attrs)
+        for ds in datasets:
+            data.append(ds.data)
+            features.extend(ds.features)
+            roles = {**roles, **ds.roles}
+            for atr in ds._array_like_attrs:
+                if atr not in atrs:
+                    dataset._array_like_attrs.append(atr)
+                    dataset.__dict__[atr] = ds.__dict__[atr]
+                    atrs.update({atr})
+
+        data = cls._hstack(data)
+        dataset.set_data(data, None, roles)
+        dataset.set_idx(data, idx)
+
+        return dataset
+

@@ -17,8 +17,10 @@ from lightautoml.transformers.base import (
     SequentialTransformer,
     UnionTransformer,
 )
-from lightautoml.transformers.gpu.categorical_gpu import OrdinalEncoder_gpu
+from lightautoml.transformers.gpu.categorical_gpu import OrdinalEncoder_gpu, LabelEncoder_gpu
 from lightautoml.transformers.gpu.datetime_gpu import TimeToNum_gpu
+
+from lightautoml.transformers.gpu.seq_gpu import SeqStatisticsTransformer_gpu, SeqNumCountsTransformer_gpu, GetSeqTransformer_gpu
 
 from .base_gpu import TabularDataFeatures_gpu
 
@@ -91,6 +93,156 @@ class LGBSimpleFeatures_gpu(FeaturesPipeline):
         union_all = UnionTransformer(transformers_list)
         return union_all
 
+class LGBMultiSeqSimpleFeatures_gpu(FeaturesPipeline, TabularDataFeatures_gpu):
+    """LGBMultiSeqSimpleFeatures.
+
+    Args:
+        feats_imp: Features importances mapping.
+        top_intersections: Max number of categories
+          to generate intersections.
+        max_intersection_depth: Max depth of cat intersection.
+        subsample: Subsample to calc data statistics.
+        multiclass_te_co: Cutoff if use target encoding in cat
+          handling on multiclass task if number of classes is high.
+        auto_unique_co: Switch to target encoding if high cardinality.
+
+    """
+
+    def __init__(
+        self,
+        feats_imp: Optional[ImportanceEstimator] = None,
+        top_intersections: int = 5,
+        max_intersection_depth: int = 3,
+        subsample: Optional[Union[int, float]] = None,
+        multiclass_te_co: int = 3,
+        auto_unique_co: int = 10,
+        output_categories: bool = False,
+        **kwargs
+    ):
+
+        super().__init__(
+            multiclass_te_co=multiclass_te_co,
+            top_intersections=top_intersections,
+            max_intersection_depth=max_intersection_depth,
+            subsample=subsample,
+            feats_imp=feats_imp,
+            auto_unique_co=auto_unique_co,
+            output_categories=output_categories,
+            ascending_by_cardinality=False,
+        )
+
+    def get_seq_pipeline(self, train):
+        """Create pipeline for seq data.
+
+        Args:
+            train: Dataset with train features.
+
+        Returns:
+            Composite datetime, categorical, numeric transformer.
+
+        """
+        transformers_list = []
+        # process categories
+        categories = get_columns_by_role(train, "Category")
+        if len(categories) > 0:
+            cat_processing = SequentialTransformer(
+                [
+                    ColumnsSelector(keys=categories),
+                    LabelEncoder_gpu(subs=None, random_state=42),
+                    ChangeRoles(NumericRole(np.float32)),
+                ]
+            )
+            transformers_list.append(cat_processing)
+
+        # process datetimes
+        datetimes = get_columns_by_role(train, "Datetime")
+        if len(datetimes) > 0:
+            dt_processing = SequentialTransformer([ColumnsSelector(keys=datetimes), TimeToNum_gpu()])
+            transformers_list.append(dt_processing)
+            transformers_list.append(self.get_datetime_diffs(train))
+            transformers_list.append(self.get_datetime_seasons(train, NumericRole(np.float32)))
+
+        numerics = get_columns_by_role(train, "Numeric")
+        if len(numerics) > 0:
+            num_processing = SequentialTransformer(
+                [ColumnsSelector(keys=numerics)]#, ConvertDataset(dataset_type=NumpyDataset)]
+            )
+            transformers_list.append(num_processing)
+
+        simple_seq_transforms = UnionTransformer(transformers_list)
+
+        # to seq dataset
+        simple_seq_transforms = UnionTransformer([ColumnsSelector(keys=[]), simple_seq_transforms])
+
+        # get seq features
+        if train.scheme is not None:
+            if train.scheme.get("type", "full") == "lookup":
+                seq = SeqStatisticsTransformer_gpu()
+            else:
+                seq = SeqNumCountsTransformer_gpu()
+        else:
+            seq = SeqNumCountsTransformer_gpu()
+        #seq = SeqStatisticsTransformer_gpu()
+
+        all_feats = SequentialTransformer(
+            [GetSeqTransformer_gpu(name=train.name), simple_seq_transforms, seq]  # preprocessing  # plain features
+        )
+
+        return all_feats
+
+    def create_pipeline(self, train) -> LAMLTransformer:
+        """Create tree pipeline.
+
+        Args:
+            train: Dataset with train features.
+
+        Returns:
+            Composite datetime, categorical, numeric transformer.
+
+        """
+        # TODO: Transformer params to config
+
+        transformers_list = []
+
+        # process categories
+        categories = get_columns_by_role(train, "Category")
+        if len(categories) > 0:
+            cat_processing = SequentialTransformer(
+                [
+                    ColumnsSelector(keys=categories),
+                    OrdinalEncoder_gpu(subs=None, random_state=42),
+                    # ChangeRoles(NumericRole(np.float32))
+                ]
+            )
+            transformers_list.append(cat_processing)
+
+        # process datetimes
+        datetimes = get_columns_by_role(train, "Datetime")
+        if len(datetimes) > 0:
+            dt_processing = SequentialTransformer([ColumnsSelector(keys=datetimes), TimeToNum_gpu()])
+            transformers_list.append(dt_processing)
+
+        # process numbers
+        numerics = get_columns_by_role(train, "Numeric")
+        if len(numerics) > 0:
+            num_processing = SequentialTransformer(
+                [ColumnsSelector(keys=numerics)]#, ConvertDataset(dataset_type=NumpyDataset)]
+            )
+            transformers_list.append(num_processing)
+
+        union_all = UnionTransformer(transformers_list)
+
+        if hasattr(train, "seq_data"):
+            if train.seq_data is not None:
+                seq_pipes = []
+                for name, seq_data in train.seq_data.items():
+                    seq_pipes.append(self.get_seq_pipeline(seq_data))
+                union_all = UnionTransformer(seq_pipes + [union_all])
+
+        # dummy to get task metadata
+        union_all = UnionTransformer([ColumnsSelector(keys=[]), union_all])
+
+        return union_all
 
 class LGBAdvancedPipeline_gpu(FeaturesPipeline, TabularDataFeatures_gpu):
     """Create advanced pipeline for trees based models.

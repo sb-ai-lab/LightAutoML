@@ -123,7 +123,9 @@ class CUMLLoss(Loss):
         assert task_name in [
             "binary",
             "reg",
+            "multi:reg",
             "multiclass",
+            "multilabel",
         ], "Incorrect task name: {}".format(task_name)
 
         self.metric = metric

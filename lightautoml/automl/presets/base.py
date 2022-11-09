@@ -3,16 +3,23 @@
 import logging
 import os
 import shutil
-from typing import Any, Iterable, Optional, Sequence
+
+from typing import Any
+from typing import Iterable
+from typing import Optional
+from typing import Sequence
 
 import torch
 import yaml
 
 from ...dataset.base import LAMLDataset
 from ...tasks import Task
-from ...utils.logging import add_filehandler, set_stdout_level, verbosity_to_loglevel
+from ...utils.logging import add_filehandler
+from ...utils.logging import set_stdout_level
+from ...utils.logging import verbosity_to_loglevel
 from ...utils.timer import PipelineTimer
 from ..base import AutoML
+
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +27,16 @@ base_dir = os.path.dirname(__file__)
 
 
 def upd_params(old: dict, new: dict) -> dict:
+    """Update dictonary of parameters.
+
+    Args:
+        old: Old parameters.
+        new: Changes.
+
+    Returns:
+        Updated parameters.
+
+    """
     for k in new:
         if type(new[k]) is dict and k in old and type(old[k]) is dict:
             upd_params(old[k], new[k])
@@ -34,14 +51,33 @@ class AutoMLPreset(AutoML):
 
     It's almost like AutoML, but with delayed initialization.
     Initialization starts on fit, some params are inferred from data.
-    Preset should be defined via ``.create_automl`` method.
-    Params should be set via yaml config.
+    Preset should be defined via ``.create_automl`` method. Params should be set via yaml config.
     Most usefull case - end-to-end model development.
 
-    Example:
+    Commonly _params kwargs (ex. timing_params) set via config file (config_path argument).
+    If you need to change just few params, it's possible to pass it as dict of dicts, like json.
+    To get available params please look on default config template. Also you can find there param description.
+    To generate config template call ``SomePreset.get_config('config_path.yml')``.
 
+    Example:
         >>> automl = SomePreset(Task('binary'), timeout=3600)
         >>> automl.fit_predict(data, roles={'target': 'TARGET'})
+
+    Args:
+        task: Task to solve.
+        timeout: Timeout in seconds.
+        memory_limit: Memory limit that are passed to each automl.
+        cpu_limit: CPU limit that that are passed to each automl.
+        gpu_ids: GPU IDs that are passed to each automl.
+        verbose: Controls the verbosity: the higher, the more messages.
+            <1  : messages are not displayed;
+            >=1 : the computation process for layers is displayed;
+            >=2 : the information about folds processing is also displayed;
+            >=3 : the hyperparameters optimization process is also displayed;
+            >=4 : the training process for every algorithm is displayed;
+        timing_params: Timing param dict.
+        config_path: Path to config file.
+        **kwargs: Not used.
 
     """
 
@@ -58,34 +94,6 @@ class AutoMLPreset(AutoML):
         config_path: Optional[str] = None,
         **kwargs: Any,
     ):
-        """
-
-        Commonly _params kwargs (ex. timing_params) set via
-        config file (config_path argument).
-        If you need to change just few params,
-        it's possible to pass it as dict of dicts, like json.
-        To get available params please look on default config template.
-        Also you can find there param description.
-        To generate config template
-        call ``SomePreset.get_config('config_path.yml')``.
-
-        Args:
-            task: Task to solve.
-            timeout: Timeout in seconds.
-            memory_limit: Memory limit that are passed to each automl.
-            cpu_limit: CPU limit that that are passed to each automl.
-            gpu_ids: GPU IDs that are passed to each automl.
-            verbose: Controls the verbosity: the higher, the more messages.
-                <1  : messages are not displayed;
-                >=1 : the computation process for layers is displayed;
-                >=2 : the information about folds processing is also displayed;
-                >=3 : the hyperparameters optimization process is also displayed;
-                >=4 : the training process for every algorithm is displayed;
-            timing_params: Timing param dict.
-            config_path: Path to config file.
-            **kwargs: Not used.
-
-        """
         self._set_config(config_path)
 
         for name, param in zip(["timing_params"], [timing_params]):
@@ -164,12 +172,12 @@ class AutoMLPreset(AutoML):
             train_data: Dataset to train.
             roles: Roles dict.
             train_features: Features names,
-              if can't be inferred from `train_data`.
+                if can't be inferred from `train_data`.
             cv_iter: Custom cv-iterator. For example,
-              :class:`~lightautoml.validation.np_iterators.TimeSeriesIterator`.
+                :class:`~lightautoml.validation.np_iterators.TimeSeriesIterator`.
             valid_data: Optional validation dataset.
             valid_features: Optional validation dataset features if can't be
-              inferred from `valid_data`.
+                inferred from `valid_data`.
             verbose: Verbosity level that are passed to each automl.
 
         Returns:
@@ -204,29 +212,19 @@ class AutoMLPreset(AutoML):
             verbose=verbose,
         )
 
-        logger.info(
-            "\x1b[1mAutoml preset training completed in {:.2f} seconds\x1b[0m\n".format(
-                self.timer.time_spent
-            )
-        )
+        logger.info("\x1b[1mAutoml preset training completed in {:.2f} seconds\x1b[0m\n".format(self.timer.time_spent))
         logger.info(f"Model description:\n{self.create_model_str_desc()}\n")
 
         return result
 
-    def create_model_str_desc(
-        self, pref_tab_num: int = 0, split_line_len: int = 0
-    ) -> str:
+    def create_model_str_desc(self, pref_tab_num: int = 0, split_line_len: int = 0) -> str:  # noqa: D102
         prefix = "\t" * pref_tab_num
         splitter = prefix + "=" * split_line_len + "\n"
         model_stats = sorted(list(self.collect_model_stats().items()))
 
         last_lvl = model_stats[-1][0].split("_")[1]
-        last_lvl_models = [
-            ms for ms in model_stats if ms[0].startswith("Lvl_" + last_lvl)
-        ]
-        notlast_lvl_models = [
-            ms for ms in model_stats if not ms[0].startswith("Lvl_" + last_lvl)
-        ]
+        last_lvl_models = [ms for ms in model_stats if ms[0].startswith("Lvl_" + last_lvl)]
+        notlast_lvl_models = [ms for ms in model_stats if not ms[0].startswith("Lvl_" + last_lvl)]
 
         res = ""
         if len(notlast_lvl_models) > 0:
@@ -238,19 +236,13 @@ class AutoMLPreset(AutoML):
                 if level != cur_level:
                     cur_level = level
                     res += "\n" + prefix + "Models on level {}:\n".format(cur_level)
-                res += prefix + "\t {} averaged models {}\n".format(
-                    cnt_folds, model_name
-                )
+                res += prefix + "\t {} averaged models {}\n".format(cnt_folds, model_name)
             res += "\n"
 
-        res += prefix + "Final prediction for new objects (level {}) = \n".format(
-            last_lvl
-        )
+        res += prefix + "Final prediction for new objects (level {}) = \n".format(last_lvl)
         for model_stat, weight in zip(last_lvl_models, self.blender.wts):
             model_name, cnt_folds = model_stat
-            res += prefix + "\t {:.5f} * ({} averaged models {}) +\n".format(
-                weight, cnt_folds, model_name
-            )
+            res += prefix + "\t {:.5f} * ({} averaged models {}) +\n".format(weight, cnt_folds, model_name)
 
         if split_line_len == 0:
             return res[:-2]
@@ -276,6 +268,5 @@ class AutoMLPreset(AutoML):
         logger.info(f"Stdout logging level is {logging._levelToName[level]}.")
 
     @staticmethod
-    def set_logfile(filename: str):
-        """"""
+    def set_logfile(filename: str):  # noqa: D102
         add_filehandler(filename)

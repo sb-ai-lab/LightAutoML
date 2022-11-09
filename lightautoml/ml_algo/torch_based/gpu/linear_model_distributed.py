@@ -263,7 +263,10 @@ class TorchBasedLinearEstimator:
             opt.zero_grad(set_to_none=True)
             output = model(data, data_cat)
 
-            loss = self._loss_fn(model, y.reshape(-1, 1), output, weights, c)
+            #reshape hurts the multioutput case
+            #once you find the place where fixed line breakes the pipeline you can do a proper reshape
+            loss = self._loss_fn(model, y, output, weights, c)
+            #loss = self._loss_fn(model, y.reshape(-1, 1), output, weights, c)
             if loss.requires_grad:
                 loss.backward()
             return loss
@@ -351,7 +354,6 @@ class TorchBasedLinearEstimator:
             models = []
             for i in range(len(self.gpu_ids)):
                 models.append(deepcopy(self.model.to(f"cuda:{i}")))
-
             for i in range(len(self.gpu_ids)):
                 self._optimize(
                     models[i],
@@ -361,7 +363,6 @@ class TorchBasedLinearEstimator:
                     weights_slices[i],
                     c,
                 )
-
             new_state_dict = OrderedDict()
             for i, it in enumerate(models):
                 it = it.state_dict()
@@ -375,14 +376,12 @@ class TorchBasedLinearEstimator:
                         new_state_dict[k.replace("module.", "")] += (
                             it[k].clone().to("cuda:0")
                         )
-
             for k in new_state_dict.keys():
                 new_state_dict[k] = new_state_dict[k] / float(len(self.gpu_ids))
 
             self.model.to("cuda").load_state_dict(new_state_dict)
 
             scores = np.zeros(len(self.gpu_ids))
-
             for i in range(len(self.gpu_ids)):
                 model = self.model.to(f"cuda:{i}")
                 val_pred = self._score(model, data_slices_val[i], data_cats_val[i])
@@ -392,7 +391,6 @@ class TorchBasedLinearEstimator:
                         cp.asarray(y_slices_val[i]), val_pred, weights_slices_val[i]
                     )
                 )
-
             score = scores.mean()
             print("Score:", score)
             if score > best_score:

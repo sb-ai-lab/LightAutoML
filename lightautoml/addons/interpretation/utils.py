@@ -1,13 +1,22 @@
+"""Interpretation utils."""
+
 import itertools
+
 from collections import defaultdict
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Tuple
+from typing import Union
 
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+
 from matplotlib.colors import Colormap
 from torch.distributions.utils import clamp_probs
-from lightautoml.text.tokenizer import BaseTokenizer
+
 
 T_untokenized = Union[List[str], Tuple[List[str], List[Any]]]
 
@@ -26,6 +35,7 @@ class WrappedVocabulary:
         self.unk_token = word_to_id[unk_token]
 
     def __call__(self, x: str) -> int:
+        """Map word to token-id."""
         return self.word_to_id.get(x, self.unk_token)
 
     def __getitem__(self, val: str) -> int:
@@ -43,12 +53,10 @@ class WrappedTokenizer:
 
     """
 
-    def __init__(
-        self, tokenizer: "BaseTokenizer"
-    ):  # noqa F821
+    def __init__(self, tokenizer: "lightautoml.text.tokenizer.BaseTokenizer"):  # noqa F821
         self._tokenizer = tokenizer
 
-    def __call__(self, x: str) -> List[str]:
+    def __call__(self, x: str) -> List[str]:  # noqa D102
         return self._tokenizer.tokenize_sentence(self._tokenizer._tokenize(x))
 
 
@@ -110,7 +118,7 @@ def untokenize(
     return untokenized
 
 
-def find_positions(arr: List[str], mask: List[bool]) -> List[int]:
+def find_positions(tokens: List[str], mask: List[bool]) -> List[int]:
     """Set positions and tokens.
 
     Args:
@@ -122,7 +130,7 @@ def find_positions(arr: List[str], mask: List[bool]) -> List[int]:
 
     """
     pos = []
-    for i, (token, istoken) in enumerate(zip(arr, mask)):
+    for i, (token, istoken) in enumerate(zip(tokens, mask)):
         if istoken:
             pos.append(i)
 
@@ -130,17 +138,17 @@ def find_positions(arr: List[str], mask: List[bool]) -> List[int]:
 
 
 class IndexedString:
-    """Indexed string."""
+    """Indexed string.
+
+    Args:
+        raw_string: Raw string.
+        tokenizer: Tokenizer class.
+        force_order: Save order, or use features as
+            bag-of-words.
+
+    """
 
     def __init__(self, raw_string: str, tokenizer: Any, force_order: bool = True):
-        """
-        Args:
-            raw_string: Raw string.
-            tokenizer: Tokenizer class.
-            force_order: Save order, or use features as
-                bag-of-words.
-
-        """
         self.raw = raw_string
         self.tokenizer = tokenizer
         self.force_order = force_order
@@ -183,9 +191,7 @@ class IndexedString:
         """
         return self.inv[idx]
 
-    def inverse_removing(
-        self, to_del: Union[List[str], List[int]], by_tokens: bool = False
-    ) -> str:
+    def inverse_removing(self, to_del: Union[List[str], List[int]], by_tokens: bool = False) -> str:
         """Remove tokens.
 
         Args:
@@ -196,7 +202,6 @@ class IndexedString:
             String without removed tokens.
 
         """
-
         # todo: this type of mapping will be not use order,
         # in case when we have not unique tokens.
         assert (not self.force_order) or (self.force_order and not by_tokens)
@@ -237,10 +242,15 @@ def draw_html(
 
     Args:
         tokens_and_weights: List of tokens.
+        task_name: Task name.
         cmap: ```matplotlib.colors.Colormap``` or single color string like (#FFFFFF).
             By default blue-white-red linear gradient is used.
-        positive_label: Positive label text.
-        negatvie_label: Negative label text.
+        grad_line: Grad line.
+        grad_positive_label: Positive label text.
+        grad_negative_label: Negative label text.
+        prediction: Prediction.
+        n_ticks: Number of ticks for plot.
+        draw_order: Draw order.
 
     Returns:
         HTML like string.
@@ -319,21 +329,14 @@ def draw_html(
         grad_negative_label = ""
 
     tokens_html = [
-        token_template.format(token=token, color_hex=get_color_hex(weight))
-        for token, weight in tokens_and_weights
+        token_template.format(token=token, color_hex=get_color_hex(weight)) for token, weight in tokens_and_weights
     ]
 
     if grad_line:
-        between_ticks = [
-            (100 / (n_ticks)) - 5e-2 * 6 / n_ticks if i <= n_ticks - 1 else 0
-            for i in range(n_ticks + 1)
-        ]
+        between_ticks = [(100 / (n_ticks)) - 5e-2 * 6 / n_ticks if i <= n_ticks - 1 else 0 for i in range(n_ticks + 1)]
         ticks = np.linspace(-norm_const, norm_const, n_ticks + 1) / (10 ** (order))
         ticks_chart = " ".join(
-            [
-                ticks_template.format(t, 0.7 + 0.385 * (k < 0), k)
-                for t, k in zip(between_ticks, ticks)
-            ]
+            [ticks_template.format(t, 0.7 + 0.385 * (k < 0), k) for t, k in zip(between_ticks, ticks)]
         )
         grad_statement = """
         <p style="text-align: center">
@@ -397,7 +400,6 @@ def draw_html(
     return raw_html
 
 
-def cross_entropy_multiple_class(
-    input: torch.FloatTensor, target: torch.FloatTensor
-) -> torch.Tensor:
+def cross_entropy_multiple_class(input: torch.FloatTensor, target: torch.FloatTensor) -> torch.Tensor:
+    """Cross entropy evaluation."""
     return torch.mean(torch.sum(-target * torch.log(clamp_probs(input)), dim=1))

@@ -93,7 +93,7 @@ class BoostXGB(TabularMLAlgo_gpu, ImportanceEstimator):
         params["metric"] = loss.metric_name
         feval = loss.feval
 
-        params["num_class"] = self.n_classes
+        params["num_class"] = 1 if (self.task.name == "multi:reg") or (self.task.name == "multilabel") else self.n_classes
         # add loss and tasks params if defined
         params = {**params, **loss.fobj_params, **loss.metric_params}
 
@@ -388,7 +388,6 @@ class BoostXGB_dask(BoostXGB):
             Tuple (model, predicted_values)
 
         """
-
         (
             params,
             num_trees,
@@ -404,16 +403,18 @@ class BoostXGB_dask(BoostXGB):
         valid_target, valid_weight = self.task.losses["xgb"].fw_func(
             valid.target, valid.weights
         )
-
         if type(train) is not DaskCudfDataset:
             train = train.to_daskcudf(nparts=torch.cuda.device_count())
             valid = valid.to_daskcudf(nparts=torch.cuda.device_count())
-
             train_target = dask_cudf.from_cudf(
-                cudf.Series(train_target), npartitions=torch.cuda.device_count()
+                cudf.DataFrame(train_target),
+                #cudf.Series(train_target), 
+                npartitions=torch.cuda.device_count()
             )
             valid_target = dask_cudf.from_cudf(
-                cudf.Series(valid_target), npartitions=torch.cuda.device_count()
+                cudf.DataFrame(valid_target),
+                #cudf.Series(valid_target), 
+                npartitions=torch.cuda.device_count()
             )
 
         xgb_train = dxgb.DaskDeviceQuantileDMatrix(
@@ -422,7 +423,6 @@ class BoostXGB_dask(BoostXGB):
         xgb_valid = dxgb.DaskDeviceQuantileDMatrix(
             self.client, valid.data, label=valid_target, weight=valid_weight
         )
-
         model = dxgb.train(
             self.client,
             params,
