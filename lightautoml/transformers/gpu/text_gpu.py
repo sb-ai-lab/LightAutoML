@@ -859,7 +859,7 @@ class AutoNLPWrap_gpu(LAMLTransformer):
         self,
         model_name: str,
         embedding_model: Optional[str] = None,
-        word_vectors_cache: str = None,
+        word_vectors_cache: str = ".word_vectors_cache",
         cache_dir: str = "./cache_NLP",
         bert_model: Optional[str] = None,
         transformer_params: Optional[Dict] = None,
@@ -902,7 +902,7 @@ class AutoNLPWrap_gpu(LAMLTransformer):
         assert model_name in self._names, f"Model name must be one of {self._names}"
         self.device = device
         self.multigpu = multigpu
-        self.word_vectors_cache = word_vectors_cache
+        self.word_vectors_cache = word_vectors_cache if word_vectors_cache is not None else ".word_vectors_cache"
         self.cache_dir = cache_dir
         self.random_state = random_state
         self.subs = subs
@@ -1107,12 +1107,12 @@ class AutoNLPWrap_gpu(LAMLTransformer):
             else:
                 new_arr = self.dicts[i]["transformer"].transform(df[i].compute())
 
-            new_df = cudf.DataFrame(new_arr)
-            new_df = dask_cudf.from_cudf(new_df, npartitions=gpu_cnt)
+            new_df = cudf.DataFrame(new_arr, columns=[f"{i}_{k}" for k in range(new_arr.shape[1])])
+            new_df = dask_cudf.from_cudf(new_df, npartitions=gpu_cnt).persist()
 
             output = dataset.empty()
             # output.set_data(new_df, self.dicts[i]["feats"], roles)
-            output.set_data(new_df, None, roles)
+            output.set_data(new_df, [f"{i}_{k}" for k in range(new_df.shape[1])], roles)
             outputs.append(output)
 #             logger.info3(f"Feature {i} transformed")
         # create resulted

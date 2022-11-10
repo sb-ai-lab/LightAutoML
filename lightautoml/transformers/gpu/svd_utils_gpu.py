@@ -61,16 +61,18 @@ def get_approximate_basis(A,        # type: Tensor
 
     A_H = _utils.transjugate(A)
     if M is None:
-        (Q, _) = matmul(A, R).qr()
+        (Q, _) = torch.linalg.qr(matmul(A, R))#.qr()
         for i in range(niter):
-            (Q, _) = matmul(A_H, Q).qr()
-            (Q, _) = matmul(A, Q).qr()
+            # (Q, _) = matmul(A_H, Q).qr()
+            # (Q, _) = matmul(A, Q).qr()
+            (Q, _) = torch.linalg.qr(matmul(A_H, Q))
+            (Q, _) = torch.linalg.qr(matmul(A, Q))
     else:
         M_H = _utils.transjugate(M)
-        (Q, _) = (matmul(A, R) - matmul(M, R)).qr()
+        (Q, _) = torch.linalg.qr(matmul(A, R) - matmul(M, R))#.qr()
         for i in range(niter):
-            (Q, _) = (matmul(A_H, Q) - matmul(M_H, Q)).qr()
-            (Q, _) = (matmul(A, Q) - matmul(M, Q)).qr()
+            (Q, _) = torch.linalg.qr(matmul(A_H, Q) - matmul(M_H, Q))#.qr()
+            (Q, _) = torch.linalg.qr(matmul(A, Q) - matmul(M, Q))#.qr()
 
     return Q
 
