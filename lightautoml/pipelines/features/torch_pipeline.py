@@ -16,6 +16,7 @@ from ...transformers.categorical import LabelEncoder
 from ...transformers.datetime import TimeToNum
 from ...transformers.numeric import FillInf
 from ...transformers.numeric import FillnaMedian
+from ...transformers.numeric import FillnaMean
 from ...transformers.numeric import NaNFlags
 from ...transformers.numeric import QuantileTransformer
 from ...transformers.numeric import StandardScaler
@@ -70,20 +71,34 @@ class TorchInnerDataFeatures(FeaturesPipeline, TabularDataFeatures):
         return union_all
 
 
-class TorchSimpleFeatures(FeaturesPipeline):
-    def __init__(self, use_qnt=True, output_qnt_dist="normal", **kwargs):
+class TorchSimpleFeatures(FeaturesPipeline, TabularDataFeatures):
+    def __init__(self, use_qnt=True,
+                 n_quantiles=None,
+                 subsample=1e9,
+                 output_distribution="normal",
+                 noise: float = 1e-3,
+                 qnt_factor=30,
+                 **kwargs):
         super(TorchSimpleFeatures, self).__init__(**kwargs)
         self.use_qnt = use_qnt
-        self.output_qnt_dist = output_qnt_dist
+        self.n_quantiles = n_quantiles
+        self.subsample = subsample
+        self.output_distribution = output_distribution
+        self.noise = noise
+        self.qnt_factor = qnt_factor
 
     def create_pipeline(self, train: NumpyOrPandas) -> LAMLTransformer:
         transformers_list = []
+        cat_cols = get_columns_by_role(train, "Category")
+        freq_cols = get_columns_by_role(train, "Category", encoding_type="freq")
+        other_cols = set(cat_cols) - set(freq_cols)
+        
+        transformers_list.append(self.get_freq_encoding(train, freq_cols))
 
         # process categories
-        categories = get_columns_by_role(train, "Category")
-        if len(categories) > 0:
+        if len(other_cols) > 0:
             cat_processing = SequentialTransformer(
-                [ColumnsSelector(keys=categories), LabelEncoder()]
+                [ColumnsSelector(keys=other_cols), LabelEncoder()]
             )
             transformers_list.append(cat_processing)
 
@@ -94,7 +109,7 @@ class TorchSimpleFeatures(FeaturesPipeline):
                 [ColumnsSelector(keys=datetimes), TimeToNum()]
             )
             transformers_list.append(dt_processing)
-
+        
         # process numbers
         numerics = get_columns_by_role(train, "Numeric")
         if len(numerics) > 0:
@@ -102,8 +117,12 @@ class TorchSimpleFeatures(FeaturesPipeline):
                 [
                     ColumnsSelector(keys=numerics),
                     FillInf(),
-                    FillnaMedian(),
-                    QuantileTransformer(output_distribution=self.output_qnt_dist)
+                    FillnaMean(),
+                    QuantileTransformer(n_quantiles=self.n_quantiles,
+                                        subsample=self.subsample,
+                                        output_distribution=self.output_distribution,
+                                        noise=self.noise,
+                                        qnt_factor=self.qnt_factor)
                     if self.use_qnt
                     else StandardScaler(),
                     ConvertDataset(dataset_type=NumpyDataset),

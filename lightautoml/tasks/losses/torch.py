@@ -277,6 +277,7 @@ class TORCHLoss(Loss):
 
     def __init__(self, loss: Union[str, Callable], loss_params: Optional[Dict] = None):
         self.loss_params = {}
+        self._loss = loss
         if loss_params is not None:
             self.loss_params = loss_params
 

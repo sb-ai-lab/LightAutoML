@@ -37,14 +37,7 @@ from .tabular_presets import TabularAutoML
 
 _base_dir = os.path.dirname(__file__)
 # set initial runtime rate guess for first level models
-_time_scores = {
-    "lgb": 1,
-    "lgb_tuned": 3,
-    "linear_l2": 0.7,
-    "cb": 2,
-    "cb_tuned": 6,
-    "nn": 1,
-}
+_time_scores = {"lgb": 1, "lgb_tuned": 3, "linear_l2": 0.7, "cb": 2, "cb_tuned": 6, "nn": 1, "rf": 5, "rf_tuned": 10}
 
 
 # TODO: add text feature selection
@@ -65,12 +58,6 @@ class TabularCVAutoML(TabularAutoML):
         memory_limit: Memory limit that are passed to each automl.
         cpu_limit: CPU limit that that are passed to each automl.
         gpu_ids: GPU IDs that are passed to each automl.
-        verbose: Controls the verbosity: the higher, the more messages.
-            <1  : messages are not displayed;
-            >=1 : the computation process for layers is displayed;
-            >=2 : the information about folds processing is also displayed;
-            >=3 : the hyperparameters optimization process is also displayed;
-            >=4 : the training process for every algorithm is displayed;
         timing_params: Timing param dict.
         config_path: Path to config file.
         general_params: General param dict
@@ -94,13 +81,7 @@ class TabularCVAutoML(TabularAutoML):
 
     _default_config_path = "image_config.yml"
 
-    _time_scores = {
-        "lgb": 1,
-        "lgb_tuned": 3,
-        "linear_l2": 0.7,
-        "cb": 2,
-        "cb_tuned": 6,
-    }
+    _time_scores = {"lgb": 1, "lgb_tuned": 3, "linear_l2": 0.7, "cb": 2, "cb_tuned": 6, "rf": 5, "rf_tuned": 10}
 
     def __init__(
         self,
@@ -109,7 +90,6 @@ class TabularCVAutoML(TabularAutoML):
         memory_limit: int = 16,
         cpu_limit: int = 4,
         gpu_ids: Optional[str] = "all",
-        verbose: int = 2,
         timing_params: Optional[dict] = None,
         config_path: Optional[str] = None,
         general_params: Optional[dict] = None,
@@ -120,6 +100,7 @@ class TabularCVAutoML(TabularAutoML):
         selection_params: Optional[dict] = None,
         lgb_params: Optional[dict] = None,
         cb_params: Optional[dict] = None,
+        rf_params: Optional[dict] = None,
         linear_l2_params: Optional[dict] = None,
         gbm_pipeline_params: Optional[dict] = None,
         linear_pipeline_params: Optional[dict] = None,
@@ -132,7 +113,6 @@ class TabularCVAutoML(TabularAutoML):
             memory_limit,
             cpu_limit,
             gpu_ids,
-            verbose,
             timing_params,
             config_path,
         )
@@ -148,6 +128,7 @@ class TabularCVAutoML(TabularAutoML):
                 "selection_params",
                 "lgb_params",
                 "cb_params",
+                "rf_params",
                 "linear_l2_params",
                 "gbm_pipeline_params",
                 "linear_pipeline_params",
@@ -163,6 +144,7 @@ class TabularCVAutoML(TabularAutoML):
                 selection_params,
                 lgb_params,
                 cb_params,
+                rf_params,
                 linear_l2_params,
                 gbm_pipeline_params,
                 linear_pipeline_params,
@@ -327,14 +309,7 @@ class TabularCVAutoML(TabularAutoML):
         blender = WeightedBlender()
 
         # initialize
-        self._initialize(
-            reader,
-            levels,
-            skip_conn=self.general_params["skip_conn"],
-            blender=blender,
-            timer=self.timer,
-            verbose=self.verbose,
-        )
+        self._initialize(reader, levels, skip_conn=self.general_params["skip_conn"], blender=blender, timer=self.timer)
 
     def predict(
         self,

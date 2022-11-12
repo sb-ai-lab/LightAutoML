@@ -83,9 +83,14 @@ class TrendModel:
             return self._get_rolling_median(train_data, roles)
 
     def fit_predict(self, train_data, roles):
-        """
+        """Fit and predict data.
+
         if self._detect_no_trend(train_data[roles['target']]):
             self.params['trend'] = False
+
+        # noqa: DAR101
+        # noqa: DAR201
+
         """
         self.roles = roles
         if not self.params["trend"]:
@@ -237,7 +242,7 @@ class AutoTS:
 
     def predict(self, data, return_raw=False):
         test_idx = None
-        if self.trend_params["trend"] == True:
+        if self.trend_params["trend"] is True:
             last_datetime = pd.to_datetime(data[self.datetime_key]).values[-1]
             vals = [last_datetime + (i + 1) * self.datetime_step for i in range(self.n_target)]
             if not self.test_last:

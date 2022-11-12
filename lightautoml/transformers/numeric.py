@@ -159,6 +159,61 @@ class FillnaMedian(LAMLTransformer):
         return output
 
 
+class FillnaMean(LAMLTransformer):
+    """Fillna with mean."""
+
+    _fit_checks = (numeric_check,)
+    _transform_checks = ()
+    _fname_prefix = "fillnamed"
+
+    def fit(self, dataset: NumpyTransformable):
+        """Estimate medians.
+
+        Args:
+            dataset: Pandas or Numpy dataset of features.
+
+        Returns:
+            self.
+
+        """
+        # set transformer names and add checks
+        super().fit(dataset)
+        # set transformer features
+
+        # convert to accepted dtype and get attributes
+        dataset = dataset.to_numpy()
+        data = dataset.data
+
+        self.means = np.nanmean(data, axis=0)
+        self.means[np.isnan(self.means)] = 0
+
+        return self
+
+    def transform(self, dataset: NumpyTransformable) -> NumpyDataset:
+        """Transform - fillna with means.
+
+        Args:
+            dataset: Pandas or Numpy dataset of features.
+
+        Returns:
+            Numpy dataset with encoded labels.
+
+        """
+        # checks here
+        super().transform(dataset)
+        # convert to accepted dtype and get attributes
+        dataset = dataset.to_numpy()
+        data = dataset.data
+        # transform
+        data = np.where(np.isnan(data), self.means, data)
+
+        # create resulted
+        output = dataset.empty().to_numpy()
+        output.set_data(data, self.features, NumericRole(np.float32))
+
+        return output
+
+
 class FillInf(LAMLTransformer):
     """Fill inf with nan to handle as nan value."""
 

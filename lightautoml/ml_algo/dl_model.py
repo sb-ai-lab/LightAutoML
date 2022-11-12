@@ -1,15 +1,17 @@
 """Neural net for tabular datasets."""
 
+from pytest import param
 from lightautoml.utils.installation import __validate_extra_deps
 
 # __validate_extra_deps("nlp")
 
+import sys
 import gc
 import logging
 import os
 import uuid
 
-from copy import copy
+from copy import copy, deepcopy
 from typing import Dict
 from typing import Optional
 
@@ -45,18 +47,25 @@ from ..text.utils import is_shuffle
 from ..text.utils import parse_devices
 from ..text.utils import seed_everything
 from ..utils.timer import TaskTimer
-from .nn_models import MLP
-from .nn_models import SNN
-from .nn_models import DenseLightModel
-from .nn_models import DenseModel
-from .nn_models import LinearLayer
-from .nn_models import _LinearLayer
-from .nn_models import ResNetModel
+from .torch_based.nn_models import MLP
+from .torch_based.nn_models import SNN
+from .torch_based.nn_models import DenseLightModel
+from .torch_based.nn_models import DenseModel
+from .torch_based.nn_models import LinearLayer
+from .torch_based.nn_models import _LinearLayer
+from .torch_based.nn_models import ResNetModel
+from ..tasks.losses.torch import torch_rmsle
+from ..tasks.losses.torch import torch_mape
+from ..tasks.losses.torch import torch_quantile
+from ..tasks.losses.torch import torch_fair
+from ..tasks.losses.torch import torch_huber
+from ..tasks.losses.torch import torch_f1
+
 
 logger = logging.getLogger(__name__)
 
 model_by_name = {
-    "dense_light": DenseLightModel,
+    "denselight": DenseLightModel,
     "dense": DenseModel,
     "resnet": ResNetModel,
     "mlp": MLP,
@@ -114,28 +123,25 @@ class TorchModel(TabularMLAlgo):
 
     _default_models_params = {
         "n_out": None,
-        "use_noise": False,
-        "use_bn": True,
-        "use_dropout": True,
-        "act_fun": nn.ReLU,
-        "drop_rate_base": 0.1,
-        "num_layers": 3,
-        "hidden_size_base": 512,
-        "num_blocks": 2,
-        "block_size_base": 2,
+        
+        "hid_factor": [2, 2],
+        "hidden_size": [512, 512, 512],
+        
+        "block_config": [2, 2],
+        "compression": 0.5,
         "growth_size": 256,
         "bn_factor": 2,
-        "compression": 0.5,
-        "efficient": False,
-        "hid_factor_base": 2,
-        "drop_rate_base_1": 0.1,
-        "drop_rate_base_2": 0.2,
-        "hidden_size": (512, 512, 512),
+        
         "drop_rate": 0.1,
+        "noise_std": 0.05,
+        "num_init_features" :None,
+        "act_fun": nn.ReLU,
+        "use_noise": False,
+        "use_bn": True,
     }
 
     _default_params = {
-        "num_workers": 4,
+        "num_workers": 0,
         "pin_memory": False,
         "max_length": 256,
         "is_snap": False,
@@ -171,9 +177,23 @@ class TorchModel(TabularMLAlgo):
         "clip_grad_params": {},
         "init_bias": True,
         "dataset": UniversalDataset,
+        "tuned": False,
         **_default_models_params,
     }
-
+    
+    _torch_loss_dict = {
+        "mse": (nn.MSELoss, False, False),
+        "mae": (nn.L1Loss, False, False),
+        "logloss": (nn.BCEWithLogitsLoss, False, False),
+        "crossentropy": (nn.CrossEntropyLoss, True, False),
+        "rmsle": (torch_rmsle, False, False),
+        "mape": (torch_mape, False, False),
+        "quantile": (torch_quantile, False, False),
+        "fair": (torch_fair, False, False),
+        "huber": (torch_huber, False, False),
+        "f1": (torch_f1, False, False),
+    }
+    
     _task_to_loss = {
         "binary": TorchLossWrapper(nn.BCEWithLogitsLoss),
         "multiclass": TorchLossWrapper(nn.CrossEntropyLoss, True, False),
@@ -189,8 +209,6 @@ class TorchModel(TabularMLAlgo):
             optimization_search_space: Optional[dict] = {},
     ):
         super().__init__(default_params, False, timer, optimization_search_space)
-        if not self.optimization_search_space:
-            self.optimization_search_space = TorchModel._default_sample
 
     def _infer_params(self):
         if self.params["path_to_save"] is not None:
@@ -214,9 +232,6 @@ class TorchModel(TabularMLAlgo):
 
         if params["bert_name"] is None:
             params["bert_name"] = _model_name_by_lang[params["lang"]]
-
-        if params["hidden_size"] is not None:
-            params["hidden_size_base"] = None
         
         params["metric"] = self.task.losses["torch"].metric_func
 
@@ -229,13 +244,25 @@ class TorchModel(TabularMLAlgo):
         is_cont = (len(params["cont_features"]) > 0) and (params["use_cont"])
 
         torch_model = params["model"]
+        
         if isinstance(torch_model, str):
             assert torch_model in model_by_name, "Wrong model name. Available models: " + str(model_by_name.keys())
+            if torch_model == "snn":
+                params["init_bias"] = False
             torch_model = model_by_name[torch_model]
         
         assert issubclass(
             torch_model, nn.Module
         ), "Wrong model format, only support torch models"
+        
+        # str to nn modules
+        for p_name, module in [["act_fun", nn],
+                               ["dataset", sys.modules[__name__]],
+                               ["opt", torch.optim],
+                               ["sch", torch.optim.lr_scheduler],
+                               ["loss", nn]]:
+            if isinstance(params[p_name], str):
+                params[p_name] = getattr(module, params[p_name])
 
         model = Trainer(
             net=TorchUniversalModel,
@@ -503,10 +530,10 @@ class TorchModel(TabularMLAlgo):
 
         return pred
     
-    def _default_sample(trial: optuna.trial.Trial, estimated_n_trials: int, suggested_params: Dict):
+    def _default_sample(self, trial: optuna.trial.Trial, estimated_n_trials: int, suggested_params: Dict):
         # optionally
         trial_values = copy(suggested_params)
-
+        
         trial_values["bs"] = trial.suggest_categorical(
             "bs", [2 ** i for i in range(6, 11)]
         )
@@ -582,7 +609,7 @@ class TorchModel(TabularMLAlgo):
 
     # def _update_model_params(self, params):
     #     new_params = {}
-    #     if self.params["model"] == "dense_light" or self.params["model"] == "mlp":
+    #     if self.params["model"] == "denselight" or self.params["model"] == "mlp":
     #         hidden_size = ()
     #         drop_rate = ()
             

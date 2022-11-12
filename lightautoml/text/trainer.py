@@ -278,7 +278,7 @@ class Trainer:
         device_ids: List[int],
         metric: Callable,
         snap_params: Dict,
-        ç: bool = False,
+        is_snap: bool = False,
         sch: Optional[Any] = None,
         scheduler_params: Optional[Dict] = None,
         verbose: int = 1,
@@ -286,7 +286,6 @@ class Trainer:
         apex: bool = False,
         pretrained_path: Optional[str] = None,
         stop_by_metric: bool = False,
-        is_snap = False,
         clip_grad: bool = False,
         clip_grad_params: Optional[Dict] = None,
         **kwargs
@@ -440,9 +439,9 @@ class Trainer:
             train_loss = self.train(dataloaders=dataloaders)
             train_log.extend(train_loss)
             # test
-            val_loss, val_data = self.test(dataloader=dataloaders["val"])
+            val_loss, val_data, weights = self.test(dataloader=dataloaders["val"])
             if self.stop_by_metric:
-                cond = -1 * self.metric(*val_data)
+                cond = -1 * self.metric(*val_data, weights)
             else:
                 cond = np.mean(val_loss)
             self.se.update(self.model, cond)
@@ -453,7 +452,7 @@ class Trainer:
             if (self.verbose is not None) and ((epoch + 1) % self.verbose == 0):
                 logger.info3(
                     "Epoch: {e}, train loss: {tl}, val loss: {vl}, val metric: {me}".format(
-                        me=self.metric(*val_data),
+                        me=self.metric(*val_data, weights),
                         e=self.epoch,
                         tl=np.mean(train_loss),
                         vl=np.mean(val_loss),
@@ -465,19 +464,19 @@ class Trainer:
         self.se.set_best_params(self.model)
 
         if self.is_snap:
-            val_loss, val_data = self.test(
+            val_loss, val_data, weights = self.test(
                 dataloader=dataloaders["val"], snap=True, stage="val"
             )
             logger.info3(
                 "Result SE, val loss: {vl}, val metric: {me}".format(
-                    me=self.metric(*val_data), vl=np.mean(val_loss)
+                    me=self.metric(*val_data, weights), vl=np.mean(val_loss)
                 )
             )
         elif self.se.early_stop:
-            val_loss, val_data = self.test(dataloader=dataloaders["val"])
+            val_loss, val_data, weights = self.test(dataloader=dataloaders["val"])
             logger.info3(
                 "Early stopping: val loss: {vl}, val metric: {me}".format(
-                    me=self.metric(*val_data), vl=np.mean(val_loss)
+                    me=self.metric(*val_data, weights), vl=np.mean(val_loss)
                 )
             )
 
@@ -534,16 +533,16 @@ class Trainer:
             c += 1
             if self.verbose_inside and logging_level <= logging.INFO:
                 if c % self.verbose_inside == 0:
-                    val_loss, val_data = self.test(dataloader=dataloaders["val"])
+                    val_loss, val_data, weights = self.test(dataloader=dataloaders["val"])
                     if self.stop_by_metric:
-                        cond = -1 * self.metric(*val_data)
+                        cond = -1 * self.metric(*val_data, weights)
                     else:
                         cond = np.mean(val_loss)
                     self.se.update(self.model, cond)
                     if self.verbose is not None:
                         logger.info3(
                             "Epoch: {e}, iter: {c}, val loss: {vl}, val metric: {me}".format(
-                                me=self.metric(*val_data),
+                                me=self.metric(*val_data, weights),
                                 e=self.epoch,
                                 c=c,
                                 vl=np.mean(val_loss),
@@ -569,6 +568,7 @@ class Trainer:
 
         """
         loss_log = []
+        weights_log = []
         self.model.eval()
         pred = []
         target = []
@@ -603,16 +603,20 @@ class Trainer:
 
                 output = output.data.cpu().numpy()
                 target_data = data["label"].data.cpu().numpy()
+                weights = data.get("weight", None)
+                if weights is not None:
+                    weights = weights.data.cpu().numpy()
 
                 pred.append(output)
                 target.append(target_data)
+                weights_log.extend(weights)
 
         self.model.train()
 
         return loss_log, (
             np.vstack(target) if len(target[0].shape) == 2 else np.hstack(target),
             np.vstack(pred) if len(pred[0].shape) == 2 else np.hstack(pred),
-        )
+        ), np.array(weights_log)
 
     def predict(self, dataloader: DataLoader, stage: str) -> np.ndarray:
         """Predict model.
@@ -626,7 +630,7 @@ class Trainer:
 
         """
 
-        loss, (target, pred) = self.test(
+        loss, (target, pred), _ = self.test(
             stage=stage, snap=self.is_snap, dataloader=dataloader
         )
         return pred

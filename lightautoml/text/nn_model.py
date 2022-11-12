@@ -6,6 +6,7 @@ from typing import Callable
 from typing import Dict
 from typing import Optional
 from typing import Sequence
+from typing import Union
 
 import numpy as np
 from pyrsistent import v
@@ -20,7 +21,6 @@ except:
 
     warnings.warn("'transformers' - package isn't installed")
 
-from lightautoml.tasks.losses.torch import TorchLossWrapper
 
 from ..tasks.base import Task
 from .dl_transformers import pooling_by_name
@@ -190,7 +190,7 @@ class CatEmbedder(nn.Module):
         emb_dropout: bool = 0.1,
         emb_ratio: int = 3,
         max_emb_size: int = 50,
-        device=torch.device("cuda:0"),
+        **kwargs
     ):
         super(CatEmbedder, self).__init__()
 
@@ -203,7 +203,7 @@ class CatEmbedder(nn.Module):
         assert self.no_of_embs != 0, "The input is empty."
         # Embedding layers
         self.emb_layers = nn.ModuleList([nn.Embedding(x, y) for x, y in emb_dims])
-        self.emb_dropout_layer = nn.Dropout(emb_dropout)
+        self.emb_dropout_layer = nn.Dropout(emb_dropout) if emb_dropout else nn.Identity()
 
     def get_out_shape(self) -> int:
         """Output shape.
@@ -238,10 +238,10 @@ class ContEmbedder(nn.Module):
 
     """
 
-    def __init__(self, num_dims: int, input_bn: bool = True):
+    def __init__(self, num_dims: int, input_bn: bool = True, **kwargs):
         super(ContEmbedder, self).__init__()
         self.n_out = num_dims
-        self.bn = None
+        self.bn = nn.Identity()
         if input_bn:
             self.bn = nn.BatchNorm1d(num_dims)
         assert num_dims != 0, "The input is empty."
@@ -258,13 +258,28 @@ class ContEmbedder(nn.Module):
     def forward(self, inp: Dict[str, torch.Tensor]) -> torch.Tensor:
         """Forward-pass."""
         output = inp["cont"]
-        if self.bn is not None:
-            output = self.bn(output)
+        output = self.bn(output)
         return output
 
 
 class TorchUniversalModel(nn.Module):
-    """Mixed data model."""
+    """Mixed data model.
+
+    Class for preparing input for DL model with mixed data.
+
+    Args:
+        loss: Callable torch loss with order of arguments (y_true, y_pred).
+        task: Task object.
+        n_out: Number of output dimensions.
+        cont_embedder: Torch module for numeric data.
+        cont_params: Dict with numeric model params.
+        cat_embedder: Torch module for category data.
+        cat_params: Dict with category model params.
+        text_embedder: Torch module for text data.
+        text_params: Dict with text model params.
+        bias: Array with last hidden linear layer bias.
+
+    """
 
     def __init__(
         self,
@@ -279,6 +294,7 @@ class TorchUniversalModel(nn.Module):
         text_embedder: Optional[Any] = None,
         text_params: Optional[Dict] = None,
         loss_on_logits=True,
+        bias: Union[np.array, torch.Tensor] = None,
         **kwargs,
     ):
         super(TorchUniversalModel, self).__init__()
@@ -308,13 +324,22 @@ class TorchUniversalModel(nn.Module):
                 **{"n_in": n_in, "n_out": self.n_out, "loss": loss, "task": task},
             }
         )
-
+        
+        if bias is not None:
+            last_layer = list(filter(lambda x: isinstance(x, nn.Linear) or \
+                                    isinstance(x, nn.Sequential), list(self.torch_model.children())))[-1]
+            while isinstance(last_layer, nn.Sequential):
+                last_layer = list(filter(lambda x: isinstance(x, nn.Linear) or \
+                                    isinstance(x, nn.Sequential), last_layer))[-1]
+            bias = torch.Tensor(bias)
+            last_layer.bias.data = bias
+            shape = last_layer.weight.data.shape
+            last_layer.weight.data = torch.zeros(shape[0], shape[1], requires_grad=True)
+        
         self.сlump = Clump()
         self.sig = nn.Sigmoid()
         self.softmax = nn.Softmax(dim=1)
-
-        self.is_wrapper_loss = True if isinstance(loss, TorchLossWrapper) else False
-    
+            
     def get_logits(self, inp: Dict[str, torch.Tensor]) -> torch.Tensor:
         outputs = []
         if self.cont_embedder is not None:

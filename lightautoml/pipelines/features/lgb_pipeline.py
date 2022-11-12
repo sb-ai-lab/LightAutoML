@@ -251,6 +251,7 @@ class LGBSeqSimpleFeatures(FeaturesPipeline, TabularDataFeatures):
 
         # dummy to get task metadata
         union_all = UnionTransformer([ColumnsSelector(keys=[]), union_all])
+        union_all = SequentialTransformer([union_all, ConvertDataset(dataset_type=NumpyDataset)])
 
         return union_all
 

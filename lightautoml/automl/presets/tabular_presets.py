@@ -3,6 +3,7 @@
 import logging
 import os
 
+import torch.nn as nn
 from collections import Counter
 from copy import copy
 from copy import deepcopy
@@ -24,12 +25,15 @@ from ...addons.utilization import TimeUtilization
 from ...dataset.np_pd_dataset import NumpyDataset
 from ...ml_algo.boost_cb import BoostCB
 from ...ml_algo.boost_lgbm import BoostLGBM
+from ...ml_algo.dl_model import TorchModel
 from ...ml_algo.linear_sklearn import LinearLBFGS
 from ...ml_algo.random_forest import RandomForestSklearn
 from ...ml_algo.tuning.optuna import OptunaTuner
+from ...ml_algo.tuning.optuna import DLOptunaTuner
 from ...pipelines.features.lgb_pipeline import LGBAdvancedPipeline
 from ...pipelines.features.lgb_pipeline import LGBSimpleFeatures
 from ...pipelines.features.linear_pipeline import LinearFeatures
+from ...pipelines.features.torch_pipeline import TorchSimpleFeatures
 from ...pipelines.ml.nested_ml_pipe import NestedTabularMLPipeline
 from ...pipelines.selection.base import ComposedSelector
 from ...pipelines.selection.base import SelectionPipeline
@@ -85,6 +89,7 @@ class TabularAutoML(AutoMLPreset):
         memory_limit: Memory limit that are passed to each automl.
         cpu_limit: CPU limit that that are passed to each automl.
         gpu_ids: GPU IDs that are passed to each automl.
+        debug: To catch exceptions or not.
         timing_params: Timing param dict. Optional.
         config_path: Path to config file.
         general_params: General param dict.
@@ -108,7 +113,7 @@ class TabularAutoML(AutoMLPreset):
     _default_config_path = "tabular_config.yml"
 
     # set initial runtime rate guess for first level models
-    _time_scores = {"lgb": 1, "lgb_tuned": 3, "linear_l2": 0.7, "cb": 2, "cb_tuned": 6, "rf": 5, "rf_tuned": 10}
+    _time_scores = {"lgb": 1, "lgb_tuned": 3, "linear_l2": 0.7, "cb": 2, "cb_tuned": 6, "nn": 10, "nn_tuned": 20, "rf": 5, "rf_tuned": 10}
 
     def __init__(
         self,
@@ -117,6 +122,7 @@ class TabularAutoML(AutoMLPreset):
         memory_limit: int = 16,
         cpu_limit: int = 4,
         gpu_ids: Optional[str] = "all",
+        debug: bool = False,
         timing_params: Optional[dict] = None,
         config_path: Optional[str] = None,
         general_params: Optional[dict] = None,
@@ -129,10 +135,12 @@ class TabularAutoML(AutoMLPreset):
         cb_params: Optional[dict] = None,
         rf_params: Optional[dict] = None,
         linear_l2_params: Optional[dict] = None,
+        nn_params: Optional[dict] = None,
         gbm_pipeline_params: Optional[dict] = None,
         linear_pipeline_params: Optional[dict] = None,
+        nn_pipeline_params: Optional[dict] = None,
     ):
-        super().__init__(task, timeout, memory_limit, cpu_limit, gpu_ids, timing_params, config_path)
+        super().__init__(task, timeout, memory_limit, cpu_limit, gpu_ids, debug, timing_params, config_path)
 
         # upd manual params
         for name, param in zip(
@@ -147,8 +155,10 @@ class TabularAutoML(AutoMLPreset):
                 "cb_params",
                 "rf_params",
                 "linear_l2_params",
+                "nn_params",
                 "gbm_pipeline_params",
                 "linear_pipeline_params",
+                "nn_pipeline_params",
             ],
             [
                 general_params,
@@ -161,8 +171,10 @@ class TabularAutoML(AutoMLPreset):
                 cb_params,
                 rf_params,
                 linear_l2_params,
+                nn_params,
                 gbm_pipeline_params,
                 linear_pipeline_params,
+                nn_pipeline_params,
             ],
         ):
             if param is None:
@@ -199,17 +211,23 @@ class TabularAutoML(AutoMLPreset):
         # check gpu to use catboost
         gpu_cnt = torch.cuda.device_count()
         gpu_ids = self.gpu_ids
+        
         if gpu_cnt > 0 and gpu_ids:
             if gpu_ids == "all":
                 gpu_ids = ",".join(list(map(str, range(gpu_cnt))))
 
+            self.nn_params["device"] = gpu_ids.split(",")
             self.cb_params["default_params"]["task_type"] = "GPU"
             self.cb_params["default_params"]["devices"] = gpu_ids.replace(",", ":")
-
+        
+        else:
+            self.nn_params["device"] = "cpu"
+        
         # check all n_jobs params
         cpu_cnt = min(os.cpu_count(), self.cpu_limit)
         torch.set_num_threads(cpu_cnt)
-
+        
+        # self.nn_params["num_workers"] = min(self.nn_params["num_workers"], cpu_cnt)
         self.cb_params["default_params"]["thread_count"] = min(
             self.cb_params["default_params"]["thread_count"], cpu_cnt
         )
@@ -318,6 +336,55 @@ class TabularAutoML(AutoMLPreset):
                 pre_selector = ComposedSelector([pre_selector, extra_selector])
 
         return pre_selector
+    
+    def get_nn(self, keys: Sequence[str], n_level: int = 1, pre_selector: Optional[SelectionPipeline] = None) -> NestedTabularMLPipeline:
+        ml_algos = []
+        force_calc = []
+        
+        nn_feats = TorchSimpleFeatures(**self.nn_pipeline_params)
+        
+        for i, key in enumerate(keys):
+            time_score = self.get_time_score(n_level, "nn")
+            nn_timer = self.timer.get_task_timer("reg_nn", time_score)
+            
+            model_params = deepcopy(self.nn_params)
+            if str(i) in model_params:
+                model_params = {**model_params, **model_params[str(i)]}
+                del model_params[str(i)]
+            model_name = key
+            
+            if isinstance(key, str):
+                tuned = "_tuned" in key
+                if key[:2] == "nn":
+                    model_name = "mlp"
+                _name = "TorchNN_" + model_name + "_" + str(i)
+                model_name = model_name.replace("_tuned", "")
+            else:
+                tuned = model_params.get("tuned")
+                _name = "TorchNN_" + str(i)
+            
+            nn_model = TorchModel(timer=nn_timer,
+                                  default_params={**model_params,
+                                                  'model': model_name},
+                                  optimization_search_space=model_params.get("optimization_search_space", None))
+            nn_model._name = _name
+               
+            if tuned:
+                nn_model.set_prefix("Tuned")
+                nn_tuner = DLOptunaTuner(
+                    n_trials=model_params["tuning_params"]["max_tuning_iter"],
+                    timeout=model_params["tuning_params"]["max_tuning_time"],
+                    fit_on_holdout=model_params["tuning_params"]["fit_on_holdout"],
+                )
+                nn_model = (nn_model, nn_tuner)
+            ml_algos.append(nn_model)
+            force_calc.append(True if not len(ml_algos) - 1 else False)
+
+        nn_pipe = NestedTabularMLPipeline(
+            ml_algos, force_calc, pre_selection=None, features_pipeline=nn_feats, **self.nested_cv_params
+        )
+        
+        return nn_pipe
 
     def get_linear(self, n_level: int = 1, pre_selector: Optional[SelectionPipeline] = None) -> NestedTabularMLPipeline:
 
@@ -442,7 +509,18 @@ class TabularAutoML(AutoMLPreset):
                 ):
                     selector = pre_selector
                 lvl.append(self.get_linear(n + 1, selector))
-
+            
+            available_nn_models = ["nn", "mlp", "dense", "denselight", "resnet", "snn", "linear_layer"]
+            available_nn_models = available_nn_models + [x + "_tuned" for x in available_nn_models]
+            nn_models = [
+                x for x in names if x in available_nn_models or \
+                    (not isinstance(x, str) and issubclass(x, nn.Module))
+            ]
+            
+            if len(nn_models) > 0:
+                selector = None
+                lvl.append(self.get_nn(nn_models, n + 1, selector))
+            
             gbm_models = [
                 x for x in ["lgb", "lgb_tuned", "cb", "cb_tuned"] if x in names and x.split("_")[0] in self.task.losses
             ]
@@ -466,6 +544,7 @@ class TabularAutoML(AutoMLPreset):
             blender=blender,
             return_all_predictions=self.general_params["return_all_predictions"],
             timer=self.timer,
+            debug=self.debug
         )
 
     def _get_read_csv_params(self):
@@ -772,6 +851,7 @@ class TabularUtilizedAutoML(TimeUtilization):
         memory_limit: Memory limit that are passed to each automl.
         cpu_limit: CPU limit that that are passed to each automl.
         gpu_ids: GPU IDs that are passed to each automl.
+        debug: To catch exceptions or not.
         timing_params: Timing params level that are passed to each automl.
         configs_list: List of str path to configs files.
         drop_last: Usually last automl will be stopped with timeout.
@@ -790,6 +870,7 @@ class TabularUtilizedAutoML(TimeUtilization):
         memory_limit: int = 16,
         cpu_limit: int = 4,
         gpu_ids: Optional[str] = None,
+        debug: bool = False,
         timing_params: Optional[dict] = None,
         configs_list: Optional[Sequence[str]] = None,
         drop_last: bool = True,
@@ -821,6 +902,7 @@ class TabularUtilizedAutoML(TimeUtilization):
             memory_limit,
             cpu_limit,
             gpu_ids,
+            debug,
             timing_params,
             configs_list,
             inner_blend,

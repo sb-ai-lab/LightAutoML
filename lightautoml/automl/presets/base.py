@@ -90,6 +90,7 @@ class AutoMLPreset(AutoML):
         memory_limit: int = 16,
         cpu_limit: int = 4,
         gpu_ids: Optional[str] = "all",
+        debug: bool = False,
         timing_params: Optional[dict] = None,
         config_path: Optional[str] = None,
         **kwargs: Any,
@@ -100,7 +101,8 @@ class AutoMLPreset(AutoML):
             if param is None:
                 param = {}
             self.__dict__[name] = {**self.__dict__[name], **param}
-
+        
+        self.debug = debug
         self.timer = PipelineTimer(timeout, **getattr(self, "timing_params"))
         self.memory_limit = memory_limit
         if cpu_limit == -1:
@@ -209,7 +211,7 @@ class AutoMLPreset(AutoML):
             cv_iter,
             valid_data,
             valid_features,
-            verbose=verbose,
+            verbose=verbose
         )
 
         logger.info("\x1b[1mAutoml preset training completed in {:.2f} seconds\x1b[0m\n".format(self.timer.time_spent))

@@ -7,24 +7,25 @@ from ..dataset.roles import DatetimeRole
 
 
 def sliding_window_view(a, window):
+    """Generate window view."""
     shape = a.shape[:-1] + (a.shape[-1] - window + 1,) + (window,)
     strides = a.strides[:-1] + (a.strides[-1],) + a.strides[-1:]
     return np.lib.stride_tricks.as_strided(a, shape=shape, strides=strides)
 
 
 def rolling_window(a, window, step=1, from_last=True):
-    "from_last == True - will cut first step-1 elements"
+    """from_last == True - will cut first step-1 elements"""
     sliding_window = (
         sliding_window_view(a, window)
         if np.__version__ < "1.20"
         else np.lib.stride_tricks.sliding_window_view(a, window)
     )
-    return sliding_window[(len(a) - window) % step if from_last else 0:][::step]
+    return sliding_window[(len(a) - window) % step if from_last else 0 :][::step]
 
 
 class TopInd:
     def __init__(
-            self, n_target=7, history=100, step=3, from_last=True, test_last=True, roles=None, scheme=None, **kwargs
+        self, n_target=7, history=100, step=3, from_last=True, test_last=True, roles=None, scheme=None, **kwargs
     ):
         self.n_target = n_target
         self.history = history
@@ -33,25 +34,35 @@ class TopInd:
         self.test_last = test_last
         self.roles = roles
 
+    @staticmethod
+    def _timedelta(x):
+        delta = pd.to_datetime(x).diff().iloc[-1]
+        if delta <= pd.Timedelta(days=1):
+            return pd.to_datetime(x).diff().fillna(delta).values, delta
+
+        if delta > pd.Timedelta(days=360):
+            d = pd.to_datetime(x).dt.year.diff()
+            delta = d.iloc[-1]
+            return d.fillna(delta).values, delta
+        elif delta > pd.Timedelta(days=27):
+            d = pd.to_datetime(x).dt.month.diff() + 12 * pd.to_datetime(x).dt.year.diff()
+            delta = d.iloc[-1]
+            return d.fillna(delta).values, delta
+        else:
+            return pd.to_datetime(x).diff().fillna(delta).values, delta
+
     def read(self, data, plain_data=None):
         self.len_data = len(data)
         self.date_col = [col for col, role in self.roles.items() if isinstance(role, DatetimeRole)][0]
-        self.time_delta = pd.to_datetime(data[self.date_col]).diff().iloc[1]
-
-        ## TO DO:
-        # add asserts
-
-    def create_test(self, data=None, plain_data=None):
-        # for predicting future
-        return rolling_window(
-            np.arange(self.len_data if data is None else len(data)), self.history, self.step, self.from_last
-        )[-1 if self.test_last else 0:, :]
+        self.time_delta = self._timedelta(data[self.date_col])[1]
+        return self
+        # TODO: add asserts
 
     def _create_test(self, data=None, plain_data=None):
         # for predicting future
         return rolling_window(
             np.arange(self.len_data if data is None else len(data)), self.history, self.step, self.from_last
-        )[-1 if self.test_last else 0:, :]
+        )[-1 if self.test_last else 0 :, :]
 
     def _create_data(self, data=None, plain_data=None):
 
@@ -64,7 +75,7 @@ class TopInd:
 
     def _create_target(self, data=None, plain_data=None):
         return rolling_window(
-            np.arange(self.len_data if data is None else len(data))[self.history:],
+            np.arange(self.len_data if data is None else len(data))[self.history :],
             self.n_target,
             self.step,
             self.from_last,
@@ -72,8 +83,8 @@ class TopInd:
 
     def _get_ids(self, data=None, plain_data=None, func=None, cond=None):
         date_col = pd.to_datetime(data[self.date_col])
-        vals = pd.to_datetime(data[self.date_col]).diff().fillna(self.time_delta).values
-        ids = list(np.argwhere(vals != self.time_delta).flatten())
+        vals, time_delta = self._timedelta(data[self.date_col])
+        ids = list(np.argwhere(vals != time_delta).flatten())
         prev = 0
         inds = []
         for split in ids + [len(date_col)]:
@@ -102,8 +113,7 @@ class IDSInd:
     def read(self, data, plain_data=None):
         self.len_data = len(data)
 
-        ## TO DO:
-        # add asserts
+        # TODO: add asserts
 
     def create_test(self, data, plain_data):
         # for predicting future

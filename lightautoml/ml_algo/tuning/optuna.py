@@ -368,10 +368,9 @@ class DLOptunaTuner(ParamsTuner):
                 f"The set of hyperparameters \x1b[1m{self._best_params}\x1b[0m\n achieve {self.study.best_value:.4f} {metric_name}"
             )
             
-            # TODO: Uncomment
-            # if flg_new_iterator:
-            #     # if tuner was fitted on holdout set we dont need to save train results
-            #     return None, None
+            if flg_new_iterator:
+                # if tuner was fitted on holdout set we dont need to save train results
+                return None, None
 
             preds_ds = ml_algo.fit_predict(train_valid_iterator)
             
@@ -404,11 +403,21 @@ class DLOptunaTuner(ParamsTuner):
             _ml_algo = deepcopy(ml_algo)
 
             optimization_search_space = _ml_algo.optimization_search_space
-            sampled_params = optimization_search_space(
-                trial=trial,
-                estimated_n_trials=estimated_n_trials,
-                suggested_params=_ml_algo.init_params_on_input(train_valid_iterator),
-            )
+            if not optimization_search_space:
+                optimization_search_space = _ml_algo._default_sample
+            
+            if callable(optimization_search_space):
+                sampled_params = optimization_search_space(	
+                    trial=trial,	
+                    estimated_n_trials=estimated_n_trials,	
+                    suggested_params=_ml_algo.init_params_on_input(train_valid_iterator),	
+                )	
+            else:	
+                sampled_params = self._sample(	
+                    trial=trial,	
+                    optimization_search_space=optimization_search_space,	
+                    suggested_params=_ml_algo.init_params_on_input(train_valid_iterator),	
+                )
             
             _ml_algo.params = sampled_params
             output_dataset = _ml_algo.fit_predict(train_valid_iterator=train_valid_iterator)
@@ -417,6 +426,26 @@ class DLOptunaTuner(ParamsTuner):
             return score
 
         return objective
+    
+    def _sample(
+        self,
+        optimization_search_space,
+        trial: optuna.trial.Trial,
+        suggested_params: dict,
+    ) -> dict:
+        # logger.info3(f'Suggested parameters: {suggested_params}')
+
+        trial_values = copy(suggested_params)
+
+        for parameter, SearchSpace in optimization_search_space.items():
+            if SearchSpace.distribution_type in OPTUNA_DISTRIBUTIONS_MAP:
+                trial_values[parameter] = getattr(trial, OPTUNA_DISTRIBUTIONS_MAP[SearchSpace.distribution_type])(
+                    name=parameter, **SearchSpace.params
+                )
+            else:
+                raise ValueError(f"Optuna does not support distribution {SearchSpace.distribution_type}")
+
+        return trial_values
 
     def plot(self):
         """Plot optimization history of all trials in a study."""

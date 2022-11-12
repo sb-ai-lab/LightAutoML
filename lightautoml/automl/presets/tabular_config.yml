@@ -123,6 +123,80 @@ linear_l2_params:
   default_params: { }
   freeze_defaults: False
 
+nn_params:
+  default_params:
+    act_fun: ReLU
+    bert_name: null
+    bn_factor: 2
+    bs: 512
+    clip_grad: false
+    clip_grad_params: {}
+    compression: 0.5
+    dataset: UniversalDataset
+    deterministic: true
+    device: cuda:0
+    drop_rate: 0.1
+    emb_dropout: 0.1
+    emb_ratio: 3
+    growth_size: 256
+    hidden_size:
+      - 512
+      - 512
+      - 512
+    init_bias: true
+    input_bn: false
+    is_snap: false
+    lang: en
+    loss: null
+    loss_on_logits: true
+    loss_params: {}
+    max_emb_size: 256
+    max_length: 256
+    model: dense
+    multigpu: false
+    n_epochs: 20
+    n_out: null
+    num_workers: 0
+    opt: Adam
+    opt_params:
+      lr: 0.0003
+      weight_decay: 0
+    path_to_save: ./models/model
+    pin_memory: false
+    pooling: cls
+    random_state: 42
+    sch: ReduceLROnPlateau
+    scheduler_params:
+      factor: 0.01
+      min_lr: 0.00001
+      patience: 10
+    snap_params:
+      early_stopping: true
+      k: 3
+      patience: 16
+      swa: true
+    use_bn: true
+    use_cat: true
+    use_cont: true
+    use_dropout: true
+    use_noise: false
+    use_text: true
+    verbose: 1
+    verbose_inside: null
+    tuned: false
+  
+  tuning_params:
+    # pretrain tuner on holdout set. True - fast/ False - accurate
+    # Ex. if you have 5-fold cv, validate tuner only on 1 fold
+    fit_on_holdout: True
+    # max tuning iter for lightgbm. Auto - depends on dataset
+    # smaller dataset gets more iters (int or 'auto')
+    max_tuning_iter: 25
+    # max tuning time. Tuning time might be set lower during train by automl's timer, but cannot be higher
+    max_tuning_time: 3600
+  freeze_defaults: false
+
+
 gbm_pipeline_params:
   # max number of categories to generate intersections
   top_intersections: 4
@@ -146,6 +220,8 @@ linear_pipeline_params:
   auto_unique_co: 50
   # n_classes to use target encoding for multiclass task
   multiclass_te_co: 3
+
+nn_pipeline_params: {}
 
 timing_params:
   # select timing mode:

@@ -7,7 +7,7 @@ from .report_deco import ReportDecoNLP
 from .report_deco import ReportDecoWhitebox
 
 
-__validate_extra_deps("pdf")
+# __validate_extra_deps("pdf")
 
 
 __all__ = ["ReportDeco", "ReportDecoWhitebox", "ReportDecoNLP"]

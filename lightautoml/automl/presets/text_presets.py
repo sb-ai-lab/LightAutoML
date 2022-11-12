@@ -3,7 +3,7 @@
 from lightautoml.utils.installation import __validate_extra_deps
 
 
-__validate_extra_deps("nlp", error=True)
+# __validate_extra_deps("nlp", error=True)
 
 
 import logging
@@ -43,14 +43,7 @@ logger = logging.getLogger(__name__)
 
 _base_dir = os.path.dirname(__file__)
 # set initial runtime rate guess for first level models
-_time_scores = {
-    "lgb": 1,
-    "lgb_tuned": 3,
-    "linear_l2": 0.7,
-    "cb": 2,
-    "cb_tuned": 6,
-    "nn": 1,
-}
+_time_scores = {"lgb": 1, "lgb_tuned": 3, "linear_l2": 0.7, "cb": 2, "cb_tuned": 6, "nn": 1, "rf": 5, "rf_tuned": 10}
 
 
 # TODO: add text feature selection
@@ -113,6 +106,8 @@ class TabularNLPAutoML(TabularAutoML):
         "cb": 2,
         "cb_tuned": 6,
         "nn": 1,
+        "rf": 5,
+        "rf_tuned": 10,
     }
 
     def __init__(
@@ -133,6 +128,7 @@ class TabularNLPAutoML(TabularAutoML):
         nn_params: Optional[dict] = None,
         lgb_params: Optional[dict] = None,
         cb_params: Optional[dict] = None,
+        rf_params: Optional[dict] = None,
         linear_l2_params: Optional[dict] = None,
         nn_pipeline_params: Optional[dict] = None,
         gbm_pipeline_params: Optional[dict] = None,
@@ -163,6 +159,7 @@ class TabularNLPAutoML(TabularAutoML):
                 "nn_params",
                 "lgb_params",
                 "cb_params",
+                "rf_params",
                 "linear_l2_params",
                 "nn_pipeline_params",
                 "gbm_pipeline_params",
@@ -181,6 +178,7 @@ class TabularNLPAutoML(TabularAutoML):
                 nn_params,
                 lgb_params,
                 cb_params,
+                rf_params,
                 linear_l2_params,
                 nn_pipeline_params,
                 gbm_pipeline_params,

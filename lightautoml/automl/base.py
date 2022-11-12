@@ -93,8 +93,9 @@ class AutoML:
         blender: Optional[Blender] = None,
         skip_conn: bool = False,
         return_all_predictions: bool = False,
+        debug: bool = False,
     ):
-        self._initialize(reader, levels, timer, blender, skip_conn, return_all_predictions)
+        self._initialize(reader, levels, timer, blender, skip_conn, return_all_predictions, debug)
 
     def _initialize(
         self,
@@ -104,6 +105,7 @@ class AutoML:
         blender: Optional[Blender] = None,
         skip_conn: bool = False,
         return_all_predictions: bool = False,
+        debug: bool = False,
     ):
         """Same as __init__. Exists for delayed initialization in presets.
 
@@ -121,7 +123,7 @@ class AutoML:
 
         """
         assert len(levels) > 0, "At least 1 level should be defined"
-
+        
         self.timer = timer
         if timer is None:
             self.timer = PipelineTimer()
@@ -141,6 +143,7 @@ class AutoML:
 
         self.skip_conn = skip_conn
         self.return_all_predictions = return_all_predictions
+        self.debug = debug
 
     def fit_predict(
         self,
@@ -208,7 +211,7 @@ class AutoML:
             )
 
             for k, ml_pipe in enumerate(level):
-
+                ml_pipe.debug = self.debug
                 pipe_pred = ml_pipe.fit_predict(train_valid)
                 level_predictions.append(pipe_pred)
                 pipes.append(ml_pipe)
