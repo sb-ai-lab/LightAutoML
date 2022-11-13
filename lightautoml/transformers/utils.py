@@ -6,12 +6,8 @@ import numpy as np
 
 from scipy.stats import mode
 
-from ..utils.logging import get_logger
 from ..utils.logging import verbosity_to_loglevel
 
-
-logger = get_logger(__name__)
-logger.setLevel(verbosity_to_loglevel(3))
 
 
 def get_mode(x):

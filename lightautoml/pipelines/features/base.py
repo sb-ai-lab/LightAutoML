@@ -44,8 +44,6 @@ from ...transformers.numeric import FillInf
 from ...transformers.numeric import FillnaMedian
 from ...transformers.numeric import NaNFlags
 from ...transformers.numeric import StandardScaler
-from ...utils.logging import get_logger
-from ...utils.logging import verbosity_to_loglevel
 
 
 NumpyOrPandas = Union[PandasDataset, NumpyDataset]
@@ -648,11 +646,6 @@ class TabularDataFeatures:
             cat_feats_to_select = feats_to_select_categorical
 
         assert len(cat_feats_to_select) > 0
-        logger.debug(
-            "GroupByPipeline.create_pipeline.cat_feats_to_select:{0}".format(
-                cat_feats_to_select
-            )
-        )
 
         num_feats_to_select = []
         if feats_to_select_numerical is None:
@@ -665,13 +658,8 @@ class TabularDataFeatures:
                 num_feats_to_select = numerics
         else:
             num_feats_to_select = feats_to_select_numerical
-
+        
         assert len(num_feats_to_select) > 0
-        logger.debug(
-            "GroupByPipeline.create_pipeline.num_feats_to_select:{0}".format(
-                num_feats_to_select
-            )
-        )
 
         groupby_processing = SequentialTransformer(
             [
@@ -695,7 +683,6 @@ class TabularDataFeatures:
                                             [
                                                 FillInf(),
                                                 FillnaMedian(),
-                                                StandardScaler(),
                                             ]
                                         ),
                                         NaNFlags(),

@@ -71,6 +71,9 @@ class LinearFeatures(FeaturesPipeline, TabularDataFeatures):
         auto_unique_co: int = 50,
         output_categories: bool = True,
         multiclass_te_co: int = 3,
+        use_group_by: bool = False,
+        top_group_by_categorical: int = 5,
+        top_group_by_numerical: int = 5,
         **kwargs
     ):
         assert max_bin_count is None or max_bin_count > 1, "Max bin count should be >= 2 or None"
@@ -87,6 +90,9 @@ class LinearFeatures(FeaturesPipeline, TabularDataFeatures):
             max_bin_count=max_bin_count,
             sparse_ohe=sparse_ohe,
             multiclass_te_co=multiclass_te_co,
+            use_group_by=use_group_by,
+            top_group_by_categorical=top_group_by_categorical,
+            top_group_by_numerical=top_group_by_numerical
         )
 
     def create_pipeline(self, train: NumpyOrPandas) -> LAMLTransformer:
@@ -166,7 +172,10 @@ class LinearFeatures(FeaturesPipeline, TabularDataFeatures):
         probs_list.append(self.get_numeric_data(train, prob=True))
         # add difference with base date
         dense_list.append(self.get_datetime_diffs(train))
-
+        
+        if self.use_group_by:
+            dense_list.append(self.get_group_by(train))
+        
         # combine it all together
         # handle probs if exists
         probs_list = [x for x in probs_list if x is not None]

@@ -4,7 +4,6 @@ import numpy as np
 
 from ..dataset.roles import NumericRole
 from ..pipelines.utils import get_columns_by_role
-from ..utils.logging import get_logger
 from ..utils.logging import verbosity_to_loglevel
 from .base import LAMLTransformer
 from .utils import GroupByCatIsMode
@@ -17,9 +16,6 @@ from .utils import GroupByNumMin
 from .utils import GroupByNumStd
 from .utils import GroupByProcessor
 
-
-logger = get_logger(__name__)
-logger.setLevel(verbosity_to_loglevel(3))
 
 
 class GroupByTransformer(LAMLTransformer):
@@ -88,11 +84,6 @@ class GroupByTransformer(LAMLTransformer):
 
         """
 
-        logger.debug("GroupByTransformer.__fit.begin")
-        logger.debug(
-            "GroupByTransformer.__fit.type(dataset.data)={0}".format(type(dataset.data))
-        )
-
         # set transformer names and add checks
         for check_func in self._fit_checks:
             check_func(dataset)
@@ -103,9 +94,6 @@ class GroupByTransformer(LAMLTransformer):
         # set transformer features
         cat_cols = get_columns_by_role(dataset, "Category")
         num_cols = get_columns_by_role(dataset, "Numeric")
-        logger.debug("GroupByTransformer.__fit.cat_cols={0}".format(cat_cols))
-        logger.debug("GroupByTransformer.__fit.num_cols:{0}".format(num_cols))
-
         feats = []
         for group_column in cat_cols:
             group_values = dataset.data[group_column].to_numpy()
@@ -163,12 +151,6 @@ class GroupByTransformer(LAMLTransformer):
 
         self._features = feats
 
-        logger.debug(
-            "self._features:({0}) {1}".format(len(self._features), self._features)
-        )
-
-        logger.debug("GroupByTransformer.__fit.end")
-
         return self
 
     def transform(self, dataset):
@@ -181,10 +163,6 @@ class GroupByTransformer(LAMLTransformer):
             NumpyDataset of calculated group features (numeric).
         """
 
-        logger.debug("GroupByTransformer.transform.begin")
-        logger.debug(
-            "GroupByTransformer.__transform.len(self.dicts):{0}".format(len(self.dicts))
-        )
 
         # checks here
         super().transform(dataset)
@@ -203,8 +181,6 @@ class GroupByTransformer(LAMLTransformer):
             output = dataset.empty().to_numpy()
             output.set_data(new_arr, [feat], roles)
             outputs.append(output)
-
-        logger.debug("GroupByTransformer.transform.end")
 
         # create resulted
         return dataset.empty().to_numpy().concat(outputs)
