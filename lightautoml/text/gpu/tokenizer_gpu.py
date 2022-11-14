@@ -28,19 +28,19 @@ Roles = Union[Sequence[ColumnRole], ColumnRole, RolesDict, None]
 
 
 class BaseTokenizer_gpu:
-    """Base class for tokenizer method."""
+    """Base class for tokenizer method.
+
+    Tokenization with simple text cleaning and preprocessing.
+
+    Args:
+        to_string: Return string or list of tokens.
+    """
 
     _fname_prefix = None
     _fit_checks = ()
     _transform_checks = ()
 
     def __init__(self, to_string: bool = True, **kwargs: Any):
-        """Tokenization with simple text cleaning and preprocessing.
-
-        Args:
-            to_string: Return string or list of tokens.
-
-        """
         self.to_string = to_string
         self.stemmer = None
 
@@ -140,7 +140,18 @@ class BaseTokenizer_gpu:
 
 
 class SimpleRuTokenizer_gpu(BaseTokenizer_gpu):
-    """Russian tokenizer."""
+    """Russian tokenizer.
+
+    Tokenizer for Russian language.
+
+    Include numeric, punctuation and short word filtering.
+    Use stemmer by default and do lowercase.
+
+    Args:
+        to_string: Return string or list of tokens.
+        stopwords: Use stopwords or not.
+        is_stemmer: Use stemmer.
+    """
 
     def __init__(
         self,
@@ -149,18 +160,6 @@ class SimpleRuTokenizer_gpu(BaseTokenizer_gpu):
         is_stemmer: bool = True,
         **kwargs: Any
     ):
-        """Tokenizer for Russian language.
-
-        Include numeric, punctuation and short word filtering.
-        Use stemmer by default and do lowercase.
-
-        Args:
-            to_string: Return string or list of tokens.
-            stopwords: Use stopwords or not.
-            is_stemmer: Use stemmer.
-
-        """
-
         super().__init__(**kwargs)
         self.to_string = to_string
         if isinstance(stopwords, (tuple, list, set)):
@@ -170,12 +169,6 @@ class SimpleRuTokenizer_gpu(BaseTokenizer_gpu):
         else:
             self.stopwords = cudf.Series()
         self.stemmer = SnowballStemmer("russian", ignore_stopwords=len(self.stopwords) > 0) if is_stemmer else None
-
-    # @staticmethod
-    # def _is_abbr(word: str) -> bool:
-    #     """Check if the word is an abbreviation."""
-    #
-    #     return sum([x.isupper() and x.isalpha() for x in word]) > 1 and len(word) <= 5
 
     def preprocess_sentence(self, snt: str) -> str:
         """Preprocess sentence string (lowercase, etc.).
@@ -259,7 +252,15 @@ class SimpleRuTokenizer_gpu(BaseTokenizer_gpu):
 
 
 class SimpleEnTokenizer_gpu(BaseTokenizer_gpu):
-    """English tokenizer."""
+    """English tokenizer.
+
+    Tokenizer for English language.
+
+    Args:
+        to_string: Return string or list of tokens.
+        stopwords: Use stopwords or not.
+        is_stemmer: Use stemmer.
+    """
 
     def __init__(
         self,
@@ -268,15 +269,6 @@ class SimpleEnTokenizer_gpu(BaseTokenizer_gpu):
         is_stemmer: bool = True,
         **kwargs: Any
     ):
-        """Tokenizer for English language.
-
-        Args:
-            to_string: Return string or list of tokens.
-            stopwords: Use stopwords or not.
-            is_stemmer: Use stemmer.
-
-        """
-
         super().__init__(**kwargs)
         self.to_string = to_string
         if isinstance(stopwords, (tuple, list, set)):

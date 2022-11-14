@@ -32,17 +32,16 @@ _tokenizer_by_lang = {
 class NLPDataFeatures_gpu:
     """
     Class contains basic features transformations for text data.
+
+    Set default parameters for nlp pipeline constructor.
+
+    Args:
+        **kwargs: default params.
     """
 
     _lang = {"en", "ru", "multi"}
 
     def __init__(self, **kwargs: Any):
-        """Set default parameters for nlp pipeline constructor.
-
-        Args:
-            **kwargs: default params.
-
-        """
         if "lang" in kwargs:
             assert kwargs["lang"] in self._lang, f"Language must be one of: {self._lang}"
 

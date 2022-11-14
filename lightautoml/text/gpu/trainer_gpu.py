@@ -52,7 +52,17 @@ def optim_to_device(optim: torch.optim.Optimizer, device: torch.device) -> torch
 
 
 class SnapshotEns:
-    """In memory snapshots class."""
+    """In memory snapshots class.
+
+    Class for SE, SWA and early stopping.
+
+    Args:
+        device: Torch device.
+        k: Number of snapshots / checkpoint for swa.
+        early_stopping: Use early stopping.
+        patience: Patience before early stopping.
+        swa: Use stochastic weight averaging.
+    """
 
     def __init__(
         self,
@@ -62,16 +72,6 @@ class SnapshotEns:
         patience: int = 3,
         swa: bool = False,
     ):
-        """Class for SE, SWA and early stopping.
-
-        Args:
-            device: Torch device.
-            k: Number of snapshots / checkpoint for swa.
-            early_stopping: Use early stopping.
-            patience: Patience before early stopping.
-            swa: Use stochastic weight averaging.
-
-        """
         self.best_loss = np.array([np.inf] * k)
         self.k = k
         self.device = device
@@ -235,7 +235,31 @@ class SnapshotEns:
 
 
 class Trainer_gpu:
-    """Torch main trainer class."""
+    """Torch main trainer class.
+
+    Train, validation and test loops for NN models.
+
+    Use DataParallel if device_ids is not None.
+
+    Args:
+        net: Uninitialized torch model.
+        net_params: Dict with model params.
+        opt: Uninitialized torch optimizer.
+        opt_params: Dict with optim params.
+        n_epochs: Number of training epochs.
+        device: Torch device.
+        device_ids: Ids of used gpu devices or None.
+        metric: Callable metric for validation.
+        snap_params: Dict with SE parameters.
+        is_snap: Use snapshots.
+        sch: Uninitialized torch scheduler.
+        scheduler_params: Dict with scheduler params.
+        verbose: Verbose every N epochs.
+        verbose_inside: Number of steps between verbose
+          inside epoch or None.
+        apex: Use apex (lead to GPU memory leak among folds).
+        pretrained_path: Path to the pretrained model weights.
+    """
 
     def __init__(
         self,
@@ -256,30 +280,6 @@ class Trainer_gpu:
         apex: bool = False,
         pretrained_path: Optional[str] = None,
     ):
-        """Train, validation and test loops for NN models.
-
-        Use DataParallel if device_ids is not None.
-
-        Args:
-            net: Uninitialized torch model.
-            net_params: Dict with model params.
-            opt: Uninitialized torch optimizer.
-            opt_params: Dict with optim params.
-            n_epochs: Number of training epochs.
-            device: Torch device.
-            device_ids: Ids of used gpu devices or None.
-            metric: Callable metric for validation.
-            snap_params: Dict with SE parameters.
-            is_snap: Use snapshots.
-            sch: Uninitialized torch scheduler.
-            scheduler_params: Dict with scheduler params.
-            verbose: Verbose every N epochs.
-            verbose_inside: Number of steps between verbose
-              inside epoch or None.
-            apex: Use apex (lead to GPU memory leak among folds).
-            pretrained_path: Path to the pretrained model weights.
-
-        """
         self.net = net
         self.net_params = net_params
         self.opt = opt

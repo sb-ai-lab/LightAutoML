@@ -13,9 +13,6 @@ import numpy as np
 import cupy as cp
 import torch
 
-# from scipy.linalg import svd
-# from sklearn.base import TransformerMixin
-# from sklearn.feature_extraction import DictVectorizer
 from cuml.feature_extraction.text import CountVectorizer
 from tqdm import tqdm
 
@@ -24,7 +21,21 @@ logger = logging.getLogger(__name__)
 
 
 class WeightedAverageTransformer_gpu:
-    """Weighted average of word embeddings."""
+    """Weighted average of word embeddings.
+
+    Calculate sentence embedding as weighted average of word embeddings.
+
+    Args:
+        embedding_model: word2vec, fasstext, etc.
+          Should have dict interface {<word>: <embedding>}.
+        embed_size: Size of embedding.
+        weight_type: 'idf' for idf weights, 'sif' for
+          smoothed inverse frequency weights, '1' for all weights are equal.
+        use_svd: Substract projection onto first singular vector.
+        alpha: Param for sif weights.
+        verbose: Add prints.
+        **kwargs: Unused arguments.
+    """
 
     name = "WAT_gpu"
 
@@ -38,20 +49,6 @@ class WeightedAverageTransformer_gpu:
         verbose: bool = False,
         **kwargs: Any,
     ):
-        """Calculate sentence embedding as weighted average of word embeddings.
-
-        Args:
-            embedding_model: word2vec, fasstext, etc.
-              Should have dict interface {<word>: <embedding>}.
-            embed_size: Size of embedding.
-            weight_type: 'idf' for idf weights, 'sif' for
-              smoothed inverse frequency weights, '1' for all weights are equal.
-            use_svd: Substract projection onto first singular vector.
-            alpha: Param for sif weights.
-            verbose: Add prints.
-            **kwargs: Unused arguments.
-
-        """
         super(WeightedAverageTransformer_gpu, self).__init__()
 
         if weight_type not in ["sif", "idf", "1"]:

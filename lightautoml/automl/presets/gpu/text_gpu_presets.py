@@ -75,6 +75,45 @@ class TabularNLPAutoML_gpu(TabularAutoML_gpu):
 
     GPU support in catboost/lightgbm (if installed for GPU),
     NN models training.
+
+    Commonly _params kwargs (ex. timing_params) set via
+    config file (config_path argument).
+    If you need to change just few params, it's possible to pass
+    it as dict of dicts, like json.
+    To get available params please look on default config template.
+    Also you can find there param description.
+    To generate config template call
+    :meth:`TabularNLPAutoML.get_config('config_path.yml')`.
+
+
+    Args:
+        task: Task to solve.
+        timeout: Timeout in seconds.
+        memory_limit: Memory limit that are passed to each automl.
+        cpu_limit: CPU limit that that are passed to each automl.
+        gpu_ids: GPU IDs that are passed to each automl.
+        timing_params: Timing param dict.
+        config_path: Path to config file.
+        general_params: General param dict.
+        reader_params: Reader param dict.
+        read_csv_params: Params to pass :func:`pandas.read_csv`
+          (case of train/predict from file).
+        nested_cv_params: Param dict for nested cross-validation.
+        tuning_params: Params of Optuna tuner.
+        selection_params: Params of feature selection.
+        nn_params: Params of neural network model.
+        lgb_params: Params of lightgbm model.
+        cb_params: Params of catboost model.
+        linear_l2_params: Params of linear model.
+        nn_pipeline_params: Params of feature generation
+          for neural network models.
+        gbm_pipeline_params: Params of feature generation
+          for boosting models.
+        linear_pipeline_params: Params of feature generation
+          for linear models.
+        text_params: General params of text features.
+        tfidf_params: Params of tfidf features.
+        autonlp_params: Params of text embeddings features.
     """
 
     _default_config_path = "gpu/text_gpu_config.yml"
@@ -115,49 +154,6 @@ class TabularNLPAutoML_gpu(TabularAutoML_gpu):
         autonlp_params: Optional[dict] = None,
         client = None
     ):
-
-        """
-
-        Commonly _params kwargs (ex. timing_params) set via
-        config file (config_path argument).
-        If you need to change just few params, it's possible to pass
-        it as dict of dicts, like json.
-        To get available params please look on default config template.
-        Also you can find there param description.
-        To generate config template call
-        :meth:`TabularNLPAutoML.get_config('config_path.yml')`.
-
-
-        Args:
-            task: Task to solve.
-            timeout: Timeout in seconds.
-            memory_limit: Memory limit that are passed to each automl.
-            cpu_limit: CPU limit that that are passed to each automl.
-            gpu_ids: GPU IDs that are passed to each automl.
-            timing_params: Timing param dict.
-            config_path: Path to config file.
-            general_params: General param dict.
-            reader_params: Reader param dict.
-            read_csv_params: Params to pass :func:`pandas.read_csv`
-              (case of train/predict from file).
-            nested_cv_params: Param dict for nested cross-validation.
-            tuning_params: Params of Optuna tuner.
-            selection_params: Params of feature selection.
-            nn_params: Params of neural network model.
-            lgb_params: Params of lightgbm model.
-            cb_params: Params of catboost model.
-            linear_l2_params: Params of linear model.
-            nn_pipeline_params: Params of feature generation
-              for neural network models.
-            gbm_pipeline_params: Params of feature generation
-              for boosting models.
-            linear_pipeline_params: Params of feature generation
-              for linear models.
-            text_params: General params of text features.
-            tfidf_params: Params of tfidf features.
-            autonlp_params: Params of text embeddings features.
-
-        """
         super().__init__(
             task,
             timeout,
@@ -273,7 +269,6 @@ class TabularNLPAutoML_gpu(TabularAutoML_gpu):
         # nn model
         time_score = self.get_time_score(n_level, "nn")
         nn_timer = self.timer.get_task_timer("reg_nn", time_score)
-        # nn_model = TorchModel(timer=nn_timer, default_params=self.nn_params)
         nn_model = TorchModel_gpu(timer=nn_timer, default_params=self.nn_params)
 
         text_nn_feats = self.get_nlp_pipe(self.nn_pipeline_params["text_features"])
@@ -389,8 +384,6 @@ class TabularNLPAutoML_gpu(TabularAutoML_gpu):
 
         train_data = fit_args["train_data"]
         self.infer_auto_params(train_data)
-#         reader = HybridReader(task=self.task, **self.reader_params)
-#         reader = CudfReader(task=self.task, **self.reader_params)
         num_data = train_data.shape[0] * train_data.shape[1]
 
         if num_data < 1e8 or self.task.device == 'gpu':

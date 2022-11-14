@@ -141,6 +141,12 @@ class TunableTransformer_gpu(LAMLTransformer):
     """Base class for ML transformers (GPU).
 
     Assume that parameters my set before training.
+
+    Args:
+        default_params: algo hyperparams.
+        freeze_defaults:
+            - ``True`` :  params may be rewritten depending on dataset.
+            - ``False``:  params may be changed only manually or with tuning.
     """
 
     _default_params: dict = {}
@@ -173,15 +179,6 @@ class TunableTransformer_gpu(LAMLTransformer):
         return self.params
 
     def __init__(self, default_params: Optional[dict] = None, freeze_defaults: bool = True):
-        """
-
-        Args:
-            default_params: algo hyperparams.
-            freeze_defaults:
-                - ``True`` :  params may be rewritten depending on dataset.
-                - ``False``:  params may be changed only manually or with tuning.
-
-        """
         self.task = None
 
         self.freeze_defaults = freeze_defaults
@@ -192,7 +189,24 @@ class TunableTransformer_gpu(LAMLTransformer):
 
 
 class TfidfTextTransformer_gpu(TunableTransformer_gpu):
-    """Simple Tfidf vectorizer followed by SVD (GPU)."""
+    """Simple Tfidf vectorizer followed by SVD (GPU).
+
+    Args:
+        default_params: algo hyperparams.
+        freeze_defaults: Flag.
+        subs: Subsample to calculate freqs. If ``None`` - full data.
+        random_state: Random state to take subsample.
+        n_components: Number of components in TruncatedSVD
+        n_oversample: Number os oversample components in TruncatedSVD
+        n_iter: Number of iterations in SVD algorithm
+
+    Note:
+        The behaviour of `freeze_defaults`:
+
+        - ``True`` :  params may be rewritten depending on dataset.
+        - ``False``:  params may be changed only
+          manually or with tuning.
+    """
 
     _fit_checks = (text_check,)
     _transform_checks = ()
@@ -222,25 +236,6 @@ class TfidfTextTransformer_gpu(TunableTransformer_gpu):
         n_oversample: int = 0,
         n_iter: int = 2,
     ):
-        """
-
-        Args:
-            default_params: algo hyperparams.
-            freeze_defaults: Flag.
-            subs: Subsample to calculate freqs. If ``None`` - full data.
-            random_state: Random state to take subsample.
-            n_components: Number of components in TruncatedSVD
-            n_oversample: Number os oversample components in TruncatedSVD
-            n_iter: Number of iterations in SVD algorithm
-
-        Note:
-            The behaviour of `freeze_defaults`:
-
-            - ``True`` :  params may be rewritten depending on dataset.
-            - ``False``:  params may be changed only
-              manually or with tuning.
-
-        """
         super().__init__(default_params, freeze_defaults)
         self.subs = subs
         self.random_state = random_state
@@ -259,7 +254,7 @@ class TfidfTextTransformer_gpu(TunableTransformer_gpu):
         """Get transformer parameters depending on dataset parameters.
 
         Args:
-            dataset: Dataset used for model parmaeters initialization.
+            dataset: Dataset used for model parameters initialization.
 
         Returns:
             Parameters of model.
@@ -559,23 +554,21 @@ class TfidfTextTransformer_gpu(TunableTransformer_gpu):
 
 
 class TokenizerTransformer_gpu(LAMLTransformer):
-    """Simple tokenizer transformer (GPU)."""
+    """Simple tokenizer transformer (GPU).
+
+    Args:
+        tokenizer: text tokenizer.
+    """
 
     _fit_checks = (text_check,)
     _transform_checks = ()
     _fname_prefix = "tokenized_gpu"
 
     def __init__(self, tokenizer: BaseTokenizer_gpu = SimpleEnTokenizer_gpu()):
-        """
-
-        Args:
-            tokenizer: text tokenizer.
-
-        """
         self.tokenizer = tokenizer
 
     # apply tokenization to each text column
-    def tokenize_columns(self, df):
+    def _tokenize_columns(self, df):
         outputs = []
         for col in df.columns:
             pred = self.tokenizer.tokenize(df[col].fillna("").astype(str))
@@ -590,7 +583,7 @@ class TokenizerTransformer_gpu(LAMLTransformer):
 
         # transform
         roles = TextRole()
-        new_df = self.tokenize_columns(df)
+        new_df = self._tokenize_columns(df)
 
         output = dataset.empty()
         output.set_data(new_df, None, {feat: roles for feat in self.features})
@@ -604,7 +597,7 @@ class TokenizerTransformer_gpu(LAMLTransformer):
 
         # Since stemmer works on CPU, here is an unpretty workaround
         if self.tokenizer.stemmer is None:
-            new_df = df.map_partitions(self.tokenize_columns, meta=cudf.DataFrame(columns=new_cols).astype(str)).persist()
+            new_df = df.map_partitions(self._tokenize_columns, meta=cudf.DataFrame(columns=new_cols).astype(str)).persist()
         else:
             gpu_cnt = torch.cuda.device_count()
             outputs, new_cols = [], []
@@ -641,7 +634,17 @@ class TokenizerTransformer_gpu(LAMLTransformer):
 
 
 class SubwordTokenizerTransformer_gpu(LAMLTransformer):
-    """Subword tokenizer transformer (GPU)."""
+    """Subword tokenizer transformer (GPU).
+
+    Args:
+        vocab_path: path to vocabulary .txt file,
+        data_path: .txt file (saved pd.Series) for the tokenizer to be trained on (if vocab is not specified)
+        is_hash: True means vocab is not raw vocab but was transformed with hash_vocab function from cudf,
+        max_length: max number of tokens to leave in one text (exceeding ones would be truncated)
+        tokenizer: ["bpe" or "wordpiece"] if vocab is None. Type of tokenizer to be trained
+        vocab_size: vocabulary size for trained tokenizer
+        save_path: path where trained vocabulary would be saved to
+    """
 
     _fit_checks = (text_check,)
     _transform_checks = ()
@@ -650,18 +653,6 @@ class SubwordTokenizerTransformer_gpu(LAMLTransformer):
     def __init__(self, vocab_path: str = None, data_path: Any = None, is_hash: bool = False, max_length: int = 300,
                  tokenizer: str = "bpe", vocab_size: int = 30000,
                  save_path: str = None):
-        """
-
-        Args:
-            vocab_path: path to vocabulary .txt file,
-            data_path: .txt file (saved pd.Series) for the tokenizer to be trained on (if vocab is not specified)
-            is_hash: True means vocab is not raw vocab but was transformed with hash_vocab function from cudf,
-            max_length: max number of tokens to leave in one text (exceeding ones would be truncated)
-            tokenizer: ["bpe" or "wordpiece"] if vocab is None. Type of tokenizer to be trained
-            vocab_size: vocabulary size for trained tokenizer
-            save_path: path where trained vocabulary would be saved to
-
-        """
         assert vocab_path is not None or data_path is not None, "To use subword tokenizer you need to pass either " \
                                                       "path to tokenizer vocabulary or path to string data to be trained on"
         if vocab_path is None:
@@ -700,7 +691,7 @@ class SubwordTokenizerTransformer_gpu(LAMLTransformer):
 
     # concatenate text columns
     @staticmethod
-    def concat_columns(df, col_name):
+    def _concat_columns(df, col_name):
         outputs = df[df.columns[0]].fillna("").astype(str)
         for col in df.columns[1:]:
             outputs = outputs + " " + df[col].fillna("").astype(str)
@@ -708,7 +699,7 @@ class SubwordTokenizerTransformer_gpu(LAMLTransformer):
         return new_df
 
     # subword tokenize text columns
-    def subword_tokenize_columns(self, df):
+    def _subword_tokenize_columns(self, df):
         outputs = []
         subword_gpu = SubwordTokenizer(self.vocab_path)
         for col in df.columns:
@@ -719,7 +710,7 @@ class SubwordTokenizerTransformer_gpu(LAMLTransformer):
                                return_tensors='cp',
                                truncation=True)
             col_name = self._fname_prefix + "__" + col
-            pred = self.concat_columns(cudf.DataFrame(pred['input_ids']).astype(str), col_name)
+            pred = self._concat_columns(cudf.DataFrame(pred['input_ids']).astype(str), col_name)
             pred = pred[col_name].str.replace_tokens(self.targets, "").str.normalize_spaces()
             outputs.append(pred)
         new_df = cudf.DataFrame(cudf.concat(outputs, axis=1))
@@ -731,7 +722,7 @@ class SubwordTokenizerTransformer_gpu(LAMLTransformer):
 
         # transform
         roles = TextRole()
-        new_df = self.subword_tokenize_columns(df)
+        new_df = self._subword_tokenize_columns(df)
 
         output = dataset.empty()
         output.set_data(new_df, None, {feat: roles for feat in self.features})
@@ -743,7 +734,7 @@ class SubwordTokenizerTransformer_gpu(LAMLTransformer):
         roles = TextRole()
         new_cols = [self._fname_prefix + "__" + col for col in df.columns]
 
-        new_df = df.map_partitions(self.subword_tokenize_columns,
+        new_df = df.map_partitions(self._subword_tokenize_columns,
                                    meta=cudf.DataFrame(columns=new_cols).astype(str)).persist()
 
         output = dataset.empty()
@@ -771,23 +762,21 @@ class SubwordTokenizerTransformer_gpu(LAMLTransformer):
 
 
 class ConcatTextTransformer_gpu(LAMLTransformer):
-    """Concat text features transformer (GPU)."""
+    """Concat text features transformer (GPU).
+
+    Args:
+        special_token: Add special token between columns.
+    """
 
     _fit_checks = (text_check,)
     _transform_checks = ()
     _fname_prefix = "concated_gpu"
 
     def __init__(self, special_token: str = " [SEP] "):
-        """
-
-        Args:
-            special_token: Add special token between columns.
-
-        """
         self.special_token = special_token
 
     # concatenate text columns
-    def concat_columns(self, df):
+    def _concat_columns(self, df):
         col_name = self._fname_prefix + "__" +\
                    "__".join(df.columns)
         outputs = df[df.columns[0]].fillna("").astype(str)
@@ -802,7 +791,7 @@ class ConcatTextTransformer_gpu(LAMLTransformer):
         df = dataset.data
 
         roles = TextRole()
-        new_df = self.concat_columns(df)
+        new_df = self._concat_columns(df)
         # create resulted
         output = dataset.empty()
         output.set_data(new_df, None, {feat: roles for feat in new_df.columns})
@@ -813,7 +802,7 @@ class ConcatTextTransformer_gpu(LAMLTransformer):
 
         roles = TextRole()
         col_name = self._fname_prefix + "__" + "__".join(df.columns)
-        new_df = df.map_partitions(self.concat_columns,
+        new_df = df.map_partitions(self._concat_columns,
                                    meta=cudf.DataFrame(columns=[col_name]).astype(str)).persist()
 
         output = dataset.empty()
@@ -841,7 +830,25 @@ class ConcatTextTransformer_gpu(LAMLTransformer):
         
 
 class AutoNLPWrap_gpu(LAMLTransformer):
-    """Calculate text embeddings (GPU)."""
+    """Calculate text embeddings (GPU).
+
+    Args:
+        model_name: Method for aggregating word embeddings into sentence embedding.
+        transformer_params: Aggregating model parameters.
+        embedding_model: 'fasttext' or 'bpe' - one of torch-nlp word embedding pre-trained models.
+        word_vectors_cache: path to cached word embeddings for 'embedding_model'.
+        cache_dir: If ``None`` - do not cache transformed datasets.
+        bert_model: Name of HuggingFace transformer model.
+        subs: Subsample to calculate freqs. If None - full data.
+        multigpu: Use Data Parallel.
+        random_state: Random state to take subsample.
+        train_fasttext: Train fasttext. ### not used anymore
+        fasttext_params: Fasttext init params. ### not used anymore
+        fasttext_epochs: Number of epochs to train. ### not used anymore
+        verbose: Verbosity.
+        device: Torch device or str.
+        **kwargs: Unused params.
+    """
 
     _fit_checks = (text_check,)
     _transform_checks = ()
@@ -875,27 +882,6 @@ class AutoNLPWrap_gpu(LAMLTransformer):
         lang: str = "en",
         **kwargs: Any,
     ):
-        """
-
-        Args:
-            model_name: Method for aggregating word embeddings
-              into sentence embedding.
-            transformer_params: Aggregating model parameters.
-            embedding_model: 'fasttext' or 'bpe' - one of torch-nlp word embedding pre-trained models.
-            word_vectors_cache: path to cached word embeddings for 'embedding_model'.
-            cache_dir: If ``None`` - do not cache transformed datasets.
-            bert_model: Name of HuggingFace transformer model.
-            subs: Subsample to calculate freqs. If None - full data.
-            multigpu: Use Data Parallel.
-            random_state: Random state to take subsample.
-            train_fasttext: Train fasttext. ### not used anymore
-            fasttext_params: Fasttext init params. ### not used anymore
-            fasttext_epochs: Number of epochs to train. ### not used anymore
-            verbose: Verbosity.
-            device: Torch device or str.
-            **kwargs: Unused params.
-
-        """
         if train_fasttext:
             assert model_name in self._trainable, f"If train fasstext then model must be in {self._trainable}"
 
@@ -987,7 +973,7 @@ class AutoNLPWrap_gpu(LAMLTransformer):
                 "feats": feats,
             }
             names.extend(feats)
-#             logger.info3(f"Feature {i} fitted")
+            logger.info3(f"Feature {i} fitted")
 
             del transformer
             gc.collect()
@@ -1023,7 +1009,7 @@ class AutoNLPWrap_gpu(LAMLTransformer):
                 "feats": feats,
             }
             names.extend(feats)
-#             logger.info3(f"Feature {i} fitted")
+            logger.info3(f"Feature {i} fitted")
 
             del transformer
             gc.collect()
@@ -1064,7 +1050,7 @@ class AutoNLPWrap_gpu(LAMLTransformer):
                 full_hash = get_textarr_hash(df[i].to_pandas()) + get_textarr_hash(self.dicts[i]["feats"])
                 fname = os.path.join(self.cache_dir, full_hash + ".pkl")
                 if os.path.exists(fname):
-#                     logger.info3(f"Load saved dataset for {i}")
+                    logger.info3(f"Load saved dataset for {i}")
                     with open(fname, "rb") as f:
                         new_arr = pickle.load(f)
                 else:
@@ -1078,7 +1064,7 @@ class AutoNLPWrap_gpu(LAMLTransformer):
             output = dataset.empty().to_cupy()
             output.set_data(new_arr, self.dicts[i]["feats"], roles)
             outputs.append(output)
-#             logger.info3(f"Feature {i} transformed")
+            logger.info3(f"Feature {i} transformed")
         # create resulted
         dataset = dataset.empty().to_cupy().concat(outputs)
         # instance-wise sentence embedding normalization
@@ -1097,7 +1083,7 @@ class AutoNLPWrap_gpu(LAMLTransformer):
                 full_hash = get_textarr_hash(df[i].compute().to_pandas()) + get_textarr_hash(self.dicts[i]["feats"])
                 fname = os.path.join(self.cache_dir, full_hash + ".pkl")
                 if os.path.exists(fname):
-#                     logger.info3(f"Load saved dataset for {i}")
+                    logger.info3(f"Load saved dataset for {i}")
                     with open(fname, "rb") as f:
                         new_arr = pickle.load(f)
                 else:
@@ -1111,10 +1097,9 @@ class AutoNLPWrap_gpu(LAMLTransformer):
             new_df = dask_cudf.from_cudf(new_df, npartitions=gpu_cnt).persist()
 
             output = dataset.empty()
-            # output.set_data(new_df, self.dicts[i]["feats"], roles)
             output.set_data(new_df, [f"{i}_{k}" for k in range(new_df.shape[1])], roles)
             outputs.append(output)
-#             logger.info3(f"Feature {i} transformed")
+            logger.info3(f"Feature {i} transformed")
         # create resulted
 
         dataset = dataset.empty().concat(outputs)
@@ -1127,7 +1112,7 @@ class AutoNLPWrap_gpu(LAMLTransformer):
         """Transform tokenized dataset to text embeddings.
 
         Args:
-            dataset: Cupy or Cudf or Daskcudf dataset of text features.
+            dataset: Cudf or Daskcudf dataset of text features.
 
         Returns:
             Cupy or Cudf or Daskcudf dataset with text embeddings.
@@ -1150,12 +1135,13 @@ class AutoNLPWrap_gpu(LAMLTransformer):
         elif mode == "l1":
             return cp.abs(x).sum(axis=1, keepdims=True)
         if mode is not None:
+            logger.info2("Unknown sentence scaler mode: sent_scaler={}, " "no normalization will be used".format(mode))
             pass
-#             logger.info2("Unknown sentence scaler mode: sent_scaler={}, " "no normalization will be used".format(mode))
         return 1
 
     @staticmethod
     def _sentence_norm_map(df: cudf.DataFrame, mode: Optional[str] = None):
+        """Get sentence embedding norm and normalize cudf.DataFrame"""
         x = df.values
         if mode == "l2":
             norm = ((x ** 2).sum(axis=1, keepdims=True)) ** 0.5
