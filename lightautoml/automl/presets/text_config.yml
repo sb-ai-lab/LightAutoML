@@ -189,9 +189,9 @@ gbm_pipeline_params:
   # use groupby features
   use_group_by: False
   # top categorical features to use in groupby transformer
-  top_group_by_categorical: 5
+  top_group_by_categorical: 3
   # top numerical features to use in groupby transformer
-  top_group_by_numerical: 5
+  top_group_by_numerical: 3
   # text_features in gbm feature pipeline. embed or tfidf
   text_features: "embed"
 
@@ -208,9 +208,9 @@ linear_pipeline_params:
   # use groupby features
   use_group_by: False
   # top categorical features to use in groupby transformer
-  top_group_by_categorical: 5
+  top_group_by_categorical: 3
   # top numerical features to use in groupby transformer
-  top_group_by_numerical: 5
+  top_group_by_numerical: 3
   # text_features in linear feature pipeline. embed or tfidf
   text_features: "tfidf"
 

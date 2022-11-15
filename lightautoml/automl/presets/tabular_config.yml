@@ -138,9 +138,9 @@ gbm_pipeline_params:
   # use groupby features
   use_group_by: False
   # top categorical features to use in groupby transformer
-  top_group_by_categorical: 5
+  top_group_by_categorical: 3
   # top numerical features to use in groupby transformer
-  top_group_by_numerical: 5
+  top_group_by_numerical: 3
 
 linear_pipeline_params:
   # max number of categories to generate intersections
@@ -155,9 +155,9 @@ linear_pipeline_params:
   # use groupby features
   use_group_by: False
   # top categorical features to use in groupby transformer
-  top_group_by_categorical: 5
+  top_group_by_categorical: 3
   # top numerical features to use in groupby transformer
-  top_group_by_numerical: 5
+  top_group_by_numerical: 3
 
 timing_params:
   # select timing mode:

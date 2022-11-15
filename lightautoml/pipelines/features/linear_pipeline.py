@@ -72,8 +72,8 @@ class LinearFeatures(FeaturesPipeline, TabularDataFeatures):
         output_categories: bool = True,
         multiclass_te_co: int = 3,
         use_group_by: bool = False,
-        top_group_by_categorical: int = 5,
-        top_group_by_numerical: int = 5,
+        top_group_by_categorical: int = 3,
+        top_group_by_numerical: int = 3,
         **kwargs
     ):
         assert max_bin_count is None or max_bin_count > 1, "Max bin count should be >= 2 or None"

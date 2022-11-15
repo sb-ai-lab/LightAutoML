@@ -440,8 +440,8 @@ class LGBAdvancedPipeline(FeaturesPipeline, TabularDataFeatures):
         output_categories: bool = False,
         fill_na=False,
         use_group_by: bool = False,
-        top_group_by_categorical: int = 5,
-        top_group_by_numerical: int = 5,
+        top_group_by_categorical: int = 3,
+        top_group_by_numerical: int = 3,
         **kwargs
     ):
         super().__init__(
