@@ -439,6 +439,9 @@ class LGBAdvancedPipeline(FeaturesPipeline, TabularDataFeatures):
         auto_unique_co: int = 10,
         output_categories: bool = False,
         fill_na=False,
+        use_group_by: bool = False,
+        top_group_by_categorical: int = 5,
+        top_group_by_numerical: int = 5,
         **kwargs
     ):
         super().__init__(
@@ -450,6 +453,9 @@ class LGBAdvancedPipeline(FeaturesPipeline, TabularDataFeatures):
             auto_unique_co=auto_unique_co,
             output_categories=output_categories,
             ascending_by_cardinality=False,
+            use_group_by=use_group_by,
+            top_group_by_categorical=top_group_by_categorical,
+            top_group_by_numerical=top_group_by_numerical
         )
         self.fill_na = fill_na
 
@@ -536,6 +542,9 @@ class LGBAdvancedPipeline(FeaturesPipeline, TabularDataFeatures):
         # add datetime seasonality
         transformer_list.append(self.get_datetime_seasons(train, NumericRole(np.float32)))
 
+        if self.use_group_by:
+            transformer_list.append(self.get_group_by(train))
+            
         # final pipeline
         union_all = UnionTransformer([x for x in transformer_list if x is not None])
         if self.fill_na:
