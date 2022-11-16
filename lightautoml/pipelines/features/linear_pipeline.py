@@ -92,7 +92,7 @@ class LinearFeatures(FeaturesPipeline, TabularDataFeatures):
             multiclass_te_co=multiclass_te_co,
             use_group_by=use_group_by,
             top_group_by_categorical=top_group_by_categorical,
-            top_group_by_numerical=top_group_by_numerical
+            top_group_by_numerical=top_group_by_numerical,
         )
 
     def create_pipeline(self, train: NumpyOrPandas) -> LAMLTransformer:
@@ -172,10 +172,10 @@ class LinearFeatures(FeaturesPipeline, TabularDataFeatures):
         probs_list.append(self.get_numeric_data(train, prob=True))
         # add difference with base date
         dense_list.append(self.get_datetime_diffs(train))
-        
+
         if self.use_group_by:
             dense_list.append(self.get_group_by(train))
-        
+
         # combine it all together
         # handle probs if exists
         probs_list = [x for x in probs_list if x is not None]

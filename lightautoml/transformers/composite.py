@@ -1,10 +1,8 @@
 """GroupBy (categorical/numerical) features transformer."""
 
-import numpy as np
 
 from ..dataset.roles import NumericRole
 from ..pipelines.utils import get_columns_by_role
-from ..utils.logging import verbosity_to_loglevel
 from .base import LAMLTransformer
 from .utils import GroupByCatIsMode
 from .utils import GroupByCatMode
@@ -15,7 +13,6 @@ from .utils import GroupByNumMax
 from .utils import GroupByNumMin
 from .utils import GroupByNumStd
 from .utils import GroupByProcessor
-
 
 
 class GroupByTransformer(LAMLTransformer):
@@ -45,18 +42,17 @@ class GroupByTransformer(LAMLTransformer):
     @property
     def features(self):
         """Features list."""
-
         return self._features
 
     def __init__(self, num_groups=None, use_cat_groups=True, **kwargs):
-        """
+        """Initialize.
 
         Args:
-            num_groups (list(str)): IDs of functions to use for numeric features.
-            use_cat_groups (boolean): flag to show use for category features.
+            num_groups: IDs of functions to use for numeric features (list(str)).
+            use_cat_groups: flag to show use for category features (boolean).
+            **kwargs: additional params
 
         """
-
         super().__init__()
 
         self.num_groups = (
@@ -83,7 +79,6 @@ class GroupByTransformer(LAMLTransformer):
             self.
 
         """
-
         # set transformer names and add checks
         for check_func in self._fit_checks:
             check_func(dataset)
@@ -162,8 +157,6 @@ class GroupByTransformer(LAMLTransformer):
         Returns:
             NumpyDataset of calculated group features (numeric).
         """
-
-
         # checks here
         super().transform(dataset)
 

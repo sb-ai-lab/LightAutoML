@@ -17,6 +17,7 @@ from pandas import Series
 from ...dataset.base import LAMLDataset
 from ...dataset.np_pd_dataset import NumpyDataset
 from ...dataset.np_pd_dataset import PandasDataset
+from ...dataset.roles import CategoryRole
 from ...dataset.roles import ColumnRole
 from ...dataset.roles import NumericRole
 from ...transformers.base import ChangeRoles
@@ -32,18 +33,15 @@ from ...transformers.categorical import MultiClassTargetEncoder
 from ...transformers.categorical import MultioutputTargetEncoder
 from ...transformers.categorical import OrdinalEncoder
 from ...transformers.categorical import TargetEncoder
+from ...transformers.composite import GroupByTransformer
 from ...transformers.datetime import BaseDiff
 from ...transformers.datetime import DateSeasons
-from ...transformers.numeric import QuantileBinning
-from ..utils import get_columns_by_role
-from ..utils import map_pipeline_names
-
-from ...transformers.composite import GroupByTransformer
-from ...dataset.roles import CategoryRole
 from ...transformers.numeric import FillInf
 from ...transformers.numeric import FillnaMedian
 from ...transformers.numeric import NaNFlags
-from ...transformers.numeric import StandardScaler
+from ...transformers.numeric import QuantileBinning
+from ..utils import get_columns_by_role
+from ..utils import map_pipeline_names
 
 
 NumpyOrPandas = Union[PandasDataset, NumpyDataset]
@@ -220,10 +218,10 @@ class TabularDataFeatures:
 
         self.max_bin_count = 10
         self.sparse_ohe = "auto"
-        
+
         self.top_group_by_categorical = 5
         self.top_group_by_numerical = 5
-        
+
         for k in kwargs:
             self.__dict__[k] = kwargs[k]
 
@@ -554,7 +552,6 @@ class TabularDataFeatures:
             List.
 
         """
-
         cats = get_columns_by_role(train, "Category")
         if len(cats) == 0:
             return []
@@ -580,17 +577,20 @@ class TabularDataFeatures:
 
     def get_top_numeric(self, train: NumpyOrPandas, top_n=5) -> List[str]:
         """Get top numeric features by importance.
+
         If feature importance is not defined,
         or feats has same importance - sort it by unique values counts.
         In second case init param ``ascending_by_cardinality``
         defines how - asc or desc.
+
         Args:
             train: Dataset with train data.
             top_n: Number of top numeric features.
-        Returns:
-            List.
-        """
 
+        Returns:
+            List
+
+        """
         nums = get_columns_by_role(train, "Numeric")
         if len(nums) == 0:
             return []
@@ -598,9 +598,7 @@ class TabularDataFeatures:
         df = DataFrame({"importance": 0, "cardinality": 0}, index=nums)
         # importance if defined
         if self.feats_imp is not None:
-            feats_imp = pd.Series(self.feats_imp.get_features_score()).sort_values(
-                ascending=False
-            )
+            feats_imp = Series(self.feats_imp.get_features_score()).sort_values(ascending=False)
             df["importance"] = feats_imp[feats_imp.index.isin(nums)]
             df["importance"].fillna(-np.inf)
 
@@ -623,23 +621,24 @@ class TabularDataFeatures:
         feats_to_select_numerical: Optional[List[str]] = None,
     ) -> Optional[LAMLTransformer]:
         """Get transformer that calculates group by features.
+
         Note:
             Amount of features is limited to ``self.top_group_by_categorical`` and ``self.top_group_by_numerical`` fields
+
         Args:
             train: Dataset with train data.
             feats_to_select_categorical: features to handle. If ``None`` - default filter.
             feats_to_select_numerical: features to handle. If ``None`` - default filter.
+
         Returns:
             Transformer.
-        """
 
+        """
         cat_feats_to_select = []
         if feats_to_select_categorical is None:
             categories = get_columns_by_role(train, "Category")
             if len(categories) > self.top_group_by_categorical:
-                cat_feats_to_select = self.get_top_categories(
-                    train, self.top_group_by_categorical
-                )
+                cat_feats_to_select = self.get_top_categories(train, self.top_group_by_categorical)
             else:
                 cat_feats_to_select = categories
         else:
@@ -651,14 +650,12 @@ class TabularDataFeatures:
         if feats_to_select_numerical is None:
             numerics = get_columns_by_role(train, "Numeric")
             if len(numerics) > self.top_group_by_numerical:
-                num_feats_to_select = self.get_top_numeric(
-                    train, self.top_group_by_numerical
-                )
+                num_feats_to_select = self.get_top_numeric(train, self.top_group_by_numerical)
             else:
                 num_feats_to_select = numerics
         else:
             num_feats_to_select = feats_to_select_numerical
-        
+
         assert len(num_feats_to_select) > 0
 
         groupby_processing = SequentialTransformer(

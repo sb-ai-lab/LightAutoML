@@ -1,13 +1,9 @@
 """utils for transformers."""
 
-from typing import Tuple
 
 import numpy as np
 
 from scipy.stats import mode
-
-from ..utils.logging import verbosity_to_loglevel
-
 
 
 def get_mode(x):
@@ -38,10 +34,7 @@ class GroupByProcessor:
         assert vectors is not None
 
         if isinstance(functions, list):
-            return [
-                [fun(vec[idx].tolist()) for fun, vec in zip(functions, vectors)]
-                for idx in (self.indices)
-            ]
+            return [[fun(vec[idx].tolist()) for fun, vec in zip(functions, vectors)] for idx in (self.indices)]
         else:
             return [functions(vectors[idx].tolist()) for idx in (self.indices)]
 
@@ -101,7 +94,7 @@ class GroupByBase:
     """
 
     def __init__(self, kind, fit_func, transform_func):
-        """
+        """Initialize.
 
         Args:
             kind (string): Id of group_by feature.
@@ -109,7 +102,6 @@ class GroupByBase:
             transform_func (function): function to calculate statistics based on fitted groups.
 
         """
-
         super().__init__()
 
         self.kind = kind
@@ -125,7 +117,7 @@ class GroupByBase:
         self._dict = dict
 
     def fit(self, data, group_by_processor, feature_column):
-        """Calculate groups
+        """Calculate groups.
 
         Note:
             GroupByProcessor must be initialiaed before call to this function.
@@ -135,8 +127,10 @@ class GroupByBase:
             group_by_processor (GroupByProcessor): processor, containig groups.
             feature_column (string): name of column to calculate statistics.
 
-        """
+        Returns:
+            self
 
+        """
         assert data is not None
         assert group_by_processor is not None
         assert feature_column is not None
@@ -156,7 +150,7 @@ class GroupByBase:
         return self
 
     def transform(self, data, value):
-        """Calculate features statistics
+        """Calculate features statistics.
 
         Note:
             ``fit`` function must be called before ``transform``.
@@ -164,6 +158,9 @@ class GroupByBase:
         Args:
             data (dataset): input data to extract ``value['group_column']`` and ``value['feature_column']``.
             value (dict): colunm names.
+
+        Returns:
+            result
 
         """
         assert data is not None
@@ -176,11 +173,7 @@ class GroupByBase:
         result = self.transform_func(
             tuple(
                 [
-                    np.nan_to_num(
-                        np.array(
-                            np.vectorize(self._dict.get)(group_values), dtype=float
-                        )
-                    ),
+                    np.nan_to_num(np.array(np.vectorize(self._dict.get)(group_values), dtype=float)),
                     feature_values,
                 ]
             )
