@@ -16,6 +16,7 @@ build:
       - asdf install poetry latest
       - asdf global poetry latest
       - poetry config virtualenvs.create false
+      - poetry run python scripts/poetry_fix.py -c
     post_install:
       - poetry install -E all
 
