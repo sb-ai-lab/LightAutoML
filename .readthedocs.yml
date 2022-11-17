@@ -12,7 +12,9 @@ build:
     python: "3.8"
   jobs:
     pre_create_environment:
-      - curl -sSL https://install.python-poetry.org | python3 -
+      - asdf plugin add poetry
+      - asdf install poetry 1.1.5
+      - asdf global poetry 1.1.5
       - poetry config virtualenvs.create false
       - poetry run python scripts/poetry_fix.py -c
     post_install:
