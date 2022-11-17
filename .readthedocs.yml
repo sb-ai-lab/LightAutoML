@@ -13,7 +13,7 @@ build:
   jobs:
     pre_create_environment:
       - asdf plugin add poetry
-      - asdf install poetry latest
+      - asdf install poetry 1.2.0
       - asdf global poetry latest
       - poetry config virtualenvs.create false
       - poetry run python scripts/poetry_fix.py -c
