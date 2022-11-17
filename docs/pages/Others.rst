@@ -15,7 +15,7 @@ Video guides
     * (Russian) `LightAutoML hands-on tutorial in Kaggle Kernels <https://www.youtube.com/watch?v=TYu1UG-E9e8>`_ (`Alexander Ryzhkov <https://kaggle.com/alexryzhkov>`__)
     * (English) `Automated Machine Learning with LightAutoML: theory and practice <https://www.youtube.com/watch?v=4pbO673B9Oo>`_ (`Alexander Ryzhkov <https://kaggle.com/alexryzhkov>`__)
     * (English) `LightAutoML framework general overview, benchmarks and advantages for business <https://vimeo.com/485383651>`_ (`Alexander Ryzhkov <https://kaggle.com/alexryzhkov>`__)
-    * (English) `LightAutoML practical guide - ML pipeline presets overview <https://vimeo.com/487166940>`_` (`Dmitry Simakov <https://kaggle.com/simakov>`__)
+    * (English) `LightAutoML practical guide - ML pipeline presets overview <https://vimeo.com/487166940>`_ (`Dmitry Simakov <https://kaggle.com/simakov>`__)
 
 
 Papers
