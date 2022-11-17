@@ -109,6 +109,10 @@ jupyter-contrib-nbextensions = "0.5.1"
 flake8 = "4.0.1"
 doc8 = "0.10.1"
 rstcheck = "3.3.1"
+astroid = [
+    {version = "2.9.0", python = "~3.6"},
+    {version = ">=2.11.7", python = ">=3.7"}
+]
 
 
 [tool.poetry.extras]
