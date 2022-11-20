@@ -221,7 +221,13 @@ linear_pipeline_params:
   # n_classes to use target encoding for multiclass task
   multiclass_te_co: 3
 
-nn_pipeline_params: {}
+nn_pipeline_params:
+  use_qnt: true
+  n_quantiles: null
+  subsample: 1000000000
+  output_distribution: normal
+  noise: 0.001
+  qnt_factor: 30
 
 timing_params:
   # select timing mode:
