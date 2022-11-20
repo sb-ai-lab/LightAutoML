@@ -1755,6 +1755,7 @@ class MultioutputTargetEncoder_gpu(LAMLTransformer):
         # create resulted
         output = dataset.empty()
         output.set_data(out, self.features, NumericRole(cp.float32, prob=dataset.task.name == "multilabel"))
+        return output
 
     def _transform_daskcudf(self, dataset):
         super().transform(dataset)
@@ -1778,6 +1779,7 @@ class MultioutputTargetEncoder_gpu(LAMLTransformer):
         # create resulted
         output = dataset.empty()
         output.set_data(res, self.features, NumericRole(cp.float32, prob=dataset.task.name == "multilabel"))
+        return output
 
 class CatIntersections_gpu(LabelEncoder_gpu):
     """Build label encoded intersections of categorical variables (GPU version)."""
