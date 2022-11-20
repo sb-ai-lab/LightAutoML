@@ -642,7 +642,7 @@ class PandasToPandasReader(Reader):
             )
             top_scores = pd.concat([null_scores, top_scores], axis=1).max(axis=1)
             rejected = list(top_scores[top_scores < drop_co].index)
-            print("Feats was rejected during automatic roles guess: {0}".format(rejected))
+            logger.info("Feats was rejected during automatic roles guess: {0}".format(rejected))
             new_roles_dict = {**new_roles_dict, **{x: DropRole() for x in rejected}}
 
         return new_roles_dict

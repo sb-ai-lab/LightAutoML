@@ -3,47 +3,46 @@
 import logging
 import os
 from copy import copy, deepcopy
-from typing import Iterable, Optional, Sequence, Union
+from typing import Iterable
+from typing import Optional
+from typing import Sequence
+from typing import Union
 
 import cupy as cp
 import torch
 from pandas import DataFrame
 
-from lightautoml.automl.gpu.blend_gpu import MeanBlender_gpu, WeightedBlender_gpu
+from lightautoml.automl.gpu.blend_gpu import MeanBlender_gpu
+from lightautoml.automl.gpu.blend_gpu import WeightedBlender_gpu
 from lightautoml.automl.presets.base import upd_params
-from lightautoml.automl.presets.tabular_presets import (
-    TabularAutoML,
-    TabularUtilizedAutoML,
-)
-from lightautoml.dataset.gpu.gpu_dataset import CudfDataset, CupyDataset, DaskCudfDataset
+from lightautoml.automl.presets.tabular_presets import TabularAutoML
+from lightautoml.automl.presets.tabular_presets import TabularUtilizedAutoML
+from lightautoml.dataset.gpu.gpu_dataset import CudfDataset
+from lightautoml.dataset.gpu.gpu_dataset import CupyDataset
+from lightautoml.dataset.gpu.gpu_dataset import DaskCudfDataset
 from lightautoml.dataset.np_pd_dataset import NumpyDataset
 from lightautoml.ml_algo.gpu.boost_cb_gpu import BoostCB_gpu
-from lightautoml.ml_algo.gpu.boost_xgb_gpu import BoostXGB, BoostXGB_dask
+from lightautoml.ml_algo.gpu.boost_xgb_gpu import BoostXGB
+from lightautoml.ml_algo.gpu.boost_xgb_gpu import BoostXGB_dask
 from lightautoml.ml_algo.gpu.linear_gpu import LinearLBFGS_gpu
-from lightautoml.ml_algo.tuning.gpu.optuna_gpu import GpuQueue, OptunaTuner_gpu
+from lightautoml.ml_algo.tuning.gpu.optuna_gpu import GpuQueue
+from lightautoml.ml_algo.tuning.gpu.optuna_gpu import OptunaTuner_gpu
 from lightautoml.ml_algo.tuning.optuna import OptunaTuner
-from lightautoml.pipelines.features.gpu.lgb_pipeline_gpu import (
-    LGBAdvancedPipeline_gpu,
-    LGBSimpleFeatures_gpu,
-)
+from lightautoml.pipelines.features.gpu.lgb_pipeline_gpu import LGBAdvancedPipeline_gpu
+from lightautoml.pipelines.features.gpu.lgb_pipeline_gpu import LGBSimpleFeatures_gpu
 from lightautoml.pipelines.features.gpu.linear_pipeline_gpu import LinearFeatures_gpu
 from lightautoml.pipelines.ml.nested_ml_pipe import NestedTabularMLPipeline
-from lightautoml.pipelines.selection.base import ComposedSelector, SelectionPipeline
-from lightautoml.pipelines.selection.importance_based import (
-    ImportanceCutoffSelector,
-    ModelBasedImportanceEstimator,
-)
-from lightautoml.pipelines.selection.permutation_importance_based import (
-    NpIterativeFeatureSelector,
-    NpPermutationImportanceEstimator,
-)
+from lightautoml.pipelines.selection.base import ComposedSelector
+from lightautoml.pipelines.selection.base import SelectionPipeline
+from lightautoml.pipelines.selection.importance_based import ImportanceCutoffSelector
+from lightautoml.pipelines.selection.importance_based import ModelBasedImportanceEstimator
+from lightautoml.pipelines.selection.permutation_importance_based import NpIterativeFeatureSelector
+from lightautoml.pipelines.selection.permutation_importance_based import NpPermutationImportanceEstimator
 from lightautoml.reader.gpu.cudf_reader import CudfReader
 from lightautoml.reader.gpu.daskcudf_reader import DaskCudfReader
-from lightautoml.reader.tabular_batch_generator import (
-    ReadableToDf,
-    read_batch,
-    read_data,
-)
+from lightautoml.reader.tabular_batch_generator import ReadableToDf
+from lightautoml.reader.tabular_batch_generator import read_batch
+from lightautoml.reader.tabular_batch_generator import read_data
 from lightautoml.tasks import Task
 
 GpuDataset = Union[CupyDataset, CudfDataset, DaskCudfDataset]
@@ -90,10 +89,6 @@ class TabularAutoML_gpu(TabularAutoML):
         linear_pipeline_params: Optional[dict] = None,
         client=None,
     ):
-
-        """
-        TBA
-        """
         super(TabularAutoML_gpu.__bases__[0], self).__init__(
             task, timeout, memory_limit, cpu_limit, gpu_ids, timing_params, config_path
         )
@@ -177,13 +172,12 @@ class TabularAutoML_gpu(TabularAutoML):
         if self.general_params["use_algos"] == "auto":
             # TODO: More rules and add cases
             self.general_params["use_algos"] = [["linear_l2", "cb", "xgb"]]
-            # self.general_params["use_algos"] = [["linear_l2", "cb", "cb_tuned"]]
             # self.general_params["use_algos"] = [["xgb", "xgb_tuned", "linear_l2", "cb", "cb_tuned"]]
             if self.task.name == "multiclass" and multilevel_avail:
                 self.general_params["use_algos"].append(["linear_l2", "cb"])
             if (self.task.name == "multi:reg") or (self.task.name == "multilabel"):
-                self.general_params["use_algos"] = [["linear_l2", "cb", "cb_tuned"]]
-                #[["linear_l2", "cb", "pb", "pb_tuned", "cb_tuned"]]
+                self.general_params["use_algos"] = [["linear_l2", "xgb"]]
+                #self.general_params["use_algos"] = [["linear_l2", "xgb", "pb", "pb_tuned", "xgb_tuned"]]
 
         if not self.general_params["nested_cv"]:
             self.nested_cv_params["cv"] = 1
@@ -245,8 +239,7 @@ class TabularAutoML_gpu(TabularAutoML):
             self.reader_params["output"] = "mgpu"
 
     def get_time_score(
-        self, n_level: int, model_type: str, nested: Optional[bool] = None
-    ):
+        self, n_level: int, model_type: str, nested: Optional[bool] = None):
 
         if nested is None:
             nested = self.general_params["nested_cv"]
@@ -303,14 +296,22 @@ class TabularAutoML_gpu(TabularAutoML):
         pre_selector = None
         if mode > 0:
             # if we need selector - define model
-            # timer will be useful to estimate time for next gbm runs
-            time_score = self.get_time_score(n_level, "cb", False)
-
-            sel_timer_0 = self.timer.get_task_timer("cb", time_score)
             selection_feats = LGBSimpleFeatures_gpu()
 
-            selection_gbm = BoostXGB(timer=sel_timer_0, **self.xgb_params)
-            #selection_gbm = BoostCB_gpu(timer=sel_timer_0, **self.cb_params)
+            if (self.task.name == "multi:reg") or (self.task.name == "multilabel"):
+                # timer will be useful to estimate time for next gbm runs
+                time_score = self.get_time_score(n_level, "xgb", False)
+                sel_timer_0 = self.timer.get_task_timer("xgb", time_score)
+                if self.task.device == "gpu":
+                    selection_gbm = BoostXGB(timer=sel_timer_0, **self.xgb_params)
+                elif self.task.device == "mgpu":
+                    selection_gbm = BoostXGB_dask(
+                        client=self.client, timer=sel_timer_0, **self.xgb_params
+                    )
+            else:
+                time_score = self.get_time_score(n_level, "cb", False)
+                sel_timer_0 = self.timer.get_task_timer("cb", time_score)
+                selection_gbm = BoostCB_gpu(timer=sel_timer_0, **self.cb_params)
             selection_gbm.set_prefix("Selector")
 
             if selection_params["importance_type"] == "permutation":
@@ -326,12 +327,20 @@ class TabularAutoML_gpu(TabularAutoML):
                 fit_on_holdout=selection_params["fit_on_holdout"],
             )
             if mode == 2:
-                time_score = self.get_time_score(n_level, "cb", False)
-
-                sel_timer_1 = self.timer.get_task_timer("cb", time_score)
                 selection_feats = LGBSimpleFeatures_gpu()
-                selection_gbm = BoostXGB(timer=sel_timer_1, **self.xgb_params)
-                #selection_gbm = BoostCB_gpu(timer=sel_timer_1, **self.cb_params)
+                if (self.task.name == "multi:reg") or (self.task.name == "multilabel"):
+                    time_score = self.get_time_score(n_level, "xgb", False)
+                    sel_timer_1 = self.timer.get_task_timer("xgb", time_score)
+                    if self.task.device == "gpu":
+                        selection_gbm = BoostXGB(timer=sel_timer_1, **self.xgb_params)
+                    elif self.task.device == "mgpu":
+                        selection_gbm = BoostXGB_dask(
+                            client=self.client, timer=sel_timer_1, **self.xgb_params
+                        )
+                else:
+                    time_score = self.get_time_score(n_level, "cb", False)
+                    sel_timer_1 = self.timer.get_task_timer("cb", time_score)
+                    selection_gbm = BoostCB_gpu(timer=sel_timer_1, **self.cb_params)
                 selection_gbm.set_prefix("Selector")
 
                 # TODO: Check about reusing permutation importance
@@ -699,7 +708,7 @@ class TabularUtilizedAutoML_gpu(TabularUtilizedAutoML):
         """
         if configs_list is None:
             configs_list = [
-                os.path.join(_base_dir, "../tabular_configs_gpu", x)
+                os.path.join(_base_dir, "tabular_configs_gpu", x)
                 for x in [
                     "conf_0_sel_type_0.yml",
                     "conf_1_sel_type_1.yml",

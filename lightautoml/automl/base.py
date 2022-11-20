@@ -9,8 +9,6 @@ from typing import List
 from typing import Optional
 from typing import Sequence
 
-from torch.cuda import device_count
-
 from ..dataset.base import LAMLDataset
 from ..dataset.utils import concatenate
 from ..pipelines.ml.base import MLPipeline
@@ -193,11 +191,6 @@ class AutoML:
         if valid_data is not None:
             valid_dataset = self.reader.read(valid_data, valid_features, add_array_attrs=True)
 
-        #if self.task.device == "mgpu":
-        #    train_dataset = train_dataset.to_daskcudf(device_count())
-        #    if valid_dataset is not None:
-        #        valid_dataset = valid_dataset.to_daskcudf(device_count())
-
         train_valid = create_validation_iterator(train_dataset, valid_dataset, n_folds=None, cv_iter=cv_iter)
         # for pycharm)
         level_predictions = None
@@ -291,8 +284,6 @@ class AutoML:
 
         """
         dataset = self.reader.read(data, features_names=features_names, add_array_attrs=False)
-        #if self.task.device == "mgpu":
-        #    dataset = dataset.to_daskcudf(device_count())
 
         for n, level in enumerate(self.levels, 1):
             # check if last level

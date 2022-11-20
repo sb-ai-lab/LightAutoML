@@ -193,11 +193,11 @@ class CBLoss(Loss):
             self.metric = None
             _metric_dict = _cb_metrics_dict[task_name]
             if task_name == "multi:reg":
-                print("CatBoost supports only MultiRMSE metric and loss for multi:reg task.")
+                logger.info2("CatBoost supports only MultiRMSE metric and loss for multi:reg task.")
                 self.fobj = None
                 self.fobj_name = "MultiRMSE"
             if task_name == "multilabel":
-                print("CatBoost uses as obj. MultiCrossEntropy.")
+                logger.info2("CatBoost uses as obj. MultiCrossEntropy.")
                 self.fobj = None
                 self.fobj_name = "MultiCrossEntropy"
 

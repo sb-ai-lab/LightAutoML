@@ -5,12 +5,6 @@ from typing import Optional
 from typing import Union
 from typing import cast
 
-try:
-    from lightautoml.dataset.gpu.gpu_dataset import CudfDataset, CupyDataset, DaskCudfDataset
-    from lightautoml.validation.gpu.gpu_iterators import get_gpu_iterator
-except ModuleNotFoundError:
-    print("No GPU detected on this machine. Switching to CPU mode")
-
 from ..dataset.base import LAMLDataset
 from ..dataset.np_pd_dataset import CSRSparseDataset
 from ..dataset.np_pd_dataset import NumpyDataset
@@ -19,6 +13,13 @@ from .base import DummyIterator
 from .base import HoldoutIterator
 from .base import TrainValidIterator
 from .np_iterators import get_numpy_iterator
+
+try:
+    from lightautoml.dataset.gpu.gpu_dataset import CudfDataset, CupyDataset, DaskCudfDataset
+    from lightautoml.validation.gpu.gpu_iterators import get_gpu_iterator
+except ModuleNotFoundError:
+    print("No GPU detected on this machine. Switching to CPU mode")
+    pass
 
 
 NpDataset = Union[CSRSparseDataset, NumpyDataset, PandasDataset]

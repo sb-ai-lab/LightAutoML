@@ -2,7 +2,6 @@
 
 import logging
 from copy import copy, deepcopy
-from time import perf_counter
 from typing import Sequence, Tuple, Union
 
 import cudf
@@ -199,7 +198,6 @@ class LinearLBFGS_gpu(TabularMLAlgo_gpu):
             Target predictions for valid dataset.
 
         """
-        st = perf_counter()
         train_target = train.target
         train_weights = train.weights
         valid_target = valid.target
@@ -217,12 +215,8 @@ class LinearLBFGS_gpu(TabularMLAlgo_gpu):
             train_data = train_data.compute().values
             valid_data = valid_data.compute().values
 
-        print(perf_counter() - st, "getting data")
-        st = perf_counter()
         model = self._infer_params()
         model.model = model.model.to(f"cuda:{dev_id}")
-        print(perf_counter() - st, "transfering model")
-        st = perf_counter()
 
         model.fit(
             train_data,
@@ -233,10 +227,7 @@ class LinearLBFGS_gpu(TabularMLAlgo_gpu):
             valid_weights,
             dev_id,
         )
-        print(perf_counter() - st, "fit data")
-        st = perf_counter()
         val_pred = model.predict(valid_data, dev_id)
-        print(perf_counter() - st, "predict data")
         return model, val_pred
 
     def predict_single_fold(

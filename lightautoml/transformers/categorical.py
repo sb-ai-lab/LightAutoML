@@ -833,6 +833,7 @@ class MultioutputTargetEncoder(LAMLTransformer):
             self.features,
             NumericRole(np.float32, prob=dataset.task.name == "multilabel"),
         )
+
         return output
 
     def transform(self, dataset):

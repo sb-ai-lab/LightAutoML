@@ -635,6 +635,7 @@ def get_null_scores(
     empty_slice = train.data.isnull().values
     notnan = empty_slice.sum(axis=0)
     notnan = (notnan != train.shape[0]) & (notnan != 0)
+
     scores = np.zeros(train.shape[1])
     scores_ = calc_ginis(empty_slice[:, notnan], target, None)
     scores[notnan] = scores_

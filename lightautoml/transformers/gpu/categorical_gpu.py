@@ -73,27 +73,22 @@ class LabelEncoder_gpu(LAMLTransformer):
         roles = dataset.roles
         subs = self._get_df(dataset)
         self.dicts = {}
-        map_streams = []
-        for i in range(8):
-            map_streams.append(cp.cuda.stream.Stream())
 
         for num, i in enumerate(subs.columns):
-            with map_streams[num % 8]:
-                role = roles[i]
-                co = role.unknown
-                cnts = (
-                    subs[i]
-                    .value_counts(dropna=False)
-                    .reset_index()
-                    .sort_values([i, "index"], ascending=[False, True])
-                    .set_index("index")
-                )
-                ids = (cnts > co)[cnts.columns[0]]
-                vals = cnts[ids].index
-                self.dicts[i] = cudf.Series(
-                    cp.arange(vals.shape[0], dtype=cp.int32) + 1, index=vals
-                )
-        cp.cuda.Device().synchronize()
+            role = roles[i]
+            co = role.unknown
+            cnts = (
+                subs[i]
+                .value_counts(dropna=False)
+                .reset_index()
+                .sort_values([i, "index"], ascending=[False, True])
+                .set_index("index")
+            )
+            ids = (cnts > co)[cnts.columns[0]]
+            vals = cnts[ids].index
+            self.dicts[i] = cudf.Series(
+                cp.arange(vals.shape[0], dtype=cp.int32) + 1, index=vals
+            )
         return self
 
     def _fit_daskcudf(self, dataset: GpuNumericalDataset):
@@ -171,13 +166,12 @@ class LabelEncoder_gpu(LAMLTransformer):
         return new_arr
 
     def _transform_cupy(self, dataset: GpuNumericalDataset) -> CupyDataset:
-
         dataset = dataset.to_cudf()
         data = dataset.data
         # transform
         # data = self.encode_labels(data).values
         data = self.encode_labels(data)
-        data = data.astype(cp.float64)
+        data = data.astype(self._output_role.dtype)
         data = data.fillna(cp.nan).values.reshape(data.shape)
         # data
         # create resulted
@@ -303,14 +297,12 @@ class OHEEncoder_gpu(LAMLTransformer):
             handle_unknown="ignore",
         )
 
-        max_val = int(max_idx.max())
-        temp_data = cp.ones((len(data.columns), max_val + 1)) * (max_val + 1)
-        for i, col in enumerate(data.columns):
-            uniques = data[col].unique().compute().values
-            temp_data[i][: uniques.shape[0]] = uniques
-
-        # temp_data = cudf.DataFrame(temp_data.T, columns=data.columns)
-        self.ohe.fit(temp_data)
+        #max_val = int(max_idx.max())
+        #temp_data = cp.ones((len(data.columns), max_val + 1)) * (max_val + 1)
+        #for i, col in enumerate(data.columns):
+        #    uniques = data[col].unique().compute().values
+        #    temp_data[i][: uniques.shape[0]] = uniques
+        self.ohe.fit(data.get_partition(0).compute().values)
 
         features = []
         for cats, name in zip(self.ohe.categories_, dataset.features):
@@ -343,8 +335,11 @@ class OHEEncoder_gpu(LAMLTransformer):
         return self
 
     def _call_ohe(self, data: cudf.DataFrame) -> cudf.DataFrame:
-        output = self.ohe.transform(data)
-        return cudf.DataFrame(output, index=data.index, columns=self.features)
+        output = self.ohe.transform(data.values)
+        return cudf.DataFrame(output, columns=self.features)
+
+    def _call_ohe_sparse(self, data):
+        return self.ohe.transform(data)
 
     def _transform_cupy(self, dataset: GpuNumericalDataset) -> CupyDataset:
 
@@ -352,11 +347,12 @@ class OHEEncoder_gpu(LAMLTransformer):
         data = dataset.data
 
         # transform
-        data = self.ohe.transform(data).tocsr()
+        data = self.ohe.transform(data)
 
         # create resulted
         output = dataset.empty()
         if self.make_sparse:
+            data = data.tocsr()
             output = output.to_sparse_gpu()
         output.set_data(data, self.features, NumericRole(self.dtype))
 
@@ -364,14 +360,18 @@ class OHEEncoder_gpu(LAMLTransformer):
 
     def _transform_daskcudf(self, dataset: DaskCudfDataset) -> DaskCudfDataset:
 
-        data = dataset.data.map_partitions(
-            self._call_ohe,
-            meta=cudf.DataFrame(columns=self.features, index=dataset.data.index),
-        )
-
         output = dataset.empty()
+        
         if self.make_sparse:
-            raise NotImplementedError
+            data = dataset.data.to_dask_array(lengths=True,
+                           meta=cp.array(()))
+            data = data.map_blocks(self.ohe.transform)
+            data = data.compute().tocsr()
+            output = output.to_sparse_gpu()
+        else:
+            data = dataset.data.map_partitions(self._call_ohe,
+                   meta=cudf.DataFrame(columns=self.features)
+            )
         output.set_data(data, self.features, NumericRole(self.dtype))
 
         return output
@@ -646,7 +646,7 @@ class TargetEncoder_gpu(LAMLTransformer):
         folds_name = dataset.folds.name
         data = dataset.data.persist()
         data[folds_name] = dataset.folds
-        data[target_name] = dataset.target
+        data[target_name] = dataset.target.astype(cp.int32)
 
         n_folds = int(data[folds_name].max().compute() + 1)
 
@@ -727,7 +727,7 @@ class TargetEncoder_gpu(LAMLTransformer):
                 folds_prior,
             ).persist()
 
-            candidates[target_name] = dataset.target
+            candidates[target_name] = dataset.target.astype(cp.int32)
 
             scores = (
                 candidates.map_partitions(score_func, target_name)
@@ -735,8 +735,7 @@ class TargetEncoder_gpu(LAMLTransformer):
                 .mean(axis=0)
                 .values
             )
-            idx = scores.argmin().get()
-
+            idx = int(scores.argmin().get())
             oof_feats[vec_col] = candidates[candidates.columns[idx]]  # .persist()
             # calc best encoding
             enc = (
@@ -768,7 +767,7 @@ class TargetEncoder_gpu(LAMLTransformer):
         dataset = dataset.to_cupy()
         data = dataset.data
 
-        target = dataset.target  # .astype(cp.int32)
+        target = dataset.target.astype(cp.int32)
         score_func = (
             self.binary_score_func
             if dataset.task.name == "binary"
@@ -793,51 +792,45 @@ class TargetEncoder_gpu(LAMLTransformer):
         folds_prior = (f_sum.sum() - f_sum) / (f_count.sum() - f_count)
         oof_feats = cp.zeros(data.shape, dtype=cp.float32)
 
-        map_streams = []
-        for i in range(8):
-            map_streams.append(cp.cuda.stream.Stream())
-
         for n in range(data.shape[1]):
-            with map_streams[n % 8]:
-                vec = data[:, n]
+            vec = data[:, n]
 
-                # calc folds stats
-                enc_dim = int(vec.max() + 1)
+            # calc folds stats
+            enc_dim = int(vec.max() + 1)
 
-                f_sum = cp.zeros((enc_dim, n_folds), dtype=cp.float32)
-                f_count = cp.zeros((enc_dim, n_folds), dtype=cp.float32)
+            f_sum = cp.zeros((enc_dim, n_folds), dtype=cp.float32)
+            f_count = cp.zeros((enc_dim, n_folds), dtype=cp.float32)
 
-                scatter_add(f_sum, (vec, folds), target)
-                scatter_add(f_count, (vec, folds), 1)
+            scatter_add(f_sum, (vec, folds), target)
+            scatter_add(f_count, (vec, folds), 1)
 
-                # calc total stats
-                t_sum = f_sum.sum(axis=1, keepdims=True)
-                t_count = f_count.sum(axis=1, keepdims=True)
+            # calc total stats
+            t_sum = f_sum.sum(axis=1, keepdims=True)
+            t_count = f_count.sum(axis=1, keepdims=True)
 
-                # calc oof stats
-                oof_sum = t_sum - f_sum
-                oof_count = t_count - f_count
-                # calc candidates alpha
-                candidates = (
-                    (
-                        oof_sum[vec, folds, cp.newaxis]
-                        + alphas * folds_prior[folds, cp.newaxis]
-                    )
-                    / (oof_count[vec, folds, cp.newaxis] + alphas)
-                ).astype(cp.float32)
-                idx = score_func(candidates, target)
+            # calc oof stats
+            oof_sum = t_sum - f_sum
+            oof_count = t_count - f_count
+            # calc candidates alpha
+            candidates = (
+                (
+                    oof_sum[vec, folds, cp.newaxis]
+                    + alphas * folds_prior[folds, cp.newaxis]
+                )
+                / (oof_count[vec, folds, cp.newaxis] + alphas)
+            ).astype(cp.float32)
+            idx = score_func(candidates, target)
 
-                # write best alpha
-                oof_feats[:, n] = candidates[:, idx]
-                # calc best encoding
-                enc = (
-                    (t_sum[:, 0] + alphas[0, idx] * prior)
-                    / (t_count[:, 0] + alphas[0, idx])
-                ).astype(cp.float32)
+            # write best alpha
+            oof_feats[:, n] = candidates[:, idx]
+            # calc best encoding
+            enc = (
+                (t_sum[:, 0] + alphas[0, idx] * prior)
+                / (t_count[:, 0] + alphas[0, idx])
+            ).astype(cp.float32)
 
-                self.encodings.append(enc)
+            self.encodings.append(enc)
 
-        cp.cuda.Device().synchronize()
         output = dataset.empty()
         self.output_role = NumericRole(cp.float32, prob=output.task.name == "binary")
         output.set_data(oof_feats, self.features, self.output_role)
@@ -1461,7 +1454,6 @@ class MultioutputTargetEncoder_gpu(LAMLTransformer):
             return self._transform_cupy(dataset)
 
     def _fit_transform_cupy(self, dataset):
-
         # convert to accepted dtype and get attributes
         dataset = dataset.to_cupy()
 
@@ -1835,10 +1827,7 @@ class CatIntersections_gpu(LabelEncoder_gpu):
                 res = res + "_" + df[col].astype("str")
 
         res = res.hash_values()
-
-        return cudf.DataFrame(
-            res, columns=["({0})".format("__".join(cols))], index=df.index
-        )
+        return res
 
     def _build_df(self, dataset: GpuNumericalDataset) -> GpuNumericalDataset:
         """
@@ -1884,7 +1873,6 @@ class CatIntersections_gpu(LabelEncoder_gpu):
                     unknown=max((dataset.roles[x].unknown for x in comb)),
                     label_encoded=True,
                 )
-
         output = dataset.empty()
         output.set_data(new_df, col_names, roles)
 

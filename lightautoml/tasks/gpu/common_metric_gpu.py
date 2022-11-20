@@ -3,6 +3,8 @@
 from functools import partial
 from typing import Callable, Optional
 
+from sklearn.metrics import f1_score
+
 import cudf
 import cupy as cp
 import dask.array as da
@@ -23,19 +25,19 @@ def log_loss_raw(y_true, y_pred, sample_weight=None, eps = 1e-15):
     else:
         return (loss*sample_weight).sum()/len(loss)
 
-
 def log_loss_gpu(y_true, y_pred, sample_weight=None, eps: float = 1e-15) -> float:
 
     res = None
 
     if isinstance(y_true, da.Array):
-        y_true = y_true.compute()
-        y_pred = y_pred.compute()
-    if y_true.shape == y_pred.shape:
+        y_true = y_true.compute().squeeze()
+        y_pred = y_pred.compute().squeeze()
+        if sample_weight is not None:
+            sample_weight = sample_weight.compute().squeeze()
+    if y_true.shape == y_pred.shape and y_true.ndim>1:
         func = log_loss_raw
     else:
         func = log_loss
-
     res = func(y_true, y_pred, sample_weight=sample_weight, eps=eps)
     return res
 
@@ -55,16 +57,21 @@ def r2_score_gpu(y_true, y_pred) -> float:
 def roc_auc_score_gpu(y_true, y_pred, sample_weight=None) -> float:
 
     if isinstance(y_true, da.Array):
-        output = da.map_blocks(
-            roc_auc_score,
-            y_true,
-            y_pred,
-            meta=cp.array((), dtype=cp.float32),
-            drop_axis=1,
-        )
-        res = cp.array(output.compute()).mean()
-    else:
-        res = roc_auc_score(y_true, y_pred)
+        y_true = y_true.compute().squeeze()
+        y_pred = y_pred.compute().squeeze()
+        if sample_weight is not None:
+            sample_weight = sample_weight.compute().squeeze()
+        #this method is unstable
+        #output = da.map_blocks(
+        #    roc_auc_score,
+        #    y_true,
+        #    y_pred,
+        #    meta=cp.array((), dtype=cp.float32),
+        #    drop_axis=1,
+        #)
+        #res = cp.array(output.compute()).mean()
+    #else:
+    res = roc_auc_score(y_true, y_pred)
     return res
 
 
@@ -309,7 +316,10 @@ def auc_mu_gpu(
 
     """
     if isinstance(y_true, da.Array):
-        raise NotImplementedError
+        y_true = y_true.compute().squeeze()
+        y_pred = y_pred.compute().squeeze()
+        if sample_weight is not None:
+            sample_weight = sample_weight.compute().squeeze()
 
     if not isinstance(y_pred, cp.ndarray):
         raise TypeError("Expected y_pred to be cp.ndarray, got: {}".format(type(y_pred)))
@@ -371,37 +381,44 @@ def auc_mu_gpu(
     return auc_full
 
 
-# TODO: add the support for F1 score
-# class F1Factory:
-#     """
-#     Wrapper for :func:`~sklearn.metrics.f1_score` function.
-#     """
-#
-#     def __init__(self, average: str = 'micro'):
-#         """
-#
-#         Args:
-#             average: Averaging type ('micro', 'macro', 'weighted').
-#
-#         """
-#         self.average = average
-#
-#     def __call__(self, y_true: cp.ndarray, y_pred: cp.ndarray,
-#                  sample_weight: Optional[cp.ndarray] = None) -> float:
-#         """Compute metric.
-#
-#         Args:
-#             y_true: Ground truth target values.
-#             y_pred: Estimated target values.
-#             sample_weight: Sample weights.
-#
-#         Returns:
-#             F1 score of the positive class in binary classification
-#             or weighted average of the F1 scores of each class
-#             for the multiclass task.
-#
-#         """
-#         return f1_score(y_true, y_pred, sample_weight=sample_weight, average=self.average)
+class F1Factory_gpu:
+    """
+    Wrapper for :func:`~sklearn.metrics.f1_score` function.
+    """
+
+    def __init__(self, average: str = 'micro'):
+        """
+
+        Args:
+            average: Averaging type ('micro', 'macro', 'weighted').
+        """
+        self.average = average
+
+    def __call__(self, y_true: cp.ndarray, y_pred: cp.ndarray,
+                  sample_weight: Optional[cp.ndarray] = None) -> float:
+        """Compute metric.
+
+         Args:
+             y_true: Ground truth target values.
+             y_pred: Estimated target values.
+             sample_weight: Sample weights.
+
+         Returns:
+             F1 score of the positive class in binary classification
+             or weighted average of the F1 scores of each class
+             for the multiclass task.
+
+        """
+        if isinstance(y_true, da.Array):
+            y_true = y_true.compute().squeeze()
+            y_pred = y_pred.compute().squeeze()
+            if sample_weight is not None:
+                sample_weight = sample_weight.compute().squeeze()
+        y_true = cp.asnumpy(y_true)
+        y_pred = cp.asnumpy(y_pred)
+        if sample_weight is not None:
+            sample_weight = cp.asnumpy(sample_weight)
+        return f1_score(y_true, y_pred, sample_weight=sample_weight, average=self.average)
 
 
 class BestClassBinaryWrapper_gpu:
@@ -444,7 +461,7 @@ class AccuracyScoreWrapper:
         if type(y_pred) == cp.ndarray:
             return accuracy_score(
                 y_true, y_pred
-            )  # , sample_weight=sample_weight, **kwargs)
+            )  #, sample_weight=sample_weight, **kwargs)
         elif type(y_pred) == da.Array:
             res = dask_accuracy_score(
                 y_true, y_pred
@@ -508,7 +525,7 @@ class BestClassMulticlassWrapper_gpu:
 _valid_str_binary_metric_names_gpu = {
     "auc": roc_auc_score_gpu,
     "logloss": partial(log_loss_gpu, eps=1e-7),
-    "accuracy": BestClassBinaryWrapper_gpu(AccuracyScoreWrapper),
+    "accuracy": BestClassBinaryWrapper_gpu(AccuracyScoreWrapper()),
 }
 
 _valid_str_reg_metric_names_gpu = {
@@ -527,10 +544,9 @@ _valid_str_multiclass_metric_names_gpu = {
     "auc": roc_auc_ovr_gpu,
     "crossentropy": partial(log_loss_gpu, eps=1e-7),
     "accuracy": BestClassMulticlassWrapper_gpu(AccuracyScoreWrapper()),
-    # TODO: uncomment after f1 score support is added
-    # 'f1_macro': BestClassMulticlassWrapper_gpu(F1Factory('macro')),
-    # 'f1_micro': BestClassMulticlassWrapper_gpu(F1Factory('micro')),
-    # 'f1_weighted': BestClassMulticlassWrapper_gpu(F1Factory('weighted')),
+    'f1_macro': BestClassMulticlassWrapper_gpu(F1Factory_gpu('macro')),
+    'f1_micro': BestClassMulticlassWrapper_gpu(F1Factory_gpu('micro')),
+    'f1_weighted': BestClassMulticlassWrapper_gpu(F1Factory_gpu('weighted')),
 }
 
 _valid_str_multireg_metric_names_gpu = {"mse": mean_squared_error_gpu, "mae": mean_absolute_error_gpu}

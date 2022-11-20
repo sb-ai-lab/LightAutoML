@@ -23,6 +23,7 @@ except:
 from lightautoml.dataset.base import (
     IntIdx,
     LAMLDataset,
+    LAMLColumn,
     RolesDict,
     array_attr_roles,
     valid_array_attributes,
@@ -598,14 +599,17 @@ class CudfDataset(PandasDataset):
 
         """
         # check for empty
-        data = None if self.data is None else cp.asarray(self.data.fillna(cp.nan).values)
         roles = self.roles
         features = self.features
         # target and etc ..
         params = dict(((x, self.__dict__[x].values) for x in self._array_like_attrs))
         task = self.task
 
-        return CupyDataset(data, features, roles, task, **params)
+        if self.data is None:
+            return CupyDataset(None, features, roles, task, **params)
+        
+        return CupyDataset(cp.asarray(self.data.fillna(cp.nan).values), 
+                           features, roles, task, **params)
 
     def to_numpy(self) -> NumpyDataset:
         """Convert to class:`NumpyDataset`.

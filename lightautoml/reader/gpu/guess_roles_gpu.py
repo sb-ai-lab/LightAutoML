@@ -2,6 +2,9 @@
 
 from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
+from copy import deepcopy
+
+import torch
 import cudf
 import cupy as cp
 import numpy as np
@@ -32,7 +35,7 @@ GpuFrame = Union[cudf.DataFrame]
 GpuDataset = Union[CudfDataset, CupyDataset]
 
 
-def ginic_gpu(actual: GpuFrame, pred: GpuFrame) -> float:
+def ginic_gpu(actual: GpuFrame, pred: GpuFrame, empty_slice) -> float:
     """Denormalized gini calculation.
 
     Args:
@@ -43,27 +46,12 @@ def ginic_gpu(actual: GpuFrame, pred: GpuFrame) -> float:
         Metric value
 
     """
-    n = actual.shape[0]
-    a_s = actual[cp.argsort(pred)]
-    a_c = a_s.cumsum()
-    gini_sum = a_c.sum() / a_s.sum() - (n + 1) / 2.0
-    return gini_sum / n
-
-
-def ginic_gpu_new(actual: GpuFrame, pred: GpuFrame, empty_slice) -> float:
-    """Denormalized gini calculation.
-
-    Args:
-        actual_pred: array with true and predicted values
-        inds: list of indices for true and predicted values
-
-    Returns:
-        Metric value
-
-    """
-
+    
+    actual[empty_slice] = 0
+    pred[empty_slice] = 0
     n = cp.sum(~empty_slice, axis=0)
-
+    
+    #ids = np.argsort(cp.asnumpy(pred), axis=0)
     ids = cp.argsort(pred, axis=0)
     a_s = cp.take_along_axis(actual, ids, axis=0)
 
@@ -74,25 +62,7 @@ def ginic_gpu_new(actual: GpuFrame, pred: GpuFrame, empty_slice) -> float:
     return gini_sum / n
 
 
-def gini_normalizedc_gpu(a: GpuFrame, p: GpuFrame) -> float:
-    """Calculated normalized gini.
-
-    Args:
-        a_p: array with true and predicted values
-
-    Returns:
-        Metric value.
-
-    """
-    out = ginic_gpu(a, p) / ginic_gpu(a, a)
-
-    assert not cp.isnan(out), "gini index is givin nan, is that ok? {0} and {1}".format(
-        a, p
-    )
-    return out
-
-
-def gini_normalizedc_gpu_new(a: GpuFrame, p: GpuFrame, empty_slice) -> float:
+def gini_normalizedc_gpu(a: GpuFrame, p: GpuFrame, empty_slice) -> float:
     """Calculated normalized gini.
 
     Args:
@@ -103,14 +73,14 @@ def gini_normalizedc_gpu_new(a: GpuFrame, p: GpuFrame, empty_slice) -> float:
 
     """
 
-    out = ginic_gpu_new(a, p, empty_slice) / ginic_gpu_new(a, a, empty_slice)
+    out = ginic_gpu(a, p, empty_slice) / ginic_gpu(a, a, empty_slice)
 
     # assert not cp.isnan(out), 'gini index is givin nan, is that ok? {0} and {1}'.format(a, p)
     return out
 
 
 def gini_normalized_gpu(
-    y: GpuFrame, target: GpuFrame, empty_slice: GpuFrame = None
+    y: GpuFrame, target: GpuFrame, sl: GpuFrame = None
 ) -> float:
     """Calculate normalized gini index for dataframe data.
 
@@ -118,96 +88,39 @@ def gini_normalized_gpu(
         y: data.
         true_cols: columns with true data.
         pred_cols: columns with predict data.
-        empty_slice: Mask.
+        sl: Mask.
 
     Returns:
         Gini value.
 
     """
-
-    if empty_slice is None:
-        empty_slice = cp.isnan(y)
-    all_true = empty_slice.all()
+    if sl is None:
+        sl = cp.isnan(y)
+    all_true = sl.all()
     if all_true:
         return 0.0
 
-    sl = ~empty_slice
-
-    outp_size = 1 if target.ndim <= 1 else target.shape[1]
-    pred_size = 1 if y.ndim <= 1 else y.shape[1]
-
-    ginis = cp.zeros((outp_size,), dtype=cp.float32)
-
-    for i in range(outp_size):
-        j = min(i, pred_size - 1)
-        yp = None
-        if pred_size == 1:
-            yp = y[sl]
-        else:
-            yp = y[:, j][sl]
-        yt = None
-        if outp_size == 1:
-            yt = target[sl]
-        else:
-            yt = target[:, i][sl]
-
-        ginis[i] = gini_normalizedc_gpu(yt, yp)
-
-    return cp.abs(ginis).mean()
-
-
-def gini_normalized_gpu_new(
-    y: GpuFrame, target: GpuFrame, empty_slice: GpuFrame = None
-) -> float:
-    """Calculate normalized gini index for dataframe data.
-
-    Args:
-        y: data.
-        true_cols: columns with true data.
-        pred_cols: columns with predict data.
-        empty_slice: Mask.
-
-    Returns:
-        Gini value.
-
-    """
-
-    if empty_slice is None:
-        empty_slice = cp.isnan(y)
-    all_true = empty_slice.all()
-    if all_true:
-        return 0.0
-
-    sl = empty_slice
     sl = sl.reshape(sl.shape[0], -1)
 
     outp_size = 1 if target.ndim <= 1 else target.shape[1]
     pred_size = 1 if y.ndim <= 1 else y.shape[1]
 
-    index_i = cp.arange(pred_size, dtype=cp.int32)
-    index_i = cp.repeat(index_i, outp_size)
+    index_i = np.arange(pred_size, dtype=np.int32)
+    index_i = np.repeat(index_i, outp_size)
+    index_j = np.arange(outp_size)
+    index_j = np.repeat([index_j], pred_size, axis=0).reshape(-1)
+    y = y.reshape(y.shape[0], -1)
+    target = target.reshape(target.shape[0], -1)
 
-    index_j = cp.arange(len(index_i))
-
-    yp_new = y.reshape(y.shape[0], -1)
-    yp_new[sl] = 0
-
-    yt_new = cp.repeat(target.reshape(target.shape[0], -1), pred_size, axis=0).reshape(
-        target.shape[0], -1
-    )
-    yt_new[cp.repeat(sl, outp_size, axis=1)] = 0
-
-    row_col_const = 20000000
-    batch_size = row_col_const // yt_new.shape[0]
-
+    row_col_const = 200000000
+    batch_size = row_col_const // target.shape[0]
     ginis_new = []
-
     for i in range((index_j.shape[0] // batch_size) + 1):
         end = min((i + 1) * batch_size, index_j.shape[0])
         ginis_new.append(
-            gini_normalizedc_gpu_new(
-                yt_new[:, index_j[i * batch_size : end]],
-                yp_new[:, index_i[i * batch_size : end]],
+            gini_normalizedc_gpu(
+                target[:, index_j[i * batch_size : end]],
+                y[:, index_i[i * batch_size : end]],
                 sl[:, index_i[i * batch_size : end]],
             )
         )
@@ -275,12 +188,9 @@ def calc_ginis_gpu(
     scores = cp.zeros(new_len)
     len_ratio = int(new_len / orig_len)
 
-    index = cp.arange(new_len, dtype=cp.int32)
-    ind = index // len_ratio
-    sl = empty_slice[:, ind]
+    ind = cp.arange(new_len, dtype=cp.int32)//len_ratio
 
-    #scores = gini_normalized_gpu(data, target, sl)
-    scores = gini_normalized_gpu_new(data, target, sl)
+    scores = gini_normalized_gpu(data, target, empty_slice[:, ind])
 
     if len_ratio != 1:
 
@@ -294,6 +204,7 @@ def _get_score_from_pipe_gpu(
     target: GpuDataset,
     pipe: Optional[LAMLTransformer] = None,
     empty_slice: Optional[Union[GpuFrame, cp.ndarray]] = None,
+    dev_id: int = None
 ) -> cp.ndarray:
     """Get normalized gini index from pipeline.
 
@@ -302,17 +213,31 @@ def _get_score_from_pipe_gpu(
         target: gpu Dataset.
         pipe: LAMLTransformer.
         empty_slice: cp.ndarray or gpu DataFrame.
-
+        dev_id: gpu device id for parallel work
     Returns:
-        np.ndarray.
+        cp.ndarray.
 
     """
-
+    if dev_id is not None:
+        cp.cuda.runtime.setDevice(dev_id)
+        if isinstance(train.data, cp.ndarray):
+            #train.data = cp.copy(train.data)
+            train.set_data(cp.copy(train.data), train.features,
+                           train.roles)
+        else:
+            #train.data = train.data.copy()
+            train.set_data(train.data.copy(), None, train.roles)
+        target = cp.copy(target)
+        if empty_slice is not None:
+            if isinstance(empty_slice, cp.ndarray): 
+                empty_slice = cp.copy(empty_slice)
+            else:
+                empty_slice = empty_slice.copy()
     if pipe is not None:
         train = pipe.fit_transform(train)
 
-    data = train.data
-    scores = calc_ginis_gpu(data, target, empty_slice)
+    #data = train.data
+    scores = calc_ginis_gpu(train.data, target, empty_slice)
     return scores
 
 
@@ -420,22 +345,23 @@ def get_score_from_pipe_gpu(
 
     """
     if n_jobs == 1:
-        return _get_score_from_pipe_gpu(train, target, pipe, empty_slice)
+        return _get_score_from_pipe_gpu(train, target, 
+                                        pipe, empty_slice)
 
     idx = np.array_split(np.arange(len(train.features)), n_jobs)
     idx = [x for x in idx if len(x) > 0]
     n_jobs = len(idx)
 
+    n_gpus = torch.cuda.device_count()
+    ids = [i%n_gpus for i in range(n_jobs)]
     names = [[train.features[x] for x in y] for y in idx]
-
+    pipes = [deepcopy(pipe) for i in range(n_jobs)]
     with Parallel(
-        n_jobs=n_jobs, prefer="processes", backend="loky", max_nbytes=None
-    ) as p:
+        n_jobs=n_jobs, prefer="threads") as p:
         res = p(
             delayed(_get_score_from_pipe_gpu)(
-                train[:, name], target, pipe, empty_slice[name]
-            )
-            for name in names
+                train[:, names[i]], target, pipes[i], empty_slice[names[i]], ids[i]
+            ) for i in range(n_jobs)
         )
     return cp.concatenate(list(map(cp.array, res)))
 
@@ -465,7 +391,6 @@ def get_numeric_roles_stat_gpu(
     """
     if manual_roles is None:
         manual_roles = {}
-
     roles_to_identify = []
     flg_manual_set = []
     # check for train dtypes
@@ -502,7 +427,7 @@ def get_numeric_roles_stat_gpu(
         # here need to do the remapping
         # train.data = train.data.sample(subsample, axis=0,
         #                               random_state=random_state)
-        idx = cp.random.RandomState(random_state).permutation(train_len)[:subsample]
+        idx = np.random.RandomState(random_state).permutation(train_len)[:subsample]
         train = train[idx]
         train_len = subsample
     target, encoder = get_target_and_encoder_gpu(train)
@@ -520,6 +445,7 @@ def get_numeric_roles_stat_gpu(
         desc = train.data.nans_to_nulls().astype(object).describe(include="all")
         unique_values = cp.asnumpy(desc.loc["unique"].astype(cp.int32).values[0])
         top_freq_values = cp.asnumpy(desc.loc["freq"].astype(cp.int32).values[0])
+        desc = None
     else:
         raise NotImplementedError
     res["unique"] = unique_values
@@ -547,12 +473,12 @@ def get_numeric_roles_stat_gpu(
     res["freq_scores"] = cp.asnumpy(get_score_from_pipe_gpu(
         train, target, pipe=trf, empty_slice=empty_slice, n_jobs=n_jobs
     ))
-
     if isinstance(empty_slice, cudf.DataFrame):
         res["nan_rate"] = empty_slice.mean(axis=0).values_host
     else:
         raise NotImplementedError
     res = res.fillna(np.nan)
+    
     return res
 
 

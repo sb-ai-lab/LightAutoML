@@ -14,7 +14,8 @@ from lightautoml.dataset.np_pd_dataset import (
     NumpyDataset,
     PandasDataset,
 )
-from lightautoml.ml_algo.tuning.base import Distribution, SearchSpace
+from lightautoml.ml_algo.tuning.base import Choice
+from lightautoml.ml_algo.tuning.base import Uniform
 from lightautoml.pipelines.selection.base import ImportanceEstimator
 from lightautoml.pipelines.utils import get_columns_by_role
 from lightautoml.validation.base import TrainValidIterator
@@ -197,13 +198,10 @@ class BoostCB_gpu(TabularMLAlgo_gpu, ImportanceEstimator):
 
         return suggested_params
 
-    def _get_default_search_spaces(
-        self, suggested_params: Dict, estimated_n_trials: int
-    ) -> Dict:
+    def _get_default_search_spaces(self, suggested_params: Dict, estimated_n_trials: int) -> Dict:
         """Sample hyperparameters from suggested.
 
         Args:
-            trial: Optuna trial object.
             suggested_params: Dict with parameters.
             estimated_n_trials: Maximum number of hyperparameter estimation.
 
@@ -211,7 +209,6 @@ class BoostCB_gpu(TabularMLAlgo_gpu, ImportanceEstimator):
             Dict with sampled hyperparameters.
 
         """
-
         optimization_search_space = {}
 
         try:
@@ -219,19 +216,13 @@ class BoostCB_gpu(TabularMLAlgo_gpu, ImportanceEstimator):
         except AttributeError:
             nan_rate = 0
 
-        optimization_search_space["max_depth"] = SearchSpace(
-            Distribution.INTUNIFORM, low=3, high=7
-        )
+        optimization_search_space["max_depth"] = Uniform(low=3, high=7, q=1)
 
         if nan_rate > 0:
-            optimization_search_space["nan_mode"] = SearchSpace(
-                Distribution.CHOICE, choices=["Max", "Min"]
-            )
+            optimization_search_space["nan_mode"] = Choice(options=["Max", "Min"])
 
         if estimated_n_trials > 20:
-            optimization_search_space["l2_leaf_reg"] = SearchSpace(
-                Distribution.LOGUNIFORM, low=1e-8, high=10.0,
-            )
+            optimization_search_space["l2_leaf_reg"] = Uniform(low=1e-8, high=10.0, log=True)
 
             # optimization_search_space['bagging_temperature'] = trial.suggest_loguniform(
             #     name='bagging_temperature',
@@ -240,15 +231,11 @@ class BoostCB_gpu(TabularMLAlgo_gpu, ImportanceEstimator):
             # )
 
         if estimated_n_trials > 50:
-            optimization_search_space["min_data_in_leaf"] = SearchSpace(
-                Distribution.INTUNIFORM, low=1, high=20
-            )
+            optimization_search_space["min_data_in_leaf"] = Uniform(low=1, high=20, q=1)
 
             # the only case when used this parameter is when categorical columns more than 0
             if len(self._le_cat_features) > 0:
-                optimization_search_space["one_hot_max_size"] = SearchSpace(
-                    Distribution.INTUNIFORM, low=3, high=10
-                )
+                optimization_search_space["one_hot_max_size"] = Uniform(low=3, high=10, q=1)
 
         return optimization_search_space
 
@@ -316,14 +303,15 @@ class BoostCB_gpu(TabularMLAlgo_gpu, ImportanceEstimator):
 
         params, num_trees, early_stopping_rounds, fobj, feval = self._infer_params()
 
-        cb_train = self._get_pool(train)
-        cb_valid = self._get_pool(valid)
+        train = self._get_pool(train)
+        valid = self._get_pool(valid)
 
         if dev_id is None and len(self.gpu_ids) > 1:
             model = cb.CatBoost(
                 {
                     **params,
                     **{
+                        #"gpu_ram_part": 0.7,
                         "num_trees": num_trees,
                         "objective": fobj,
                         "eval_metric": feval,
@@ -337,6 +325,7 @@ class BoostCB_gpu(TabularMLAlgo_gpu, ImportanceEstimator):
                 {
                     **params,
                     **{
+                        #"gpu_ram_part": 0.7,
                         "devices": cur_gpu,
                         "num_trees": num_trees,
                         "objective": fobj,
@@ -346,9 +335,9 @@ class BoostCB_gpu(TabularMLAlgo_gpu, ImportanceEstimator):
                 }
             )
 
-        model.fit(cb_train, eval_set=cb_valid)
+        model.fit(train, eval_set=valid)
 
-        val_pred = self._predict(model, cb_valid, params)
+        val_pred = self._predict(model, valid, params)
         return model, val_pred
 
     def predict_single_fold(

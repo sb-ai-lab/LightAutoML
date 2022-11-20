@@ -2,8 +2,10 @@
 
 import logging
 from copy import copy, deepcopy
-from time import perf_counter
 from typing import Callable, Dict, Optional, Tuple
+
+from dask.distributed import Client
+from dask_cuda import LocalCUDACluster
 
 import cudf
 import cupy as cp
@@ -16,7 +18,7 @@ from torch.cuda import device_count
 from xgboost import dask as dxgb
 
 from lightautoml.dataset.gpu.gpu_dataset import CudfDataset, DaskCudfDataset
-from lightautoml.ml_algo.tuning.base import Distribution, SearchSpace
+from lightautoml.ml_algo.tuning.base import Uniform
 from lightautoml.pipelines.selection.base import ImportanceEstimator
 from lightautoml.validation.base import TrainValidIterator
 
@@ -187,26 +189,16 @@ class BoostXGB(TabularMLAlgo_gpu, ImportanceEstimator):
         """
         optimization_search_space = {}
 
-        optimization_search_space["max_depth"] = SearchSpace(
-            Distribution.INTUNIFORM, low=3, high=7
-        )
+        optimization_search_space["max_depth"] = Uniform(low=3, high=7, q=1)
 
-        optimization_search_space["max_leaves"] = SearchSpace(
-            Distribution.INTUNIFORM, low=16, high=255,
-        )
+        optimization_search_space["max_leaves"] = Uniform(low=16, high=255, q=1)
 
         if estimated_n_trials > 30:
-            optimization_search_space["min_child_weight"] = SearchSpace(
-                Distribution.LOGUNIFORM, low=1e-3, high=10.0,
-            )
+            optimization_search_space["min_child_weight"] = Uniform(low=1e-8, high=10.0, log=True)
 
         if estimated_n_trials > 100:
-            optimization_search_space["reg_alpha"] = SearchSpace(
-                Distribution.LOGUNIFORM, low=1e-8, high=10.0,
-            )
-            optimization_search_space["reg_lambda"] = SearchSpace(
-                Distribution.LOGUNIFORM, low=1e-8, high=10.0,
-            )
+            optimization_search_space["reg_alpha"] = Uniform(low=1e-8, high=10.0, log=True)
+            optimization_search_space["reg_lambda"] = Uniform(low=1e-8, high=10.0, log=True)
 
         return optimization_search_space
 
@@ -225,7 +217,6 @@ class BoostXGB(TabularMLAlgo_gpu, ImportanceEstimator):
         """
         train = train.to_cudf()
         valid = valid.to_cudf()
-        st = perf_counter()
         train_target = train.target
         train_weights = train.weights
         valid_target = valid.target
@@ -268,7 +259,6 @@ class BoostXGB(TabularMLAlgo_gpu, ImportanceEstimator):
                     + str(self._name)
                 )
 
-        cp.cuda.stream.get_current_stream().synchronize()
         (
             params,
             num_trees,
@@ -301,7 +291,6 @@ class BoostXGB(TabularMLAlgo_gpu, ImportanceEstimator):
         val_pred = model.inplace_predict(valid_data)
         val_pred = self.task.losses["xgb"].bw_func(val_pred)
 
-        print(perf_counter() - st, "xgb single fold time")
         with cp.cuda.Device(0):
             val_pred = cp.copy(val_pred)
         return model, val_pred
@@ -362,13 +351,21 @@ class BoostXGB(TabularMLAlgo_gpu, ImportanceEstimator):
 class BoostXGB_dask(BoostXGB):
     def __init__(self, client, *args, **kwargs):
 
-        self.client = client
+        if client is None:
+            self.client = Client(LocalCUDACluster(
+                                     rmm_managed_memory=True,
+                                     protocol='ucx',
+                                     enable_nvlink=True,
+                                     memory_limit="30GB"))
+            self.client.run(cudf.set_allocator, 'managed')
+        else:
+            self.client = client
         super().__init__(*args, **kwargs)
 
     def __deepcopy__(self, memo):
 
         new_inst = type(self).__new__(self.__class__)
-        new_inst.client = self.client
+        new_inst.client = None
 
         for k, v in super().__dict__.items():
             if k != "client":
@@ -400,6 +397,7 @@ class BoostXGB_dask(BoostXGB):
         train_target, train_weight = self.task.losses["xgb"].fw_func(
             train.target, train.weights
         )
+
         valid_target, valid_weight = self.task.losses["xgb"].fw_func(
             valid.target, valid.weights
         )
@@ -416,7 +414,6 @@ class BoostXGB_dask(BoostXGB):
                 #cudf.Series(valid_target), 
                 npartitions=torch.cuda.device_count()
             )
-
         xgb_train = dxgb.DaskDeviceQuantileDMatrix(
             self.client, train.data, label=train_target, weight=train_weight
         )
@@ -434,7 +431,6 @@ class BoostXGB_dask(BoostXGB):
             early_stopping_rounds=early_stopping_rounds,
             verbose_eval=verbose_eval,
         )
-
         val_pred = dxgb.inplace_predict(self.client, model, valid.data)
         val_pred = self.task.losses["xgb"].bw_func(val_pred)
 

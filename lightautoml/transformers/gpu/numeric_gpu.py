@@ -5,6 +5,7 @@ from typing import Union
 import cudf
 import cupy as cp
 import numpy as np
+import dask.array as da
 
 from lightautoml.dataset.gpu.gpu_dataset import CudfDataset, CupyDataset, DaskCudfDataset
 from lightautoml.dataset.np_pd_dataset import NumpyDataset, PandasDataset
@@ -91,7 +92,6 @@ class NaNFlags_gpu(LAMLTransformer):
 
         if len(self.nan_cols) > 0:
             nans = dataset[:, self.nan_cols].data
-
             # transform
             # new_arr = nans.isna().astype(cp.float32)
             new_arr = cp.isnan(nans).astype(cp.float32)
@@ -152,9 +152,8 @@ class FillnaMedian_gpu(LAMLTransformer):
 
     def _fit_daskcudf(self, dataset: DaskCudfDataset):
 
-        self.meds = (
-            dataset.data.dropna().quantile().compute().astype(np.float32).fillna(0.0)
-        )
+        self.meds = da.nanmedian(dataset.data.to_dask_array(lengths=True), axis=0)
+        self.meds = cudf.Series(self.meds.compute(),index=dataset.data.columns).astype(cp.float32).fillna(0.0)
 
         return self
 
@@ -198,6 +197,7 @@ class FillnaMedian_gpu(LAMLTransformer):
 
         data = data.fillna(self.meds)
         output = dataset.empty()
+        
         output.set_data(data, self.features, NumericRole(np.float32))
         return output
 
@@ -441,7 +441,6 @@ class QuantileBinning_gpu(LAMLTransformer):
         self.nbins = nbins
 
     def _fit_cupy(self, dataset: CupyTransformable):
-
         # convert to accepted dtype and get attributes
         dataset = dataset.to_cupy()
         data = dataset.data

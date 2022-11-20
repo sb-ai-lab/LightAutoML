@@ -1,7 +1,13 @@
 """Blenders (GPU version)."""
 
 import logging
-from typing import List, Optional, Sequence, Tuple, Union, cast
+
+from typing import List
+from typing import Optional
+from typing import Sequence
+from typing import Tuple
+from typing import Union
+from typing import cast
 
 import cudf
 import cupy as cp
@@ -10,9 +16,12 @@ import dask.dataframe as dd
 import numpy as np
 from scipy.optimize import minimize_scalar
 
-from lightautoml.automl.blend import MeanBlender, WeightedBlender
+from lightautoml.automl.blend import MeanBlender
+from lightautoml.automl.blend import WeightedBlender
 from lightautoml.dataset.base import LAMLDataset
-from lightautoml.dataset.gpu.gpu_dataset import CudfDataset, CupyDataset, DaskCudfDataset
+from lightautoml.dataset.gpu.gpu_dataset import CudfDataset
+from lightautoml.dataset.gpu.gpu_dataset import CupyDataset
+from lightautoml.dataset.gpu.gpu_dataset import DaskCudfDataset
 from lightautoml.dataset.roles import NumericRole
 from lightautoml.pipelines.ml.base import MLPipeline
 
@@ -24,7 +33,7 @@ GpuDataset = Union[CupyDataset, CudfDataset, DaskCudfDataset]
 
 
 class MeanBlender_gpu(MeanBlender):
-    """Simple average level predictions.
+    """Simple average level predictions (GPU version).
 
     Works only with TabularDatasets.
     Doesn't require target to fit.
@@ -102,9 +111,8 @@ class WeightedBlender_gpu(WeightedBlender):
 
         else:
             weighted_pred = cp.nansum(
-                cp.array([x.data * w for (x, w) in zip(splitted_preds, wts)]), axis=0
-            ).astype(cp.float32)
-
+                #cp.concatenate([x.data * w for (x, w) in zip(splitted_preds, wts)],axis=1), axis=1).astype(cp.float32)
+                cp.array([x.data * w for (x, w) in zip(splitted_preds, wts)]), axis=0).astype(cp.float32)
             not_nulls = cp.sum(
                 cp.array(
                     [

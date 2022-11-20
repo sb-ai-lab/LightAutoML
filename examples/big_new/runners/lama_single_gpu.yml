@@ -1,8 +1,8 @@
 general_params:
   # possible values are list of lists, that describes levels
-  # possible values are ['xgb', 'xgb_tuned', 'linear_l2', 'cb', 'cb_tuned']. List will be extended later
+  # possible values are ['lgb', 'lgb_tuned', 'linear_l2', 'cb', 'cb_tuned']. List will be extended later
   # or 'auto' - configuration will be infered from data
-  # ex.[['xgb', 'xgb_tuned', 'linear_l2', 'cb', 'cb_tuned'], ['xgb', 'linear_l2']] is 3 algos on 1 level, 2 algos on 2 level and blender on 3 level
+  # ex.[['lgb', 'lgb_tuned', 'linear_l2', 'cb', 'cb_tuned'], ['lgb', 'linear_l2']] is 3 algos on 1 level, 2 algos on 2 level and blender on 3 level
   # to define more than 1 level nested_cv_params.cv should be > 1
   use_algos: "auto"
   # nested_cv - True/False. If true, check nested_cv params. Use folds-in-folds cross-validation scheme
@@ -15,7 +15,7 @@ general_params:
   # The smallest weight in weighted blender (if lower - the algo will be dropped from final model)
   weighted_blender_max_nonzero_coef: 0.05
   # If we should try to parallelize multigpu usage across parallel folds
-  parallel_folds: True
+  parallel_folds: False
 
 reader_params:
   # sample of data to perform analysis
@@ -29,9 +29,9 @@ reader_params:
   #num_gpu_readers: 1
   #gpu_ratio: 0.5
   index_ok: True
-  npartitions: 4
+  npartitions: 2
   # it will be used for feature generation
-  cv: 5
+  cv: 3
   # random state for folds creation
   random_state: 42
   # default roles params.
@@ -39,7 +39,7 @@ reader_params:
   # if another will not be passed in roles argument of .fit_predict
   roles_params:
   # n_jobs for advanced roles guess and reading csv files (more RAM needed due to multiprocessing)
-  n_jobs: 1
+  n_jobs: 2
   # If to turn on advanced roles guess. Slower, but shows better quality
   # If role of feature is not defined, reader will guess role in 2 ways:
   #   - simple (numbers as numbers, object as categories or dates if dateformat inferred)
@@ -78,7 +78,7 @@ selection_params:
   # 0 for no selection, 1 - cutoff selection, 2 - iterative selection
   # harder features selection means increasing train time, but much smaller and faster for inference model
   # 1 is good in most cases
-  mode: 1
+  mode: 0
   # importance type permutation/gain
   importance_type: 'gain'
   # pretrain selector on holdout set. True - fast/ False - accurate
@@ -89,7 +89,7 @@ selection_params:
   feature_group_size: 1
   # max features count (mode2)
   max_features_cnt_in_result:
-  # list of algos to apply selector. Possible values - 'gbm', 'linear_l2'. gbm stands for both catboost and xgb
+  # list of algos to apply selector. Possible values - 'gbm', 'linear_l2'. gbm stands for both catboost and lgb
   select_algos: [ 'gbm' ]
 
 tuning_params:
@@ -118,14 +118,14 @@ cb_params:
     task_type: 'GPU'
     thread_count: 100
   freeze_defaults: False
-  #parallel_folds: True
+  parallel_folds: True
 
 # params for LinearLBFGS_gpu MLAlgo
 # no tuner needed for this algo - regularization params are found during fit
 linear_l2_params:
   default_params: { }
   freeze_defaults: False
-  #parallel_folds: True
+  parallel_folds: False
 
 gbm_pipeline_params:
   # max number of categories to generate intersections

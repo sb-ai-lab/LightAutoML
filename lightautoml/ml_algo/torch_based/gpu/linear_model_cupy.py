@@ -396,7 +396,6 @@ class TorchBasedLinearEstimator:
         assert self.model is not None, "Model should be defined"
 
         data, data_cat = self._prepare_data(data, dev_id)
-
         if len(y.shape) == 1:
             y = y[:, cp.newaxis]
         y = torch.as_tensor(y.astype(cp.float32), device=f"cuda:{dev_id}")

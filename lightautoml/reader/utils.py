@@ -6,7 +6,12 @@ from typing import Union
 
 import numpy as np
 
+from sklearn.model_selection import GroupKFold
+from sklearn.model_selection import KFold
+from sklearn.model_selection import StratifiedKFold
+
 gpu_available = True
+
 try:
     import cudf
     import cupy as cp
@@ -14,14 +19,9 @@ try:
 except ModuleNotFoundError:
     gpu_available = False
     print("Warning: GPU is not supported on this machine")
-
-from sklearn.model_selection import GroupKFold
-from sklearn.model_selection import KFold
-from sklearn.model_selection import StratifiedKFold
+    pass
 
 from ..tasks import Task
-
-GpuSeries = Union[cp.ndarray, cudf.Series, dask_cudf.Series]
 
 
 def set_sklearn_folds(
@@ -45,14 +45,15 @@ def set_sklearn_folds(
 
     """
     # GPU PART 
-    if (gpu_available) and (isinstance(target, (cp.ndarray, cudf.Series, cudf.DataFrame, dask_cudf.Series, dask_cudf.DataFrame))):
+    if (gpu_available) and (isinstance(target, (cp.ndarray, cudf.Series,
+        cudf.DataFrame, dask_cudf.Series, dask_cudf.DataFrame))):
         def KFolds_gpu(
-            target: cudf.Series,
+            target: Union[cudf.Series, cudf.DataFrame],
             n_splits: int = 5,
             shuffle: bool = True,
             random_state: int = 42,
         ) -> cudf.Series:
-            """Performs regular KFolds
+            """Performs regular KFolds on GPU
 
             Args:
                 target: Target values.
@@ -144,19 +145,19 @@ def set_sklearn_folds(
 
             return output
     #CPU PART
-    else:
-        if type(cv) is int:
-            if group is not None:
-                split = GroupKFold(cv).split(group, group, group)
-            elif task.name in ["binary", "multiclass"]:
+    if type(cv) is int:
+        if group is not None:
+            split = GroupKFold(cv).split(group, group, group)
+        elif task.name in ["binary", "multiclass"]:
 
-                split = StratifiedKFold(cv, random_state=random_state, shuffle=True).split(target, target)
-            else:
-                split = KFold(cv, random_state=random_state, shuffle=True).split(target, target)
+            split = StratifiedKFold(cv, random_state=random_state, shuffle=True).split(target, target)
+        else:
+            split = KFold(cv, random_state=random_state, shuffle=True).split(target, target)
 
-            folds = np.zeros(target.shape[0], dtype=np.int32)
-            for n, (f0, f1) in enumerate(split):
-                folds[f1] = n
-            return folds
+        folds = np.zeros(target.shape[0], dtype=np.int32)
+        for n, (f0, f1) in enumerate(split):
+            folds[f1] = n
+
+        return folds
 
     return

@@ -177,6 +177,7 @@ class TabularMLAlgo_gpu(TabularMLAlgo):
                         preds_arr[idx] += preds[n].reshape((preds[n].shape[0], -1))
                         counter_arr[idx] += 1
         else:
+
             for n, (idx, train, valid) in enumerate(train_valid_iterator):
                 logger.info(
                     "===== Start working with \x1b[1mfold {}\x1b[0m for \x1b[1m{}\x1b[0m (orig) =====".format(
@@ -252,7 +253,6 @@ class TabularMLAlgo_gpu(TabularMLAlgo):
         preds_arr = None
 
         for model in self.models:
-
             pred = self.predict_single_fold(model, dataset)
 
             if isinstance(

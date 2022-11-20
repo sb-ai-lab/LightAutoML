@@ -12,6 +12,7 @@ from typing import Union
 from ..tasks.base import Task
 from .roles import ColumnRole
 
+
 valid_array_attributes = ("target", "group", "folds", "weights", "date", "id", "treatment")
 array_attr_roles = ("Target", "Group", "Folds", "Weights", "Date", "Id", "Treatment")
 # valid_tasks = ('reg', 'binary', 'multiclass') # TODO: Add multiclass and multilabel. Refactor for some dataset and pipes needed

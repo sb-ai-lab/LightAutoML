@@ -123,7 +123,6 @@ class MLPipeline:
         train_valid = train_valid.apply_selector(self.post_selection)
 
         predictions = []
-
         for ml_algo, param_tuner, force_calc in zip(self._ml_algos, self.params_tuners, self.force_calc):
             ml_algo, preds = tune_and_fit_predict(ml_algo, param_tuner, train_valid, force_calc)
             if ml_algo is not None:

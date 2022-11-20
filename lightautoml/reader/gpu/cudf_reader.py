@@ -127,8 +127,8 @@ class CudfReader(PandasToPandasReader):
     def _prepare_data_and_target(self, train_data, **kwargs):
 
         if isinstance(train_data, (pd.DataFrame, pd.Series)):
-            if self.task == "mgpu":
-                cp.cuda.runtime.setDevice(self.device_num)
+            #if self.task == "mgpu":
+            #    cp.cuda.runtime.setDevice(self.device_num)
             train_data = cudf.from_pandas(train_data, nan_as_null=False)
             for col in train_data.columns:
                 if pd.api.types.is_bool_dtype(train_data[col]):
@@ -139,8 +139,8 @@ class CudfReader(PandasToPandasReader):
             pass
 
         elif isinstance(train_data, (dask_cudf.DataFrame, dask_cudf.Series)):
-            if self.task == "mgpu":
-                cp.cuda.runtime.setDevice(self.device_num)
+            #if self.task == "mgpu":
+            #    cp.cuda.runtime.setDevice(self.device_num)
             train_data = train_data.compute()
             kwargs["target"] = train_data[self.target]
 
@@ -237,15 +237,14 @@ class CudfReader(PandasToPandasReader):
 
         assert len(self.used_features) > 0, "All features are excluded for some reasons"
 
-        folds = set_sklearn_folds(
-            self.task,
-            kwargs["target"],
-            cv=self.cv,
-            random_state=self.random_state,
-            group=None if "group" not in kwargs else kwargs["group"],
-        )
-
-        if folds is not None:
+        if self.cv is not None:
+            folds = set_sklearn_folds(
+                self.task,
+                kwargs["target"],
+                cv=self.cv,
+                random_state=self.random_state,
+                group=None if "group" not in kwargs else kwargs["group"],
+            )
             kwargs["folds"] = folds
 
         # get dataset
@@ -315,8 +314,8 @@ class CudfReader(PandasToPandasReader):
             return target, None
 
         # case - create mapping
-        self.class_mapping = {n: x for (x, n) in enumerate(cp.asnumpy(unqiues))}
-        return target.map(self.class_mapping).astype(cp.int32), class_mapping
+        class_mapping = {n: x for (x, n) in enumerate(cp.asnumpy(unqiues))}
+        return target.map(class_mapping).astype(cp.int32),class_mapping
 
     def _guess_role(self, feature: Series) -> RoleType:
         """Try to infer role, simple way.
@@ -378,14 +377,14 @@ class CudfReader(PandasToPandasReader):
         """
 
         if isinstance(data, (pd.DataFrame, pd.Series)):
-            cp.cuda.runtime.setDevice(self.device_num)
+            #cp.cuda.runtime.setDevice(self.device_num)
             data = cudf.from_pandas(data, nan_as_null=False)
 
         elif isinstance(data, (cudf.DataFrame, cudf.Series)):
             pass
 
         elif isinstance(data, (dask_cudf.DataFrame, dask_cudf.Series)):
-            cp.cuda.runtime.setDevice(self.device_num)
+            #cp.cuda.runtime.setDevice(self.device_num)
             data = data.compute()
 
         elif isinstance(data, (dd.DataFrame, dd.Series)):
@@ -453,7 +452,6 @@ class CudfReader(PandasToPandasReader):
             stat = calc_encoding_rules(stat, **advanced_roles_params)
             new_roles_dict = {**new_roles_dict, **rule_based_roles_guess_gpu(stat)}
             top_scores.append(stat["max_score"])
-
         # # # guess categories handling type
         stat, dtypes = get_category_roles_stat_gpu(
             dataset,
@@ -461,6 +459,7 @@ class CudfReader(PandasToPandasReader):
             subsample=self.samples,
             n_jobs=self.n_jobs,
         )
+        
         if len(stat) > 0:
             # upd stat with rules
 
@@ -471,7 +470,6 @@ class CudfReader(PandasToPandasReader):
                 **rule_based_cat_handler_guess(stat),#, dtypes),
             }
             top_scores.append(stat["max_score"])
-
         # # get top scores of feature
         if len(top_scores) > 0:
             top_scores = pd.concat(top_scores, axis=0)#.to_pandas()
@@ -485,7 +483,7 @@ class CudfReader(PandasToPandasReader):
             top_scores = pd.concat([null_scores, top_scores], axis=1).max(axis=1)
 
             rejected = list(top_scores[top_scores < drop_co].index.values)
-            logger.info(
+            print(
                 "Feats was rejected during automatic roles guess: {0}".format(rejected)
             )
             new_roles_dict = {**new_roles_dict, **{x: DropRole() for x in rejected}}

@@ -5,6 +5,8 @@ from collections import OrderedDict
 from copy import deepcopy
 from typing import Callable, Optional, Sequence, Union
 
+from joblib import Parallel, delayed
+
 import cupy as cp
 import dask_cudf
 import numpy as np
@@ -340,6 +342,12 @@ class TorchBasedLinearEstimator:
                 y_val_slice,
                 weights_val_slice,
             ) = self._prepare_data(data_val, y_val, weights_val, i)
+
+            if not y_slice is None and len(y_slice.shape) == 1:
+                y_slice = torch.reshape(y_slice, (y_slice.shape[0], 1))
+            if not weights_slice is None and len(weights_slice.shape) == 1:
+                weights_slice = torch.reshape(weights_slice, (weights_slice.shape[0], 1))
+
             data_slices.append(data_slice)
             data_cats.append(data_cat)
             y_slices.append(y_slice)
@@ -350,19 +358,44 @@ class TorchBasedLinearEstimator:
             y_slices_val.append(y_val_slice)
             weights_slices_val.append(weights_val_slice)
 
+        def get_optimized_models(optimize, model, data_slice,
+                                 data_cat, y_slice, weights_slice, c):
+            optimize(
+                    model,
+                    data_slice,
+                    data_cat,
+                    y_slice,
+                    weights_slice,
+                    c,
+            )
+            return model
+
         for c in self.cs:
             models = []
             for i in range(len(self.gpu_ids)):
                 models.append(deepcopy(self.model.to(f"cuda:{i}")))
-            for i in range(len(self.gpu_ids)):
-                self._optimize(
+            #for i in range(len(self.gpu_ids)):
+            #    self._optimize(
+            #        models[i],
+            #        data_slices[i],
+            #        data_cats[i],
+            #        y_slices[i],
+            #        weights_slices[i],
+            #        c,
+            #    )
+            with Parallel(n_jobs=len(self.gpu_ids), prefer="threads")as p:
+                res = p(delayed(get_optimized_models)(
+                    self._optimize,
                     models[i],
                     data_slices[i],
                     data_cats[i],
                     y_slices[i],
                     weights_slices[i],
-                    c,
+                    c) for i in range(len(self.gpu_ids))
                 )
+            models = []
+            for elem in res:
+                models.append(elem)
             new_state_dict = OrderedDict()
             for i, it in enumerate(models):
                 it = it.state_dict()
@@ -382,13 +415,17 @@ class TorchBasedLinearEstimator:
             self.model.to("cuda").load_state_dict(new_state_dict)
 
             scores = np.zeros(len(self.gpu_ids))
+
+
             for i in range(len(self.gpu_ids)):
                 model = self.model.to(f"cuda:{i}")
-                val_pred = self._score(model, data_slices_val[i], data_cats_val[i])
+                val_pred = self._score(model, data_slices_val[i],
+                                       data_cats_val[i])
                 # TODO: check if this conversion is necessary
                 scores[i] = cp.asnumpy(
                     self.metric(
-                        cp.asarray(y_slices_val[i]), val_pred, weights_slices_val[i]
+                        cp.asarray(y_slices_val[i]), val_pred,
+                                   weights_slices_val[i]
                     )
                 )
             score = scores.mean()

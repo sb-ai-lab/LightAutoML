@@ -208,15 +208,14 @@ class DaskCudfReader(CudfReader):
                 self._dropped_features.append(feat)
         assert len(self.used_features) > 0, "All features are excluded for some reasons"
 
-        folds = set_sklearn_folds(
-            self.task,
-            kwargs["target"],
-            cv=self.cv,
-            random_state=self.random_state,
-            group=None if "group" not in kwargs else kwargs["group"],
-        )
-
-        if folds is not None:
+        if self.cv is not None:
+            folds = set_sklearn_folds(
+                self.task,
+                kwargs["target"],
+                cv=self.cv,
+                random_state=self.random_state,
+                group=None if "group" not in kwargs else kwargs["group"],
+            )
             kwargs["folds"] = folds
 
         dataset = None
@@ -224,9 +223,9 @@ class DaskCudfReader(CudfReader):
             computed_kwargs = {}
             for item in kwargs:
                 computed_kwargs[item] = kwargs[item].get_partition(0).compute()
-            data = train_data[self.used_features].get_partition(0).compute()
+            subsample = train_data[self.used_features].get_partition(0).compute()
             dataset = CudfDataset(
-                data=data, roles=self.roles, task=self.task, **computed_kwargs
+                data=subsample, roles=self.roles, task=self.task, **computed_kwargs
             )
             new_roles = self.advanced_roles_guess(dataset, manual_roles=parsed_roles)
             droplist = [
@@ -302,7 +301,7 @@ class DaskCudfReader(CudfReader):
             return target.persist(), None
 
             # case - create mapping
-            self.class_mapping = {n: x for (x, n) in enumerate(cp.asnumpy(unqiues))}
+            class_mapping = {n: x for (x, n) in enumerate(cp.asnumpy(unqiues))}
             return target.map(class_mapping).astype(np.int32).persist(), class_mapping
 
     def read(

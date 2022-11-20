@@ -14,6 +14,7 @@ from typing import Union
 import numpy as np
 
 gpu_available = True
+
 try:
     import cudf
     import cupy as cp
@@ -41,13 +42,16 @@ try:
 except ModuleNotFoundError:
     pass
 
+
 if TYPE_CHECKING:
     from ..dataset.base import LAMLDataset
     from ..dataset.np_pd_dataset import NumpyDataset
     from ..dataset.np_pd_dataset import PandasDataset
 
     try:
-        from ..dataset.gpu.gpu_dataset import CudfDataset, CupyDataset, DaskCudfDataset
+        from ..dataset.gpu.gpu_dataset import CudfDataset
+        from ..dataset.gpu.gpu_dataset import CupyDataset
+        from ..dataset.gpu.gpu_dataset import DaskCudfDataset
     except ModuleNotFoundError:
         pass
 
@@ -152,6 +156,7 @@ class ArgsWrapper:
 
         return self.func(y_true, y_pred)
 
+
 class SkMetric(LAMLMetric):
     """Abstract class for scikit-learn compatible metric.
 
@@ -237,6 +242,7 @@ class SkMetric(LAMLMetric):
         value = self.metric(y_true, y_pred, sample_weight=sample_weight)
         sign = 2 * float(self.greater_is_better) - 1
         return value * sign
+
 
 class CumlMetric(SkMetric):
     """Abstract class for cuml compatible metric.
@@ -345,6 +351,7 @@ class DaskmlMetric(SkMetric):
         sign = 2 * float(self.greater_is_better) - 1
         return value * sign
 
+
 class Task:
     """Specify task (binary classification, multiclass classification, regression), metrics, losses.
 
@@ -357,7 +364,6 @@ class Task:
         metric_params: Additional metric parameters.
         greater_is_better: Whether or not higher value is better.
         device: Which mode (CPU or GPU or Multi-GPU) is used for the task.
-
     Note:
         There is 3 different task types:
 
@@ -444,6 +450,7 @@ class Task:
             name, _valid_task_names
         )
         self._name = name
+
         if device is None:
             device = "cpu"
         assert device in [
@@ -473,7 +480,7 @@ class Task:
                 # ??? "rewrite METRIC params" ???
                 if loss == metric:
                     metric_params = loss_params
-                    logger.info2("As loss and metric are equal, metric params are ignored.")
+                    logger.info("As loss and metric are equal, metric params are ignored.")
 
             else:
                 assert (
@@ -494,7 +501,7 @@ class Task:
                 try:
                     self.losses[loss_key] = loss_factory(loss, loss_params=loss_params)
                 except (AssertionError, TypeError, ValueError):
-                    print("{0} doesn't support in general case {1} and will not be used.".format(loss_key, loss))
+                    logger.info("{0} doesn't support in general case {1} and will not be used.".format(loss_key, loss))
 
 
             assert len(self.losses) > 0, "None of frameworks supports {0} loss.".format(loss)
@@ -522,13 +529,10 @@ class Task:
         if type(metric) is str:
 
             self._check_metric_from_params(metric, self.metric_params)
-
             if self.device == "cpu":
                 metric_func = _valid_str_metric_names[self.name][metric]
-
             else:
                 metric_func = _valid_str_metric_names_gpu[self.name][metric]
-
             metric_func = partial(metric_func, **self.metric_params)
             self.metric_func = metric_func
             self.metric_name = metric
@@ -540,12 +544,10 @@ class Task:
             self.metric_name = None
 
         if greater_is_better is None:
-
             if self.device == "cpu":
                 infer_gib_fn = infer_gib_multiclass if (name == "multiclass" or name == "multilabel") else infer_gib
             else:
                 infer_gib_fn = infer_gib_multiclass_gpu if (name == "multiclass" or name == "multilabel") else infer_gib_gpu
-
             greater_is_better = infer_gib_fn(self.metric_func)
 
         self.greater_is_better = greater_is_better
@@ -573,21 +575,21 @@ class Task:
                 name=self.metric_name,
                 one_dim=one_dim,
                 greater_is_better=self.greater_is_better,
-            )
+        )
         elif self.device == "gpu":
             dataset_metric = CumlMetric(
                 self.metric_func,
                 name=self.metric_name,
                 one_dim=one_dim,
                 greater_is_better=self.greater_is_better,
-            )
+        )
         else:
             dataset_metric = DaskmlMetric(
                 self.metric_func,
                 name=self.metric_name,
                 one_dim=one_dim,
                 greater_is_better=self.greater_is_better,
-            )
+        )
 
         return dataset_metric
 
