@@ -14,18 +14,20 @@ if __name__ == "__main__":
     # os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
     device = 'mgpu'
+    n_gpu = torch.cuda.device_count()
+    visible_devices = ",".join([str(i) for i in range(n_gpu)])
 
     from dask.distributed import Client
     from dask_cuda import LocalCUDACluster
-    # Defining a cluster with 2 GPUs. It should be defined before importing libraries that need GPU (e.g., cupy, cudf)
-    cluster = LocalCUDACluster(CUDA_VISIBLE_DEVICES="0,1")
+    # Defining a cluster with all avilable GPUs. It should be defined before importing libraries that need GPU (e.g., cupy, cudf)
+    cluster = LocalCUDACluster(CUDA_VISIBLE_DEVICES=visible_devices)
     client = Client(cluster)
 
     import cudf
 
     # import lightautoml
     from lightautoml.automl.presets.text_presets import TabularNLPAutoML
-    from lightautoml.automl.presets.gpu.text_gpu_presets import TabularNLPAutoML_gpu
+    from lightautoml.automl.presets.gpu.text_gpu_presets import TabularNLPAutoMLGPU
     from lightautoml.tasks import Task
     from lightautoml.dataset.utils import roles_parser
 
@@ -97,7 +99,7 @@ if __name__ == "__main__":
     model_name = 'random_lstm'
 
 
-    automl = TabularNLPAutoML_gpu(task=task,
+    automl = TabularNLPAutoMLGPU(task=task,
                                   timeout=600,
                                   cpu_limit=1,
                                   gpu_ids="0,1",

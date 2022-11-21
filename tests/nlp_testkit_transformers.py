@@ -91,11 +91,13 @@ if __name__ == "__main__":
     from tokenizers.trainers import BpeTrainer, WordPieceTrainer
 
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
+    n_gpu = torch.cuda.device_count()
+    visible_devices = ",".join([str(i) for i in range(n_gpu)])
 
     from dask.distributed import Client
     from dask_cuda import LocalCUDACluster
 
-    cluster = LocalCUDACluster(CUDA_VISIBLE_DEVICES="0,1")
+    cluster = LocalCUDACluster(CUDA_VISIBLE_DEVICES=visible_devices)
     client = Client(cluster)
 
     import cudf
@@ -110,19 +112,19 @@ if __name__ == "__main__":
 
     from lightautoml.text.tokenizer import SimpleRuTokenizer
     from lightautoml.text.tokenizer import SimpleEnTokenizer
-    from lightautoml.text.gpu.tokenizer_gpu import SimpleRuTokenizer_gpu
-    from lightautoml.text.gpu.tokenizer_gpu import SimpleEnTokenizer_gpu
+    from lightautoml.text.gpu.tokenizer_gpu import SimpleRuTokenizerGPU
+    from lightautoml.text.gpu.tokenizer_gpu import SimpleEnTokenizerGPU
 
     from lightautoml.transformers.text import TokenizerTransformer
     from lightautoml.transformers.text import ConcatTextTransformer
     from lightautoml.transformers.text import TfidfTextTransformer
     from lightautoml.transformers.text import AutoNLPWrap
     from lightautoml.transformers.decomposition import SVDTransformer
-    from lightautoml.transformers.gpu.text_gpu import TokenizerTransformer_gpu
-    from lightautoml.transformers.gpu.text_gpu import SubwordTokenizerTransformer_gpu
-    from lightautoml.transformers.gpu.text_gpu import ConcatTextTransformer_gpu
-    from lightautoml.transformers.gpu.text_gpu import TfidfTextTransformer_gpu
-    from lightautoml.transformers.gpu.text_gpu import AutoNLPWrap_gpu
+    from lightautoml.transformers.gpu.text_gpu import TokenizerTransformerGPU
+    from lightautoml.transformers.gpu.text_gpu import SubwordTokenizerTransformerGPU
+    from lightautoml.transformers.gpu.text_gpu import ConcatTextTransformerGPU
+    from lightautoml.transformers.gpu.text_gpu import TfidfTextTransformerGPU
+    from lightautoml.transformers.gpu.text_gpu import AutoNLPWrapGPU
 
     df = prepare_dummy_data()
     check_roles = {
@@ -141,16 +143,13 @@ if __name__ == "__main__":
     print("Checking Concat transformer")
     print("======================================")
     concat = ConcatTextTransformer()
-    concat_gpu = ConcatTextTransformer_gpu()
-    concat_mgpu = ConcatTextTransformer_gpu()
+    concat_gpu = ConcatTextTransformerGPU()
+    concat_mgpu = ConcatTextTransformerGPU()
 
     check_transformer(concat, dataset, transformer_name="concat_cpu", modes=["fit_transform", "transform"])
     check_transformer(concat_gpu, dataset_gpu, transformer_name="concat_gpu", modes=["fit_transform", "transform"])
     check_transformer(concat_mgpu, dataset_mgpu, transformer_name="concat_mgpu", modes=["fit_transform", "transform"])
 
-    # check_transformer_devices([concat, concat_gpu],
-    #                           [dataset, dataset_gpu],
-    #                           transformer_name="concat")
     check_transformer_devices([concat, concat_gpu, concat_mgpu],
                               [dataset, dataset_gpu, dataset_mgpu],
                               transformer_name="concat")
@@ -164,25 +163,21 @@ if __name__ == "__main__":
     token_en = SimpleEnTokenizer(is_stemmer=False)
     token_en_stem = SimpleEnTokenizer(is_stemmer=True)
 
-    token_ru_gpu = SimpleRuTokenizer_gpu(is_stemmer=False)
-    token_ru_stem_gpu = SimpleRuTokenizer_gpu(is_stemmer=True)
-    token_en_gpu = SimpleEnTokenizer_gpu(is_stemmer=False)
-    token_en_stem_gpu = SimpleEnTokenizer_gpu(is_stemmer=True)
+    token_ru_gpu = SimpleRuTokenizerGPU(is_stemmer=False)
+    token_ru_stem_gpu = SimpleRuTokenizerGPU(is_stemmer=True)
+    token_en_gpu = SimpleEnTokenizerGPU(is_stemmer=False)
+    token_en_stem_gpu = SimpleEnTokenizerGPU(is_stemmer=True)
 
     tokens = [token_ru, token_ru_stem, token_en, token_en_stem]
     tokens_gpu = [token_ru_gpu, token_ru_stem_gpu, token_en_gpu, token_en_stem_gpu]
     for i in range(len(tokens)):
         print(f"tokenizer name: {tokens[i].__class__}, stemmer: {True if tokens[i].stemmer is not None else False}")
         tokenizer = TokenizerTransformer(tokenizer=tokens[i])
-        tokenizer_gpu = TokenizerTransformer_gpu(tokenizer=tokens_gpu[i])
+        tokenizer_gpu = TokenizerTransformerGPU(tokenizer=tokens_gpu[i])
 
         check_transformer(tokenizer, dataset, transformer_name="tokenizer_cpu", modes=["fit_transform", "transform"])
         check_transformer(tokenizer_gpu, dataset_gpu, transformer_name="tokenizer_gpu", modes=["fit_transform", "transform"])
         check_transformer(tokenizer_gpu, dataset_mgpu, transformer_name="tokenizer_mgpu", modes=["fit_transform", "transform"])
-
-        # check_transformer_devices([tokenizer, tokenizer_gpu],
-        #                           [dataset, dataset_gpu],
-        #                           transformer_name="concat")
 
         check_transformer_devices([tokenizer, tokenizer_gpu, tokenizer_gpu],
                                   [dataset, dataset_gpu, dataset_mgpu],
@@ -234,7 +229,7 @@ if __name__ == "__main__":
     print("################ Subword tests starting ############################")
     print(f"Setting 1: vocab_path = {vocab_save_path_hash}, data_path = {None}, is_hash = {True},"
           f"max_length = {3}")
-    subword_tokenizer_gpu = SubwordTokenizerTransformer_gpu(vocab_path=vocab_save_path_hash, data_path=None,
+    subword_tokenizer_gpu = SubwordTokenizerTransformerGPU(vocab_path=vocab_save_path_hash, data_path=None,
                                                             is_hash=True, max_length=3)
     check_transformer(subword_tokenizer_gpu, dataset_gpu, transformer_name="subword_tokenizer_gpu", modes=["fit_transform", "transform"])
     check_transformer(subword_tokenizer_gpu, dataset_mgpu, transformer_name="subword_tokenizer_mgpu",
@@ -243,7 +238,7 @@ if __name__ == "__main__":
 
     print(f"Setting 2: vocab_path = {vocab_save_path}, data_path = {None}, is_hash = {False},"
           f"max_length = {30}")
-    subword_tokenizer_gpu = SubwordTokenizerTransformer_gpu(vocab_path=vocab_save_path, data_path=None,
+    subword_tokenizer_gpu = SubwordTokenizerTransformerGPU(vocab_path=vocab_save_path, data_path=None,
                                                             is_hash=False, max_length=30)
     check_transformer(subword_tokenizer_gpu, dataset_gpu, transformer_name="subword_tokenizer_gpu",
                       modes=["fit_transform", "transform"])
@@ -253,7 +248,7 @@ if __name__ == "__main__":
 
     print(f"Setting 3: vocab_path = {None}, data_path = {file_name}, is_hash = {False},"
           f"tokenizer = {'bpe'}, vocab_size = {10}")
-    subword_tokenizer_gpu = SubwordTokenizerTransformer_gpu(vocab_path=None, data_path=file_name,
+    subword_tokenizer_gpu = SubwordTokenizerTransformerGPU(vocab_path=None, data_path=file_name,
                                                             is_hash=False, tokenizer="bpe", vocab_size=10)
     check_transformer(subword_tokenizer_gpu, dataset_gpu, transformer_name="subword_tokenizer_gpu",
                       modes=["fit_transform", "transform"])
@@ -263,7 +258,7 @@ if __name__ == "__main__":
 
     print(f"Setting 4: vocab_path = {None}, data_path = {file_name}, is_hash = {False},"
           f"tokenizer = {'wordpiece'}, vocab_size = {20}")
-    subword_tokenizer_gpu = SubwordTokenizerTransformer_gpu(vocab_path=None, data_path=file_name,
+    subword_tokenizer_gpu = SubwordTokenizerTransformerGPU(vocab_path=None, data_path=file_name,
                                                             is_hash=False, tokenizer="wordpiece", vocab_size=20)
     check_transformer(subword_tokenizer_gpu, dataset_gpu, transformer_name="subword_tokenizer_gpu",
                       modes=["fit_transform", "transform"])
@@ -284,8 +279,8 @@ if __name__ == "__main__":
     n_components = 10
     tfidf = TfidfTextTransformer(default_params=default_params)
     svd = SVDTransformer(n_components=n_components)
-    tfidf_gpu = TfidfTextTransformer_gpu(default_params=default_params, n_components=n_components)
-    tfidf_mgpu = TfidfTextTransformer_gpu(default_params=default_params, n_components=n_components)
+    tfidf_gpu = TfidfTextTransformerGPU(default_params=default_params, n_components=n_components)
+    tfidf_mgpu = TfidfTextTransformerGPU(default_params=default_params, n_components=n_components)
 
     check_transformer(tfidf, dataset, transformer_name="tfidf_cpu", modes=["fit_transform", "transform"])
     check_transformer(tfidf_gpu, dataset_gpu, transformer_name="tfidf_gpu", modes=["fit_transform", "transform"])
@@ -303,8 +298,8 @@ if __name__ == "__main__":
         print("####################################################################")
         print(f"Model = {model}")
         autonlp = AutoNLPWrap(model_name=model)
-        autonlp_gpu = AutoNLPWrap_gpu(model_name=model, embedding_model="fasttext")
-        autonlp_mgpu = AutoNLPWrap_gpu(model_name=model, embedding_model="fasttext")
+        autonlp_gpu = AutoNLPWrapGPU(model_name=model, embedding_model="fasttext")
+        autonlp_mgpu = AutoNLPWrapGPU(model_name=model, embedding_model="fasttext")
 
         check_transformer(autonlp, dataset, transformer_name="autonlp_cpu", modes=["fit_transform", "transform"])
         check_transformer(autonlp_gpu, dataset_gpu, transformer_name="autonlp_gpu", modes=["fit_transform", "transform"])
@@ -316,8 +311,8 @@ if __name__ == "__main__":
         print("####################################################################")
         print(f"Embedding model = {emb_model}")
         autonlp = AutoNLPWrap(model_name="random_lstm")
-        autonlp_gpu = AutoNLPWrap_gpu(model_name="random_lstm", embedding_model=emb_model)
-        autonlp_mgpu = AutoNLPWrap_gpu(model_name="random_lstm", embedding_model=emb_model)
+        autonlp_gpu = AutoNLPWrapGPU(model_name="random_lstm", embedding_model=emb_model)
+        autonlp_mgpu = AutoNLPWrapGPU(model_name="random_lstm", embedding_model=emb_model)
 
         check_transformer(autonlp, dataset, transformer_name="autonlp_cpu", modes=["fit_transform", "transform"])
         check_transformer(autonlp_gpu, dataset_gpu, transformer_name="autonlp_gpu", modes=["fit_transform", "transform"])
@@ -328,8 +323,8 @@ if __name__ == "__main__":
         print("####################################################################")
         print(f"Sent_scaler = {sent_scaler}")
         autonlp = AutoNLPWrap(model_name="random_lstm", sent_scaler=sent_scaler)
-        autonlp_gpu = AutoNLPWrap_gpu(model_name="random_lstm", embedding_model=emb_model, sent_scaler=sent_scaler)
-        autonlp_mgpu = AutoNLPWrap_gpu(model_name="random_lstm", embedding_model=emb_model, sent_scaler=sent_scaler)
+        autonlp_gpu = AutoNLPWrapGPU(model_name="random_lstm", embedding_model=emb_model, sent_scaler=sent_scaler)
+        autonlp_mgpu = AutoNLPWrapGPU(model_name="random_lstm", embedding_model=emb_model, sent_scaler=sent_scaler)
 
         check_transformer(autonlp, dataset, transformer_name="autonlp_cpu", modes=["fit_transform", "transform"])
         check_transformer(autonlp_gpu, dataset_gpu, transformer_name="autonlp_gpu", modes=["fit_transform", "transform"])
@@ -340,8 +335,8 @@ if __name__ == "__main__":
         print("####################################################################")
         print(f"Lang = {lang}")
         autonlp = AutoNLPWrap(model_name="random_lstm", lang=lang)
-        autonlp_gpu = AutoNLPWrap_gpu(model_name="random_lstm", embedding_model=emb_model, lang=lang)
-        autonlp_mgpu = AutoNLPWrap_gpu(model_name="random_lstm", embedding_model=emb_model, lang=lang)
+        autonlp_gpu = AutoNLPWrapGPU(model_name="random_lstm", embedding_model=emb_model, lang=lang)
+        autonlp_mgpu = AutoNLPWrapGPU(model_name="random_lstm", embedding_model=emb_model, lang=lang)
 
         check_transformer(autonlp, dataset, transformer_name="autonlp_cpu", modes=["fit_transform", "transform"])
         check_transformer(autonlp_gpu, dataset_gpu, transformer_name="autonlp_gpu", modes=["fit_transform", "transform"])
