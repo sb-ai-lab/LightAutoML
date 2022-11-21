@@ -20,7 +20,7 @@ from tqdm import tqdm
 logger = logging.getLogger(__name__)
 
 
-class WeightedAverageTransformer_gpu:
+class WeightedAverageTransformerGPU:
     """Weighted average of word embeddings.
 
     Calculate sentence embedding as weighted average of word embeddings.
@@ -37,7 +37,7 @@ class WeightedAverageTransformer_gpu:
         **kwargs: Unused arguments.
     """
 
-    name = "WAT_gpu"
+    name = "WATGPU"
 
     def __init__(
         self,
@@ -49,7 +49,7 @@ class WeightedAverageTransformer_gpu:
         verbose: bool = False,
         **kwargs: Any,
     ):
-        super(WeightedAverageTransformer_gpu, self).__init__()
+        super(WeightedAverageTransformerGPU, self).__init__()
 
         if weight_type not in ["sif", "idf", "1"]:
             raise Exception("weights should be one of ['sif', 'idf', '1']")

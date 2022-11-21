@@ -47,17 +47,17 @@ from lightautoml.dataset.gpu.gpu_dataset import CupySparseDataset
 from lightautoml.dataset.roles import TextRole
 from lightautoml.dataset.roles import NumericRole
 from lightautoml.transformers.base import LAMLTransformer
-from lightautoml.text.gpu.tokenizer_gpu import BaseTokenizer_gpu
-from lightautoml.text.gpu.tokenizer_gpu import SimpleEnTokenizer_gpu
-from lightautoml.text.gpu.tokenizer_gpu import SimpleRuTokenizer_gpu
-from lightautoml.text.gpu.dl_transformers_gpu import BOREP_gpu
-from lightautoml.text.gpu.dl_transformers_gpu import BertEmbedder_gpu
-from lightautoml.text.gpu.dl_transformers_gpu import DLTransformer_gpu
-from lightautoml.text.gpu.dl_transformers_gpu import RandomLSTM_gpu
-from lightautoml.text.gpu.embed_dataset_gpu import EmbedDataset_gpu
-from lightautoml.text.gpu.embed_dataset_gpu import BertDataset_gpu
+from lightautoml.text.gpu.tokenizer_gpu import BaseTokenizerGPU
+from lightautoml.text.gpu.tokenizer_gpu import SimpleEnTokenizerGPU
+from lightautoml.text.gpu.tokenizer_gpu import SimpleRuTokenizerGPU
+from lightautoml.text.gpu.dl_transformers_gpu import BOREPGPU
+from lightautoml.text.gpu.dl_transformers_gpu import BertEmbedderGPU
+from lightautoml.text.gpu.dl_transformers_gpu import DLTransformerGPU
+from lightautoml.text.gpu.dl_transformers_gpu import RandomLSTMGPU
+from lightautoml.text.gpu.embed_dataset_gpu import EmbedDatasetGPU
+from lightautoml.text.gpu.embed_dataset_gpu import BertDatasetGPU
 from lightautoml.text.utils import get_textarr_hash
-from lightautoml.text.gpu.weighted_average_transformer_gpu import WeightedAverageTransformer_gpu
+from lightautoml.text.gpu.weighted_average_transformer_gpu import WeightedAverageTransformerGPU
 
 from lightautoml.transformers.gpu.svd_utils_gpu import _svd_lowrank
 
@@ -71,14 +71,14 @@ GpuNumericalDataset = Union[CupyDataset, CudfDataset, DaskCudfDataset]
 
 model_by_name = {
     "random_lstm": {
-        "model": RandomLSTM_gpu,
+        "model": RandomLSTMGPU,
         "model_params": {
             "embed_size": 300,
             "hidden_size": 256,
             "pooling": "mean",
             "num_layers": 1,
         },
-        "dataset": EmbedDataset_gpu,
+        "dataset": EmbedDatasetGPU,
         "dataset_params": {
             "embedding_model": None,
             "max_length": 200,
@@ -88,21 +88,21 @@ model_by_name = {
         "embedding_model_params": {},
     },
     "random_lstm_bert": {
-        "model": RandomLSTM_gpu,
+        "model": RandomLSTMGPU,
         "model_params": {
             "embed_size": 768,
             "hidden_size": 256,
             "pooling": "mean",
             "num_layers": 1,
         },
-        "dataset": BertDataset_gpu,
+        "dataset": BertDatasetGPU,
         "dataset_params": {"max_length": 256, "model_name": "bert-base-cased"},
         "loader_params": {"batch_size": 320, "shuffle": False, "num_workers": 1},
-        "embedding_model": BertEmbedder_gpu,
+        "embedding_model": BertEmbedderGPU,
         "embedding_model_params": {"model_name": "bert-base-cased", "pooling": "none"},
     },
     "borep": {
-        "model": BOREP_gpu,
+        "model": BOREPGPU,
         "model_params": {
             "embed_size": 300,
             "proj_size": 300,
@@ -111,7 +111,7 @@ model_by_name = {
             "init": "orthogonal",
             "pos_encoding": False,
         },
-        "dataset": EmbedDataset_gpu,
+        "dataset": EmbedDatasetGPU,
         "dataset_params": {
             "embedding_model": None,
             "max_length": 200,
@@ -121,9 +121,9 @@ model_by_name = {
         "embedding_model_params": {},
     },
     "pooled_bert": {
-        "model": BertEmbedder_gpu,
+        "model": BertEmbedderGPU,
         "model_params": {"model_name": "bert-base-cased", "pooling": "mean"},
-        "dataset": BertDataset_gpu,
+        "dataset": BertDatasetGPU,
         "dataset_params": {"max_length": 256, "model_name": "bert-base-cased"},
         "loader_params": {"batch_size": 320, "shuffle": False, "num_workers": 1},
         "embedding_model_params": {},
@@ -137,7 +137,7 @@ model_by_name = {
 }
 
 
-class TunableTransformer_gpu(LAMLTransformer):
+class TunableTransformerGPU(LAMLTransformer):
     """Base class for ML transformers (GPU).
 
     Assume that parameters my set before training.
@@ -188,7 +188,7 @@ class TunableTransformer_gpu(LAMLTransformer):
         self.default_params = {**self._default_params, **default_params}
 
 
-class TfidfTextTransformer_gpu(TunableTransformer_gpu):
+class TfidfTextTransformerGPU(TunableTransformerGPU):
     """Simple Tfidf vectorizer followed by SVD (GPU).
 
     Args:
@@ -210,7 +210,7 @@ class TfidfTextTransformer_gpu(TunableTransformer_gpu):
 
     _fit_checks = (text_check,)
     _transform_checks = ()
-    _fname_prefix = "tfidf_gpu"
+    _fname_prefix = "tfidfGPU"
     _default_params = {
         "min_df": 5, 
         "max_df": 1.0,
@@ -553,7 +553,7 @@ class TfidfTextTransformer_gpu(TunableTransformer_gpu):
             return self._fit_transform_cupy(dataset)
 
 
-class TokenizerTransformer_gpu(LAMLTransformer):
+class TokenizerTransformerGPU(LAMLTransformer):
     """Simple tokenizer transformer (GPU).
 
     Args:
@@ -562,9 +562,9 @@ class TokenizerTransformer_gpu(LAMLTransformer):
 
     _fit_checks = (text_check,)
     _transform_checks = ()
-    _fname_prefix = "tokenized_gpu"
+    _fname_prefix = "tokenizedGPU"
 
-    def __init__(self, tokenizer: BaseTokenizer_gpu = SimpleEnTokenizer_gpu()):
+    def __init__(self, tokenizer: BaseTokenizerGPU = SimpleEnTokenizerGPU()):
         self.tokenizer = tokenizer
 
     # apply tokenization to each text column
@@ -633,7 +633,7 @@ class TokenizerTransformer_gpu(LAMLTransformer):
             return self._transform_cupy(dataset)
 
 
-class SubwordTokenizerTransformer_gpu(LAMLTransformer):
+class SubwordTokenizerTransformerGPU(LAMLTransformer):
     """Subword tokenizer transformer (GPU).
 
     Args:
@@ -648,7 +648,7 @@ class SubwordTokenizerTransformer_gpu(LAMLTransformer):
 
     _fit_checks = (text_check,)
     _transform_checks = ()
-    _fname_prefix = "subword_tokenized_gpu"
+    _fname_prefix = "subword_tokenizedGPU"
 
     def __init__(self, vocab_path: str = None, data_path: Any = None, is_hash: bool = False, max_length: int = 300,
                  tokenizer: str = "bpe", vocab_size: int = 30000,
@@ -761,7 +761,7 @@ class SubwordTokenizerTransformer_gpu(LAMLTransformer):
             return self._transform_cupy(dataset)
 
 
-class ConcatTextTransformer_gpu(LAMLTransformer):
+class ConcatTextTransformerGPU(LAMLTransformer):
     """Concat text features transformer (GPU).
 
     Args:
@@ -770,7 +770,7 @@ class ConcatTextTransformer_gpu(LAMLTransformer):
 
     _fit_checks = (text_check,)
     _transform_checks = ()
-    _fname_prefix = "concated_gpu"
+    _fname_prefix = "concatedGPU"
 
     def __init__(self, special_token: str = " [SEP] "):
         self.special_token = special_token
@@ -829,7 +829,7 @@ class ConcatTextTransformer_gpu(LAMLTransformer):
             return self._transform_cupy(dataset)
         
 
-class AutoNLPWrap_gpu(LAMLTransformer):
+class AutoNLPWrapGPU(LAMLTransformer):
     """Calculate text embeddings (GPU).
 
     Args:
@@ -852,7 +852,7 @@ class AutoNLPWrap_gpu(LAMLTransformer):
 
     _fit_checks = (text_check,)
     _transform_checks = ()
-    _fname_prefix = "emb_gpu"
+    _fname_prefix = "embGPU"
     fasttext_params = {"vector_size": 64, "window": 3, "min_count": 1}
     _names = {"random_lstm", "random_lstm_bert", "pooled_bert", "wat", "borep"}
     _trainable = {"wat", "borep", "random_lstm"}
@@ -918,9 +918,9 @@ class AutoNLPWrap_gpu(LAMLTransformer):
             self.transformer_params = self._update_transformers_emb_model(self.transformer_params, embedding_model, 300)
 
         if self.model_name == "wat":
-            self.transformer = WeightedAverageTransformer_gpu
+            self.transformer = WeightedAverageTransformerGPU
         else:
-            self.transformer = DLTransformer_gpu
+            self.transformer = DLTransformerGPU
 
     def _update_bert_model(self, bert_model: str):
         if bert_model is not None:

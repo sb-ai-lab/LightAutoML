@@ -234,7 +234,7 @@ class SnapshotEns:
         return self
 
 
-class Trainer_gpu:
+class TrainerGPU:
     """Torch main trainer class.
 
     Train, validation and test loops for NN models.

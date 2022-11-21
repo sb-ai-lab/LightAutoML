@@ -3,33 +3,33 @@
 from typing import Any
 
 from lightautoml.dataset.base import LAMLDataset
-from lightautoml.text.gpu.tokenizer_gpu import BaseTokenizer_gpu
-from lightautoml.text.gpu.tokenizer_gpu import SimpleEnTokenizer_gpu
-from lightautoml.text.gpu.tokenizer_gpu import SimpleRuTokenizer_gpu
+from lightautoml.text.gpu.tokenizer_gpu import BaseTokenizerGPU
+from lightautoml.text.gpu.tokenizer_gpu import SimpleEnTokenizerGPU
+from lightautoml.text.gpu.tokenizer_gpu import SimpleRuTokenizerGPU
 from lightautoml.transformers.base import ColumnsSelector
 from lightautoml.transformers.base import LAMLTransformer
 from lightautoml.transformers.base import SequentialTransformer
 from lightautoml.transformers.base import UnionTransformer
-from lightautoml.transformers.gpu.decomp_gpu import SVDTransformer_gpu
-from lightautoml.transformers.gpu.numeric_gpu import StandardScaler_gpu
-from lightautoml.transformers.gpu.text_gpu import AutoNLPWrap_gpu
-from lightautoml.transformers.gpu.text_gpu import ConcatTextTransformer_gpu
-from lightautoml.transformers.gpu.text_gpu import TfidfTextTransformer_gpu
-from lightautoml.transformers.gpu.text_gpu import TokenizerTransformer_gpu
-from lightautoml.transformers.gpu.text_gpu import SubwordTokenizerTransformer_gpu
+from lightautoml.transformers.gpu.decomp_gpu import SVDTransformerGPU
+from lightautoml.transformers.gpu.numeric_gpu import StandardScalerGPU
+from lightautoml.transformers.gpu.text_gpu import AutoNLPWrapGPU
+from lightautoml.transformers.gpu.text_gpu import ConcatTextTransformerGPU
+from lightautoml.transformers.gpu.text_gpu import TfidfTextTransformerGPU
+from lightautoml.transformers.gpu.text_gpu import TokenizerTransformerGPU
+from lightautoml.transformers.gpu.text_gpu import SubwordTokenizerTransformerGPU
 from lightautoml.pipelines.utils import get_columns_by_role
 from lightautoml.pipelines.features.base import FeaturesPipeline
 
 from lightautoml.pipelines.features.text_pipeline import _model_name_by_lang
 
 _tokenizer_by_lang = {
-    "ru": SimpleRuTokenizer_gpu,
-    "en": SimpleEnTokenizer_gpu,
-    "multi": BaseTokenizer_gpu,
+    "ru": SimpleRuTokenizerGPU,
+    "en": SimpleEnTokenizerGPU,
+    "multi": BaseTokenizerGPU,
 }
 
 
-class NLPDataFeatures_gpu:
+class NLPDataFeaturesGPU:
     """
     Class contains basic features transformations for text data.
 
@@ -92,7 +92,7 @@ class NLPDataFeatures_gpu:
             )
 
 
-class TextAutoFeatures_gpu(FeaturesPipeline, NLPDataFeatures_gpu):
+class TextAutoFeaturesGPU(FeaturesPipeline, NLPDataFeaturesGPU):
     """
     Class contains embedding features for text data.
     """
@@ -113,15 +113,15 @@ class TextAutoFeatures_gpu(FeaturesPipeline, NLPDataFeatures_gpu):
         if len(texts) > 0:
             transforms = [ColumnsSelector(keys=texts)]
             if self.is_concat:
-                transforms.append(ConcatTextTransformer_gpu())
+                transforms.append(ConcatTextTransformerGPU())
             if self.is_tokenize_autonlp:
                 transforms.append(
-                    TokenizerTransformer_gpu(
+                    TokenizerTransformerGPU(
                         tokenizer=_tokenizer_by_lang[self.lang](is_stemmer=self.use_stem, stopwords=self.stopwords)
                     )
                 )
             transforms.append(
-                AutoNLPWrap_gpu(
+                AutoNLPWrapGPU(
                     model_name=self.model_name,
                     embedding_model=self.embedding_model,
                     word_vectors_cache=self.word_vectors_cache,
@@ -140,7 +140,7 @@ class TextAutoFeatures_gpu(FeaturesPipeline, NLPDataFeatures_gpu):
                 )
             )
             if self.embed_scaler == "standard":
-                transforms.append(StandardScaler_gpu())
+                transforms.append(StandardScalerGPU())
 
             text_processing = SequentialTransformer(transforms)
             transformers_list.append(text_processing)
@@ -150,7 +150,7 @@ class TextAutoFeatures_gpu(FeaturesPipeline, NLPDataFeatures_gpu):
         return union_all
 
 
-class NLPTFiDFFeatures_gpu(FeaturesPipeline, NLPDataFeatures_gpu):
+class NLPTFiDFFeaturesGPU(FeaturesPipeline, NLPDataFeaturesGPU):
     """
     Class contains tfidf features for text data.
     """
@@ -172,10 +172,10 @@ class NLPTFiDFFeatures_gpu(FeaturesPipeline, NLPDataFeatures_gpu):
         if len(texts) > 0:
             transforms = [
                 ColumnsSelector(keys=texts),
-                TokenizerTransformer_gpu(
+                TokenizerTransformerGPU(
                     tokenizer=_tokenizer_by_lang[self.lang](is_stemmer=self.use_stem, stopwords=self.stopwords)
                 ),
-                TfidfTextTransformer_gpu(default_params=self.tfidf_params, subs=None, random_state=42, n_components=self.n_components),
+                TfidfTextTransformerGPU(default_params=self.tfidf_params, subs=None, random_state=42, n_components=self.n_components),
             ]
 
             text_processing = SequentialTransformer(transforms)
@@ -186,7 +186,7 @@ class NLPTFiDFFeatures_gpu(FeaturesPipeline, NLPDataFeatures_gpu):
         return union_all
     
     
-class NLPTFiDFFeatures_subword_gpu(FeaturesPipeline, NLPDataFeatures_gpu):
+class NLPTFiDFFeaturesSubwordGPU(FeaturesPipeline, NLPDataFeaturesGPU):
     """
     Class contains tfidf features for text data.
     """
@@ -208,11 +208,11 @@ class NLPTFiDFFeatures_subword_gpu(FeaturesPipeline, NLPDataFeatures_gpu):
         if len(texts) > 0:
             transforms = [
                 ColumnsSelector(keys=texts),
-                SubwordTokenizerTransformer_gpu(vocab_path=self.vocab_path, data_path=self.data_path,
+                SubwordTokenizerTransformerGPU(vocab_path=self.vocab_path, data_path=self.data_path,
                                                 is_hash=self.is_hash,
                                                 max_length=self.max_length, tokenizer=self.tokenizer,
                                                 vocab_size=self.vocab_size, save_path=self.tokenizer_save_path),
-                TfidfTextTransformer_gpu(default_params=self.tfidf_params, subs=None, random_state=42,
+                TfidfTextTransformerGPU(default_params=self.tfidf_params, subs=None, random_state=42,
                                          n_components=self.n_components),
             ]
 
@@ -224,7 +224,7 @@ class NLPTFiDFFeatures_subword_gpu(FeaturesPipeline, NLPDataFeatures_gpu):
         return union_all
 
 
-class TextBertFeatures_gpu(FeaturesPipeline, NLPDataFeatures_gpu):
+class TextBertFeaturesGPU(FeaturesPipeline, NLPDataFeaturesGPU):
     """
     Features pipeline for BERT.
     """
@@ -247,7 +247,7 @@ class TextBertFeatures_gpu(FeaturesPipeline, NLPDataFeatures_gpu):
             text_processing = SequentialTransformer(
                 [
                     ColumnsSelector(keys=texts),
-                    ConcatTextTransformer_gpu(),
+                    ConcatTextTransformerGPU(),
                 ]
             )
             transformers_list.append(text_processing)

@@ -19,7 +19,7 @@ except:
     warnings.warn("'transformers' - package isn't installed")
 
 
-class BertDataset_gpu:
+class BertDatasetGPU:
     """Dataset class with transformers tokenization.
 
     Class for preparing transformers input.
@@ -48,7 +48,7 @@ class BertDataset_gpu:
         return len(self.sentences)
 
 
-class EmbedDataset_gpu:
+class EmbedDatasetGPU:
     """Dataset class for extracting word embeddings.
 
     Class for transforming list of tokens to dict of embeddings and sentence length.

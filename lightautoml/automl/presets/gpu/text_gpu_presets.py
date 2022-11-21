@@ -20,22 +20,22 @@ from lightautoml.dataset.gpu.gpu_dataset import CupyDataset
 from lightautoml.dataset.gpu.gpu_dataset import CudfDataset
 from lightautoml.dataset.gpu.gpu_dataset import DaskCudfDataset
 from lightautoml.dataset.np_pd_dataset import NumpyDataset
-from lightautoml.ml_algo.gpu.boost_cb_gpu import BoostCB_gpu
+from lightautoml.ml_algo.gpu.boost_cb_gpu import BoostCBGPU
 from lightautoml.ml_algo.gpu.boost_xgb_gpu import BoostXGB
 from lightautoml.ml_algo.gpu.boost_xgb_gpu import BoostXGB_dask
-from lightautoml.ml_algo.gpu.linear_gpu import LinearLBFGS_gpu
+from lightautoml.ml_algo.gpu.linear_gpu import LinearLBFGSGPU
 from lightautoml.ml_algo.dl_model import TorchModel
-from lightautoml.ml_algo.gpu.dl_model_gpu import TorchModel_gpu
+from lightautoml.ml_algo.gpu.dl_model_gpu import TorchModelGPU
 from lightautoml.ml_algo.tuning.optuna import OptunaTuner
-from lightautoml.ml_algo.tuning.gpu.optuna_gpu import OptunaTuner_gpu
+from lightautoml.ml_algo.tuning.gpu.optuna_gpu import OptunaTunerGPU
 from lightautoml.ml_algo.tuning.gpu.optuna_gpu import GpuQueue
 from lightautoml.pipelines.features.base import FeaturesPipeline
-from lightautoml.pipelines.features.gpu.lgb_pipeline_gpu import LGBAdvancedPipeline_gpu
-from lightautoml.pipelines.features.gpu.linear_pipeline_gpu import LinearFeatures_gpu
-from lightautoml.pipelines.features.gpu.text_pipeline_gpu import NLPTFiDFFeatures_gpu
-from lightautoml.pipelines.features.gpu.text_pipeline_gpu import NLPTFiDFFeatures_subword_gpu
-from lightautoml.pipelines.features.gpu.text_pipeline_gpu import TextAutoFeatures_gpu
-from lightautoml.pipelines.features.gpu.text_pipeline_gpu import TextBertFeatures_gpu
+from lightautoml.pipelines.features.gpu.lgb_pipeline_gpu import LGBAdvancedPipelineGPU
+from lightautoml.pipelines.features.gpu.linear_pipeline_gpu import LinearFeaturesGPU
+from lightautoml.pipelines.features.gpu.text_pipeline_gpu import NLPTFiDFFeaturesGPU
+from lightautoml.pipelines.features.gpu.text_pipeline_gpu import NLPTFiDFFeaturesSubwordGPU
+from lightautoml.pipelines.features.gpu.text_pipeline_gpu import TextAutoFeaturesGPU
+from lightautoml.pipelines.features.gpu.text_pipeline_gpu import TextBertFeaturesGPU
 from lightautoml.pipelines.ml.nested_ml_pipe import NestedTabularMLPipeline
 from lightautoml.pipelines.selection.base import SelectionPipeline
 
@@ -43,12 +43,12 @@ from lightautoml.reader.gpu.cudf_reader import CudfReader
 from lightautoml.reader.gpu.hybrid_reader import HybridReader
 from lightautoml.reader.tabular_batch_generator import ReadableToDf
 from lightautoml.tasks import Task
-from lightautoml.automl.gpu.blend_gpu import WeightedBlender_gpu
+from lightautoml.automl.gpu.blend_gpu import WeightedBlenderGPU
 from lightautoml.automl.presets.base import upd_params
 
 # from .tabular_presets import NumpyDataset
 from lightautoml.automl.presets.tabular_presets import TabularAutoML
-from lightautoml.automl.presets.gpu.tabular_gpu_presets import TabularAutoML_gpu
+from lightautoml.automl.presets.gpu.tabular_gpu_presets import TabularAutoMLGPU
 
 
 logger = logging.getLogger(__name__)
@@ -67,7 +67,7 @@ _time_scores = {
 
 
 # TODO: add text feature selection
-class TabularNLPAutoML_gpu(TabularAutoML_gpu):
+class TabularNLPAutoMLGPU(TabularAutoMLGPU):
     """Classic preset - work with tabular and text data.
 
     Supported data roles - numbers, dates, categories, text
@@ -254,13 +254,13 @@ class TabularNLPAutoML_gpu(TabularAutoML_gpu):
 
     def get_nlp_pipe(self, type: str = "tfidf") -> Optional[FeaturesPipeline]:
         if type == "tfidf":
-            return NLPTFiDFFeatures_gpu(**self.text_params, **self.tfidf_params)
+            return NLPTFiDFFeaturesGPU(**self.text_params, **self.tfidf_params)
         elif type == "tfidf_subword":
-            return NLPTFiDFFeatures_subword_gpu(**self.text_params, **self.tfidf_params)
+            return NLPTFiDFFeaturesSubwordGPU(**self.text_params, **self.tfidf_params)
         elif type == "embed":
-            return TextAutoFeatures_gpu(**self.text_params, **self.autonlp_params)
+            return TextAutoFeaturesGPU(**self.text_params, **self.autonlp_params)
         elif type == "bert":
-            return TextBertFeatures_gpu(**self.text_params)
+            return TextBertFeaturesGPU(**self.text_params)
         else:
             return None
 
@@ -269,10 +269,10 @@ class TabularNLPAutoML_gpu(TabularAutoML_gpu):
         # nn model
         time_score = self.get_time_score(n_level, "nn")
         nn_timer = self.timer.get_task_timer("reg_nn", time_score)
-        nn_model = TorchModel_gpu(timer=nn_timer, default_params=self.nn_params)
+        nn_model = TorchModelGPU(timer=nn_timer, default_params=self.nn_params)
 
         text_nn_feats = self.get_nlp_pipe(self.nn_pipeline_params["text_features"])
-        nn_feats = LinearFeatures_gpu(output_categories=True, **self.linear_pipeline_params)
+        nn_feats = LinearFeaturesGPU(output_categories=True, **self.linear_pipeline_params)
         if text_nn_feats is not None:
             nn_feats.append(text_nn_feats)
 
@@ -287,10 +287,10 @@ class TabularNLPAutoML_gpu(TabularAutoML_gpu):
         # linear model with l2
         time_score = self.get_time_score(n_level, "linear_l2")
         linear_l2_timer = self.timer.get_task_timer("reg_l2", time_score)
-        linear_l2_model = LinearLBFGS_gpu(timer=linear_l2_timer, **self.linear_l2_params)
+        linear_l2_model = LinearLBFGSGPU(timer=linear_l2_timer, **self.linear_l2_params)
 
         text_l2_feats = self.get_nlp_pipe(self.linear_pipeline_params["text_features"])
-        linear_l2_feats = LinearFeatures_gpu(output_categories=True, **self.linear_pipeline_params)
+        linear_l2_feats = LinearFeaturesGPU(output_categories=True, **self.linear_pipeline_params)
         if text_l2_feats is not None:
             linear_l2_feats.append(text_l2_feats)
 
@@ -311,7 +311,7 @@ class TabularNLPAutoML_gpu(TabularAutoML_gpu):
     ):
 
         text_gbm_feats = self.get_nlp_pipe(self.gbm_pipeline_params["text_features"])
-        gbm_feats = LGBAdvancedPipeline_gpu(output_categories=False, **self.gbm_pipeline_params)
+        gbm_feats = LGBAdvancedPipelineGPU(output_categories=False, **self.gbm_pipeline_params)
         if text_gbm_feats is not None:
             gbm_feats.append(text_gbm_feats)
 
@@ -325,7 +325,7 @@ class TabularNLPAutoML_gpu(TabularAutoML_gpu):
             # if algo_key == "lgb":
             #     gbm_model = BoostLGBM(timer=gbm_timer, **self.lgb_params)
             if algo_key == "cb":
-                gbm_model = BoostCB_gpu(timer=gbm_timer, **self.cb_params)
+                gbm_model = BoostCBGPU(timer=gbm_timer, **self.cb_params)
             elif algo_key == "xgb":
                 #gbm_model = BoostXGB(timer=gbm_timer, **self.xgb_params)
                 if self.task.device == "mgpu" and not self.xgb_params["parallel_folds"]:
@@ -352,7 +352,7 @@ class TabularNLPAutoML_gpu(TabularAutoML_gpu):
                     raise ValueError("Wrong algo key")
 
                 if folds:
-                    gbm_tuner = OptunaTuner_gpu(ngpus=gpu_cnt,
+                    gbm_tuner = OptunaTunerGPU(ngpus=gpu_cnt,
                         gpu_queue=GpuQueue(ngpus=gpu_cnt),
                         n_trials=self.tuning_params["max_tuning_iter"],
                         timeout=self.tuning_params["max_tuning_time"],
@@ -426,7 +426,7 @@ class TabularNLPAutoML_gpu(TabularAutoML_gpu):
             levels.append(lvl)
 
         # blend everything
-        blender = WeightedBlender_gpu()
+        blender = WeightedBlenderGPU()
 
         # initialize
         self._initialize(

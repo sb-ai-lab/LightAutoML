@@ -48,7 +48,7 @@ pooling_by_name = {
 }
 
 
-class DLTransformer_gpu(TransformerMixin):
+class DLTransformerGPU(TransformerMixin):
     """Deep Learning based sentence embeddings.
 
     Class to compute sentence embeddings from words embeddings.
@@ -99,7 +99,7 @@ class DLTransformer_gpu(TransformerMixin):
         multigpu: bool = False,
         verbose: bool = False,
     ):
-        super(DLTransformer_gpu, self).__init__()
+        super(DLTransformerGPU, self).__init__()
         self._infer_params()
         self.device, self.device_ids = parse_devices(device, multigpu)
         self.random_state = random_state
@@ -220,7 +220,7 @@ def position_encoding_init(n_pos: int, embed_size: int) -> torch.Tensor:
     return torch.from_numpy(position_enc).float()
 
 
-class BOREP_gpu(nn.Module):
+class BOREPGPU(nn.Module):
     """Class to compute Bag of Random Embedding Projections sentence embeddings from words embeddings.
 
     Bag of Random Embedding Projections sentence embeddings.
@@ -237,9 +237,9 @@ class BOREP_gpu(nn.Module):
     Note:
         There are several pooling types:
 
-            - `'max'`: Maximum on seq_len dimension for non masked inputs.
-            - `'mean'`: Mean on seq_len dimension for non masked inputs.
-            - `'sum'`: Sum on seq_len dimension for non masked inputs.
+            - `'max'`: Maximum on seq_len dimension for non-masked inputs.
+            - `'mean'`: Mean on seq_len dimension for non-masked inputs.
+            - `'sum'`: Sum on seq_len dimension for non-masked inputs.
 
         For init parameter there are several options:
 
@@ -250,7 +250,7 @@ class BOREP_gpu(nn.Module):
             - `'xavier'`: Uniform xavier init.
     """
 
-    name = "BOREP_gpu"
+    name = "BOREPGPU"
     _poolers = {"max", "mean", "sum"}
 
     def __init__(
@@ -263,7 +263,7 @@ class BOREP_gpu(nn.Module):
         pos_encoding: bool = False,
         **kwargs: Any
     ):
-        super(BOREP_gpu, self).__init__()
+        super(BOREPGPU, self).__init__()
         self.embed_size = embed_size
         self.proj_size = proj_size
         self.pos_encoding = pos_encoding
@@ -319,7 +319,7 @@ class BOREP_gpu(nn.Module):
         return out
 
 
-class RandomLSTM_gpu(nn.Module):
+class RandomLSTMGPU(nn.Module):
     """Class to compute Random LSTM sentence embeddings from words embeddings.
 
     Random LSTM sentence embeddings.
@@ -339,13 +339,13 @@ class RandomLSTM_gpu(nn.Module):
             - `'sum'`: Sum on seq_len dimension for non-masked inputs.
     """
 
-    name = "RandomLSTM_gpu"
+    name = "RandomLSTMGPU"
     _poolers = ("max", "mean", "sum")
 
     def __init__(
         self, embed_size: int = 300, hidden_size: int = 256, pooling: str = "mean", num_layers: int = 1, **kwargs: Any
     ):
-        super(RandomLSTM_gpu, self).__init__()
+        super(RandomLSTMGPU, self).__init__()
         if pooling not in self._poolers:
             raise ValueError("pooling - {} - not in the list of available types {}".format(pooling, self._poolers))
         seed_everything(42)
@@ -386,7 +386,7 @@ class RandomLSTM_gpu(nn.Module):
         return out
 
 
-class BertEmbedder_gpu(nn.Module):
+class BertEmbedderGPU(nn.Module):
     """Class to compute `HuggingFace <https://huggingface.co>`_ transformers words or sentence embeddings.
 
     Bert sentence or word embeddings.
@@ -410,11 +410,11 @@ class BertEmbedder_gpu(nn.Module):
             - `'none'`: Don't use pooling (for RandomLSTM pooling strategy).
     """
 
-    name = "BertEmb_gpu"
+    name = "BertEmbGPU"
     _poolers = {"cls", "max", "mean", "sum", "none"}
 
     def __init__(self, model_name: str, pooling: str = "none", **kwargs: Any):
-        super(BertEmbedder_gpu, self).__init__()
+        super(BertEmbedderGPU, self).__init__()
         if pooling not in self._poolers:
             raise ValueError("pooling - {} - not in the list of available types {}".format(pooling, self._poolers))
 

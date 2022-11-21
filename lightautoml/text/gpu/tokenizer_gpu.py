@@ -27,7 +27,7 @@ from lightautoml.dataset.roles import ColumnRole
 Roles = Union[Sequence[ColumnRole], ColumnRole, RolesDict, None]
 
 
-class BaseTokenizer_gpu:
+class BaseTokenizerGPU:
     """Base class for tokenizer method.
 
     Tokenization with simple text cleaning and preprocessing.
@@ -139,7 +139,7 @@ class BaseTokenizer_gpu:
         return res
 
 
-class SimpleRuTokenizer_gpu(BaseTokenizer_gpu):
+class SimpleRuTokenizerGPU(BaseTokenizerGPU):
     """Russian tokenizer.
 
     Tokenizer for Russian language.
@@ -251,7 +251,7 @@ class SimpleRuTokenizer_gpu(BaseTokenizer_gpu):
         return snt
 
 
-class SimpleEnTokenizer_gpu(BaseTokenizer_gpu):
+class SimpleEnTokenizerGPU(BaseTokenizerGPU):
     """English tokenizer.
 
     Tokenizer for English language.
