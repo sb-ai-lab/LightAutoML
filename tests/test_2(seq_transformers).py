@@ -13,9 +13,9 @@ from lightautoml.tasks import Task
 from lightautoml.transformers.seq import SeqNumCountsTransformer
 from lightautoml.transformers.seq import SeqStatisticsTransformer
 from lightautoml.transformers.seq import GetSeqTransformer
-from lightautoml.transformers.gpu.seq_gpu import SeqNumCountsTransformer_gpu
-from lightautoml.transformers.gpu.seq_gpu import SeqStatisticsTransformer_gpu
-from lightautoml.transformers.gpu.seq_gpu import GetSeqTransformer_gpu
+from lightautoml.transformers.gpu.seq_gpu import SeqNumCountsTransformerGPU
+from lightautoml.transformers.gpu.seq_gpu import SeqStatisticsTransformerGPU
+from lightautoml.transformers.gpu.seq_gpu import GetSeqTransformerGPU
 
 RANDS_CHARS = np.array(list(string.ascii_letters + string.digits),
                        dtype=(np.str_, 1))
@@ -168,7 +168,7 @@ if __name__ == "__main__":
     counts.fit(res.seq_data[name])
     out_counts = counts.transform(res.seq_data[name])
 
-    counts_gpu = SeqNumCountsTransformer_gpu()
+    counts_gpu = SeqNumCountsTransformerGPU()
     counts_gpu.fit(res_gpu.seq_data[name])
     out_counts_gpu = counts_gpu.transform(res_gpu.seq_data[name])
 
@@ -179,7 +179,7 @@ if __name__ == "__main__":
     stats.fit(res.seq_data[name])
     out_stats = stats.transform(res.seq_data[name])
 
-    stats_gpu = SeqStatisticsTransformer_gpu()
+    stats_gpu = SeqStatisticsTransformerGPU()
     stats_gpu.fit(res_gpu.seq_data[name])
     out_stats_gpu = stats_gpu.transform(res_gpu.seq_data[name])
 
@@ -190,7 +190,7 @@ if __name__ == "__main__":
     seq.fit(res)
     out_seq = seq.transform(res)
 
-    seq_gpu = GetSeqTransformer_gpu(name=name)
+    seq_gpu = GetSeqTransformerGPU(name=name)
     seq_gpu.fit(res_gpu)
     out_seq_gpu = seq_gpu.transform(res_gpu)
 

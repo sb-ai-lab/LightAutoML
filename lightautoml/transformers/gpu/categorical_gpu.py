@@ -23,7 +23,7 @@ from lightautoml.transformers.categorical import (
 GpuNumericalDataset = Union[CupyDataset, CudfDataset, DaskCudfDataset]
 
 
-class LabelEncoder_gpu(LAMLTransformer):
+class LabelEncoderGPU(LAMLTransformer):
     """Simple LabelEncoder in order of frequency.
 
     Labels are integers from 1 to n. Unknown category encoded as 0.
@@ -209,7 +209,7 @@ class LabelEncoder_gpu(LAMLTransformer):
             return self._transform_cupy(dataset)
 
 
-class OHEEncoder_gpu(LAMLTransformer):
+class OHEEncoderGPU(LAMLTransformer):
     """
     Simple OneHotEncoder over label encoded categories (GPU version).
     """
@@ -395,7 +395,7 @@ class OHEEncoder_gpu(LAMLTransformer):
             return self._transform_cupy(dataset)
 
 
-class FreqEncoder_gpu(LabelEncoder_gpu):
+class FreqEncoderGPU(LabelEncoderGPU):
     """
     Labels are encoded with frequency in train data (GPU version).
 
@@ -446,7 +446,7 @@ class FreqEncoder_gpu(LabelEncoder_gpu):
         return self
 
 
-class TargetEncoder_gpu(LAMLTransformer):
+class TargetEncoderGPU(LAMLTransformer):
     """
     Out-of-fold target encoding (GPU version).
 
@@ -902,7 +902,7 @@ class TargetEncoder_gpu(LAMLTransformer):
         return output
 
 
-class MultiClassTargetEncoder_gpu(LAMLTransformer):
+class MultiClassTargetEncoderGPU(LAMLTransformer):
     """
     Out-of-fold target encoding for multiclass task (GPU version).
 
@@ -1336,7 +1336,7 @@ class MultiClassTargetEncoder_gpu(LAMLTransformer):
 
         return output
 
-class MultioutputTargetEncoder_gpu(LAMLTransformer):
+class MultioutputTargetEncoderGPU(LAMLTransformer):
     """Out-of-fold target encoding for multi:reg and multilabel task. (GPU version)
 
     Limitation:
@@ -1781,7 +1781,7 @@ class MultioutputTargetEncoder_gpu(LAMLTransformer):
         output.set_data(res, self.features, NumericRole(cp.float32, prob=dataset.task.name == "multilabel"))
         return output
 
-class CatIntersections_gpu(LabelEncoder_gpu):
+class CatIntersectionsGPU(LabelEncoderGPU):
     """Build label encoded intersections of categorical variables (GPU version)."""
 
     _fit_checks = (categorical_check,)
@@ -1917,7 +1917,7 @@ class CatIntersections_gpu(LabelEncoder_gpu):
         return out_df
 
 
-class OrdinalEncoder_gpu(LabelEncoder_gpu):
+class OrdinalEncoderGPU(LabelEncoderGPU):
     """
     Encoding ordinal categories into numbers.
     Number type categories passed as is,

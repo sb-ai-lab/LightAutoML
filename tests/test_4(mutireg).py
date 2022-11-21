@@ -120,7 +120,7 @@ if __name__ == "__main__":
         [categorical.LabelEncoder(), categorical.MultioutputTargetEncoder()]
     )
     gpu_trf = SequentialTransformer(
-        [categorical_gpu.LabelEncoder_gpu(), categorical_gpu.MultioutputTargetEncoder_gpu()]
+        [categorical_gpu.LabelEncoderGPU(), categorical_gpu.MultioutputTargetEncoderGPU()]
     )
 
     enc_cpu = trf.fit_transform(cats)

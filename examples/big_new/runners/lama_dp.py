@@ -42,7 +42,7 @@ if __name__ == '__main__':
         os.environ["VECLIB_MAXIMUM_THREADS"] = str_nthr
         os.environ["NUMEXPR_NUM_THREADS"] = str_nthr
         
-        from lightautoml.automl.presets.gpu.tabular_gpu_presets import TabularAutoML_gpu
+        from lightautoml.automl.presets.gpu.tabular_gpu_presets import TabularAutoMLGPU
         from lightautoml.tasks import Task
         from lightautoml.dataset.roles import TargetRole
         
@@ -88,7 +88,7 @@ if __name__ == '__main__':
         cudf.set_allocator("managed")
 
         task_type = 'multi:reg' if data_info['task_type']=='multitask' else data_info['task_type']
-        automl = TabularAutoML_gpu(task=Task(task_type, device="mgpu"), 
+        automl = TabularAutoMLGPU(task=Task(task_type, device="mgpu"), 
                                    timeout=args.timeout,
                                    config_path=args.config,
                                    client=client)

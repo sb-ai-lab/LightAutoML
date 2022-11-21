@@ -121,8 +121,8 @@ trf = SequentialTransformer(
     [categorical.LabelEncoder(), categorical.MultiClassTargetEncoder()]
 )
 gpu_trf = SequentialTransformer(
-    [categorical_gpu.LabelEncoder_gpu(), 
-     categorical_gpu.MultiClassTargetEncoder_gpu()]
+    [categorical_gpu.LabelEncoderGPU(), 
+     categorical_gpu.MultiClassTargetEncoderGPU()]
 )
 
 print("multiclasstarget encoder:")
@@ -155,7 +155,7 @@ gpu_ds = dd_ds.to_cudf()
 ds = dd_ds.to_pandas()
 
 trf = categorical.LabelEncoder()
-gpu_trf = categorical_gpu.LabelEncoder_gpu()
+gpu_trf = categorical_gpu.LabelEncoderGPU()
 
 cats = ds[:, get_columns_by_role(ds, 'Category')]
 gpu_cats = gpu_ds[:, get_columns_by_role(gpu_ds, 'Category')]
@@ -180,7 +180,7 @@ trf = SequentialTransformer(
     [categorical.LabelEncoder(), categorical.TargetEncoder()]
 )
 gpu_trf = SequentialTransformer(
-    [categorical_gpu.LabelEncoder_gpu(), categorical_gpu.TargetEncoder_gpu()]
+    [categorical_gpu.LabelEncoderGPU(), categorical_gpu.TargetEncoderGPU()]
 )
 
 print("target encoder:")
@@ -199,7 +199,7 @@ assert np.allclose(enc.data, cp.asnumpy(enc_gpu.data))
 assert np.allclose(enc.data, enc_mgpu.data.compute().values_host)
 
 trf = categorical.FreqEncoder()
-gpu_trf = categorical_gpu.FreqEncoder_gpu()
+gpu_trf = categorical_gpu.FreqEncoderGPU()
 
 print("freq encoder:")
 st = perf_counter()
@@ -217,7 +217,7 @@ assert np.allclose(enc.data, cp.asnumpy(enc_gpu.data))
 assert np.allclose(enc.data, enc_mgpu.data.compute().values_host)
 
 trf = categorical.OrdinalEncoder()
-gpu_trf = categorical_gpu.OrdinalEncoder_gpu()
+gpu_trf = categorical_gpu.OrdinalEncoderGPU()
 
 print("ordinal encoder:")
 st = perf_counter()
@@ -238,7 +238,7 @@ trf = SequentialTransformer(
     [categorical.LabelEncoder(), categorical.OHEEncoder(make_sparse=False)]
 )
 gpu_trf = SequentialTransformer(
-    [categorical_gpu.LabelEncoder_gpu(), categorical_gpu.OHEEncoder_gpu(make_sparse=False)]
+    [categorical_gpu.LabelEncoderGPU(), categorical_gpu.OHEEncoderGPU(make_sparse=False)]
 )
 
 print("ohee encoder:")
@@ -260,7 +260,7 @@ trf = SequentialTransformer(
     [categorical.LabelEncoder(), categorical.CatIntersectstions()]
 )
 gpu_trf = SequentialTransformer(
-    [categorical_gpu.LabelEncoder_gpu(), categorical_gpu.CatIntersections_gpu()]
+    [categorical_gpu.LabelEncoderGPU(), categorical_gpu.CatIntersectionsGPU()]
 )
 
 print("catintersections encoder:")
@@ -291,7 +291,7 @@ gpu_dats = gpu_ds[:, get_columns_by_role(gpu_ds, 'Datetime')]
 dd_dats = dd_ds[:, get_columns_by_role(dd_ds, 'Datetime')]
 
 trf = datetime.TimeToNum()
-gpu_trf = datetime_gpu.TimeToNum_gpu()
+gpu_trf = datetime_gpu.TimeToNumGPU()
 
 print("timetonum encoder:")
 st = perf_counter()
@@ -309,7 +309,7 @@ assert np.allclose(enc.data, cp.asnumpy(enc_gpu.data))
 assert np.allclose(enc.data, enc_mgpu.data.compute().values_host)
 
 trf = datetime.BaseDiff(base_names=[dats.features[0]], diff_names=[dats.features[1]])
-gpu_trf = datetime_gpu.BaseDiff_gpu(base_names=[dats.features[0]], diff_names=[dats.features[1]])
+gpu_trf = datetime_gpu.BaseDiffGPU(base_names=[dats.features[0]], diff_names=[dats.features[1]])
 
 print("basediff encoder:")
 st = perf_counter()
@@ -327,7 +327,7 @@ assert np.allclose(enc.data, cp.asnumpy(enc_gpu.data))
 assert np.allclose(enc.data, enc_mgpu.data.compute().values_host)
 
 trf = datetime.DateSeasons()
-gpu_trf = datetime_gpu.DateSeasons_gpu()
+gpu_trf = datetime_gpu.DateSeasonsGPU()
 
 print("dateseasons encoder:")
 st = perf_counter()
@@ -353,7 +353,7 @@ gpu_nums = gpu_ds[:, get_columns_by_role(gpu_ds, 'Numeric')]
 dd_nums = dd_ds[:, get_columns_by_role(dd_ds, 'Numeric')]
 
 trf = numeric.NaNFlags()
-gpu_trf = numeric_gpu.NaNFlags_gpu()
+gpu_trf = numeric_gpu.NaNFlagsGPU()
 
 print("nanflags encoder:")
 st = perf_counter()
@@ -371,7 +371,7 @@ assert np.allclose(enc.data, cp.asnumpy(enc_gpu.data))
 assert np.allclose(enc.data, enc_mgpu.data.compute().values_host)
 
 trf = numeric.FillnaMedian()
-gpu_trf = numeric_gpu.FillnaMedian_gpu()
+gpu_trf = numeric_gpu.FillnaMedianGPU()
 
 print("fillnamedian encoder:")
 st = perf_counter()
@@ -390,7 +390,7 @@ assert np.allclose(enc.data, enc_mgpu.data.compute().values_host)
 
 
 trf = numeric.FillInf()
-gpu_trf = numeric_gpu.FillInf_gpu()
+gpu_trf = numeric_gpu.FillInfGPU()
 
 print("fillinf encoder:")
 st = perf_counter()
@@ -410,7 +410,7 @@ assert np.allclose(np.nan_to_num(enc.data),
         np.nan_to_num(enc_mgpu.data.compute().values_host))
 
 trf = numeric.LogOdds()
-gpu_trf = numeric_gpu.LogOdds_gpu()
+gpu_trf = numeric_gpu.LogOddsGPU()
 
 print("logodds encoder:")
 st = perf_counter()
@@ -430,7 +430,7 @@ assert np.allclose(np.nan_to_num(enc.data),
         np.nan_to_num(enc_mgpu.data.compute().values_host))
 
 trf = numeric.StandardScaler()
-gpu_trf = numeric_gpu.StandardScaler_gpu()
+gpu_trf = numeric_gpu.StandardScalerGPU()
 
 print("standard scaler encoder:")
 st = perf_counter()
@@ -452,7 +452,7 @@ print()
 print(enc_mgpu.data.compute().values_host)
 
 trf = numeric.QuantileBinning()
-gpu_trf = numeric_gpu.QuantileBinning_gpu()
+gpu_trf = numeric_gpu.QuantileBinningGPU()
 
 
 print("quantile binning encoder:")

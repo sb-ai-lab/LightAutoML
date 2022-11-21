@@ -20,7 +20,7 @@ CupyTransformable = Union[
 GpuDataset = Union[CupyDataset, CudfDataset, DaskCudfDataset]
 
 
-class NaNFlags_gpu(LAMLTransformer):
+class NaNFlagsGPU(LAMLTransformer):
     """Create NaN flags (GPU version)."""
 
     _fit_checks = (numeric_check,)
@@ -133,7 +133,7 @@ class NaNFlags_gpu(LAMLTransformer):
             return self._transform_cupy(dataset)
 
 
-class FillnaMedian_gpu(LAMLTransformer):
+class FillnaMedianGPU(LAMLTransformer):
     """Fillna with median (GPU version)."""
 
     _fit_checks = (numeric_check,)
@@ -220,7 +220,7 @@ class FillnaMedian_gpu(LAMLTransformer):
             return self._transform_cupy(dataset)
 
 
-class FillInf_gpu(LAMLTransformer):
+class FillInfGPU(LAMLTransformer):
     """Fill inf with nan to handle as nan value."""
 
     _fit_checks = (numeric_check,)
@@ -278,7 +278,7 @@ class FillInf_gpu(LAMLTransformer):
             return self._transform_cupy(dataset)
 
 
-class LogOdds_gpu(LAMLTransformer):
+class LogOddsGPU(LAMLTransformer):
     """Convert probs to logodds (GPU version)."""
 
     _fit_checks = (numeric_check,)
@@ -330,7 +330,7 @@ class LogOdds_gpu(LAMLTransformer):
             return self._transform_cupy(dataset)
 
 
-class StandardScaler_gpu(LAMLTransformer):
+class StandardScalerGPU(LAMLTransformer):
     """Classic StandardScaler (GPU version)."""
 
     _fit_checks = (numeric_check,)
@@ -424,7 +424,7 @@ class StandardScaler_gpu(LAMLTransformer):
             return self._transform_cupy(dataset)
 
 
-class QuantileBinning_gpu(LAMLTransformer):
+class QuantileBinningGPU(LAMLTransformer):
     """Discretization of numeric features by quantiles (GPU version)."""
 
     _fit_checks = (numeric_check,)

@@ -76,7 +76,7 @@ _xgb_force_metric = {
 }
 
 
-class XGBFunc_gpu:
+class XGBFuncGPU:
     """
     Wrapper of metric function for LightGBM.
     """
@@ -109,7 +109,7 @@ class XGBFunc_gpu:
         return "Opt metric", val, self.greater_is_better
 
 
-class XGBLoss_gpu(Loss):
+class XGBLossGPU(Loss):
     """Loss used for LightGBM."""
 
     def __init__(
@@ -197,7 +197,7 @@ class XGBLoss_gpu(Loss):
         if metric_params is not None:
             metric_func = partial(metric_func, **metric_params)
 
-        return XGBFunc_gpu(metric_func, greater_is_better, self._bw_func)
+        return XGBFuncGPU(metric_func, greater_is_better, self._bw_func)
 
     def set_callback_metric(
         self,

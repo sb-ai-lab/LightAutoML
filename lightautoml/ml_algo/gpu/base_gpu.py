@@ -19,10 +19,10 @@ logger = logging.getLogger(__name__)
 TabularDatasetGpu = Union[CupyDataset, CudfDataset, DaskCudfDataset]
 
 
-class TabularMLAlgo_gpu(TabularMLAlgo):
+class TabularMLAlgoGPU(TabularMLAlgo):
     """Machine learning algorithms that accepts gpu data as input."""
 
-    _name: str = "TabularAlgo_gpu"
+    _name: str = "TabularAlgoGPU"
 
     def __init__(
         self,

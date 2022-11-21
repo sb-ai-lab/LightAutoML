@@ -31,7 +31,7 @@ if __name__ == '__main__':
     os.environ["VECLIB_MAXIMUM_THREADS"] = str_nthr # export VECLIB_MAXIMUM_THREADS=4
     os.environ["NUMEXPR_NUM_THREADS"] = str_nthr # export NUMEXPR_NUM_THREADS=6
     
-    from lightautoml.automl.presets.gpu.tabular_gpu_presets import TabularAutoML_gpu
+    from lightautoml.automl.presets.gpu.tabular_gpu_presets import TabularAutoMLGPU
     from lightautoml.tasks import Task
     from lightautoml.dataset.roles import TargetRole
     
@@ -81,7 +81,7 @@ if __name__ == '__main__':
     
     # CREATE AUTOML
     
-    automl = TabularAutoML_gpu(task=Task(data_info['task_type'], device="gpu"), 
+    automl = TabularAutoMLGPU(task=Task(data_info['task_type'], device="gpu"), 
                                timeout=args.timeout,
                                config_path=args.config,)
     

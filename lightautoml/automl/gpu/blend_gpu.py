@@ -32,7 +32,7 @@ np.seterr(divide="ignore", invalid="ignore")
 GpuDataset = Union[CupyDataset, CudfDataset, DaskCudfDataset]
 
 
-class MeanBlender_gpu(MeanBlender):
+class MeanBlenderGPU(MeanBlender):
     """Simple average level predictions (GPU version).
 
     Works only with TabularDatasets.
@@ -48,7 +48,7 @@ class MeanBlender_gpu(MeanBlender):
             dask_array = [x.data.to_dask_array(lengths=True) for x in splitted_preds]
             pred = da.nanmean([x for x in dask_array], axis=0)
 
-            cols = ["MeanBlend_gpu_{0}".format(x) for x in range(pred.shape[1])]
+            cols = ["MeanBlendGPU{0}".format(x) for x in range(pred.shape[1])]
             index = splitted_preds[0].data.index
             pred = dd.from_dask_array(
                 pred, columns=cols, index=index, meta=cudf.DataFrame()
@@ -58,14 +58,14 @@ class MeanBlender_gpu(MeanBlender):
 
         outp.set_data(
             pred,
-            ["MeanBlend_gpu_{0}".format(x) for x in range(pred.shape[1])],
+            ["MeanBlendGPU{0}".format(x) for x in range(pred.shape[1])],
             NumericRole(np.float32, prob=self._outp_prob),
         )
 
         return outp
 
 
-class WeightedBlender_gpu(WeightedBlender):
+class WeightedBlenderGPU(WeightedBlender):
     """Weighted Blender based on coord descent, optimize task metric directly (GPU version).
 
     Weight sum eq. 1.
@@ -102,7 +102,7 @@ class WeightedBlender_gpu(WeightedBlender):
             weighted_pred = da.where(not_nulls == 0, cp.nan, weighted_pred)
 
             cols = [
-                "WeightedBlend_gpu_{0}".format(x) for x in range(weighted_pred.shape[1])
+                "WeightedBlendGPU{0}".format(x) for x in range(weighted_pred.shape[1])
             ]
             index = splitted_preds[0].data.index
             weighted_pred = dd.from_dask_array(
@@ -129,7 +129,7 @@ class WeightedBlender_gpu(WeightedBlender):
 
         outp = splitted_preds[0].empty()
 
-        cols = ["WeightedBlend_gpu_{0}".format(x) for x in range(weighted_pred.shape[1])]
+        cols = ["WeightedBlendGPU{0}".format(x) for x in range(weighted_pred.shape[1])]
         outp.set_data(weighted_pred, cols, NumericRole(cp.float32, prob=self._outp_prob))
 
         return outp

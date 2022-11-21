@@ -20,7 +20,7 @@ from lightautoml.pipelines.selection.base import ImportanceEstimator
 from lightautoml.pipelines.utils import get_columns_by_role
 from lightautoml.validation.base import TrainValidIterator
 
-from .base_gpu import TabularMLAlgo_gpu
+from .base_gpu import TabularMLAlgoGPU
 
 logger = logging.getLogger(__name__)
 TabularDataset = Union[
@@ -28,7 +28,7 @@ TabularDataset = Union[
 ]
 
 
-class BoostCB_gpu(TabularMLAlgo_gpu, ImportanceEstimator):
+class BoostCBGPU(TabularMLAlgoGPU, ImportanceEstimator):
     """Gradient boosting on decision trees from catboost library.
 
     All available parameters listed in CatBoost documentation:
@@ -44,7 +44,7 @@ class BoostCB_gpu(TabularMLAlgo_gpu, ImportanceEstimator):
 
     """
 
-    _name: str = "CatBoost_gpu"
+    _name: str = "CatBoostGPU"
 
     _default_params = {
         "task_type": "GPU",

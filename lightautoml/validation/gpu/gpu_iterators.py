@@ -18,7 +18,7 @@ from lightautoml.validation.np_iterators import FoldsIterator
 GpuDataset = Union[CupyDataset, CudfDataset, DaskCudfDataset]
 
 
-class HoldoutIterator_gpu(HoldoutIterator):
+class HoldoutIteratorGPU(HoldoutIterator):
     """Iterator for classic holdout - just predefined train and valid samples (GPU version requires indexing)."""
 
     def __init__(self, train: GpuDataset, valid: GpuDataset):
@@ -41,7 +41,7 @@ class HoldoutIterator_gpu(HoldoutIterator):
         """
         return 1
 
-    def __iter__(self) -> "HoldoutIterator_gpu":
+    def __iter__(self) -> "HoldoutIteratorGPU":
         """Simple iterable object.
 
         Returns:
@@ -58,7 +58,7 @@ class HoldoutIterator_gpu(HoldoutIterator):
         return None, self.train, self.valid
 
 
-class FoldsIterator_gpu(TrainValidIterator):
+class FoldsIteratorGPU(TrainValidIterator):
     """Classic cv iterator.
 
     Folds should be defined in Reader, based on cross validation method.
@@ -163,7 +163,7 @@ class FoldsIterator_gpu(TrainValidIterator):
         """
         return self.train
 
-    def convert_to_holdout_iterator(self) -> HoldoutIterator_gpu:
+    def convert_to_holdout_iterator(self) -> HoldoutIteratorGPU:
         """Convert iterator to hold-out-iterator.
 
         Fold 0 is used for validation, everything else is used for training.
@@ -188,7 +188,7 @@ class FoldsIterator_gpu(TrainValidIterator):
 
         train, valid = self.train[tr_idx], self.train[val_idx]
 
-        return HoldoutIterator_gpu(train, valid)
+        return HoldoutIteratorGPU(train, valid)
 
 
 def get_gpu_iterator(
@@ -197,8 +197,8 @@ def get_gpu_iterator(
     n_folds: Optional[int] = None,
     iterator: Optional[CustomIdxs] = None,
 ) -> Union[
-    FoldsIterator_gpu,
-    HoldoutIterator_gpu,
+    FoldsIteratorGPU,
+    HoldoutIteratorGPU,
     HoldoutIterator,
     CustomIterator,
     DummyIterator,
@@ -228,7 +228,7 @@ def get_gpu_iterator(
     elif iterator is not None:
         train_valid = CustomIterator(train, iterator)
     elif train.folds is not None:
-        train_valid = FoldsIterator_gpu(train, n_folds)
+        train_valid = FoldsIteratorGPU(train, n_folds)
     else:
         train_valid = DummyIterator(train)
 

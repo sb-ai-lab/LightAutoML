@@ -15,11 +15,11 @@ from lightautoml.dataset.roles import CategoryRole, ColumnRole, NumericRole
 from lightautoml.transformers.base import LAMLTransformer
 from lightautoml.transformers.datetime import date_attrs, datetime_check
 
-DatetimeCompatible_gpu = Union[CudfDataset]
+DatetimeCompatibleGPU = Union[CudfDataset]
 GpuDataset = Union[CupyDataset, CudfDataset, DaskCudfDataset]
 
 
-class TimeToNum_gpu(LAMLTransformer):
+class TimeToNumGPU(LAMLTransformer):
     """
     Basic conversion strategy, used in selection one-to-one transformers (GPU version).
     Datetime converted to difference
@@ -39,7 +39,7 @@ class TimeToNum_gpu(LAMLTransformer):
         output = (data.astype(int) - mean) / std
         return output
 
-    def _transform_cupy(self, dataset: DatetimeCompatible_gpu) -> CupyDataset:
+    def _transform_cupy(self, dataset: DatetimeCompatibleGPU) -> CupyDataset:
         """Transform dates to numeric differences with base date (GPU version).
 
         Args:
@@ -107,7 +107,7 @@ class TimeToNum_gpu(LAMLTransformer):
             return self._transform_cupy(dataset)
 
 
-class BaseDiff_gpu(LAMLTransformer):
+class BaseDiffGPU(LAMLTransformer):
     """
     Basic conversion strategy, used in selection one-to-one transformers (GPU version).
     Datetime converted to difference with basic_date.
@@ -175,7 +175,7 @@ class BaseDiff_gpu(LAMLTransformer):
 
         return cudf.DataFrame(cp.concatenate(feats_block, axis=1), columns=self.features)
 
-    def _transform_cupy(self, dataset: DatetimeCompatible_gpu) -> CupyDataset:
+    def _transform_cupy(self, dataset: DatetimeCompatibleGPU) -> CupyDataset:
 
         # convert to accepted format and get attributes
         dataset = dataset.to_cudf()
@@ -242,7 +242,7 @@ class BaseDiff_gpu(LAMLTransformer):
             return self._transform_cupy(dataset)
 
 
-class DateSeasons_gpu(LAMLTransformer):
+class DateSeasonsGPU(LAMLTransformer):
     """
     Basic conversion strategy, used in selection one-to-one transformers (GPU version).
     Datetime converted to difference with basic_date.
@@ -321,7 +321,7 @@ class DateSeasons_gpu(LAMLTransformer):
                 n += 1
         return cudf.DataFrame(new_arr, index=data.index, columns=self.features)
 
-    def _transform_cupy(self, dataset: DatetimeCompatible_gpu) -> CupyDataset:
+    def _transform_cupy(self, dataset: DatetimeCompatibleGPU) -> CupyDataset:
 
         # convert to accepted format and get attributes
         dataset = dataset.to_cudf()
@@ -359,7 +359,7 @@ class DateSeasons_gpu(LAMLTransformer):
         """
         assert isinstance(
             dataset, GpuDataset.__args__
-        ), "DateSeasons_gpu works only with CupyDataset, CudfDataset, DaskCudfDataset"
+        ), "DateSeasonsGPU works only with CupyDataset, CudfDataset, DaskCudfDataset"
 
         super().transform(dataset)
 

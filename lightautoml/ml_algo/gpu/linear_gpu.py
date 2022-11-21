@@ -25,14 +25,14 @@ from lightautoml.ml_algo.torch_based.gpu.linear_model_distributed import (
 )
 from lightautoml.validation.base import TrainValidIterator
 
-from .base_gpu import TabularDatasetGpu, TabularMLAlgo_gpu
+from .base_gpu import TabularDatasetGpu, TabularMLAlgoGPU
 
 logger = logging.getLogger(__name__)
 
 LinearEstimator = Union[LogisticRegression, ElasticNet, Lasso]
 
 
-class LinearLBFGS_gpu(TabularMLAlgo_gpu):
+class LinearLBFGSGPU(TabularMLAlgoGPU):
     """LBFGS L2 regression based on torch.
 
 
@@ -256,7 +256,7 @@ class LinearLBFGS_gpu(TabularMLAlgo_gpu):
         return pred
 
 
-class LinearL1CD_gpu(TabularMLAlgo_gpu):
+class LinearL1CDGPU(TabularMLAlgoGPU):
     """Coordinate descent based on cuml implementation."""
 
     _name: str = "LinearElasticNet"
@@ -487,7 +487,7 @@ class LinearL1CD_gpu(TabularMLAlgo_gpu):
         return pred
 
 
-class LinearL1CD_mgpu(LinearL1CD_gpu):
+class LinearL1CDMGPU(LinearL1CDGPU):
     def __init__(self, client, *args, **kwargs):
         self.client = client
         super().__init__(*args, **kwargs)

@@ -381,7 +381,7 @@ def auc_mu_gpu(
     return auc_full
 
 
-class F1Factory_gpu:
+class F1FactoryGPU:
     """
     Wrapper for :func:`~sklearn.metrics.f1_score` function.
     """
@@ -421,7 +421,7 @@ class F1Factory_gpu:
         return f1_score(y_true, y_pred, sample_weight=sample_weight, average=self.average)
 
 
-class BestClassBinaryWrapper_gpu:
+class BestClassBinaryWrapperGPU:
     """Metric wrapper to get best class prediction instead of probs.
 
     There is cut-off for prediction by ``0.5``.
@@ -469,7 +469,7 @@ class AccuracyScoreWrapper:
             return res
 
 
-class BestClassMulticlassWrapper_gpu:
+class BestClassMulticlassWrapperGPU:
     """Metric wrapper to get best class prediction instead of probs for multiclass.
 
     Prediction provides by argmax.
@@ -525,7 +525,7 @@ class BestClassMulticlassWrapper_gpu:
 _valid_str_binary_metric_names_gpu = {
     "auc": roc_auc_score_gpu,
     "logloss": partial(log_loss_gpu, eps=1e-7),
-    "accuracy": BestClassBinaryWrapper_gpu(AccuracyScoreWrapper()),
+    "accuracy": BestClassBinaryWrapperGPU(AccuracyScoreWrapper()),
 }
 
 _valid_str_reg_metric_names_gpu = {
@@ -543,10 +543,10 @@ _valid_str_multiclass_metric_names_gpu = {
     "auc_mu": auc_mu_gpu,
     "auc": roc_auc_ovr_gpu,
     "crossentropy": partial(log_loss_gpu, eps=1e-7),
-    "accuracy": BestClassMulticlassWrapper_gpu(AccuracyScoreWrapper()),
-    'f1_macro': BestClassMulticlassWrapper_gpu(F1Factory_gpu('macro')),
-    'f1_micro': BestClassMulticlassWrapper_gpu(F1Factory_gpu('micro')),
-    'f1_weighted': BestClassMulticlassWrapper_gpu(F1Factory_gpu('weighted')),
+    "accuracy": BestClassMulticlassWrapperGPU(AccuracyScoreWrapper()),
+    'f1_macro': BestClassMulticlassWrapperGPU(F1FactoryGPU('macro')),
+    'f1_micro': BestClassMulticlassWrapperGPU(F1FactoryGPU('micro')),
+    'f1_weighted': BestClassMulticlassWrapperGPU(F1FactoryGPU('weighted')),
 }
 
 _valid_str_multireg_metric_names_gpu = {"mse": mean_squared_error_gpu, "mae": mean_absolute_error_gpu}

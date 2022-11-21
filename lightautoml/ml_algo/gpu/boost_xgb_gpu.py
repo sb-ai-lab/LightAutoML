@@ -22,12 +22,12 @@ from lightautoml.ml_algo.tuning.base import Uniform
 from lightautoml.pipelines.selection.base import ImportanceEstimator
 from lightautoml.validation.base import TrainValidIterator
 
-from .base_gpu import TabularDatasetGpu, TabularMLAlgo_gpu
+from .base_gpu import TabularDatasetGpu, TabularMLAlgoGPU
 
 logger = logging.getLogger(__name__)
 
 
-class BoostXGB(TabularMLAlgo_gpu, ImportanceEstimator):
+class BoostXGB(TabularMLAlgoGPU, ImportanceEstimator):
     """Gradient boosting on decision trees from LightGBM library.
 
     default_params: All available parameters listed in lightgbm documentation:

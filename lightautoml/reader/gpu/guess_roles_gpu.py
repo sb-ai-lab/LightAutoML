@@ -20,17 +20,17 @@ from lightautoml.transformers.base import (
     SequentialTransformer,
 )
 from lightautoml.transformers.gpu.categorical_gpu import (
-    FreqEncoder_gpu,
-    LabelEncoder_gpu,
-    MultiClassTargetEncoder_gpu,
-    OrdinalEncoder_gpu,
-    TargetEncoder_gpu,
-    MultioutputTargetEncoder_gpu
+    FreqEncoderGPU,
+    LabelEncoderGPU,
+    MultiClassTargetEncoderGPU,
+    OrdinalEncoderGPU,
+    TargetEncoderGPU,
+    MultioutputTargetEncoderGPU
 )
-from lightautoml.transformers.gpu.numeric_gpu import QuantileBinning_gpu
+from lightautoml.transformers.gpu.numeric_gpu import QuantileBinningGPU
 
 RolesDict = Dict[str, ColumnRole]
-Encoder_gpu = Union[TargetEncoder_gpu, MultiClassTargetEncoder_gpu,MultioutputTargetEncoder_gpu]
+EncoderGPU = Union[TargetEncoderGPU, MultiClassTargetEncoderGPU, MultioutputTargetEncoderGPU]
 GpuFrame = Union[cudf.DataFrame]
 GpuDataset = Union[CudfDataset, CupyDataset]
 
@@ -148,12 +148,12 @@ def get_target_and_encoder_gpu(train: GpuDataset) -> Tuple[Any, type]:
     if train.task.name == "multiclass":
         n_out = cp.max(target) + 1
         target = target[:, cp.newaxis] == cp.arange(n_out)[cp.newaxis, :]
-        encoder = MultiClassTargetEncoder_gpu
+        encoder = MultiClassTargetEncoderGPU
     elif (train.task.name == "multi:reg") or (train.task.name == "multilabel"):
         target = cast(cp.ndarray, target).astype(cp.float32)
-        encoder = MultioutputTargetEncoder_gpu
+        encoder = MultioutputTargetEncoderGPU
     else:
-        encoder = TargetEncoder_gpu
+        encoder = TargetEncoderGPU
     return target, encoder
 
 
@@ -453,13 +453,13 @@ def get_numeric_roles_stat_gpu(
     res["unique_rate"] = res["unique"] / train_len
 
     # check binned categorical score
-    trf = SequentialTransformer([QuantileBinning_gpu(), encoder()])
+    trf = SequentialTransformer([QuantileBinningGPU(), encoder()])
     res["binned_scores"] = cp.asnumpy(get_score_from_pipe_gpu(
         train, target, pipe=trf, empty_slice=empty_slice, n_jobs=n_jobs
     ))
     # check label encoded scores
     trf = SequentialTransformer(
-        [ChangeRoles(CategoryRole(np.float32)), LabelEncoder_gpu(), encoder()]
+        [ChangeRoles(CategoryRole(np.float32)), LabelEncoderGPU(), encoder()]
     )
 
     res["encoded_scores"] = cp.asnumpy(get_score_from_pipe_gpu(
@@ -467,7 +467,7 @@ def get_numeric_roles_stat_gpu(
     ))
     # check frequency encoding
     trf = SequentialTransformer(
-        [ChangeRoles(CategoryRole(np.float32)), FreqEncoder_gpu()]
+        [ChangeRoles(CategoryRole(np.float32)), FreqEncoderGPU()]
     )
 
     res["freq_scores"] = cp.asnumpy(get_score_from_pipe_gpu(
@@ -541,17 +541,17 @@ def get_category_roles_stat_gpu(
     empty_slice = train.data.isna()
 
     # check label encoded scores
-    trf = SequentialTransformer([LabelEncoder_gpu(), encoder()])
+    trf = SequentialTransformer([LabelEncoderGPU(), encoder()])
     res["encoded_scores"] = cp.asnumpy(get_score_from_pipe_gpu(
         train, target, pipe=trf, empty_slice=empty_slice, n_jobs=n_jobs
     ))
     # check frequency encoding
-    trf = FreqEncoder_gpu()
+    trf = FreqEncoderGPU()
     res["freq_scores"] = cp.asnumpy(get_score_from_pipe_gpu(
         train, target, pipe=trf, empty_slice=empty_slice, n_jobs=n_jobs
     ))
     # check ordinal encoding
-    trf = OrdinalEncoder_gpu()
+    trf = OrdinalEncoderGPU()
     res["ord_scores"] = cp.asnumpy(get_score_from_pipe_gpu(
         train, target, pipe=trf, empty_slice=empty_slice, n_jobs=n_jobs
     ))

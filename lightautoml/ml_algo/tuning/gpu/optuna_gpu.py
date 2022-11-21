@@ -37,10 +37,10 @@ class GpuQueue:
         self.queue.put(current_idx)
 
 
-class OptunaTuner_gpu(OptunaTuner):
+class OptunaTunerGPU(OptunaTuner):
     """Wrapper for optuna tuner."""
 
-    _name: str = "OptunaTuner_gpu"
+    _name: str = "OptunaTunerGPU"
 
     study: optuna.study.Study = None
     estimated_n_trials: int = None

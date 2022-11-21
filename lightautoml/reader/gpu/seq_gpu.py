@@ -9,7 +9,7 @@ import dask_cudf
 from lightautoml.dataset.roles import DatetimeRole
 from ..seq import TopInd, IDSInd
 
-class TopInd_gpu(TopInd):
+class TopIndGPU(TopInd):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -79,7 +79,7 @@ class TopInd_gpu(TopInd):
         inds = np.vstack(inds)
         return inds
 
-class IDSInd_gpu(IDSInd):
+class IDSIndGPU(IDSInd):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

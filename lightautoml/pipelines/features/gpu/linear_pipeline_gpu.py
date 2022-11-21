@@ -15,21 +15,21 @@ from lightautoml.transformers.base import (
     SequentialTransformer,
     UnionTransformer,
 )
-from lightautoml.transformers.gpu.categorical_gpu import LabelEncoder_gpu, OHEEncoder_gpu
+from lightautoml.transformers.gpu.categorical_gpu import LabelEncoderGPU, OHEEncoderGPU
 from lightautoml.transformers.gpu.numeric_gpu import (
-    FillInf_gpu,
-    FillnaMedian_gpu,
-    LogOdds_gpu,
-    NaNFlags_gpu,
-    StandardScaler_gpu,
+    FillInfGPU,
+    FillnaMedianGPU,
+    LogOddsGPU,
+    NaNFlagsGPU,
+    StandardScalerGPU,
 )
 
-from .base_gpu import TabularDataFeatures_gpu
+from .base_gpu import TabularDataFeaturesGPU
 
 GpuDataset = Union[CupyDataset, CudfDataset, DaskCudfDataset]
 
 
-class LinearFeatures_gpu(FeaturesPipeline, TabularDataFeatures_gpu):
+class LinearFeaturesGPU(FeaturesPipeline, TabularDataFeaturesGPU):
     """
     Creates pipeline for linear models and nnets.
 
@@ -158,7 +158,7 @@ class LinearFeatures_gpu(FeaturesPipeline, TabularDataFeatures_gpu):
         # add datetime seasonality
         seas_cats = self.get_datetime_seasons(train, CategoryRole(np.int32))
         if seas_cats is not None:
-            sparse_list.append(SequentialTransformer([seas_cats, LabelEncoder_gpu()]))
+            sparse_list.append(SequentialTransformer([seas_cats, LabelEncoderGPU()]))
 
         # get quantile binning
         sparse_list.append(self.get_binned_data(train))
@@ -176,7 +176,7 @@ class LinearFeatures_gpu(FeaturesPipeline, TabularDataFeatures_gpu):
         probs_list = [x for x in probs_list if x is not None]
         if len(probs_list) > 0:
             probs_pipe = UnionTransformer(probs_list)
-            probs_pipe = SequentialTransformer([probs_pipe, LogOdds_gpu()])
+            probs_pipe = SequentialTransformer([probs_pipe, LogOddsGPU()])
             dense_list.append(probs_pipe)
 
         # handle dense
@@ -189,9 +189,9 @@ class LinearFeatures_gpu(FeaturesPipeline, TabularDataFeatures_gpu):
                     UnionTransformer(
                         [
                             SequentialTransformer(
-                                [FillInf_gpu(), FillnaMedian_gpu(), StandardScaler_gpu()]
+                                [FillInfGPU(), FillnaMedianGPU(), StandardScalerGPU()]
                             ),
-                            NaNFlags_gpu(),
+                            NaNFlagsGPU(),
                         ]
                     ),
                 ]
@@ -206,9 +206,9 @@ class LinearFeatures_gpu(FeaturesPipeline, TabularDataFeatures_gpu):
                 final = ChangeRoles(CategoryRole(np.float32))
             else:
                 if self.sparse_ohe == "auto":
-                    final = OHEEncoder_gpu(total_feats_cnt=train.shape[1])
+                    final = OHEEncoderGPU(total_feats_cnt=train.shape[1])
                 else:
-                    final = OHEEncoder_gpu(make_sparse=self.sparse_ohe)
+                    final = OHEEncoderGPU(make_sparse=self.sparse_ohe)
             sparse_pipe = SequentialTransformer([sparse_pipe, final])
 
             transformers_list.append(sparse_pipe)

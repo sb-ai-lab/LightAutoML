@@ -17,17 +17,17 @@ from lightautoml.transformers.base import (
     SequentialTransformer,
     UnionTransformer,
 )
-from lightautoml.transformers.gpu.categorical_gpu import OrdinalEncoder_gpu, LabelEncoder_gpu
-from lightautoml.transformers.gpu.datetime_gpu import TimeToNum_gpu
+from lightautoml.transformers.gpu.categorical_gpu import OrdinalEncoderGPU, LabelEncoderGPU
+from lightautoml.transformers.gpu.datetime_gpu import TimeToNumGPU
 
-from lightautoml.transformers.gpu.seq_gpu import SeqStatisticsTransformer_gpu, SeqNumCountsTransformer_gpu, GetSeqTransformer_gpu
+from lightautoml.transformers.gpu.seq_gpu import SeqStatisticsTransformerGPU, SeqNumCountsTransformerGPU, GetSeqTransformerGPU
 
-from .base_gpu import TabularDataFeatures_gpu
+from .base_gpu import TabularDataFeaturesGPU
 
 GpuDataset = Union[CupyDataset, CudfDataset, DaskCudfDataset]
 
 
-class LGBSimpleFeatures_gpu(FeaturesPipeline):
+class LGBSimpleFeaturesGPU(FeaturesPipeline):
     """Creates simple pipeline for tree based models.
 
     Simple but is ok for select features.
@@ -56,7 +56,7 @@ class LGBSimpleFeatures_gpu(FeaturesPipeline):
             cat_processing = SequentialTransformer(
                 [
                     ColumnsSelector(keys=categories),
-                    OrdinalEncoder_gpu(subs=None, random_state=42),
+                    OrdinalEncoderGPU(subs=None, random_state=42),
                     # ChangeRoles(NumericRole(np.float32))
                 ]
             )
@@ -66,7 +66,7 @@ class LGBSimpleFeatures_gpu(FeaturesPipeline):
         datetimes = get_columns_by_role(train, "Datetime")
         if len(datetimes) > 0:
             dt_processing = SequentialTransformer(
-                [ColumnsSelector(keys=datetimes), TimeToNum_gpu()]
+                [ColumnsSelector(keys=datetimes), TimeToNumGPU()]
             )
             transformers_list.append(dt_processing)
 
@@ -93,7 +93,7 @@ class LGBSimpleFeatures_gpu(FeaturesPipeline):
         union_all = UnionTransformer(transformers_list)
         return union_all
 
-class LGBMultiSeqSimpleFeatures_gpu(FeaturesPipeline, TabularDataFeatures_gpu):
+class LGBMultiSeqSimpleFeaturesGPU(FeaturesPipeline, TabularDataFeaturesGPU):
     """LGBMultiSeqSimpleFeatures.
 
     Args:
@@ -148,7 +148,7 @@ class LGBMultiSeqSimpleFeatures_gpu(FeaturesPipeline, TabularDataFeatures_gpu):
             cat_processing = SequentialTransformer(
                 [
                     ColumnsSelector(keys=categories),
-                    LabelEncoder_gpu(subs=None, random_state=42),
+                    LabelEncoderGPU(subs=None, random_state=42),
                     ChangeRoles(NumericRole(np.float32)),
                 ]
             )
@@ -157,7 +157,7 @@ class LGBMultiSeqSimpleFeatures_gpu(FeaturesPipeline, TabularDataFeatures_gpu):
         # process datetimes
         datetimes = get_columns_by_role(train, "Datetime")
         if len(datetimes) > 0:
-            dt_processing = SequentialTransformer([ColumnsSelector(keys=datetimes), TimeToNum_gpu()])
+            dt_processing = SequentialTransformer([ColumnsSelector(keys=datetimes), TimeToNumGPU()])
             transformers_list.append(dt_processing)
             transformers_list.append(self.get_datetime_diffs(train))
             transformers_list.append(self.get_datetime_seasons(train, NumericRole(np.float32)))
@@ -177,15 +177,14 @@ class LGBMultiSeqSimpleFeatures_gpu(FeaturesPipeline, TabularDataFeatures_gpu):
         # get seq features
         if train.scheme is not None:
             if train.scheme.get("type", "full") == "lookup":
-                seq = SeqStatisticsTransformer_gpu()
+                seq = SeqStatisticsTransformerGPU()
             else:
-                seq = SeqNumCountsTransformer_gpu()
+                seq = SeqNumCountsTransformerGPU()
         else:
-            seq = SeqNumCountsTransformer_gpu()
-        #seq = SeqStatisticsTransformer_gpu()
+            seq = SeqNumCountsTransformerGPU()
 
         all_feats = SequentialTransformer(
-            [GetSeqTransformer_gpu(name=train.name), simple_seq_transforms, seq]  # preprocessing  # plain features
+            [GetSeqTransformerGPU(name=train.name), simple_seq_transforms, seq]  # preprocessing  # plain features
         )
 
         return all_feats
@@ -210,7 +209,7 @@ class LGBMultiSeqSimpleFeatures_gpu(FeaturesPipeline, TabularDataFeatures_gpu):
             cat_processing = SequentialTransformer(
                 [
                     ColumnsSelector(keys=categories),
-                    OrdinalEncoder_gpu(subs=None, random_state=42),
+                    OrdinalEncoderGPU(subs=None, random_state=42),
                     # ChangeRoles(NumericRole(np.float32))
                 ]
             )
@@ -219,7 +218,7 @@ class LGBMultiSeqSimpleFeatures_gpu(FeaturesPipeline, TabularDataFeatures_gpu):
         # process datetimes
         datetimes = get_columns_by_role(train, "Datetime")
         if len(datetimes) > 0:
-            dt_processing = SequentialTransformer([ColumnsSelector(keys=datetimes), TimeToNum_gpu()])
+            dt_processing = SequentialTransformer([ColumnsSelector(keys=datetimes), TimeToNumGPU()])
             transformers_list.append(dt_processing)
 
         # process numbers
@@ -244,7 +243,7 @@ class LGBMultiSeqSimpleFeatures_gpu(FeaturesPipeline, TabularDataFeatures_gpu):
 
         return union_all
 
-class LGBAdvancedPipeline_gpu(FeaturesPipeline, TabularDataFeatures_gpu):
+class LGBAdvancedPipelineGPU(FeaturesPipeline, TabularDataFeaturesGPU):
     """Create advanced pipeline for trees based models.
 
     Includes:

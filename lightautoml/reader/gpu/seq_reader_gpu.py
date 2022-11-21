@@ -41,7 +41,7 @@ from .guess_roles_gpu import (
 )
 from ..utils import set_sklearn_folds
 
-from .seq_gpu import TopInd_gpu, IDSInd_gpu
+from .seq_gpu import TopIndGPU, IDSIndGPU
 from .cudf_reader import CudfReader
 from .daskcudf_reader import DaskCudfReader
 
@@ -70,7 +70,7 @@ class DictToCudfSeqReader(CudfReader):
     def create_ids(self, seq_data, plain_data, dataset_name):
         """Calculate ids for different seq tasks."""
         if self.seq_params[dataset_name]["case"] == "next_values":
-            self.ti[dataset_name] = TopInd_gpu(
+            self.ti[dataset_name] = TopIndGPU(
                 scheme=self.seq_params[dataset_name].get("scheme", None),
                 roles=self.meta[dataset_name]["roles"],
                 **self.seq_params[dataset_name]["params"]
@@ -78,7 +78,7 @@ class DictToCudfSeqReader(CudfReader):
             self.ti[dataset_name].read(seq_data, plain_data)
 
         elif self.seq_params[dataset_name]["case"] == "ids":
-            self.ti[dataset_name] = IDSInd_gpu(
+            self.ti[dataset_name] = IDSIndGPU(
                 scheme=self.seq_params[dataset_name].get("scheme", None), **self.seq_params[dataset_name]["params"]
             )
             self.ti[dataset_name].read(seq_data, plain_data)
@@ -463,7 +463,7 @@ class DictToDaskCudfSeqReader(DaskCudfReader):
     def create_ids(self, seq_data, plain_data, dataset_name):
         """Calculate ids for different seq tasks."""
         if self.seq_params[dataset_name]["case"] == "next_values":
-            self.ti[dataset_name] = TopInd_gpu(
+            self.ti[dataset_name] = TopIndGPU(
                 scheme=self.seq_params[dataset_name].get("scheme", None),
                 roles=self.meta[dataset_name]["roles"],
                 **self.seq_params[dataset_name]["params"]
@@ -471,7 +471,7 @@ class DictToDaskCudfSeqReader(DaskCudfReader):
             self.ti[dataset_name].read(seq_data, plain_data)
 
         elif self.seq_params[dataset_name]["case"] == "ids":
-            self.ti[dataset_name] = IDSInd_gpu(
+            self.ti[dataset_name] = IDSIndGPU(
                 scheme=self.seq_params[dataset_name].get("scheme", None), **self.seq_params[dataset_name]["params"]
             )
             self.ti[dataset_name].read(seq_data, plain_data)

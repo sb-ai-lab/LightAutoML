@@ -42,7 +42,7 @@ if __name__ == '__main__':
 
     client = Client(cluster)
 
-    from lightautoml.automl.presets.gpu.tabular_gpu_presets import TabularAutoML_gpu
+    from lightautoml.automl.presets.gpu.tabular_gpu_presets import TabularAutoMLGPU
     from lightautoml.tasks import Task
     from lightautoml.dataset.roles import TargetRole
     
@@ -96,7 +96,7 @@ if __name__ == '__main__':
     client.run(cudf.set_allocator, "managed")
     cudf.set_allocator("managed")
 
-    automl = TabularAutoML_gpu(task=Task(data_info['task_type'], device="mgpu"), 
+    automl = TabularAutoMLGPU(task=Task(data_info['task_type'], device="mgpu"), 
                                timeout=args.timeout,
                                config_path=args.config,
                                client=client)

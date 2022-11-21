@@ -25,7 +25,7 @@ from lightautoml.transformers.seq import GetSeqTransformer
 # type - something that can be converted to pandas dataset
 CupyTransformable = Union[CupyDataset, CudfDataset, DaskCudfDataset]
 
-class SeqNumCountsTransformer_gpu(SeqNumCountsTransformer):
+class SeqNumCountsTransformerGPU(SeqNumCountsTransformer):
     """NC."""
 
     _fit_checks = ()
@@ -60,7 +60,7 @@ class SeqNumCountsTransformer_gpu(SeqNumCountsTransformer):
 
         """
         # checks here
-        super(SeqNumCountsTransformer_gpu.__bases__[0], self).transform(dataset)
+        super(SeqNumCountsTransformerGPU.__bases__[0], self).transform(dataset)
         # convert to accepted dtype and get attributes
 
         #for calculating counts this method is long on gpu
@@ -82,7 +82,7 @@ class SeqNumCountsTransformer_gpu(SeqNumCountsTransformer):
         return dat_t(data, roles = self._roles)
 
 
-class SeqStatisticsTransformer_gpu(SeqStatisticsTransformer):
+class SeqStatisticsTransformerGPU(SeqStatisticsTransformer):
     """SSF."""
 
     _fit_checks = ()
@@ -117,7 +117,7 @@ class SeqStatisticsTransformer_gpu(SeqStatisticsTransformer):
 
         """
         # checks here
-        super(SeqStatisticsTransformer_gpu.__bases__[0], self).transform(dataset)
+        super(SeqStatisticsTransformerGPU.__bases__[0], self).transform(dataset)
         # convert to accepted dtype and get attributes
         
         #for calculating _get_last this method is long on gpu
@@ -152,7 +152,7 @@ class SeqStatisticsTransformer_gpu(SeqStatisticsTransformer):
             return cp.array([np.NaN] * x.shape[-1])
 
 
-class GetSeqTransformer_gpu(GetSeqTransformer):
+class GetSeqTransformerGPU(GetSeqTransformer):
     """LAG."""
 
     _fit_checks = ()
@@ -174,7 +174,7 @@ class GetSeqTransformer_gpu(GetSeqTransformer):
 
         """
         # checks here
-        super(GetSeqTransformer_gpu.__bases__[0], self).transform(dataset)
+        super(GetSeqTransformerGPU.__bases__[0], self).transform(dataset)
         # convert to accepted dtype and get attributes
 
         dataset = dataset.seq_data.get(self.name)

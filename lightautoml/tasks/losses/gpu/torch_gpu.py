@@ -9,7 +9,7 @@ from lightautoml.tasks.losses.base import Loss, MetricFunc
 from lightautoml.tasks.losses.torch import TorchLossWrapper, _torch_loss_dict
 
 
-class TORCHLoss_gpu(Loss):
+class TORCHLossGPU(Loss):
     """Loss used for PyTorch."""
 
     def __init__(self, loss: Union[str, Callable], loss_params: Optional[Dict] = None):

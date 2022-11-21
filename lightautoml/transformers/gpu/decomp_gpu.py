@@ -22,7 +22,7 @@ CupyCSR = Union[CupyDataset, CupySparseDataset]
 GpuDataset = Union[CupyDataset, CudfDataset, DaskCudfDataset]
 
 
-class PCATransformer_gpu(LAMLTransformer):
+class PCATransformerGPU(LAMLTransformer):
     """PCA."""
 
     _fit_checks = (numeric_check,)
@@ -107,7 +107,7 @@ class PCATransformer_gpu(LAMLTransformer):
         return output
 
 
-class SVDTransformer_gpu(LAMLTransformer):
+class SVDTransformerGPU(LAMLTransformer):
     """TruncatedSVD."""
 
     _fit_checks = (numeric_check,)

@@ -29,23 +29,23 @@ from lightautoml.transformers.base import (
 
 try:
     from lightautoml.transformers.gpu.categorical_gpu import (
-        CatIntersections_gpu,
-        FreqEncoder_gpu,
-        LabelEncoder_gpu,
-        MultiClassTargetEncoder_gpu,
-        OrdinalEncoder_gpu,
-        TargetEncoder_gpu,
-        MultioutputTargetEncoder_gpu
+        CatIntersectionsGPU,
+        FreqEncoderGPU,
+        LabelEncoderGPU,
+        MultiClassTargetEncoderGPU,
+        OrdinalEncoderGPU,
+        TargetEncoderGPU,
+        MultioutputTargetEncoderGPU
     )
-    from lightautoml.transformers.gpu.datetime_gpu import BaseDiff_gpu, DateSeasons_gpu
-    from lightautoml.transformers.gpu.numeric_gpu import QuantileBinning_gpu
+    from lightautoml.transformers.gpu.datetime_gpu import BaseDiffGPU, DateSeasonsGPU
+    from lightautoml.transformers.gpu.numeric_gpu import QuantileBinningGPU
 except:
     pass
 
 GpuDataset = Union[CupyDataset, CudfDataset, DaskCudfDataset]
 
 
-class TabularDataFeatures_gpu(TabularDataFeatures):
+class TabularDataFeaturesGPU(TabularDataFeatures):
     """Helper class contains basic features transformations for tabular data.
 
     This method can de shared by all tabular feature pipelines,
@@ -69,7 +69,7 @@ class TabularDataFeatures_gpu(TabularDataFeatures):
         dt_processing = SequentialTransformer(
             [
                 ColumnsSelector(keys=list(set(datetimes + base_dates))),
-                BaseDiff_gpu(base_names=base_dates, diff_names=datetimes),
+                BaseDiffGPU(base_names=base_dates, diff_names=datetimes),
             ]
         )
         return dt_processing
@@ -102,7 +102,7 @@ class TabularDataFeatures_gpu(TabularDataFeatures):
             outp_role = NumericRole(np.float32)
 
         date_as_cat = SequentialTransformer(
-            [ColumnsSelector(keys=datetimes), DateSeasons_gpu(outp_role)]
+            [ColumnsSelector(keys=datetimes), DateSeasonsGPU(outp_role)]
         )
         return date_as_cat
 
@@ -167,7 +167,7 @@ class TabularDataFeatures_gpu(TabularDataFeatures):
             return
 
         cat_processing = SequentialTransformer(
-            [ColumnsSelector(keys=feats_to_select), FreqEncoder_gpu()]
+            [ColumnsSelector(keys=feats_to_select), FreqEncoderGPU()]
         )
         return cat_processing
 
@@ -193,7 +193,7 @@ class TabularDataFeatures_gpu(TabularDataFeatures):
         cat_processing = SequentialTransformer(
             [
                 ColumnsSelector(keys=feats_to_select),
-                OrdinalEncoder_gpu(subs=self.subsample, random_state=self.random_state),
+                OrdinalEncoderGPU(subs=self.subsample, random_state=self.random_state),
             ]
         )
         return cat_processing
@@ -224,7 +224,7 @@ class TabularDataFeatures_gpu(TabularDataFeatures):
 
         cat_processing = [
             ColumnsSelector(keys=feats_to_select),
-            LabelEncoder_gpu(subs=self.subsample, random_state=self.random_state),
+            LabelEncoderGPU(subs=self.subsample, random_state=self.random_state),
         ]
         cat_processing = SequentialTransformer(cat_processing)
         return cat_processing
@@ -242,7 +242,7 @@ class TabularDataFeatures_gpu(TabularDataFeatures):
         target_encoder = None
         if train.folds is not None:
             if train.task.name in ["binary", "reg"]:
-                target_encoder = TargetEncoder_gpu
+                target_encoder = TargetEncoderGPU
             elif (train.task.name == "multi:reg") or (train.task.name == "multilabel"):
                 n_classes = train.target.shape
                 if type(train) == DaskCudfDataset:
@@ -250,7 +250,7 @@ class TabularDataFeatures_gpu(TabularDataFeatures):
                 else:
                     n_classes = n_classes[1]
                 if n_classes <= self.multiclass_te_co:
-                    target_encoder = MultioutputTargetEncoder_gpu
+                    target_encoder = MultioutputTargetEncoderGPU
             else:
                 target_max = train.target.max()
                 if type(train) == DaskCudfDataset:
@@ -258,7 +258,7 @@ class TabularDataFeatures_gpu(TabularDataFeatures):
                 n_classes = target_max + 1
 
                 if n_classes <= self.multiclass_te_co:
-                    target_encoder = MultiClassTargetEncoder_gpu
+                    target_encoder = MultiClassTargetEncoderGPU
 
         return target_encoder
 
@@ -284,7 +284,7 @@ class TabularDataFeatures_gpu(TabularDataFeatures):
         binned_processing = SequentialTransformer(
             [
                 ColumnsSelector(keys=feats_to_select),
-                QuantileBinning_gpu(nbins=self.max_bin_count),
+                QuantileBinningGPU(nbins=self.max_bin_count),
             ]
         )
         return binned_processing
@@ -319,7 +319,7 @@ class TabularDataFeatures_gpu(TabularDataFeatures):
 
         cat_processing = [
             ColumnsSelector(keys=feats_to_select),
-            CatIntersections_gpu(
+            CatIntersectionsGPU(
                 subs=self.subsample,
                 random_state=self.random_state,
                 max_depth=self.max_intersection_depth,
