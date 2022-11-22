@@ -547,3 +547,23 @@ class CudfReader(PandasToPandasReader):
             feature.map(self.class_mapping).values, index=feature.index, name=col_name
         )
         return val
+
+    def to_cpu(self, **kwargs):
+        task_cpu = deepcopy(self.task)
+        task_cpu.device = 'cpu'
+        cpu_reader = PandasToPandasReader(
+            task=task_cpu,
+            samples=self.samples,
+            max_nan_rate=self.max_nan_rate,
+            max_constant_rate=self.max_constant_rate,
+            cv=self.cv,
+            random_state=self.random_state,
+            roles_params=self.roles_params,
+            n_jobs=self.n_jobs,
+            **kwargs)
+        cpu_reader.class_mapping = self.class_mapping
+        cpu_reader._dropped_features = self.dropped_features
+        cpu_reader._used_features = self.used_features
+        cpu_reader._used_array_attrs = self.used_array_attrs
+        cpu_reader._roles = self.roles
+        return cpu_reader

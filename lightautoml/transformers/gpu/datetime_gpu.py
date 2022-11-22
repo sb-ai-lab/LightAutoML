@@ -33,6 +33,14 @@ class TimeToNumGPU(LAMLTransformer):
     _fit_checks = (datetime_check,)
     _transform_checks = ()
 
+    def to_cpu(self):
+        basic_interval = self.basic_interval
+        basic_time = self.basic_time
+        self.__class__ = TimeToNum
+        self.basic_time = basic_time
+        self.basic_interval = basic_interval
+        return self
+
     def _standardize_date(
         self, data: cudf.DataFrame, mean: np.datetime64, std: np.timedelta64
     ) -> cudf.DataFrame:
@@ -142,6 +150,16 @@ class BaseDiffGPU(LAMLTransformer):
         self.base_names = base_names
         self.diff_names = diff_names
         self.basic_interval = basic_interval
+
+    def to_cpu(self):
+        base_names = self.base_names
+        diff_names = self.diff_names
+        basic_interval = self.basic_interval
+        self.__class__ = BaseDiff
+        self.base_names = base_names
+        self.diff_names = diff_names
+        self.basic_interval = basic_interval
+        return self
 
     def fit(self, dataset: LAMLDataset) -> "LAMLTransformer":
         """Fit transformer and return it's instance (GPU version).
@@ -267,6 +285,17 @@ class DateSeasonsGPU(LAMLTransformer):
         self.output_role = output_role
         if output_role is None:
             self.output_role = CategoryRole(cp.int32)
+
+    def to_cpu(self):
+        transformations = deepcopy(self.transformations)
+        features = deepcopy(self._features)
+        output_role = deepcopy(self.output_role)
+        self.__class__ = DateSeasons
+        self.output_role = output_role
+        self.transformations = transformations
+        self._features = features
+        self.output_role = output_role
+        return self
 
     def fit(self, dataset: LAMLDataset) -> "LAMLTransformer":
         """Fit transformer and return it's instance (GPU version).

@@ -24,6 +24,8 @@ from lightautoml.validation.base import TrainValidIterator
 
 from .base_gpu import TabularDatasetGpu, TabularMLAlgoGPU
 
+from ..boost_xgb import BoostXGB as BoosterCPU
+
 logger = logging.getLogger(__name__)
 
 
@@ -346,6 +348,25 @@ class BoostXGB(TabularMLAlgoGPU, ImportanceEstimator):
 
         """
         self.fit_predict(train_valid)
+
+    def to_cpu(self):
+        print("XGB:", self.__dict__)
+        print("XGB model type:", self.models[0].__class__.__name__)
+        print("XGB model:", self.models[0].__dict__)
+        models = deepcopy(self.models)
+        for i in range(len(models)):
+            models[i].set_param({"predictor": "cpu_predictor"})
+
+        task = Task(name=self.task._name,
+                    device='cpu',
+                    metric=self.task.metric_name,
+                    greater_is_better=self.task.greater_is_better)
+
+        algo = BoosterCPU()
+        algo.models = deepcopy(models)
+        algo.task = task
+
+        return algo
 
 
 class BoostXGB_dask(BoostXGB):
