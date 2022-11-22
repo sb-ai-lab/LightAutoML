@@ -22,6 +22,7 @@ from lightautoml.dataset.gpu.gpu_dataset import CupyDataset
 from lightautoml.dataset.gpu.gpu_dataset import DaskCudfDataset
 from lightautoml.dataset.np_pd_dataset import NumpyDataset
 from lightautoml.ml_algo.gpu.boost_cb_gpu import BoostCBGPU
+from lightautoml.ml_algo.gpu.boost_pb_gpu import BoostPB
 from lightautoml.ml_algo.gpu.boost_xgb_gpu import BoostXGB
 from lightautoml.ml_algo.gpu.boost_xgb_gpu import BoostXGB_dask
 from lightautoml.ml_algo.gpu.linear_gpu import LinearLBFGSGPU
@@ -65,6 +66,8 @@ class TabularAutoMLGPU(TabularAutoML):
         "linear_l2": 0.7,
         "cb": 1,
         "cb_tuned": 3,
+        "pb": 1,
+        "pb_tuned": 3,
     }
 
     def __init__(
@@ -84,6 +87,7 @@ class TabularAutoMLGPU(TabularAutoML):
         selection_params: Optional[dict] = None,
         xgb_params: Optional[dict] = None,
         cb_params: Optional[dict] = None,
+        pb_params: Optional[dict] = None,
         linear_l2_params: Optional[dict] = None,
         gbm_pipeline_params: Optional[dict] = None,
         linear_pipeline_params: Optional[dict] = None,
@@ -104,6 +108,7 @@ class TabularAutoMLGPU(TabularAutoML):
                 "selection_params",
                 "xgb_params",
                 "cb_params",
+                "pb_params",
                 "linear_l2_params",
                 "gbm_pipeline_params",
                 "linear_pipeline_params",
@@ -117,6 +122,7 @@ class TabularAutoMLGPU(TabularAutoML):
                 selection_params,
                 xgb_params,
                 cb_params,
+                pb_params,
                 linear_l2_params,
                 gbm_pipeline_params,
                 linear_pipeline_params,
@@ -133,6 +139,7 @@ class TabularAutoMLGPU(TabularAutoML):
             self.general_params["parallel_folds"] = False
             self.xgb_params["parallel_folds"] = False
             self.cb_params["parallel_folds"] = False
+            self.pb_params["parallel_folds"] = False
             self.linear_l2_params["parallel_folds"] = False
 
         else:
@@ -149,6 +156,10 @@ class TabularAutoMLGPU(TabularAutoML):
                 res = self.cb_params["parallel_folds"]
             except KeyError:
                 self.cb_params["parallel_folds"] = val
+            try:
+                res = self.pb_params["parallel_folds"]
+            except KeyError:
+                self.pb_params["parallel_folds"] = val
 
             res = self.linear_l2_params.get("parallel_folds")
             if res is None:
@@ -176,7 +187,7 @@ class TabularAutoMLGPU(TabularAutoML):
             if self.task.name == "multiclass" and multilevel_avail:
                 self.general_params["use_algos"].append(["linear_l2", "cb"])
             if (self.task.name == "multi:reg") or (self.task.name == "multilabel"):
-                self.general_params["use_algos"] = [["linear_l2", "xgb"]]
+                self.general_params["use_algos"] = [["linear_l2", "xgb", "pb"]]
                 #self.general_params["use_algos"] = [["linear_l2", "xgb", "pb", "pb_tuned", "xgb_tuned"]]
 
         if not self.general_params["nested_cv"]:
@@ -257,6 +268,9 @@ class TabularAutoMLGPU(TabularAutoML):
         if model_type in ["xgb", "xgb_tuned"]:
             if self.xgb_params["parallel_folds"]:
                 score /= num_gpus
+        if model_type in ["pb", "pb_tuned"]:
+            if self.pb_params["parallel_folds"]:
+                score /= num_gpus
         if model_type == "linear_l2":
             if self.linear_l2_params["parallel_folds"]:
                 score /= num_gpus
@@ -283,12 +297,6 @@ class TabularAutoMLGPU(TabularAutoML):
 
     def get_selector(self, n_level: Optional[int] = 1) -> SelectionPipeline:
         selection_params = self.selection_params
-        # xgb_params
-        cb_params = deepcopy(self.cb_params)
-        cb_params["default_params"] = {
-            **cb_params["default_params"],
-            **{"feature_fraction": 1},
-        }
 
         mode = selection_params["mode"]
 
@@ -298,6 +306,7 @@ class TabularAutoMLGPU(TabularAutoML):
             # if we need selector - define model
             selection_feats = LGBSimpleFeaturesGPU()
 
+            #IF PYBOOST IS FASTER MAYBE SINGLE GPU SHOULD BE PB
             if (self.task.name == "multi:reg") or (self.task.name == "multilabel"):
                 # timer will be useful to estimate time for next gbm runs
                 time_score = self.get_time_score(n_level, "xgb", False)
@@ -400,13 +409,14 @@ class TabularAutoMLGPU(TabularAutoML):
             if algo_key == "cb":
                 gbm_model = BoostCBGPU(timer=gbm_timer, **self.cb_params)
             elif algo_key == "xgb":
-                # gbm_model = BoostXGB(timer=gbm_timer, **self.xgb_params)
                 if self.task.device == "mgpu" and not self.xgb_params["parallel_folds"]:
                     gbm_model = BoostXGB_dask(
                         client=self.client, timer=gbm_timer, **self.xgb_params
                     )
                 else:
                     gbm_model = BoostXGB(timer=gbm_timer, **self.xgb_params)
+            elif algo_key == "pb":
+                gbm_model = BoostPB(timer=gbm_timer, **self.pb_params)
             else:
                 raise ValueError("Wrong algo key")
 
@@ -420,6 +430,12 @@ class TabularAutoMLGPU(TabularAutoML):
                         gpu_cnt = torch.cuda.device_count()
                 elif algo_key == "xgb":
                     folds = self.xgb_params["parallel_folds"]
+                    if self.task.device == "gpu":
+                        gpu_cnt = 1
+                    else:
+                        gpu_cnt = torch.cuda.device_count()
+                elif algo_key == "pb":
+                    folds = self.pb_params["parallel_folds"]
                     if self.task.device == "gpu":
                         gpu_cnt = 1
                     else:
@@ -496,7 +512,7 @@ class TabularAutoMLGPU(TabularAutoML):
 
             gbm_models = [
                 x
-                for x in ["cb", "cb_tuned", "xgb", "xgb_tuned"]
+                for x in ["cb", "cb_tuned", "xgb", "xgb_tuned", "pb", "pb_tuned"]
                 if x in names and x.split("_")[0] in self.task.losses
             ]
 

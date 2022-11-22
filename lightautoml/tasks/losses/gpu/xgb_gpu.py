@@ -109,7 +109,7 @@ class XGBFuncGPU:
         return "Opt metric", val, self.greater_is_better
 
 
-class XGBLossGPU(Loss):
+class XGBLoss(Loss):
     """Loss used for LightGBM."""
 
     def __init__(

@@ -55,7 +55,6 @@ class BoostCBGPU(TabularMLAlgoGPU, ImportanceEstimator):
         "learning_rate": 0.03,
         "l2_leaf_reg": 1e-2,
         "bootstrap_type": "Bernoulli",
-        # "bagging_temperature": 1,
         "grow_policy": "SymmetricTree",
         "max_depth": 5,
         "min_data_in_leaf": 1,
@@ -68,7 +67,6 @@ class BoostCBGPU(TabularMLAlgoGPU, ImportanceEstimator):
         "max_bin": 32,
         "feature_border_type": "GreedyLogSum",
         "nan_mode": "Min",
-        # "silent": False,
         "verbose": False,
         "max_ctr_complexity": 1,
     }
@@ -223,12 +221,6 @@ class BoostCBGPU(TabularMLAlgoGPU, ImportanceEstimator):
 
         if estimated_n_trials > 20:
             optimization_search_space["l2_leaf_reg"] = Uniform(low=1e-8, high=10.0, log=True)
-
-            # optimization_search_space['bagging_temperature'] = trial.suggest_loguniform(
-            #     name='bagging_temperature',
-            #     low=0.01,
-            #     high=10.0,
-            # )
 
         if estimated_n_trials > 50:
             optimization_search_space["min_data_in_leaf"] = Uniform(low=1, high=20, q=1)

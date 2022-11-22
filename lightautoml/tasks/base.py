@@ -36,7 +36,7 @@ from .utils import infer_gib_multiclass
 
 try:
     from lightautoml.tasks.losses.gpu import TORCHLossGPU
-    from lightautoml.tasks.losses.gpu import CUMLLoss, XGBLossGPU
+    from lightautoml.tasks.losses.gpu import CUMLLoss, XGBLoss, PBLoss
     from lightautoml.tasks.gpu.common_metric_gpu import _valid_str_metric_names_gpu
     from lightautoml.tasks.gpu.utils_gpu import infer_gib_gpu, infer_gib_multiclass_gpu
 except ModuleNotFoundError:
@@ -495,8 +495,8 @@ class Task:
             loss_factories = [LGBLoss, SKLoss, TORCHLoss, CBLoss]
             loss_keys = ["lgb", "sklearn", "torch", "cb"]
             if gpu_available:
-                loss_factories.extend([TORCHLossGPU, CUMLLoss, XGBLossGPU])
-                loss_keys.extend(["torch_gpu", "cuml", "xgb"])
+                loss_factories.extend([TORCHLossGPU, CUMLLoss, XGBLoss, PBLoss])
+                loss_keys.extend(["torch_gpu", "cuml", "xgb", "pb"])
             for loss_key, loss_factory in zip(loss_keys, loss_factories):
                 try:
                     self.losses[loss_key] = loss_factory(loss, loss_params=loss_params)
