@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  schedule:
+    - cron: 0 9 * * *
+
+  # Manually triggerable in github
+  workflow_dispatch:
+
+jobs:
+  poetry_run:
+    runs-on: ${{matrix.os}}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-20.04, windows-latest, macos-latest]
+        python-version: [3.6, 3.7, 3.8, 3.9]
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - uses: Gr1N/setup-poetry@v7
+        with:
+          poetry-version: 1.1.7
+
+      - name: install libomp for MacOS
+        if: ${{ matrix.os == 'macos-latest' }}
+        run: brew install libomp
+
+      - name: poetry resolves dependecies
+        run: |
+          poetry run python scripts/poetry_fix.py -c
+          poetry lock
+          poetry install -E all
