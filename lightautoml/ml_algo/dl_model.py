@@ -17,7 +17,14 @@ import numpy as np
 import torch
 
 from torch.optim import lr_scheduler
-from transformers import AutoTokenizer
+
+
+try:
+    from transformers import AutoTokenizer
+except:
+    import warnings
+
+    warnings.warn("'transformers' - package isn't installed")
 
 from ..ml_algo.base import TabularDataset
 from ..ml_algo.base import TabularMLAlgo
