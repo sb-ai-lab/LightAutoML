@@ -3,6 +3,7 @@
 import logging
 from typing import Any, Dict, Optional, Sequence, TypeVar, Union
 
+from torch.cuda import device_count
 import cudf
 import cupy as cp
 import dask.dataframe as dd
@@ -66,7 +67,6 @@ class DaskCudfReader(CudfReader):
             npartitions: number of partitions
 
         """
-        self.compute = compute
         self.npartitions = npartitions
         self.index_ok = index_ok
         super().__init__(task, *args, **kwargs)
@@ -128,20 +128,14 @@ class DaskCudfReader(CudfReader):
         train_data, kwargs = self._prepare_data_and_target(train_data, **kwargs)
         # get subsample if it needed
         subsample = train_data
-        zero_partn = None
         train_len = len(subsample)
 
         if self.samples is not None and self.samples < train_len:
             frac = self.samples / train_len
             subsample = subsample.sample(frac=frac, random_state=42)
 
-        if self.compute:
-            subsample = subsample.compute()
-            zero_partn = subsample
-
         else:
             subsample = subsample.persist()
-            zero_partn = subsample.get_partition(0).compute()
 
         # infer roles
         for feat in subsample.columns:
@@ -154,13 +148,7 @@ class DaskCudfReader(CudfReader):
                     r = parsed_roles[feat]
                     # handle datetimes
                     if r.name == "Datetime":
-                        # try if it's ok to infer date with given params
-                        if self.compute:
-                            self._try_datetime(subsample[feat], r)
-                        else:
-                            subsample[feat].map_partitions(
-                                self._try_datetime, r, meta=(None, None)
-                            ).compute()
+                        self._try_datetime(subsample[feat].compute(), r)
                     # replace default category dtype for numeric roles dtype
                     # if cat col dtype is numeric
                     if r.name == "Category":
@@ -180,19 +168,10 @@ class DaskCudfReader(CudfReader):
                             r.dtype = self._get_default_role_from_str("numeric").dtype
                 else:
                     # if no - infer
-                    is_ok_feature = False
-
-                    if self.compute:
-                        is_ok_feature = self._is_ok_feature(subsample[feat])
-                    else:
-                        is_ok_feature = (
-                            subsample[feat]
-                            .map_partitions(self._is_ok_feature, meta=(None, "?"))
-                            .compute()
-                            .all()
-                        )
-                    if is_ok_feature:
-                        r = self._guess_role(zero_partn[feat])
+                    cur_feat = subsample[feat].compute()
+                    
+                    if self._is_ok_feature(cur_feat):
+                        r = self._guess_role(cur_feat)
                     else:
                         r = DropRole()
             # set back
@@ -218,12 +197,16 @@ class DaskCudfReader(CudfReader):
             )
             kwargs["folds"] = folds
 
+        ngpus = device_count()
+        train_len = len(train_data)
+        sub_size = int(1./ngpus*train_len)
+        idx = np.random.RandomState(self.random_state).permutation(train_len)[:sub_size]
         dataset = None
         if self.advanced_roles:
             computed_kwargs = {}
             for item in kwargs:
-                computed_kwargs[item] = kwargs[item].get_partition(0).compute()
-            subsample = train_data[self.used_features].get_partition(0).compute()
+                computed_kwargs[item] = kwargs[item].loc[idx].compute()
+            subsample = train_data[self.used_features].loc[idx].compute()
             dataset = CudfDataset(
                 data=subsample, roles=self.roles, task=self.task, **computed_kwargs
             )

@@ -174,7 +174,7 @@ res = multi_cpu['accuracy'](y_multi, y_pred, w_one)
 res_cp = multi_gpu['accuracy'](y_multi_cp, y_pred_cp, w_one_cp)
 res_da = multi_gpu['accuracy'](y_multi_da, y_pred_da, w_one_da)
 assert abs(res - res_cp) < 1e-1
-assert abs(res - res_da) < 1e-2
+assert abs(res - res_da) < 1e-1
 ##############################################################
 res = multi_cpu['f1_macro'](y_multi, y_pred, w_one)
 res_cp = multi_gpu['f1_macro'](y_multi_cp, y_pred_cp, w_one_cp)

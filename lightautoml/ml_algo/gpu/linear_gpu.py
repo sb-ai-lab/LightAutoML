@@ -509,7 +509,6 @@ class LinearL1CDGPU(TabularMLAlgoGPU):
                 part_id is not None
             ), "predict_single_fold: partition id should be set if data is distributed"
             dataset_data = dataset_data.compute()
-            # dataset_data = dataset_data.get_partition(part_id).compute()
 
         pred = self.task.losses["cuml"].bw_func(
             self._predict_w_model_type(model, dataset_data)

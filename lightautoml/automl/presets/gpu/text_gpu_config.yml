@@ -72,7 +72,7 @@ selection_params:
   # selection mode 0/1/2
   # 0 for no selection, 1 - cutoff selection, 2 - iterative selection
   # harder features selection means increasing train time, but much smaller and faster for inference model
-  mode: 0
+  mode: 1
   # importance type permutation/gain
   importance_type: 'gain'
   # pretrain selector on holdout set. True - fast/ False - accurate

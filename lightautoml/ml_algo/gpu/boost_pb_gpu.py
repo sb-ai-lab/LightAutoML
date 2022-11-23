@@ -190,36 +190,28 @@ class BoostPB(TabularMLAlgoGPU, ImportanceEstimator):
             Tuple (model, predicted_values)
 
         """
-        train = train.to_cupy()
+        if type(train) == DaskCudfDataset:
+            ngpus = device_count()
+            train_len = len(train)
+            sub_size = int(1./ngpus*train_len)
+            idx = np.random.RandomState(42).permutation(train_len)[:sub_size]
+            train_data = train.data.loc[idx].compute().values
+            train_target = train.target.loc[idx].compute().values
+            train_weights = train.weights.loc[idx].compute().values if train.weights is not None else None
+        else:
+            train = train.to_cupy()
+            train_target = train.target
+            train_weights = train.weights
+            train_data = train.data
+
+        valid_len = len(valid)
         valid = valid.to_cupy()
-        train_target = train.target
-        train_weights = train.weights
         valid_target = valid.target
         valid_weights = valid.weights
-        train_data = train.data
         valid_data = valid.data
+
         with cp.cuda.Device(dev_id):
-            if type(train) == DaskCudfDataset:
-                train_target = np.copy(train_target.compute().values_host)
-                if train_weights is not None:
-                    train_weights = np.copy(
-                                      train_weights.compute().values_host)
-                valid_target = np.copy(valid_target.compute().values_host)
-                if valid_weights is not None:
-                    valid_weights = np.copy(
-                                  valid_weights.compute().values_host)
-                train_data = np.copy(train_data.compute().values_host)
-                valid_data = np.copy(valid_data.compute().values_host)
-            elif type(train) == CudfDataset:
-                train_target = np.copy(train_target.values_host)
-                if train_weights is not None:
-                    train_weights = np.copy(train_weights.values_host)
-                valid_target = np.copy(valid_target.values_host)
-                if valid_weights is not None:
-                    valid_weights = np.copy(valid_weights.values_host)
-                train_data = np.copy(train_data.values_host)
-                valid_data = np.copy(valid_data.values_host)
-            elif type(train_target) == cp.ndarray:
+            if type(train_target) == cp.ndarray:
                 train_target = cp.asnumpy(train_target)
                 if train_weights is not None:
                     train_weights = cp.asnumpy(train_weights)
@@ -230,7 +222,7 @@ class BoostPB(TabularMLAlgoGPU, ImportanceEstimator):
                 valid_data = cp.asnumpy(valid_data)
             else:
                 raise NotImplementedError(
-                    "given type of input is not implemented:"
+                    "given type of input should not appear:"
                     + str(type(train_target))
                     + "class:"
                     + str(self._name)
@@ -260,7 +252,8 @@ class BoostPB(TabularMLAlgoGPU, ImportanceEstimator):
         """
         dataset_data = dataset.data
         if type(dataset) == DaskCudfDataset:
-            dataset_data = dataset_data.compute().values_host
+            ngpus = torch.cuda.device_count()
+            dataset_data = dataset_data.sample(frac=1./ngpus).compute().values_host
         elif type(dataset) == CudfDataset:
             dataset_data = dataset_data.values_host
 

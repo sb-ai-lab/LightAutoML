@@ -15,6 +15,8 @@ import cudf
 import dask.dataframe as dd
 import dask_cudf
 
+from torch.cuda import device_count
+
 from lightautoml.dataset.base import array_attr_roles
 from lightautoml.dataset.base import valid_array_attributes
 from lightautoml.dataset.gpu.gpu_dataset import CudfDataset
@@ -481,9 +483,7 @@ class DictToDaskCudfSeqReader(DaskCudfReader):
         sampl = seq_dataset
         if self.samples is not None and self.samples < len(sampl):
             sampl = sampl.sample(frac=float(self.samples/len(sampl)),
-                                 random_state=42).persist()
-        if self.compute:
-            sampl = sampl.compute()
+                                 random_state=self.random_state).persist()
 
         seq_roles = {}
         seq_features = []
@@ -503,12 +503,7 @@ class DictToDaskCudfSeqReader(DaskCudfReader):
 
                 if r.name == "Datetime" or r.name == "Date":
                     # try if it's ok to infer date with given params
-                    if self.compute:
-                        self._try_datetime(sampl[feat], r)
-                    else:
-                        sampl[feat].map_partitions(
-                            self._try_datetime, r, meta=(None, None)
-                        ).compute()
+                    self._try_datetime(sampl[feat].compute(), r)
 
                 # replace default category dtype for numeric roles dtype if cat col dtype is numeric
                 if r.name == "Category":
@@ -532,22 +527,9 @@ class DictToDaskCudfSeqReader(DaskCudfReader):
 
             else:
                 # if no - infer
-                is_ok_feature = False
-
-                if self.compute:
-                    is_ok_feature = self._is_ok_feature(sampl[feat])
-                else:
-                    is_ok_feature = (sampl[feat].map_partitions(
-                                self._is_ok_feature, meta=(None, "?"))
-                            .compute()
-                            .all()
-                        )
-
-                if is_ok_feature:
-                    #check subsample[feat].get_partition(0).compute()
-                    #what if it's  faster
-                    r = self._guess_role(sampl[feat])
-
+                cur_feat = sampl[feat].compute()
+                if self._is_ok_feature(cur_feat):
+                    r = self._guess_role(cur_feat)
                 else:
                     r = DropRole()
 
@@ -707,9 +689,6 @@ class DictToDaskCudfSeqReader(DaskCudfReader):
             if self.samples is not None and self.samples < len(sampl):
                 sampl = sampl.sample(frac=float(self.samples/len(sampl)),
                                  random_state=42).persist()
-            if self.compute:
-                sampl = sampl.compute()
-
             # infer roles
             for feat in sampl.columns:
                 assert isinstance(
@@ -719,12 +698,7 @@ class DictToDaskCudfSeqReader(DaskCudfReader):
                     r = parsed_roles[feat]
                     # handle datetimes
                     if r.name == "Datetime":
-                        if self.compute:
-                            self._try_datetime(sampl[feat], r)
-                        else:
-                            sampl[feat].map_partitions(
-                                self._try_datetime, r, meta=(None, None)
-                            ).compute()
+                        self._try_datetime(sampl[feat].compute(), r)
 
                     # replace default category dtype for numeric roles dtype if cat col dtype is numeric
                     if r.name == "Category":
@@ -745,20 +719,10 @@ class DictToDaskCudfSeqReader(DaskCudfReader):
 
                 else:
                     # if no - infer
-                    is_ok_feature = False
-
-                    if self.compute:
-                        is_ok_feature = self._is_ok_feature(sampl[feat])
-                    else:
-                        is_ok_feature = (
-                            sampl[feat]
-                            .map_partitions(self._is_ok_feature, meta=(None, "?"))
-                            .compute()
-                            .all()
-                        )
-                    if is_ok_feature:
-                        r = self._guess_role(sampl[feat])
-
+                    cur_feat = sampl[feat].compute()
+                    
+                    if self._is_ok_feature(cur_feat):
+                        r = self._guess_role(cur_feat)
                     else:
                         r = DropRole()
 
@@ -786,11 +750,15 @@ class DictToDaskCudfSeqReader(DaskCudfReader):
         self.plain_used_features = sorted(list(set(self.used_features) & set(plain_features)))
         self.plain_roles = {key: value for key, value in self._roles.items() if key in set(self.plain_used_features)}
 
+        ngpus = device_count()
+        train_len = len(plain_data)
+        sub_size = int(1./ngpus*train_len)
+        idx = np.random.RandomState(self.random_state).permutation(train_len)[:sub_size]
         computed_kwargs = {}
         for item in kwargs:
-            computed_kwargs[item] = kwargs[item].get_partition(0).compute()
+            computed_kwargs[item] = kwargs[item].loc[idx].compute()
         dataset = CudfDataset(
-            plain_data[self.plain_used_features].get_partition(0).compute() if plain_data is not None else cudf.DataFrame(),
+            plain_data[self.plain_used_features].loc[idx].compute() if plain_data is not None else cudf.DataFrame(),
             roles = self.plain_roles,
             task=self.task,
             **computed_kwargs

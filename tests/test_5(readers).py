@@ -96,7 +96,7 @@ reader = PandasToPandasReader(task, advanced_roles=adv_roles)
 gpu_reader = CudfReader(task_gpu, advanced_roles=adv_roles, n_jobs=2)
 
 dd_reader = DaskCudfReader(task_mgpu, advanced_roles=adv_roles,
-                           n_jobs=2, compute=True, index_ok=True, npartitions=2)
+                           n_jobs=2, index_ok=True, npartitions=2)
 
 target, _, data = generate_data(n=20000, n_num=15, n_cat=10, n_date=5,
                                        n_str=15, max_n_cat=50)

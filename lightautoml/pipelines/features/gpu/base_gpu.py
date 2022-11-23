@@ -244,11 +244,7 @@ class TabularDataFeaturesGPU(TabularDataFeatures):
             if train.task.name in ["binary", "reg"]:
                 target_encoder = TargetEncoderGPU
             elif (train.task.name == "multi:reg") or (train.task.name == "multilabel"):
-                n_classes = train.target.shape
-                if type(train) == DaskCudfDataset:
-                    n_classes = n_classes.compute()[1]
-                else:
-                    n_classes = n_classes[1]
+                n_classes = train.target.shape[1]
                 if n_classes <= self.multiclass_te_co:
                     target_encoder = MultioutputTargetEncoderGPU
             else:

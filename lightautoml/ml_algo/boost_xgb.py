@@ -21,8 +21,8 @@ from .base import TabularMLAlgo
 from .base import TabularDataset
 from ..pipelines.selection.base import ImportanceEstimator
 from ..validation.base import TrainValidIterator
-from .tuning.base import Distribution
-from .tuning.base import SearchSpace
+from .tuning.base import Choice
+from .tuning.base import Uniform
 
 logger = logging.getLogger(__name__)
 
@@ -187,36 +187,16 @@ class BoostXGB(TabularMLAlgo, ImportanceEstimator):
         """
         optimization_search_space = {}
 
-        optimization_search_space['max_depth'] = SearchSpace(
-            Distribution.INTUNIFORM,
-            low=3,
-            high=7
-        )
+        optimization_search_space["max_depth"] = Uniform(low=3, high=7, q=1)
 
-        optimization_search_space['max_leaves'] = SearchSpace(
-            Distribution.INTUNIFORM,
-            low=16,
-            high=255,
-        )
+        optimization_search_space["max_leaves"] = Uniform(low=16, high=255, q=1)
 
         if estimated_n_trials > 30:
-            optimization_search_space['min_child_weight'] = SearchSpace(
-                Distribution.LOGUNIFORM,
-                low=1e-3,
-                high=10.0,
-            )
+            optimization_search_space["min_child_weight"] = Uniform(low=1e-8, high=10.0, log=True)
 
         if estimated_n_trials > 100:
-            optimization_search_space['reg_alpha'] = SearchSpace(
-                Distribution.LOGUNIFORM,
-                low=1e-8,
-                high=10.0,
-            )
-            optimization_search_space['reg_lambda'] = SearchSpace(
-                Distribution.LOGUNIFORM,
-                low=1e-8,
-                high=10.0,
-            )
+            optimization_search_space["reg_alpha"] = Uniform(low=1e-8, high=10.0, log=True)
+            optimization_search_space["reg_lambda"] = Uniform(low=1e-8, high=10.0, log=True)
 
         return optimization_search_space
 

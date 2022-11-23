@@ -7,6 +7,7 @@ import cudf
 import cupy as cp
 import dask_cudf
 import numpy as np
+from torch.cuda import device_count
 from cuml.preprocessing import OneHotEncoder
 from cupyx import scatter_add
 
@@ -342,7 +343,11 @@ class OHEEncoderGPU(LAMLTransformer):
         #for i, col in enumerate(data.columns):
         #    uniques = data[col].unique().compute().values
         #    temp_data[i][: uniques.shape[0]] = uniques
-        self.ohe.fit(data.get_partition(0).compute().values)
+        ngpus = device_count()
+        train_len = len(data)
+        sub_size = int(1./ngpus*train_len)
+        idx = np.random.RandomState(42).permutation(train_len)[:sub_size]
+        self.ohe.fit(data.loc[idx].compute().values)
 
         features = []
         for cats, name in zip(self.ohe.categories_, dataset.features):
@@ -2077,9 +2082,7 @@ class OrdinalEncoderGPU(LabelEncoderGPU):
                         index=cnts["index"],
                         dtype=cp.float32,
                     )
-                cnts = cnts.append(
-                    cudf.Series([cnts.shape[0] + 1], index=[cp.nan], dtype=cp.float32)
-                )
+                cnts = cudf.concat([cnts, cudf.Series([cnts.shape[0] + 1], index=[cp.nan], dtype=cp.float32)])
                 self.dicts[i] = cnts
         return self
 
@@ -2117,9 +2120,7 @@ class OrdinalEncoderGPU(LabelEncoderGPU):
                         index=cnts["index"],
                         dtype=cp.float32,
                     )
-                cnts = cnts.append(
-                    cudf.Series([cnts.shape[0] + 1], index=[cp.nan], dtype=cp.float32)
-                )
+                cnts = cudf.concat([cnts, cudf.Series([cnts.shape[0] + 1], index=[cp.nan], dtype=cp.float32)])
                 self.dicts[i] = cnts
 
         return self

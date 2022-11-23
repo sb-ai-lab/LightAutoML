@@ -106,7 +106,7 @@ data = data.copy()
 data['TARGET'] = pd.Series(np.random.randint(0, 4, n)).astype('i')
 task = Task('multiclass', device="mgpu")
 reader = DaskCudfReader(task, advanced_roles=False,
-                           n_jobs=1, compute=True, index_ok=True, 
+                           n_jobs=1, index_ok=True, 
                            npartitions=2)
 
 dd_ds = reader.fit_read(data, roles = roles)

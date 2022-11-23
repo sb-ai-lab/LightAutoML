@@ -106,7 +106,7 @@ if __name__ == '__main__':
 
         t = time()
         test_pred = automl.predict(test.reset_index().drop(['index'],axis=1)).data
-    results['prediction_time'] = time() - t
+        results['prediction_time'] = time() - t
     
         # EVALUATE
     
@@ -123,6 +123,8 @@ if __name__ == '__main__':
         #    results['score'] = cent(test[data_info['target']].values, test_pred)
 
         print(results)
+    cluster.close()
+    client.close()
 
     exit(0)
     
