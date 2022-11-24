@@ -4,6 +4,9 @@ on:
   schedule:
     - cron: 0 9 * * 1
 
+  # Manually triggerable in github
+  workflow_dispatch:
+
 jobs:
   docs:
     runs-on: ubuntu-latest
@@ -16,7 +19,21 @@ jobs:
         with:
           python-version: 3.8
 
+      - uses: Gr1N/setup-poetry@v7
+        with:
+          poetry-version: 1.1.7
+
+      - name: Installation pandoc
+        run: |
+          wget https://github.com/jgm/pandoc/releases/download/2.14.0.3/pandoc-2.14.0.3-1-amd64.deb
+          sudo dpkg -i pandoc-2.14.0.3-1-amd64.deb
+
+      - name: Poetry install
+        run: |
+          poetry run python scripts/poetry_fix.py -c
+          poetry install -E all
+
       - name: Make documentations
         run: |
           cd docs
-          make html
+          poetry run make html
