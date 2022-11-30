@@ -7,6 +7,8 @@ import cupy as cp
 import numpy as np
 import dask.array as da
 
+from copy import deepcopy
+
 from lightautoml.dataset.gpu.gpu_dataset import CudfDataset, CupyDataset, DaskCudfDataset
 from lightautoml.dataset.np_pd_dataset import NumpyDataset, PandasDataset
 from lightautoml.dataset.roles import CategoryRole, NumericRole
@@ -19,13 +21,14 @@ CupyTransformable = Union[
 ]
 GpuDataset = Union[CupyDataset, CudfDataset, DaskCudfDataset]
 
+from ..numeric import NaNFlags, FillnaMedian, FillInf, LogOdds, StandardScaler, QuantileBinning
 
 class NaNFlagsGPU(LAMLTransformer):
     """Create NaN flags (GPU version)."""
 
     _fit_checks = (numeric_check,)
     _transform_checks = ()
-    _fname_prefix = "nanflg_gpu"
+    _fname_prefix = "nanflg"
 
     def __init__(self, nan_rate: float = 0.005):
         """
@@ -146,7 +149,7 @@ class FillnaMedianGPU(LAMLTransformer):
 
     _fit_checks = (numeric_check,)
     _transform_checks = ()
-    _fname_prefix = "fillnamed_gpu"
+    _fname_prefix = "fillnamed"
 
     def to_cpu(self):
         medians = deepcopy(cp.asnumpy(self.meds))
@@ -241,7 +244,7 @@ class FillInfGPU(LAMLTransformer):
 
     _fit_checks = (numeric_check,)
     _transform_checks = ()
-    _fname_prefix = "fillinf_gpu"
+    _fname_prefix = "fillinf"
 
     def to_cpu(self):
         features = deepcopy(self._features)
@@ -305,7 +308,7 @@ class LogOddsGPU(LAMLTransformer):
 
     _fit_checks = (numeric_check,)
     _transform_checks = ()
-    _fname_prefix = "logodds_gpu"
+    _fname_prefix = "logodds"
 
     def to_cpu(self):
         features = deepcopy(self._features)
@@ -363,7 +366,7 @@ class StandardScalerGPU(LAMLTransformer):
 
     _fit_checks = (numeric_check,)
     _transform_checks = ()
-    _fname_prefix = "scaler_gpu"
+    _fname_prefix = "scaler"
 
     def to_cpu(self):
         means = deepcopy(cp.asnumpy(self.means))
@@ -467,7 +470,7 @@ class QuantileBinningGPU(LAMLTransformer):
 
     _fit_checks = (numeric_check,)
     _transform_checks = ()
-    _fname_prefix = "qntl_gpu"
+    _fname_prefix = "qntl"
 
     def __init__(self, nbins: int = 10):
         """

@@ -15,6 +15,8 @@ import cudf
 import dask.dataframe as dd
 import dask_cudf
 
+from copy import deepcopy
+
 from torch.cuda import device_count
 
 from lightautoml.dataset.base import array_attr_roles
@@ -46,6 +48,8 @@ from ..utils import set_sklearn_folds
 from .seq_gpu import TopIndGPU, IDSIndGPU
 from .cudf_reader import CudfReader
 from .daskcudf_reader import DaskCudfReader
+
+from lightautoml.reader.base import DictToPandasSeqReader
 
 from ..base import attrs_dict
 
@@ -441,6 +445,34 @@ class DictToCudfSeqReader(CudfReader):
 
         dataset.seq_data = seq_datasets
         return dataset
+
+    def to_cpu(self, **kwargs):
+        task_cpu = deepcopy(self.task)
+        task_cpu.device = 'cpu'
+        cpu_reader = DictToPandasSeqReader(
+            task=task_cpu,
+            samples=self.samples,
+            max_nan_rate=self.max_nan_rate,
+            max_constant_rate=self.max_constant_rate,
+            cv=self.cv,
+            random_state=self.random_state,
+            roles_params=self.roles_params,
+            n_jobs=self.n_jobs,
+            seq_params = self.seq_params,
+            **kwargs)
+        cpu_reader.class_mapping = self.class_mapping
+        cpu_reader._dropped_features = self.dropped_features
+        cpu_reader._used_features = self.used_features
+        cpu_reader._used_array_attrs = self.used_array_attrs
+        cpu_reader._roles = self.roles
+
+        cpu_reader.plain_used_features = self.plain_used_features
+        cpu_reader.plain_roles = self.plain_roles
+        cpu_reader.meta = self.meta
+        cpu_reader.ti = {}
+        for elem in self.ti:
+            cpu_reader.ti[elem] = self.ti[elem].to_cpu()
+        return cpu_reader
 
 class DictToDaskCudfSeqReader(DaskCudfReader):
 

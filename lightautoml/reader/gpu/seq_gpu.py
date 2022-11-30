@@ -14,6 +14,22 @@ class TopIndGPU(TopInd):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+    def to_cpu(self):
+        n_target = self.n_target
+        history = self.history
+        step = self.step
+        from_last = self.from_last
+        test_last = self.test_last
+        roles = self.roles
+        self.__class__ = TopInd
+        self.n_target = n_target
+        self.history = history
+        self.step = step
+        self.from_last = from_last
+        self.test_last = test_last
+        self.roles = roles
+        return self
+
     @staticmethod
     def _timedelta(x):
         delta = cudf.to_datetime(x).diff().iloc[-1]
@@ -83,6 +99,12 @@ class IDSIndGPU(IDSInd):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+    def to_cpu(self):
+        scheme = self.scheme
+        self.__class__ = IDSInd
+        self.scheme = scheme
+        return self
 
     def create_data(self, data, plain_data):
         if isinstance(data, cudf.DataFrame):

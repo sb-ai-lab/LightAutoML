@@ -142,6 +142,16 @@ class AutoML:
         self.skip_conn = skip_conn
         self.return_all_predictions = return_all_predictions
 
+    def to_cpu(self):
+        print(self.__class__.__name__)
+        self.reader = self.reader.to_cpu()
+
+        self.blender = self.blender.to_cpu()
+
+        for i in range(len(self.levels)):
+            for j in range(len(self.levels[i])):
+                self.levels[i][j] = self.levels[i][j].to_cpu()
+
     def fit_predict(
         self,
         train_data: Any,

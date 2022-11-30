@@ -9,11 +9,15 @@ import holidays
 import numpy as np
 import pandas as pd
 
+from copy import deepcopy
+
 from lightautoml.dataset.base import LAMLDataset
 from lightautoml.dataset.gpu.gpu_dataset import CudfDataset, CupyDataset, DaskCudfDataset
 from lightautoml.dataset.roles import CategoryRole, ColumnRole, NumericRole
 from lightautoml.transformers.base import LAMLTransformer
 from lightautoml.transformers.datetime import date_attrs, datetime_check
+
+from ..datetime import TimeToNum, BaseDiff, DateSeasons
 
 DatetimeCompatibleGPU = Union[CudfDataset]
 GpuDataset = Union[CupyDataset, CudfDataset, DaskCudfDataset]
@@ -29,7 +33,7 @@ class TimeToNumGPU(LAMLTransformer):
     basic_time = "2020-01-01"
     basic_interval = "D"
 
-    _fname_prefix = "dtdiff_gpu"
+    _fname_prefix = "dtdiff"
     _fit_checks = (datetime_check,)
     _transform_checks = ()
 
@@ -124,7 +128,7 @@ class BaseDiffGPU(LAMLTransformer):
 
     basic_interval = "D"
 
-    _fname_prefix = "basediff_gpu"
+    _fname_prefix = "basediff"
     _fit_checks = (datetime_check,)
     _transform_checks = ()
 
@@ -266,7 +270,7 @@ class DateSeasonsGPU(LAMLTransformer):
     Datetime converted to difference with basic_date.
     """
 
-    _fname_prefix = "season_gpu"
+    _fname_prefix = "season"
     _fit_checks = (datetime_check,)
     _transform_checks = ()
 
@@ -293,7 +297,7 @@ class DateSeasonsGPU(LAMLTransformer):
         self.__class__ = DateSeasons
         self.output_role = output_role
         self.transformations = transformations
-        self._features = features
+        self.features = features
         self.output_role = output_role
         return self
 

@@ -12,6 +12,9 @@ from cuml.dask.linear_model import Lasso as daskLasso
 from cuml.linear_model import ElasticNet, Lasso, LogisticRegression
 
 from lightautoml.dataset.gpu.gpu_dataset import CupyDataset, DaskCudfDataset
+from lightautoml.tasks.base import Task
+from copy import deepcopy
+
 from lightautoml.ml_algo.torch_based.gpu.linear_model_cupy import (
     TorchBasedLinearEstimator,
     TorchBasedLinearRegression,
@@ -23,6 +26,11 @@ from lightautoml.ml_algo.torch_based.gpu.linear_model_distributed import (
 from lightautoml.ml_algo.torch_based.gpu.linear_model_distributed import (
     TorchBasedLogisticRegression as TLR_dask,
 )
+
+from ..linear_sklearn import LinearLBFGS
+
+from ..torch_based.linear_model import TorchBasedLinearRegression as TLinR_CPU, TorchBasedLogisticRegression as TLR_CPU
+
 from lightautoml.validation.base import TrainValidIterator
 
 from .base_gpu import TabularDatasetGpu, TabularMLAlgoGPU
@@ -256,9 +264,8 @@ class LinearLBFGSGPU(TabularMLAlgoGPU):
         return pred
 
     def to_cpu(self):
-
         models = [TLR_CPU(data_size=self.models[i].data_size,
-                          categorical_idx=self.models[i].categorical_idx,
+                          categorical_idx=self.models[i].categorical_idx['int'],
                           embed_sizes=cp.asnumpy(self.models[i].embed_sizes),
                           output_size=self.models[i].output_size,
                           cs=self.models[i].cs) for i in range(len(self.models))]

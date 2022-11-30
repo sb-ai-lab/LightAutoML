@@ -15,6 +15,8 @@ import pandas as pd
 
 from pandas import Series
 
+from ...dataset.gpu.gpu_dataset import CupyDataset, CudfDataset, DaskCudfDataset
+
 from ...dataset.np_pd_dataset import NumpyDataset
 from ...ml_algo.base import PandasDataset
 from ...ml_algo.base import TabularDataset
@@ -93,6 +95,33 @@ class NestedTabularMLAlgo(TabularMLAlgo, ImportanceEstimator):
 
         self.nested_cv = cv
         self.n_folds = n_folds
+
+    def to_cpu(self):
+        """Base method for pipeline conversion to CPU inference mode.
+
+        Returns:
+            instance of pipeline with CPU inference.
+        """
+
+        def convert_recursive_cpu(pipeline):
+            if hasattr(pipeline, 'transformer_list'):
+                for i in range(len(pipeline.transformer_list)):
+                    convert_recursive_cpu(pipeline.transformer_list[i])
+            else:
+                if hasattr(pipeline, 'to_cpu'):
+                    pipeline.to_cpu()
+                if hasattr(pipeline, 'dataset_type'):
+                    if pipeline.dataset_type == DaskCudfDataset or \
+                            pipeline.dataset_type == CudfDataset:
+                        pipeline.dataset_type = PandasDataset
+                    elif pipeline.dataset_type == CupyDataset:
+                        pipeline.dataset_type = NumpyDataset
+
+        convert_recursive_cpu(self.features_pipeline._pipeline)
+
+        for i in range(len(self.ml_algos)):
+            self.ml_algos[i] = deepcopy(self.ml_algos[i].to_cpu())
+        return self
 
     def fit_predict(self, train_valid_iterator: TrainValidIterator) -> NumpyDataset:  # noqa DAR102
         self.timer.start()

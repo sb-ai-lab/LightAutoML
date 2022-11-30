@@ -3,6 +3,8 @@
 from itertools import combinations
 from typing import List, Optional, Sequence, Tuple, Union, cast
 
+from copy import deepcopy
+
 import cudf
 import cupy as cp
 import dask_cudf
@@ -23,6 +25,8 @@ from lightautoml.transformers.categorical import (
 
 GpuNumericalDataset = Union[CupyDataset, CudfDataset, DaskCudfDataset]
 
+from ..categorical import LabelEncoder, OHEEncoder, FreqEncoder, TargetEncoder, MultiClassTargetEncoder,\
+    CatIntersectstions, OrdinalEncoder, MultioutputTargetEncoder
 
 class LabelEncoderGPU(LAMLTransformer):
     """Simple LabelEncoder in order of frequency.
@@ -34,7 +38,7 @@ class LabelEncoderGPU(LAMLTransformer):
 
     _fit_checks = (categorical_check,)
     _transform_checks = ()
-    _fname_prefix = "le_gpu"
+    _fname_prefix = "le"
     _fillna_val = 0
 
     def __init__(self, subs: Optional[int] = None, random_state: int = 42):
@@ -231,7 +235,7 @@ class OHEEncoderGPU(LAMLTransformer):
 
     _fit_checks = (categorical_check, encoding_check)
     _transform_checks = ()
-    _fname_prefix = "ohe_gpu"
+    _fname_prefix = "ohe"
 
     @property
     def features(self) -> List[str]:
@@ -449,7 +453,7 @@ class FreqEncoderGPU(LabelEncoderGPU):
 
     _fit_checks = (categorical_check,)
     _transform_checks = ()
-    _fname_prefix = "freq_gpu"
+    _fname_prefix = "freq"
 
     _fillna_val = 1
 
@@ -518,7 +522,7 @@ class TargetEncoderGPU(LAMLTransformer):
 
     _fit_checks = (categorical_check, oof_task_check, encoding_check)
     _transform_checks = ()
-    _fname_prefix = "oof_gpu"
+    _fname_prefix = "oof"
 
     def __init__(
         self, alphas: Sequence[float] = (0.5, 1.0, 2.0, 5.0, 10.0, 50.0, 250.0, 1000.0)
@@ -533,7 +537,7 @@ class TargetEncoderGPU(LAMLTransformer):
 
     def to_cpu(self):
         output_role = deepcopy(self.output_role)
-        features = deepcopy(self.features)
+        features = deepcopy(self._features)
         encodings = deepcopy([cp.asnumpy(enc) for enc in self.encodings])
         self.__class__ = TargetEncoder
         self.output_role = output_role
@@ -984,7 +988,7 @@ class MultiClassTargetEncoderGPU(LAMLTransformer):
 
     _fit_checks = (categorical_check, multiclass_task_check, encoding_check)
     _transform_checks = ()
-    _fname_prefix = "multioof_gpu"
+    _fname_prefix = "multioof"
 
     @property
     def features(self) -> List[str]:
@@ -1427,7 +1431,7 @@ class MultioutputTargetEncoderGPU(LAMLTransformer):
 
     _fit_checks = ()
     _transform_checks = ()
-    _fname_prefix = "multioutgoof_gpu"
+    _fname_prefix = "multioutgoof"
 
     @property
     def features(self) -> List[str]:
@@ -1437,6 +1441,16 @@ class MultioutputTargetEncoderGPU(LAMLTransformer):
         self, alphas: Sequence[float] = (0.5, 1.0, 2.0, 5.0, 10.0, 50.0, 250.0, 1000.0)
     ):
         self.alphas = alphas
+
+    def to_cpu(self):
+        n_classes = self.n_classes
+        encodings = deepcopy([cp.asnumpy(enc) for enc in self.encodings])
+        features = deepcopy(self._features)
+        self.__class__ = MultioutputTargetEncoder
+        self.n_classes = n_classes
+        self.encodings = encodings
+        self._features = features
+        return self
 
     @staticmethod
     def reg_score_func(candidates: cp.ndarray, target: cp.ndarray) -> int:
@@ -1865,7 +1879,7 @@ class CatIntersectionsGPU(LabelEncoderGPU):
 
     _fit_checks = (categorical_check,)
     _transform_checks = ()
-    _fname_prefix = "inter_gpu"
+    _fname_prefix = "inter"
 
     def __init__(
         self,
@@ -1893,9 +1907,9 @@ class CatIntersectionsGPU(LabelEncoderGPU):
         random_state = self.random_state
         features = deepcopy(self._features)
         internal_dict = {
-            i: v for i, v in zip(
+            i: v.to_pandas() for i, v in zip(
                                 self.dicts.keys(),
-                                deepcopy(self.dicts.values().to_pandas())
+                                self.dicts.values()
                                 )
         }
 
@@ -2027,7 +2041,7 @@ class OrdinalEncoderGPU(LabelEncoderGPU):
 
     _fit_checks = (categorical_check,)
     _transform_checks = ()
-    _fname_prefix = "ord_gpu"
+    _fname_prefix = "ord"
     _fillna_val = cp.nan
 
     def __init__(self, *args, **kwargs):

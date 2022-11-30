@@ -20,6 +20,10 @@ from lightautoml.pipelines.selection.base import ImportanceEstimator
 from lightautoml.pipelines.utils import get_columns_by_role
 from lightautoml.validation.base import TrainValidIterator
 
+from lightautoml.tasks.base import Task
+from copy import deepcopy
+from ..boost_cb import BoostCB
+
 from .base_gpu import TabularMLAlgoGPU
 
 logger = logging.getLogger(__name__)
@@ -430,4 +434,7 @@ class BoostCBGPU(TabularMLAlgoGPU, ImportanceEstimator):
         algo.task = task
         algo.models = models
         print("CB feats:", self.__dict__)
+        algo._le_cat_features = self._le_cat_features
+        algo._le_text_features = self._text_features
+        algo._nan_rate = self._nan_rate
         return algo

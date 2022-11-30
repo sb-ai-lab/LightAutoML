@@ -9,6 +9,8 @@ from typing import Tuple
 from typing import Union
 from typing import cast
 
+from copy import deepcopy
+
 import cudf
 import cupy as cp
 import dask.array as da
@@ -73,7 +75,7 @@ class WeightedBlenderGPU(WeightedBlender):
 
     """
     def to_cpu(self):
-        wts = copy.deepcopy(cp.asnumpy(self.wts))
+        wts = deepcopy(cp.asnumpy(self.wts))
         blender = WeightedBlender(max_iters=self.max_iters,
                                   max_inner_iters=self.max_inner_iters,
                                 max_nonzero_coef=self.max_nonzero_coef)

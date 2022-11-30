@@ -115,3 +115,8 @@ if __name__ == '__main__':
         
     print(results)
     
+    automl.to_cpu()
+    cpu_inf = automl.predict(data[folds==args.fold].reset_index().drop(['index'],axis=1)).data
+    print(cpu_inf)
+    print(test_pred)
+    

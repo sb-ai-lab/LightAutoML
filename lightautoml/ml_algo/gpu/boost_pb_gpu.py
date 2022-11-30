@@ -4,7 +4,8 @@ import logging
 from copy import copy, deepcopy
 from typing import Callable, Dict, Optional, Tuple
 
-from py_boost import GradientBoosting
+from py_boost import GradientBoosting, TLPredictor
+from py_boost.multioutput.sketching import *
 
 import cudf
 import cupy as cp
@@ -14,12 +15,15 @@ import pandas as pd
 import torch
 from torch.cuda import device_count
 
-from lightautoml.dataset.gpu.gpu_dataset import CudfDataset, DaskCudfDataset
+from lightautoml.dataset.gpu.gpu_dataset import CupyDataset, CudfDataset, DaskCudfDataset
 from lightautoml.ml_algo.tuning.base import Uniform
 from lightautoml.pipelines.selection.base import ImportanceEstimator
 from lightautoml.validation.base import TrainValidIterator
 
+from lightautoml.tasks.base import Task
+
 from .base_gpu import TabularDatasetGpu, TabularMLAlgoGPU
+from ..boost_pb import PBPredictor
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +84,8 @@ class BoostPB(TabularMLAlgoGPU, ImportanceEstimator):
         params["loss"] = loss.fobj_name
         # get metric params
         params["metric"] = loss.metric_name
+
+        params["sketch_arg"] = 1
 
         # add loss and tasks params if defined
         params = {**params}
@@ -153,6 +159,10 @@ class BoostPB(TabularMLAlgoGPU, ImportanceEstimator):
         suggested_params["ntrees"] = ntrees
         suggested_params["es"] = es
 
+        val_data = train_valid_iterator.get_validation_data().empty()
+        outp_dim = val_data.target.shape[1]
+        suggested_params["n_classes"] = outp_dim
+
         return suggested_params
 
     def _get_default_search_spaces(
@@ -175,7 +185,28 @@ class BoostPB(TabularMLAlgoGPU, ImportanceEstimator):
         if estimated_n_trials > 100:
             optimization_search_space["lambda_l2"] = Uniform(low=1e-8, high=10.0, log=True)
 
+        optimization_search_space["sketch_arg"] = Uniform(low=1, high=suggested_params["n_classes"]//2, q=1)
+
         return optimization_search_space
+
+    def to_cpu(self):
+        print("PB:", self.__dict__)
+        print("PB model type:", self.models[0].__class__.__name__)
+        print("PB model:", self.models[0].__dict__)
+        models = []
+        for i in range(len(self.models)):
+            models.append(TLPredictor(self.models[i]))
+
+        task = Task(name=self.task._name,
+                    device='cpu',
+                    metric=self.task.metric_name,
+                    greater_is_better=self.task.greater_is_better)
+
+        algo = PBPredictor()
+        algo.models = models
+        algo.task = task
+
+        return algo
 
     def fit_predict_single_fold(
         self, train: TabularDatasetGpu, valid: TabularDatasetGpu, dev_id: int = 0
@@ -229,8 +260,13 @@ class BoostPB(TabularMLAlgoGPU, ImportanceEstimator):
                 )
 
         params = self._infer_params()
-
-        model = GradientBoosting(**params)
+        if "n_classes" in params.keys():
+            params.pop("n_classes")
+        if "sketch_arg" in params.keys():
+            sketch_arg = params.pop("sketch_arg")
+            model = GradientBoosting(**params, multioutput_sketch=RandomProjectionSketch(sketch_arg) )
+        else:
+            model = GradientBoosting(**params)
         model.fit(train_data, train_target, 
                   eval_sets=[{'X': valid_data, 'y': valid_target}])
         val_pred = model.predict(valid_data)
@@ -250,12 +286,14 @@ class BoostPB(TabularMLAlgoGPU, ImportanceEstimator):
             Predicted target values.
 
         """
-        dataset_data = dataset.data
-        if type(dataset) == DaskCudfDataset:
-            ngpus = torch.cuda.device_count()
-            dataset_data = dataset_data.sample(frac=1./ngpus).compute().values_host
-        elif type(dataset) == CudfDataset:
-            dataset_data = dataset_data.values_host
+        dataset_data = dataset.to_cupy().data
+        #if type(dataset) == DaskCudfDataset:
+        #    ngpus = torch.cuda.device_count()
+        #    dataset_data = dataset_data.sample(frac=1./ngpus).compute().values_host
+        #elif type(dataset) == CudfDataset:
+        #    dataset_data = dataset_data.values_host
+        #elif type(dataset) == CupyDataset:
+        dataset_data = cp.asnumpy(dataset_data)
 
         pred = model.predict(dataset_data)
         return pred

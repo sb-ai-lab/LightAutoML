@@ -17,6 +17,9 @@ import xgboost as xgb
 from torch.cuda import device_count
 from xgboost import dask as dxgb
 
+from lightautoml.tasks.base import Task
+from copy import deepcopy
+
 from lightautoml.dataset.gpu.gpu_dataset import CudfDataset, DaskCudfDataset
 from lightautoml.ml_algo.tuning.base import Uniform
 from lightautoml.pipelines.selection.base import ImportanceEstimator

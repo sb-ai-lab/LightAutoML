@@ -68,8 +68,8 @@ def add_logging_level(levelName, levelNum, methodName=None):
     setattr(logging, methodName, logToRoot)
 
 
-#add_logging_level("INFO2", INFO2)
-#add_logging_level("INFO3", INFO3)
+add_logging_level("INFO2", INFO2)
+add_logging_level("INFO3", INFO3)
 
 
 class LoggerStream(io.IOBase):

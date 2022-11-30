@@ -515,6 +515,35 @@ class PandasDataset(LAMLDataset):
         """
         pass
 
+    @property
+    def roles(self) -> RolesDict:
+        """Roles dict."""
+        return copy(self._roles)
+
+    @roles.setter
+    def roles(self, val: NpRoles):
+        """Define how to set roles.
+
+        Args:
+            val: Roles.
+
+        Note:
+            There is different behavior for different type of val parameter:
+
+                - `List` - should be same len as ``data.shape[1]``.
+                - `None` - automatic set ``NumericRole(np.float32)``.
+                - ``ColumnRole`` - single role for all.
+                - ``dict``.
+
+        """
+        if type(val) is dict:
+            self._roles = dict(((x, val[x]) for x in self.features))
+        elif type(val) is list:
+            self._roles = dict(zip(self.features, val))
+        else:
+            role = NumericRole(np.float32) if val is None else val
+            self._roles = dict(((x, role) for x in self.features))
+
     def __init__(
         self,
         data: Optional[DataFrame] = None,

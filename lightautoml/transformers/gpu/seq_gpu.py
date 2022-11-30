@@ -3,7 +3,7 @@
 from typing import List
 from typing import Union
 
-from copy import copy
+from copy import copy, deepcopy
 
 import numpy as np
 import cupy as cp
@@ -30,10 +30,18 @@ class SeqNumCountsTransformerGPU(SeqNumCountsTransformer):
 
     _fit_checks = ()
     _transform_checks = ()
-    _fname_prefix = "numcount_gpu"
+    _fname_prefix = "numcount"
 
     def __init__(self):
         super().__init__()
+
+    def to_cpu(self):
+        features = deepcopy(self._features)
+        roles = self._roles
+        self.__class__ = SeqNumCountsTransformer
+        self._features = features
+        self._roles = roles
+        return self
 
     def fit(self, dataset):
         """Fit algorithm on seq dataset.
@@ -87,10 +95,18 @@ class SeqStatisticsTransformerGPU(SeqStatisticsTransformer):
 
     _fit_checks = ()
     _transform_checks = ()
-    _fname_prefix = "stat_gpu"
+    _fname_prefix = "stat"
 
     def __init__(self):
         super().__init__()
+
+    def to_cpu(self):
+        features = deepcopy(self._features)
+        roles = self._roles
+        self.__class__ = SeqStatisticsTransformer
+        self._features = features
+        self._roles = roles
+        return self
 
     def fit(self, dataset):
         """Fit algorithm on seq dataset.
@@ -157,11 +173,22 @@ class GetSeqTransformerGPU(GetSeqTransformer):
 
     _fit_checks = ()
     _transform_checks = ()
-    _fname_prefix = "seq_gpu"
+    _fname_prefix = "seq"
 
     def __init__(self, *args, **kwargs):
 
         super().__init__(*args, **kwargs)
+
+    def to_cpu(self):
+        features = deepcopy(self._features)
+        roles = self.roles
+        name = self.name
+        self.__class__ = GetSeqTransformer
+        self._features = features
+        self.roles = roles
+        self.name = name
+        return self
+        
 
     def transform(self, dataset):
         """Transform input seq dataset to normal numpy representation.
