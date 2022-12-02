@@ -186,7 +186,7 @@ class TabularAutoMLGPU(TabularAutoML):
             if self.task.name == "multiclass" and multilevel_avail:
                 self.general_params["use_algos"].append(["linear_l2", "cb"])
             if (self.task.name == "multi:reg") or (self.task.name == "multilabel"):
-                self.general_params["use_algos"] = [["xgb", "xgb_tuned", "linear_l2", "pb", "pb_tuned]]
+                self.general_params["use_algos"] = [["xgb", "xgb_tuned", "linear_l2", "pb", "pb_tuned"]]
 
         if not self.general_params["nested_cv"]:
             self.nested_cv_params["cv"] = 1
