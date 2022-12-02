@@ -85,7 +85,7 @@ if __name__ == '__main__':
     
     automl = TabularAutoMLGPU(task=Task(data_info['task_type'], device="mgpu"), 
                                timeout=args.timeout,
-                               config_path=args.config,)
+                               config_path=args.config)
     
     roles = {TargetRole(): data_info['target']}
     
@@ -115,5 +115,4 @@ if __name__ == '__main__':
         results['score'] = cent(test[data_info['target']].values, test_pred)
         
     print(results)
-    joblib.dump(results, os.path.join(args.output, 'results.pkl'))
     

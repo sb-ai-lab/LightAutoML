@@ -15,7 +15,7 @@ general_params:
   # The smallest weight in weighted blender (if lower - the algo will be dropped from final model)
   weighted_blender_max_nonzero_coef: 0.05
   # If we should try to parallelize multigpu usage across parallel folds
-  parallel_folds: False
+  parallel_folds: True
 
 reader_params:
   # sample of data to perform analysis
@@ -25,13 +25,10 @@ reader_params:
   # maximum frequency of top frequent value to keep feature
   max_constant_rate: 0.999
   # create validation folds. Folds will be created even if valid samples or custom validation will be passed
-  #num_cpu_readers: 3
-  #num_gpu_readers: 1
-  #gpu_ratio: 0.5
   index_ok: True
-  npartitions: 4
+  npartitions: 2
   # it will be used for feature generation
-  cv: 3
+  cv: 5
   # random state for folds creation
   random_state: 42
   # default roles params.
@@ -39,7 +36,7 @@ reader_params:
   # if another will not be passed in roles argument of .fit_predict
   roles_params:
   # n_jobs for advanced roles guess and reading csv files (more RAM needed due to multiprocessing)
-  n_jobs: 4
+  n_jobs: 2
   # If to turn on advanced roles guess. Slower, but shows better quality
   # If role of feature is not defined, reader will guess role in 2 ways:
   #   - simple (numbers as numbers, object as categories or dates if dateformat inferred)
@@ -108,7 +105,7 @@ xgb_params:
   default_params:
     nthread: 100
   freeze_defaults: False
-  parallel_folds: False
+  parallel_folds: True
 
 # params for BoostCB_gpu MLAlgo. Note - params are default and may be changed during train if not freeze_defaults
 cb_params:
@@ -118,19 +115,19 @@ cb_params:
     task_type: 'GPU'
     thread_count: 100
   freeze_defaults: False
-  parallel_folds: False
+  parallel_folds: True
 
 pb_params:
   default_params: {}
   freeze_defaults: False
-  parallel_folds: False
+  parallel_folds: True
 
 # params for LinearLBFGS_gpu MLAlgo
 # no tuner needed for this algo - regularization params are found during fit
 linear_l2_params:
   default_params: { }
   freeze_defaults: False
-  parallel_folds: False
+  parallel_folds: True
 
 gbm_pipeline_params:
   # max number of categories to generate intersections

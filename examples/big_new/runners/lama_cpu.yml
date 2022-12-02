@@ -25,7 +25,7 @@ reader_params:
   max_constant_rate: 0.999
   # create validation folds. Folds will be created even if valid samples or custom validation will be passed
   # it will be used for feature generation
-  cv: 3
+  cv: 5
   # random state for folds creation
   random_state: 42
   # default roles params.
@@ -59,7 +59,7 @@ read_csv_params:
 nested_cv_params:
   # params describe how to use inner cross validation (folds-in-folds) to get unbiased oof prediction
   # cv defines how many folds we split dataset to perform nested cross validation. 1 means no nested cv
-  cv: 5
+  cv: 2
   # n_folds defines how many cv loops to perform. None for all or int < cv
   n_folds:
   # how to perform params tuning. If True - we tune params on inner cv loops, False - on outer validation
@@ -72,7 +72,7 @@ selection_params:
   # 0 for no selection, 1 - cutoff selection, 2 - iterative selection
   # harder features selection means increasing train time, but much smaller and faster for inference model
   # 1 is good in most cases
-  mode: 0
+  mode: 1
   # importance type permutation/gain
   importance_type: 'gain'
   # pretrain selector on holdout set. True - fast/ False - accurate

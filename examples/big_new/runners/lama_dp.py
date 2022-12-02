@@ -118,11 +118,13 @@ if __name__ == '__main__':
         #
         if data_info['task_type'] == 'multitask':
             results['score'] = mean_squared_error(test[target_columns].values, test_pred)
-        # 
-        #if data_info['task_type'] == 'multiclass':
-        #    results['score'] = cent(test[data_info['target']].values, test_pred)
 
         print(results)
+
+        automl.to_cpu()
+        cpu_inf = automl.predict(test.reset_index().drop(['index'],axis=1)).data
+        print(cpu_inf)
+        print(test_pred)
     cluster.close()
     client.close()
 

@@ -20,8 +20,8 @@ if __name__ == '__main__':
     from time import sleep
     args = parser.parse_args()
     
-    #os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-    #os.environ["CUDA_VISIBLE_DEVICES"] = args.device
+    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.device
     
     str_nthr = str(args.njobs)
     
@@ -114,9 +114,6 @@ if __name__ == '__main__':
     t = time()
     test_pred = automl.predict(data[folds==args.fold].reset_index(drop=True)).data
     results['prediction_time'] = time() - t
-
-    print(data[folds==args.fold].shape)
-    print(test_pred.shape)
 
     # EVALUATE
 
