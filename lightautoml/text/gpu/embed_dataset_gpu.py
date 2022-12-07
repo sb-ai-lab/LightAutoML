@@ -7,8 +7,6 @@ from typing import Union
 
 import numpy as np
 import cupy as cp
-import cudf
-from cudf.core.subword_tokenizer import SubwordTokenizer
 import torch
 
 try:

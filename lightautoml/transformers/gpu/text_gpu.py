@@ -1,11 +1,10 @@
-"""Text features transformers."""
+"""Text features transformers (GPU version)."""
 
 import codecs
 import gc
 import logging
 import os
 import pickle
-import time
 
 from copy import copy
 from copy import deepcopy
@@ -14,16 +13,13 @@ from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Union
-from typing import Tuple
 
 import numpy as np
 import cupy as cp
-import pandas as pd
 import cudf
 import dask_cudf
 import torch
 import cupyx
-from cupyx.scipy.sparse.linalg import svds
 from cudf.core.subword_tokenizer import SubwordTokenizer
 from cudf.utils.hash_vocab_utils import hash_vocab
 import dask.array as da
@@ -35,7 +31,6 @@ from tokenizers.normalizers import Lowercase, NFD, StripAccents
 from tokenizers.pre_tokenizers import Whitespace
 from tokenizers.trainers import BpeTrainer, WordPieceTrainer
 
-import torchnlp
 from torchnlp.word_to_vector import BPEmb
 from torchnlp.word_to_vector import FastText
 
@@ -50,7 +45,6 @@ from lightautoml.dataset.roles import NumericRole
 from lightautoml.transformers.base import LAMLTransformer
 from lightautoml.text.gpu.tokenizer_gpu import BaseTokenizerGPU
 from lightautoml.text.gpu.tokenizer_gpu import SimpleEnTokenizerGPU
-from lightautoml.text.gpu.tokenizer_gpu import SimpleRuTokenizerGPU
 from lightautoml.text.gpu.dl_transformers_gpu import BOREPGPU
 from lightautoml.text.gpu.dl_transformers_gpu import BertEmbedderGPU
 from lightautoml.text.gpu.dl_transformers_gpu import DLTransformerGPU
@@ -62,9 +56,7 @@ from lightautoml.text.gpu.weighted_average_transformer_gpu import WeightedAverag
 
 from lightautoml.transformers.gpu.svd_utils_gpu import _svd_lowrank
 
-from lightautoml.transformers.text import oof_task_check
 from lightautoml.transformers.text import text_check
-from lightautoml.transformers.text import TunableTransformer
 
 logger = logging.getLogger(__name__)
 
@@ -213,7 +205,7 @@ class TfidfTextTransformerGPU(TunableTransformerGPU):
     _transform_checks = ()
     _fname_prefix = "tfidfGPU"
     _default_params = {
-        "min_df": 5, 
+        "min_df": 5,
         "max_df": 1.0,
         "max_features": 30_000,
         "ngram_range": (1, 1),
@@ -321,7 +313,7 @@ class TfidfTextTransformerGPU(TunableTransformerGPU):
             outputs.append(output)
         output = self._csr2coo(cupyx.scipy.sparse.hstack(outputs, format='csr'))
 
-        _, _, Vh = _svd_lowrank(output, q=self.n_components+self.n_oversample, niter=self.n_iter)
+        _, _, Vh = _svd_lowrank(output, q=self.n_components + self.n_oversample, niter=self.n_iter)
         self.Vh = cp.array(Vh[:, :self.n_components])
         return self
 
@@ -467,7 +459,7 @@ class TfidfTextTransformerGPU(TunableTransformerGPU):
         output = cupyx.scipy.sparse.hstack(outputs, format='csr')
 
         # calculate SVD
-        _, _, Vh = _svd_lowrank(self._csr2coo(output), q=self.n_components+self.n_oversample, niter=self.n_iter)
+        _, _, Vh = _svd_lowrank(self._csr2coo(output), q=self.n_components + self.n_oversample, niter=self.n_iter)
         self.Vh = cp.array(Vh[:, :self.n_components])
 
         # apply SVD
@@ -592,7 +584,7 @@ class TokenizerTransformerGPU(LAMLTransformer):
 
     def _transform_daskcudf(self, dataset: DaskCudfDataset) -> DaskCudfDataset:
         df = dataset.data
-        
+
         roles = TextRole()
         new_cols = [self._fname_prefix + "__" + col for col in df.columns]
 
@@ -655,7 +647,7 @@ class SubwordTokenizerTransformerGPU(LAMLTransformer):
                  tokenizer: str = "bpe", vocab_size: int = 30000,
                  save_path: str = None):
         assert vocab_path is not None or data_path is not None, "To use subword tokenizer you need to pass either " \
-                                                      "path to tokenizer vocabulary or path to string data to be trained on"
+            "path to tokenizer vocabulary or path to string data to be trained on"
         if vocab_path is None:
             assert tokenizer in ["bpe", "wordpiece"], f"Only bpe and wordpiece tokenizers are available for train" \
                                                       f"but you passed {tokenizer}"
@@ -683,8 +675,8 @@ class SubwordTokenizerTransformerGPU(LAMLTransformer):
             vocab_path = save_path.split(".")[0] + '_hash.txt'
             hash_vocab(save_path, vocab_path)
         elif not is_hash:
-            hash_vocab(vocab_path, vocab_path.split('.')[0]+'_hash.txt')
-            vocab_path = vocab_path.split('.')[0]+'_hash.txt'
+            hash_vocab(vocab_path, vocab_path.split('.')[0] + '_hash.txt')
+            vocab_path = vocab_path.split('.')[0] + '_hash.txt'
         self.vocab_path = vocab_path
         self.max_length = max_length
         # SOS, EOS, padding tokens to filter
@@ -778,12 +770,10 @@ class ConcatTextTransformerGPU(LAMLTransformer):
 
     # concatenate text columns
     def _concat_columns(self, df):
-        col_name = self._fname_prefix + "__" +\
-                   "__".join(df.columns)
+        col_name = self._fname_prefix + "__" + "__".join(df.columns)
         outputs = df[df.columns[0]].fillna("").astype(str)
         for col in df.columns[1:]:
-            outputs = outputs + f"{self.special_token}" +\
-                      df[col].fillna("").astype(str)
+            outputs = outputs + f"{self.special_token}" + df[col].fillna("").astype(str)
         new_df = cudf.DataFrame({col_name: outputs})
         return new_df
 
@@ -828,7 +818,7 @@ class ConcatTextTransformerGPU(LAMLTransformer):
             return self._transform_daskcudf(dataset)
         else:
             return self._transform_cupy(dataset)
-        
+
 
 class AutoNLPWrapGPU(LAMLTransformer):
     """Calculate text embeddings (GPU).
@@ -893,7 +883,7 @@ class AutoNLPWrapGPU(LAMLTransformer):
         self.cache_dir = cache_dir
         self.random_state = random_state
         self.subs = subs
-        self.train_fasttext = train_fasttext # outdated parameter, available word vectors are pretrained
+        self.train_fasttext = train_fasttext  # outdated parameter, available word vectors are pretrained
         self.fasttext_epochs = fasttext_epochs
         if fasttext_params is not None:
             self.fasttext_params.update(fasttext_params)

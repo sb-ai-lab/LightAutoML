@@ -69,19 +69,17 @@ selection_params:
 tuning_params:
   # pretrain tuner on holdout set. True - fast/ False - accurate
   fit_on_holdout: True
-  # max tuning iter for lightgbm. Auto - depends on dataset
+  # max tuning iter for gbm. Auto - depends on dataset
   # smaller dataset gets more iters
   max_tuning_iter: 101 # 'auto'
   # max tuning time. Tuning time might be set lower depending on timer, but cannot be higher
   max_tuning_time: 300
 
-# params for BoostLGBM MLAlgo
 xgb_params:
   default_params:
     nthread: 100
   freeze_defaults: False
 
-# params for BoostCB MLAlgo
 cb_params:
   default_params:
     task_type: 'CPU'
@@ -93,8 +91,6 @@ pb_params:
   freeze_defaults: False
   parallel_folds: False
 
-# params for LinearLBFGS MLAlgo
-# no tuner needed for this algo - regularization params are found during fit
 linear_l2_params:
   default_params: { }
   freeze_defaults: False

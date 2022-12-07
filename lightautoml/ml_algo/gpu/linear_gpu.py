@@ -1,7 +1,7 @@
 """Linear models for tabular datasets (GPU version)."""
 
 import logging
-from copy import copy, deepcopy
+from copy import copy
 from typing import Sequence, Tuple, Union
 
 import cudf
@@ -140,27 +140,17 @@ class LinearLBFGSGPU(TabularMLAlgoGPU):
         suggested_params = copy(self.default_params)
         train = train_valid_iterator.train
 
-        if True:  # type(train) == DaskCudfDataset:
-            suggested_params["categorical_idx"] = {}
-            suggested_params["categorical_idx"]["int"] = [
-                i
-                for i, x in enumerate(train.features)
-                if train.roles[x].name == "Category"
-            ]
-            suggested_params["categorical_idx"]["str"] = [
-                x
-                for i, x in enumerate(train.features)
-                if train.roles[x].name == "Category"
-            ]
-
-        # if type(train) == CupyDataset or (type(train) == DaskCudfDataset and self.parallel_folds):
-        #    suggested_params['categorical_idx'] = [
-        #       i for i,x in enumerate(train.features) if train.roles[x].name == 'Category'
-        #    ]
-        # else:
-        #    suggested_params['categorical_idx'] = [
-        #        x for x in train.features if train.roles[x].name == 'Category'
-        #    ]
+        suggested_params["categorical_idx"] = {}
+        suggested_params["categorical_idx"]["int"] = [
+            i
+            for i, x in enumerate(train.features)
+            if train.roles[x].name == "Category"
+        ]
+        suggested_params["categorical_idx"]["str"] = [
+            x
+            for i, x in enumerate(train.features)
+            if train.roles[x].name == "Category"
+        ]
 
         suggested_params["embed_sizes"] = ()
 
@@ -264,19 +254,16 @@ class LinearLBFGSGPU(TabularMLAlgoGPU):
         return pred
 
     def to_cpu(self):
-        models = [TLR_CPU(data_size=self.models[i].data_size,
-                          categorical_idx=self.models[i].categorical_idx['int'],
-                          embed_sizes=cp.asnumpy(self.models[i].embed_sizes),
-                          output_size=self.models[i].output_size,
-                          cs=self.models[i].cs) for i in range(len(self.models))]
-        print(self.models[0].__dict__)
+        CPU_CL = TLR_CPU if isinstance(self.models[0], (TorchBasedLogisticRegression, TLR_dask)) else TLinR_CPU
+        models = [CPU_CL(data_size=self.models[i].data_size,
+                         categorical_idx=self.models[i].categorical_idx['int'],
+                         embed_sizes=cp.asnumpy(self.models[i].embed_sizes),
+                         output_size=self.models[i].output_size,
+                         cs=self.models[i].cs) for i in range(len(self.models))]
         for i in range(len(models)):
             models[i].model = deepcopy(self.models[i].model.cpu())
             models[i].loss = deepcopy(self.models[i].loss.cpu())
             models[i].metric = None
-        print(self.models[0].__class__.__name__)
-
-        print(self.task.__dict__)
 
         algo = LinearLBFGS(default_params=self.default_params,
                            freeze_defaults=self.freeze_defaults,
@@ -290,7 +277,6 @@ class LinearLBFGSGPU(TabularMLAlgoGPU):
         algo._nan_rate = self._nan_rate
         algo._name = self._name
         algo._params = deepcopy(self._params)
-        print(algo.models[0].model._parameters['bias'].device)
         return algo
 
 
@@ -350,7 +336,6 @@ class LinearL1CDGPU(TabularMLAlgoGPU):
         assert "cuml" in task.losses, "Cuml loss should be defined"
 
         if task.name == "reg":
-            # suggested_params['cs'] = list(map(lambda x: 1 / (2 * x), suggested_params['cs']))
             suggested_params["cs"] = [1 / (2 * i) for i in suggested_params["cs"]]
 
         return suggested_params
@@ -464,7 +449,6 @@ class LinearL1CDGPU(TabularMLAlgoGPU):
 
                 logger.debug("C = {0}, l1_ratio = {1}, score = {2}".format(c, 1, score))
 
-                # TODO: check about greater and equal
                 if score >= c_best_score:
                     c_best_score = score
                     c_best_pred = deepcopy(pred)
@@ -481,7 +465,6 @@ class LinearL1CDGPU(TabularMLAlgoGPU):
                     logger.info("Time limit exceeded")
                     break
 
-                # TODO: Think about is it ok to check time inside train loop?
                 if (model_coefs != 0).all():
                     logger.debug("All coefs are nonzero")
                     break
@@ -547,16 +530,7 @@ class LinearL1CDMGPU(LinearL1CDGPU):
         l1_ratios = params.pop("l1_ratios")
         early_stopping = params.pop("early_stopping")
         cs = params.pop("cs")
-        """if self.task.name in ['binary']:
-            params['solver'] = 'admm'
-            if l1_ratios == (1,):
-                model = daskLogisticRegression(regularizer='l1', **params)
-                #model = dask_ml_LR(penalty='l1', fit_intercept=False, **params)
-            else:
-                model = daskLogisticRegression(regularizer='elasticnet', **params)
-                #model = dask_ml_LR(penalty='elasticnet', fit_intercept=False, **params)"""
 
-        # elif self.task.name == 'reg':
         if self.task.name == "reg":
 
             params.pop("solver")
@@ -682,7 +656,6 @@ class LinearL1CDMGPU(LinearL1CDGPU):
 
                 logger.debug("C = {0}, l1_ratio = {1}, score = {2}".format(c, 1, score))
 
-                # TODO: check about greater and equal
                 if score >= c_best_score:
                     c_best_score = score
                     c_best_pred = deepcopy(pred)
@@ -699,7 +672,6 @@ class LinearL1CDMGPU(LinearL1CDGPU):
                     logger.info("Time limit exceeded")
                     break
 
-                # TODO: Think about is it ok to check time inside train loop?
                 if (model.solver.coef_ != 0).all():
                     logger.debug("All coefs are nonzero")
                     break

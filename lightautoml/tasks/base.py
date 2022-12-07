@@ -13,17 +13,10 @@ from typing import Union
 
 import numpy as np
 
-gpu_available = True
-
-try:
-    import cudf
-    import cupy as cp
-    import dask.array as da
-    import dask_cudf
-except ModuleNotFoundError:
-    gpu_available = False
-    print("Warning: GPU backed libraries could not be loaded. Switching to GPU version")
-    pass
+import cudf
+import cupy as cp
+import dask.array as da
+import dask_cudf
 
 from .common_metric import _valid_metric_args
 from .common_metric import _valid_str_metric_names
@@ -34,32 +27,25 @@ from .losses import TORCHLoss
 from .utils import infer_gib
 from .utils import infer_gib_multiclass
 
-try:
-    from lightautoml.tasks.losses.gpu import TORCHLossGPU
-    from lightautoml.tasks.losses.gpu import CUMLLoss, XGBLoss, PBLoss
-    from lightautoml.tasks.gpu.common_metric_gpu import _valid_str_metric_names_gpu
-    from lightautoml.tasks.gpu.utils_gpu import infer_gib_gpu, infer_gib_multiclass_gpu
-except ModuleNotFoundError:
-    pass
-
+from lightautoml.tasks.losses.gpu import TORCHLossGPU
+from lightautoml.tasks.losses.gpu import CUMLLoss
+from lightautoml.tasks.losses.gpu import XGBLoss
+from lightautoml.tasks.losses.gpu import PBLoss
+from lightautoml.tasks.gpu.common_metric_gpu import _valid_str_metric_names_gpu
+from lightautoml.tasks.gpu.utils_gpu import infer_gib_gpu
+from lightautoml.tasks.gpu.utils_gpu import infer_gib_multiclass_gpu
 
 if TYPE_CHECKING:
     from ..dataset.base import LAMLDataset
     from ..dataset.np_pd_dataset import NumpyDataset
     from ..dataset.np_pd_dataset import PandasDataset
 
-    try:
-        from ..dataset.gpu.gpu_dataset import CudfDataset
-        from ..dataset.gpu.gpu_dataset import CupyDataset
-        from ..dataset.gpu.gpu_dataset import DaskCudfDataset
-    except ModuleNotFoundError:
-        pass
+    from ..dataset.gpu.gpu_dataset import CudfDataset
+    from ..dataset.gpu.gpu_dataset import CupyDataset
+    from ..dataset.gpu.gpu_dataset import DaskCudfDataset
 
     SklearnCompatible = Union[NumpyDataset, PandasDataset]
-    try:
-        CumlCompatible = Union[CupyDataset, CudfDataset, DaskCudfDataset]
-    except:
-        CumlCompatible = SklearnCompatible
+    CumlCompatible = Union[CupyDataset, CudfDataset, DaskCudfDataset]
 
 logger = logging.getLogger(__name__)
 
@@ -494,15 +480,14 @@ class Task:
 
             loss_factories = [LGBLoss, SKLoss, TORCHLoss, CBLoss]
             loss_keys = ["lgb", "sklearn", "torch", "cb"]
-            if gpu_available:
-                loss_factories.extend([TORCHLossGPU, CUMLLoss, XGBLoss, PBLoss])
-                loss_keys.extend(["torch_gpu", "cuml", "xgb", "pb"])
+
+            loss_factories.extend([TORCHLossGPU, CUMLLoss, XGBLoss, PBLoss])
+            loss_keys.extend(["torch_gpu", "cuml", "xgb", "pb"])
             for loss_key, loss_factory in zip(loss_keys, loss_factories):
                 try:
                     self.losses[loss_key] = loss_factory(loss, loss_params=loss_params)
                 except (AssertionError, TypeError, ValueError):
                     logger.info("{0} doesn't support in general case {1} and will not be used.".format(loss_key, loss))
-
 
             assert len(self.losses) > 0, "None of frameworks supports {0} loss.".format(loss)
 
@@ -574,22 +559,19 @@ class Task:
                 self.metric_func,
                 name=self.metric_name,
                 one_dim=one_dim,
-                greater_is_better=self.greater_is_better,
-        )
+                greater_is_better=self.greater_is_better)
         elif self.device == "gpu":
             dataset_metric = CumlMetric(
                 self.metric_func,
                 name=self.metric_name,
                 one_dim=one_dim,
-                greater_is_better=self.greater_is_better,
-        )
+                greater_is_better=self.greater_is_better)
         else:
             dataset_metric = DaskmlMetric(
                 self.metric_func,
                 name=self.metric_name,
                 one_dim=one_dim,
-                greater_is_better=self.greater_is_better,
-        )
+                greater_is_better=self.greater_is_better)
 
         return dataset_metric
 

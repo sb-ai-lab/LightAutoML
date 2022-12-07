@@ -14,15 +14,12 @@ import uuid
 from copy import copy
 
 import numpy as np
-import cupy as cp
 import torch
 
 from torch.optim import lr_scheduler
 from transformers import AutoTokenizer
 
 from lightautoml.ml_algo.base import TabularDataset
-from lightautoml.ml_algo.base import TabularMLAlgo
-from lightautoml.ml_algo.gpu.base_gpu import TabularDatasetGpu
 from lightautoml.ml_algo.gpu.base_gpu import TabularMLAlgoGPU
 from lightautoml.pipelines.features.text_pipeline import _model_name_by_lang
 from lightautoml.pipelines.utils import get_columns_by_role
@@ -31,9 +28,7 @@ from lightautoml.text.nn_model import ContEmbedder
 from lightautoml.text.nn_model import TextBert
 from lightautoml.text.nn_model import TorchUniversalModel
 from lightautoml.text.nn_model import UniversalDataset
-from lightautoml.text.trainer import Trainer
 from lightautoml.text.gpu.trainer_gpu import TrainerGPU
-from lightautoml.text.utils import collate_dict
 from lightautoml.text.utils import inv_sigmoid
 from lightautoml.text.utils import inv_softmax
 from lightautoml.text.utils import is_shuffle

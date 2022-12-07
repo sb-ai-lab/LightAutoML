@@ -1,7 +1,9 @@
 """Base classes for machine learning algorithms (GPU version)."""
 
 import logging
-from typing import Any, Union, cast
+from typing import Any
+from typing import Union
+from typing import cast
 
 import cudf
 import cupy as cp
@@ -9,9 +11,12 @@ import dask.dataframe as dd
 import dask_cudf
 import numpy as np
 import torch
-from joblib import Parallel, delayed
+from joblib import Parallel
+from joblib import delayed
 
-from lightautoml.dataset.gpu.gpu_dataset import CudfDataset, CupyDataset, DaskCudfDataset
+from lightautoml.dataset.gpu.gpu_dataset import CudfDataset
+from lightautoml.dataset.gpu.gpu_dataset import CupyDataset
+from lightautoml.dataset.gpu.gpu_dataset import DaskCudfDataset
 from lightautoml.ml_algo.base import TabularMLAlgo
 from lightautoml.validation.base import TrainValidIterator
 
@@ -50,18 +55,23 @@ class TabularMLAlgoGPU(TabularMLAlgo):
             Dataset with predicted values.
 
         """
-
-        logger.info("Start fitting {} ...".format(self._name))
         self.timer.start()
+
         assert self.is_fitted is False, "Algo is already fitted"
         # init params on input if no params was set before
         if self._params is None:
             self.params = self.init_params_on_input(train_valid_iterator)
 
+        iterator_len = len(train_valid_iterator)
+        if iterator_len > 1:
+            logger.info("Start fitting \x1b[1m{}\x1b[0m ...".format(self._name))
+            logger.debug(f"Training params: {self.params}")
+
         # save features names
         self._features = train_valid_iterator.features
-
+        # get metric and loss if None
         self.task = train_valid_iterator.train.task
+
         val_data = train_valid_iterator.get_validation_data().empty()
         preds_ds = cast(CupyDataset, val_data.to_cupy())
         outp_dim = 1
@@ -88,11 +98,10 @@ class TabularMLAlgoGPU(TabularMLAlgo):
 
             def perform_iterations(fit_predict_single_fold, train_valid, ind, dev_id):
                 (idx, train, valid) = train_valid[ind]
-                logger.info(
-                    "===== Start working with \x1b[1mfold {}\x1b[0m for \x1b[1m{}\x1b[0m (par) =====".format(
-                        ind, self._name
+                if iterator_len > 1:
+                    logger.info2(
+                        "===== Start working with \x1b[1mfold {}\x1b[0m for \x1b[1m{}\x1b[0m (par) =====".format(n, self._name)
                     )
-                )
                 model, pred = fit_predict_single_fold(train, valid, dev_id)
                 return model, pred
 
@@ -117,9 +126,6 @@ class TabularMLAlgoGPU(TabularMLAlgo):
             res = None
             models = []
             preds = []
-
-            # with Parallel(n_jobs=n_parts, prefer='processes',
-            #              backend='loky', max_nbytes=None) as p:
 
             for n in range(num_its):
                 self.timer.set_control_point()
@@ -176,12 +182,10 @@ class TabularMLAlgoGPU(TabularMLAlgo):
         else:
 
             for n, (idx, train, valid) in enumerate(train_valid_iterator):
-                logger.info(
-                    "===== Start working with \x1b[1mfold {}\x1b[0m for \x1b[1m{}\x1b[0m (orig) =====".format(
-                        n, self._name
+                if iterator_len > 1:
+                    logger.info2(
+                        "===== Start working with \x1b[1mfold {}\x1b[0m for \x1b[1m{}\x1b[0m (orig) =====".format(n, self._name)
                     )
-                )
-
                 self.timer.set_control_point()
                 model, pred = self.fit_predict_single_fold(train, valid)
                 self.models.append(model)
@@ -226,7 +230,12 @@ class TabularMLAlgoGPU(TabularMLAlgo):
         preds_arr = cp.where(counter_arr == 0, cp.nan, preds_arr)
 
         preds_ds = self._set_prediction(preds_ds, preds_arr)
-        logger.info("{} fitting and predicting completed".format(self._name))
+
+        if iterator_len > 1:
+            logger.info(f"Fitting \x1b[1m{self._name}\x1b[0m finished. score = \x1b[1m{self.score(preds_ds)}\x1b[0m")
+
+        if iterator_len > 1 or "Tuned" not in self._name:
+            logger.info("\x1b[1m{}\x1b[0m fitting and predicting completed".format(self._name))
         return preds_ds
 
     def predict(self, dataset: TabularDatasetGpu) -> CupyDataset:

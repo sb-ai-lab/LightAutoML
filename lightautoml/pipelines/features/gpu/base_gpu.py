@@ -1,7 +1,9 @@
 """Basic classes for features generation (GPU version)."""
 
 from copy import copy
-from typing import List, Optional, Union
+from typing import List
+from typing import Optional
+from typing import Union
 
 import dask_cudf
 import numpy as np
@@ -10,37 +12,30 @@ import pandas as pd
 from lightautoml.pipelines.features.base import TabularDataFeatures
 from lightautoml.pipelines.utils import get_columns_by_role
 
-try:
-    from lightautoml.dataset.gpu.gpu_dataset import (
-        CudfDataset,
-        CupyDataset,
-        DaskCudfDataset,
-    )
-except:
-    pass
-from lightautoml.dataset.roles import ColumnRole, NumericRole
-from lightautoml.transformers.base import (
-    ChangeRoles,
-    ColumnsSelector,
-    ConvertDataset,
-    LAMLTransformer,
-    SequentialTransformer,
-)
+from lightautoml.dataset.gpu.gpu_dataset import CudfDataset
+from lightautoml.dataset.gpu.gpu_dataset import CupyDataset
+from lightautoml.dataset.gpu.gpu_dataset import DaskCudfDataset
 
-try:
-    from lightautoml.transformers.gpu.categorical_gpu import (
-        CatIntersectionsGPU,
-        FreqEncoderGPU,
-        LabelEncoderGPU,
-        MultiClassTargetEncoderGPU,
-        OrdinalEncoderGPU,
-        TargetEncoderGPU,
-        MultioutputTargetEncoderGPU
-    )
-    from lightautoml.transformers.gpu.datetime_gpu import BaseDiffGPU, DateSeasonsGPU
-    from lightautoml.transformers.gpu.numeric_gpu import QuantileBinningGPU
-except:
-    pass
+from lightautoml.dataset.roles import ColumnRole
+from lightautoml.dataset.roles import NumericRole
+
+from lightautoml.transformers.base import ChangeRoles
+from lightautoml.transformers.base import ColumnsSelector
+from lightautoml.transformers.base import ConvertDataset
+from lightautoml.transformers.base import LAMLTransformer
+from lightautoml.transformers.base import SequentialTransformer
+
+from lightautoml.transformers.gpu.categorical_gpu import CatIntersectionsGPU
+from lightautoml.transformers.gpu.categorical_gpu import FreqEncoderGPU
+from lightautoml.transformers.gpu.categorical_gpu import LabelEncoderGPU
+from lightautoml.transformers.gpu.categorical_gpu import MultiClassTargetEncoderGPU
+from lightautoml.transformers.gpu.categorical_gpu import OrdinalEncoderGPU
+from lightautoml.transformers.gpu.categorical_gpu import TargetEncoderGPU
+from lightautoml.transformers.gpu.categorical_gpu import MultioutputTargetEncoderGPU
+
+from lightautoml.transformers.gpu.datetime_gpu import BaseDiffGPU
+from lightautoml.transformers.gpu.datetime_gpu import DateSeasonsGPU
+from lightautoml.transformers.gpu.numeric_gpu import QuantileBinningGPU
 
 GpuDataset = Union[CupyDataset, CudfDataset, DaskCudfDataset]
 
@@ -353,6 +348,5 @@ class TabularDataFeaturesGPU(TabularDataFeatures):
                 un = un.compute().astype("int").values[0]
             else:
                 un = un.astype("int").values[0].get()
-            # can we just transpose dataframe?
 
         return pd.Series(un, index=feats, dtype="int")

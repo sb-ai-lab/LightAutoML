@@ -1,16 +1,12 @@
 """Metrics and loss functions for pyboost on GPU."""
 
 import logging
-from functools import partial
-from typing import Callable, Dict, Optional, Tuple, Union
+from typing import Callable
+from typing import Dict
+from typing import Optional
+from typing import Union
 
-import numpy as np
-
-from lightautoml.tasks.gpu.common_metric_gpu import (
-    _valid_str_multiclass_metric_names_gpu,
-)
 from lightautoml.tasks.losses.base import Loss
-from lightautoml.tasks.gpu.utils_gpu import infer_gib_gpu
 
 logger = logging.getLogger(__name__)
 
@@ -45,8 +41,9 @@ _pb_metrics_dict_gpu = {
     "multi:reg" : _pb_multireg_metric_dict_gpu,
 }
 
+
 class PBLoss(Loss):
-    """Loss used for LightGBM."""
+    """Loss used for py-boost."""
 
     def __init__(
         self,
@@ -100,7 +97,7 @@ class PBLoss(Loss):
             - `'multiclass'`
 
         """
-        
+
         self.metric_params = {}
 
         self.metric = metric

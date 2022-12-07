@@ -1,6 +1,5 @@
-"""Generate sequential features."""
+"""Generate sequential features (GPU version)."""
 
-from typing import List
 from typing import Union
 
 from copy import copy, deepcopy
@@ -16,14 +15,13 @@ from lightautoml.dataset.gpu.gpu_dataset import DaskCudfDataset
 from lightautoml.dataset.roles import NumericRole
 from lightautoml.dataset.gpu.gpu_dataset import SeqCudfDataset
 from lightautoml.dataset.gpu.gpu_dataset import SeqDaskCudfDataset
-from lightautoml.transformers.base import LAMLTransformer
-from lightautoml.transformers.seq import SeqLagTransformer
 from lightautoml.transformers.seq import SeqNumCountsTransformer
 from lightautoml.transformers.seq import SeqStatisticsTransformer
 from lightautoml.transformers.seq import GetSeqTransformer
 
-# type - something that can be converted to pandas dataset
-CupyTransformable = Union[CupyDataset, CudfDataset, DaskCudfDataset]
+GpuSeqDataset = Union[SeqCudfDataset, SeqDaskCudfDataset]
+GpuDataset = Union[CupyDataset, CudfDataset, DaskCudfDataset]
+
 
 class SeqNumCountsTransformerGPU(SeqNumCountsTransformer):
     """NC."""
@@ -36,6 +34,11 @@ class SeqNumCountsTransformerGPU(SeqNumCountsTransformer):
         super().__init__()
 
     def to_cpu(self):
+        """Move the class properties to CPU and change class to CPU counterpart for CPU inference.
+
+        Returns:
+            self
+        """
         features = deepcopy(self._features)
         roles = self._roles
         self.__class__ = SeqNumCountsTransformer
@@ -43,11 +46,11 @@ class SeqNumCountsTransformerGPU(SeqNumCountsTransformer):
         self._roles = roles
         return self
 
-    def fit(self, dataset):
+    def fit(self, dataset: GpuSeqDataset):
         """Fit algorithm on seq dataset.
 
         Args:
-            dataset: NumpyDataset.
+            dataset: CupyDataset, CudfDataset or DaskCudfDataset.
 
         Returns:
             Self.
@@ -57,37 +60,37 @@ class SeqNumCountsTransformerGPU(SeqNumCountsTransformer):
         self._roles = dict(((x, NumericRole(np.float32)) for x in self._features))
         return self
 
-    def transform(self, dataset):
+    def transform(self, dataset: GpuSeqDataset) -> GpuDataset:
         """Transform input seq dataset to normal numpy representation.
 
         Args:
             dataset: seq.
 
         Returns:
-            Numpy dataset with len of the sequence.
+            GPU dataset with len of the sequence.
 
         """
         # checks here
         super(SeqNumCountsTransformerGPU.__bases__[0], self).transform(dataset)
         # convert to accepted dtype and get attributes
 
-        #for calculating counts this method is long on gpu
-        #data = dataset.apply_func((slice(None)), len)#.reshape(-1, 1)
-        #instead you can just calculate length of the idx
+        # for calculating counts this method is long on gpu
+        # data = dataset.apply_func((slice(None)), len)#.reshape(-1, 1)
+        # instead you can just calculate length of the idx
         data = cudf.DataFrame([len(x) for x in dataset.idx], columns=self._features)
 
         # create resulted
         if isinstance(dataset.data, cudf.DataFrame):
-            dat_t =  CudfDataset
+            dat_t = CudfDataset
         elif isinstance(dataset.data, dask_cudf.DataFrame):
             dat_t = DaskCudfDataset
             data = dask_cudf.from_cudf(data, npartitions=dataset.data.npartitions)
         else:
             raise NotImplementedError
         # create resulted
-        #data = data.rename(columns=dict(zip(data.columns,
+        # data = data.rename(columns=dict(zip(data.columns,
         #                                    self._features)))
-        return dat_t(data, roles = self._roles)
+        return dat_t(data, roles=self._roles)
 
 
 class SeqStatisticsTransformerGPU(SeqStatisticsTransformer):
@@ -101,6 +104,11 @@ class SeqStatisticsTransformerGPU(SeqStatisticsTransformer):
         super().__init__()
 
     def to_cpu(self):
+        """Move the class properties to CPU and change class to CPU counterpart for CPU inference.
+
+        Returns:
+            self
+        """
         features = deepcopy(self._features)
         roles = self._roles
         self.__class__ = SeqStatisticsTransformer
@@ -108,11 +116,11 @@ class SeqStatisticsTransformerGPU(SeqStatisticsTransformer):
         self._roles = roles
         return self
 
-    def fit(self, dataset):
+    def fit(self, dataset: GpuSeqDataset):
         """Fit algorithm on seq dataset.
 
         Args:
-            dataset: NumpyDataset.
+            dataset: CupyDataset, CudfDataset or DaskCudfDataset.
 
         Returns:
             Self.
@@ -122,30 +130,29 @@ class SeqStatisticsTransformerGPU(SeqStatisticsTransformer):
         self._roles = dict(((x, NumericRole(np.float32)) for x in self._features))
         return self
 
-    def transform(self, dataset):
+    def transform(self, dataset: GpuSeqDataset) -> GpuDataset:
         """Transform input seq dataset to normal numpy representation.
 
         Args:
             dataset: seq.
 
         Returns:
-            Numpy dataset with last known feature in the sequence.
+            GPU dataset with last known feature in the sequence.
 
         """
         # checks here
         super(SeqStatisticsTransformerGPU.__bases__[0], self).transform(dataset)
-        # convert to accepted dtype and get attributes
-        
-        #for calculating _get_last this method is long on gpu
-        #data = dataset.apply_func((slice(None)), self._get_last)
-        #instead you can just rearange the idx and then get the frame
+
+        # for calculating _get_last this method is long on gpu
+        # data = dataset.apply_func((slice(None)), self._get_last)
+        # instead you can just rearange the idx and then get the frame
         temp = copy(dataset.idx)
-        dataset.idx = np.array([[x[-1]] for x in dataset.idx])
+        dataset.idx = np.array([[x[-1]] if len(x) > 0 else [np.nan] for x in dataset.idx])
         data = dataset.get_first_frame().data
         dataset.idx = copy(temp)
 
         if isinstance(data, cudf.DataFrame):
-            dat_t =  CudfDataset
+            dat_t = CudfDataset
         elif isinstance(data, dask_cudf.DataFrame):
             dat_t = DaskCudfDataset
         else:
@@ -154,7 +161,7 @@ class SeqStatisticsTransformerGPU(SeqStatisticsTransformer):
         data = data.rename(columns=dict(zip(data.columns,
                                             self._features)))
 
-        return dat_t(data, roles = self._roles)
+        return dat_t(data, roles=self._roles)
 
     @staticmethod
     def _std(x):
@@ -180,6 +187,11 @@ class GetSeqTransformerGPU(GetSeqTransformer):
         super().__init__(*args, **kwargs)
 
     def to_cpu(self):
+        """Move the class properties to CPU and change class to CPU counterpart for CPU inference.
+
+        Returns:
+            self
+        """
         features = deepcopy(self._features)
         roles = self.roles
         name = self.name
@@ -188,16 +200,15 @@ class GetSeqTransformerGPU(GetSeqTransformer):
         self.roles = roles
         self.name = name
         return self
-        
 
-    def transform(self, dataset):
+    def transform(self, dataset: GpuSeqDataset) -> GpuSeqDataset:
         """Transform input seq dataset to normal numpy representation.
 
         Args:
             dataset: seq.
 
         Returns:
-            Numpy dataset with lag features.
+            GPU seq dataset with lag features.
 
         """
         # checks here
@@ -212,7 +223,7 @@ class GetSeqTransformerGPU(GetSeqTransformer):
             kwargs[attr] = dataset.__dict__[attr]
 
         if isinstance(data, cudf.DataFrame):
-            dat_t =  SeqCudfDataset
+            dat_t = SeqCudfDataset
         elif isinstance(data, dask_cudf.DataFrame):
             dat_t = SeqDaskCudfDataset
         else:

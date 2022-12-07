@@ -44,7 +44,6 @@ class MeanBlenderGPU(MeanBlender):
     """
 
     def _get_mean_pred(self, splitted_preds: Sequence[GpuDataset]) -> GpuDataset:
-
         outp = splitted_preds[0].empty()
         if type(splitted_preds[0]) == DaskCudfDataset:
             dask_array = [x.data.to_dask_array(lengths=True) for x in splitted_preds]
@@ -52,17 +51,12 @@ class MeanBlenderGPU(MeanBlender):
 
             cols = ["MeanBlendGPU{0}".format(x) for x in range(pred.shape[1])]
             index = splitted_preds[0].data.index
-            pred = dd.from_dask_array(
-                pred, columns=cols, index=index, meta=cudf.DataFrame()
-            ).persist()
+            pred = dd.from_dask_array(pred, columns=cols, index=index, meta=cudf.DataFrame()).persist()
         else:
             pred = cp.nanmean(cp.array([x.data for x in splitted_preds]), axis=0)
 
-        outp.set_data(
-            pred,
-            ["MeanBlendGPU{0}".format(x) for x in range(pred.shape[1])],
-            NumericRole(np.float32, prob=self._outp_prob),
-        )
+        outp.set_data(pred, ["MeanBlendGPU{0}".format(x) for x in range(pred.shape[1])],
+                      NumericRole(np.float32, prob=self._outp_prob))
 
         return outp
 
@@ -74,14 +68,22 @@ class WeightedBlenderGPU(WeightedBlender):
     Model with low weights will be pruned.
 
     """
+
     def to_cpu(self):
+        """Move the class properties to CPU and change class to CPU counterpart for CPU inference.
+
+        Returns:
+            self
+        """
         wts = deepcopy(cp.asnumpy(self.wts))
         blender = WeightedBlender(max_iters=self.max_iters,
                                   max_inner_iters=self.max_inner_iters,
-                                max_nonzero_coef=self.max_nonzero_coef)
+                                  max_nonzero_coef=self.max_nonzero_coef)
         blender.wts = wts
-        blender._outp_dim = self._outp_dim
-        blender._outp_prob = self._outp_prob
+        blender._outp_dim = self.outp_dim
+        blender._bypass = self._bypass
+        if hasattr(self, "_outp_prob"):
+            blender._outp_prob = self._outp_prob
         return blender
 
     def _get_weighted_pred(
@@ -122,7 +124,6 @@ class WeightedBlenderGPU(WeightedBlender):
 
         else:
             weighted_pred = cp.nansum(
-                #cp.concatenate([x.data * w for (x, w) in zip(splitted_preds, wts)],axis=1), axis=1).astype(cp.float32)
                 cp.array([x.data * w for (x, w) in zip(splitted_preds, wts)]), axis=0).astype(cp.float32)
             not_nulls = cp.sum(
                 cp.array(
@@ -146,7 +147,6 @@ class WeightedBlenderGPU(WeightedBlender):
         return outp
 
     def _get_candidate(self, wts: cp.ndarray, idx: int, value: float):
-
         candidate = wts.copy()
         sl = cp.arange(wts.shape[0]) != idx
         s = candidate[sl].sum()
@@ -165,7 +165,6 @@ class WeightedBlenderGPU(WeightedBlender):
         return candidate
 
     def _optimize(self, splitted_preds: Sequence[GpuDataset]) -> cp.ndarray:
-
         length = len(splitted_preds)
         candidate = cp.ones(length, dtype=np.float32) / length
         best_pred = self._get_weighted_pred(splitted_preds, candidate)
@@ -195,8 +194,6 @@ class WeightedBlenderGPU(WeightedBlender):
                 if score > best_score:
                     flg_no_upd = False
                     best_score = score
-                    # if w < self.max_nonzero_coef:
-                    #     w = 0
 
                     candidate = self._get_candidate(candidate, i, w)
 

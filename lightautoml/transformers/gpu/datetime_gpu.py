@@ -1,7 +1,10 @@
-"""Datetime features transformers."""
+"""Datetime features transformers (GPU version)."""
 
 from collections import OrderedDict
-from typing import List, Optional, Sequence, Union
+from typing import List
+from typing import Optional
+from typing import Sequence
+from typing import Union
 
 import cudf
 import cupy as cp
@@ -12,12 +15,19 @@ import pandas as pd
 from copy import deepcopy
 
 from lightautoml.dataset.base import LAMLDataset
-from lightautoml.dataset.gpu.gpu_dataset import CudfDataset, CupyDataset, DaskCudfDataset
-from lightautoml.dataset.roles import CategoryRole, ColumnRole, NumericRole
+from lightautoml.dataset.gpu.gpu_dataset import CudfDataset
+from lightautoml.dataset.gpu.gpu_dataset import CupyDataset
+from lightautoml.dataset.gpu.gpu_dataset import DaskCudfDataset
+from lightautoml.dataset.roles import CategoryRole
+from lightautoml.dataset.roles import ColumnRole
+from lightautoml.dataset.roles import NumericRole
 from lightautoml.transformers.base import LAMLTransformer
-from lightautoml.transformers.datetime import date_attrs, datetime_check
+from lightautoml.transformers.datetime import date_attrs
+from lightautoml.transformers.datetime import datetime_check
 
-from ..datetime import TimeToNum, BaseDiff, DateSeasons
+from ..datetime import TimeToNum
+from ..datetime import BaseDiff
+from ..datetime import DateSeasons
 
 DatetimeCompatibleGPU = Union[CudfDataset]
 GpuDataset = Union[CupyDataset, CudfDataset, DaskCudfDataset]
@@ -124,6 +134,11 @@ class BaseDiffGPU(LAMLTransformer):
     Basic conversion strategy, used in selection one-to-one transformers (GPU version).
     Datetime converted to difference with basic_date.
 
+    Args:
+        base_names: Base date names.
+        diff_names: Difference date names.
+        basic_interval: Time unit.
+
     """
 
     basic_interval = "D"
@@ -143,14 +158,7 @@ class BaseDiffGPU(LAMLTransformer):
         diff_names: Sequence[str],
         basic_interval: Optional[str] = "D",
     ):
-        """
 
-        Args:
-            base_names: Base date names.
-            diff_names: Difference date names.
-            basic_interval: Time unit.
-
-        """
         self.base_names = base_names
         self.diff_names = diff_names
         self.basic_interval = basic_interval
@@ -268,6 +276,10 @@ class DateSeasonsGPU(LAMLTransformer):
     """
     Basic conversion strategy, used in selection one-to-one transformers (GPU version).
     Datetime converted to difference with basic_date.
+
+    Args:
+        output_role: Which role to assign for input features.
+
     """
 
     _fname_prefix = "season"
@@ -280,12 +292,7 @@ class DateSeasonsGPU(LAMLTransformer):
         return self._features
 
     def __init__(self, output_role: Optional[ColumnRole] = None):
-        """
 
-        Args:
-            output_role: Which role to assign for input features.
-
-        """
         self.output_role = output_role
         if output_role is None:
             self.output_role = CategoryRole(cp.int32)

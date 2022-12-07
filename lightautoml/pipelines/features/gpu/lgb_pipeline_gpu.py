@@ -4,23 +4,28 @@ from typing import Optional, Union
 
 import numpy as np
 
-from lightautoml.dataset.gpu.gpu_dataset import CudfDataset, CupyDataset, DaskCudfDataset
-from lightautoml.dataset.roles import CategoryRole, NumericRole
+from lightautoml.dataset.gpu.gpu_dataset import CudfDataset
+from lightautoml.dataset.gpu.gpu_dataset import CupyDataset
+from lightautoml.dataset.gpu.gpu_dataset import DaskCudfDataset
+from lightautoml.dataset.roles import CategoryRole
+from lightautoml.dataset.roles import NumericRole
 from lightautoml.pipelines.features.base import FeaturesPipeline
 from lightautoml.pipelines.selection.base import ImportanceEstimator
 from lightautoml.pipelines.utils import get_columns_by_role
-from lightautoml.transformers.base import (
-    ChangeRoles,
-    ColumnsSelector,
-    ConvertDataset,
-    LAMLTransformer,
-    SequentialTransformer,
-    UnionTransformer,
-)
-from lightautoml.transformers.gpu.categorical_gpu import OrdinalEncoderGPU, LabelEncoderGPU
+from lightautoml.transformers.base import ChangeRoles
+from lightautoml.transformers.base import ColumnsSelector
+from lightautoml.transformers.base import ConvertDataset
+from lightautoml.transformers.base import LAMLTransformer
+from lightautoml.transformers.base import SequentialTransformer
+from lightautoml.transformers.base import UnionTransformer
+
+from lightautoml.transformers.gpu.categorical_gpu import OrdinalEncoderGPU
+from lightautoml.transformers.gpu.categorical_gpu import LabelEncoderGPU
 from lightautoml.transformers.gpu.datetime_gpu import TimeToNumGPU
 
-from lightautoml.transformers.gpu.seq_gpu import SeqStatisticsTransformerGPU, SeqNumCountsTransformerGPU, GetSeqTransformerGPU
+from lightautoml.transformers.gpu.seq_gpu import SeqStatisticsTransformerGPU
+from lightautoml.transformers.gpu.seq_gpu import SeqNumCountsTransformerGPU
+from lightautoml.transformers.gpu.seq_gpu import GetSeqTransformerGPU
 
 from .base_gpu import TabularDataFeaturesGPU
 
@@ -47,7 +52,6 @@ class LGBSimpleFeaturesGPU(FeaturesPipeline):
             Composite datetime, categorical, numeric transformer.
 
         """
-        # TODO: Transformer params to config
         transformers_list = []
 
         # process categories
@@ -57,7 +61,6 @@ class LGBSimpleFeaturesGPU(FeaturesPipeline):
                 [
                     ColumnsSelector(keys=categories),
                     OrdinalEncoderGPU(subs=None, random_state=42),
-                    # ChangeRoles(NumericRole(np.float32))
                 ]
             )
             transformers_list.append(cat_processing)
@@ -92,6 +95,7 @@ class LGBSimpleFeaturesGPU(FeaturesPipeline):
             transformers_list.append(num_processing)
         union_all = UnionTransformer(transformers_list)
         return union_all
+
 
 class LGBMultiSeqSimpleFeaturesGPU(FeaturesPipeline, TabularDataFeaturesGPU):
     """LGBMultiSeqSimpleFeatures.
@@ -165,7 +169,7 @@ class LGBMultiSeqSimpleFeaturesGPU(FeaturesPipeline, TabularDataFeaturesGPU):
         numerics = get_columns_by_role(train, "Numeric")
         if len(numerics) > 0:
             num_processing = SequentialTransformer(
-                [ColumnsSelector(keys=numerics)]#, ConvertDataset(dataset_type=NumpyDataset)]
+                [ColumnsSelector(keys=numerics)]
             )
             transformers_list.append(num_processing)
 
@@ -199,8 +203,6 @@ class LGBMultiSeqSimpleFeaturesGPU(FeaturesPipeline, TabularDataFeaturesGPU):
             Composite datetime, categorical, numeric transformer.
 
         """
-        # TODO: Transformer params to config
-
         transformers_list = []
 
         # process categories
@@ -210,7 +212,6 @@ class LGBMultiSeqSimpleFeaturesGPU(FeaturesPipeline, TabularDataFeaturesGPU):
                 [
                     ColumnsSelector(keys=categories),
                     OrdinalEncoderGPU(subs=None, random_state=42),
-                    # ChangeRoles(NumericRole(np.float32))
                 ]
             )
             transformers_list.append(cat_processing)
@@ -225,7 +226,7 @@ class LGBMultiSeqSimpleFeaturesGPU(FeaturesPipeline, TabularDataFeaturesGPU):
         numerics = get_columns_by_role(train, "Numeric")
         if len(numerics) > 0:
             num_processing = SequentialTransformer(
-                [ColumnsSelector(keys=numerics)]#, ConvertDataset(dataset_type=NumpyDataset)]
+                [ColumnsSelector(keys=numerics)]
             )
             transformers_list.append(num_processing)
 
@@ -242,6 +243,7 @@ class LGBMultiSeqSimpleFeaturesGPU(FeaturesPipeline, TabularDataFeaturesGPU):
         union_all = UnionTransformer([ColumnsSelector(keys=[]), union_all])
 
         return union_all
+
 
 class LGBAdvancedPipelineGPU(FeaturesPipeline, TabularDataFeaturesGPU):
     """Create advanced pipeline for trees based models.

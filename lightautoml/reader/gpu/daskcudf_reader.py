@@ -1,7 +1,12 @@
 """Dask_cudf reader."""
 
 import logging
-from typing import Any, Dict, Optional, Sequence, TypeVar, Union
+from typing import Any
+from typing import Dict
+from typing import Optional
+from typing import Sequence
+from typing import TypeVar
+from typing import Union
 
 from torch.cuda import device_count
 import cudf
@@ -10,10 +15,13 @@ import dask.dataframe as dd
 import dask_cudf
 import numpy as np
 import pandas as pd
-from dask_cudf.core import DataFrame, Series
+from dask_cudf.core import DataFrame
+from dask_cudf.core import Series
 
-from lightautoml.dataset.gpu.gpu_dataset import CudfDataset, DaskCudfDataset
-from lightautoml.dataset.roles import ColumnRole, DropRole
+from lightautoml.dataset.gpu.gpu_dataset import CudfDataset
+from lightautoml.dataset.gpu.gpu_dataset import DaskCudfDataset
+from lightautoml.dataset.roles import ColumnRole
+from lightautoml.dataset.roles import DropRole
 from lightautoml.reader.utils import set_sklearn_folds
 from lightautoml.tasks import Task
 
@@ -169,7 +177,7 @@ class DaskCudfReader(CudfReader):
                 else:
                     # if no - infer
                     cur_feat = subsample[feat].compute()
-                    
+
                     if self._is_ok_feature(cur_feat):
                         r = self._guess_role(cur_feat)
                     else:
@@ -199,7 +207,7 @@ class DaskCudfReader(CudfReader):
 
         ngpus = device_count()
         train_len = len(train_data)
-        sub_size = int(1./ngpus*train_len)
+        sub_size = int(1. / ngpus * train_len)
         idx = np.random.RandomState(self.random_state).permutation(train_len)[:sub_size]
         dataset = None
         if self.advanced_roles:

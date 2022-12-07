@@ -33,7 +33,6 @@ from lightautoml.text.sentence_pooling import SequenceIndentityPooler
 from lightautoml.text.sentence_pooling import SequenceMaxPooler
 from lightautoml.text.sentence_pooling import SequenceSumPooler
 from lightautoml.text.utils import _dtypes_mapping
-from lightautoml.text.utils import collate_dict
 from lightautoml.text.utils import parse_devices
 from lightautoml.text.utils import seed_everything
 from lightautoml.text.utils import single_text_hash

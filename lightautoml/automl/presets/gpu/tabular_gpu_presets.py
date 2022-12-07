@@ -1,8 +1,8 @@
-"""Tabular presets."""
+"""Tabular presets (GPU version)."""
 
 import logging
 import os
-from copy import copy, deepcopy
+from copy import copy
 from typing import Iterable
 from typing import Optional
 from typing import Sequence
@@ -54,7 +54,9 @@ logger = logging.getLogger(__name__)
 
 class TabularAutoMLGPU(TabularAutoML):
     """
-    TBA
+    GPU version of TabularAutoML.
+
+    No lightgbm support. Algos that run on GPU: xgboost, torch based algorithms, pyboost, catboost.
     """
 
     _default_config_path = "gpu/tabular_gpu_config.yml"
@@ -181,7 +183,6 @@ class TabularAutoMLGPU(TabularAutoML):
                 self.tuning_params["max_tuning_iter"] = 5
 
         if self.general_params["use_algos"] == "auto":
-            # TODO: More rules and add cases
             self.general_params["use_algos"] = [["xgb", "xgb_tuned", "linear_l2", "cb", "cb_tuned"]]
             if self.task.name == "multiclass" and multilevel_avail:
                 self.general_params["use_algos"].append(["linear_l2", "cb"])
@@ -247,8 +248,7 @@ class TabularAutoMLGPU(TabularAutoML):
         if not self.linear_l2_params["parallel_folds"] and self.task.device == "mgpu":
             self.reader_params["output"] = "mgpu"
 
-    def get_time_score(
-        self, n_level: int, model_type: str, nested: Optional[bool] = None):
+    def get_time_score(self, n_level: int, model_type: str, nested: Optional[bool] = None):
 
         if nested is None:
             nested = self.general_params["nested_cv"]
@@ -304,17 +304,11 @@ class TabularAutoMLGPU(TabularAutoML):
             # if we need selector - define model
             selection_feats = LGBSimpleFeaturesGPU()
 
-            #IF PYBOOST IS FASTER MAYBE SINGLE GPU SHOULD BE PB
+            # IF PYBOOST IS FASTER MAYBE SINGLE GPU SHOULD BE PB
             if (self.task.name == "multi:reg") or (self.task.name == "multilabel"):
                 # timer will be useful to estimate time for next gbm runs
-                time_score = self.get_time_score(n_level, "xgb", False)
-                sel_timer_0 = self.timer.get_task_timer("xgb", time_score)
-                if self.task.device == "gpu":
-                    selection_gbm = BoostXGB(timer=sel_timer_0, **self.xgb_params)
-                elif self.task.device == "mgpu":
-                    selection_gbm = BoostXGB_dask(
-                        client=self.client, timer=sel_timer_0, **self.xgb_params
-                    )
+                time_score = self.get_time_score(n_level, "pb", False)
+                sel_timer_0 = self.timer.get_task_timer("pb", time_score)
             else:
                 time_score = self.get_time_score(n_level, "cb", False)
                 sel_timer_0 = self.timer.get_task_timer("cb", time_score)
@@ -350,7 +344,6 @@ class TabularAutoMLGPU(TabularAutoML):
                     selection_gbm = BoostCBGPU(timer=sel_timer_1, **self.cb_params)
                 selection_gbm.set_prefix("Selector")
 
-                # TODO: Check about reusing permutation importance
                 importance = NpPermutationImportanceEstimator()
 
                 extra_selector = NpIterativeFeatureSelector(
@@ -393,7 +386,7 @@ class TabularAutoMLGPU(TabularAutoML):
         keys: Sequence[str],
         n_level: int = 1,
         pre_selector: Optional[SelectionPipeline] = None,
-    ):
+    ) -> NestedTabularMLPipeline:
 
         gbm_feats = LGBAdvancedPipelineGPU(**self.gbm_pipeline_params)
 
@@ -472,7 +465,7 @@ class TabularAutoMLGPU(TabularAutoML):
         return gbm_pipe
 
     def create_automl(self, **fit_args):
-        """Create basic automl instance.
+        """Create basic automl instance (GPU version).
 
         Args:
             **fit_args: Contain all information needed for creating automl.
@@ -550,24 +543,20 @@ class TabularAutoMLGPU(TabularAutoML):
         log_file: str = None,
         verbose: int = 0,
         return_numpy: bool = True,
-    ) -> GpuDataset:
-        """Fit and get prediction on validation dataset.
-        Almost same as :meth:`lightautoml.automl.base.AutoML.fit_predict`.
-        Additional features - working with different data formats.
-        Supported now:
-            - Path to ``.csv``, ``.parquet``, ``.feather`` files.
-            - :class:`~numpy.ndarray`, or dict of :class:`~numpy.ndarray`.
-              For example, ``{'data': X...}``. In this case,
-              roles are optional, but `train_features`
-              and `valid_features` required.
-            - :class:`pandas.DataFrame`.
+    ) -> Union[GpuDataset, NumpyDataset]:
+        """Fit and get prediction on validation dataset (GPU version).
+
+        Additionally supports:
+            - :class:`~cupy.ndarray`.
+            - :class:`cudf.DataFrame`.
+            - :class:`daskcudf.DataFrame`.
         Args:
             train_data: Dataset to train.
             roles: Roles dict.
             train_features: Optional features names, if can't
               be inferred from `train_data`.
             cv_iter: Custom cv-iterator. For example,
-              :class:`~lightautoml.validation.np_iterators.TimeSeriesIterator`.
+              :class:`~lightautoml.validation.gpu.gpu_iterators.HoldoutIteratorGPU`.
             valid_data: Optional validation dataset.
             valid_features: Optional validation dataset features
               if cannot be inferred from `valid_data`.
@@ -579,10 +568,10 @@ class TabularAutoMLGPU(TabularAutoML):
                 >=4 : the training process for every algorithm is displayed;
             log_file: Filename for writing logging messages. If log_file is specified,
             the messages will be saved in a the file. If the file exists, it will be overwritten.
+            return_numpy: bool to return output in CPU or GPU
         Returns:
-            Dataset with predictions. Call ``.data`` to get predictions array.
+            Dataset with predictions on GPU or CPU. Call ``.data`` to get predictions array.
         """
-        # roles may be none in case of train data is set {'data': np.ndarray, 'target': np.ndarray ...}
         self.set_logfile(log_file)
 
         if roles is None:
@@ -615,31 +604,27 @@ class TabularAutoMLGPU(TabularAutoML):
         n_jobs: Optional[int] = 1,
         return_all_predictions: Optional[bool] = None,
         return_numpy: bool = True,
-    ) -> NumpyDataset:
-        """Get dataset with predictions.
-        Almost same as :meth:`lightautoml.automl.base.AutoML.predict`
-        on new dataset, with additional features.
-        Additional features - working with different data formats.
-        Supported now:
-            - Path to ``.csv``, ``.parquet``, ``.feather`` files.
-            - :class:`~numpy.ndarray`, or dict of :class:`~numpy.ndarray`. For example,
-              ``{'data': X...}``. In this case roles are optional,
-              but `train_features` and `valid_features` required.
-            - :class:`pandas.DataFrame`.
-        Parallel inference - you can pass ``n_jobs`` to speedup
-        prediction (requires more RAM).
-        Batch_inference - you can pass ``batch_size``
-        to decrease RAM usage (may be longer).
+    ) -> Union[GpuDataset, NumpyDataset]:
+        """Get dataset with predictions (GPU version).
+
+        Additionally supports:
+            - :class:`~cupy.ndarray`.
+            - :class:`cudf.DataFrame`.
+            - :class:`daskcudf.DataFrame`.
+
+        Parallel inference is not available (n_jobs will be set to 1).
+
         Args:
             data: Dataset to perform inference.
             features_names: Optional features names,
               if cannot be inferred from `train_data`.
             batch_size: Batch size or ``None``.
-            n_jobs: Number of jobs.
+            n_jobs: Number of jobs (available only for consistency).
             return_all_predictions: if True,
               returns all model predictions from last level
+            return_numpy: bool to return output in CPU or GPU
         Returns:
-            Dataset with predictions.
+            Dataset with predictions on GPU or CPU. Call ``.data`` to get predictions array.
         """
 
         if n_jobs != 1:
@@ -684,7 +669,25 @@ class TabularAutoMLGPU(TabularAutoML):
 
 
 class TabularUtilizedAutoMLGPU(TabularUtilizedAutoML):
-    """Template to make TimeUtilization from TabularAutoML (GPU version)."""
+    """Template to make TimeUtilization from TabularAutoML (GPU version).
+    Simplifies using ``TimeUtilization`` module for ``TabularAutoMLPreset``.
+
+        Args:
+            task: Task to solve.
+            timeout: Timeout in seconds.
+            memory_limit: Memory limit that are passed to each automl.
+            cpu_limit: CPU limit that that are passed to each automl.
+            gpu_ids: GPU IDs that are passed to each automl.
+            timing_params: Timing params level that are passed to each automl.
+            configs_list: List of str path to configs files.
+            drop_last: Usually last automl will be stopped with timeout.
+              Flag that defines if we should drop it from ensemble.
+            return_all_predictions: skip blending phase
+            max_runs_per_config: Maximum number of multistart loops.
+            random_state: Initial random seed that will be set
+              in case of search in config.
+
+    """
 
     def __init__(
         self,
@@ -702,24 +705,7 @@ class TabularUtilizedAutoMLGPU(TabularUtilizedAutoML):
         outer_blender_max_nonzero_coef: float = 0.05,
         **kwargs
     ):
-        """Simplifies using ``TimeUtilization`` module for ``TabularAutoMLPreset``.
 
-        Args:
-            task: Task to solve.
-            timeout: Timeout in seconds.
-            memory_limit: Memory limit that are passed to each automl.
-            cpu_limit: CPU limit that that are passed to each automl.
-            gpu_ids: GPU IDs that are passed to each automl.
-            timing_params: Timing params level that are passed to each automl.
-            configs_list: List of str path to configs files.
-            drop_last: Usually last automl will be stopped with timeout.
-              Flag that defines if we should drop it from ensemble.
-            return_all_predictions: skip blending phase
-            max_runs_per_config: Maximum number of multistart loops.
-            random_state: Initial random seed that will be set
-              in case of search in config.
-
-        """
         if configs_list is None:
             configs_list = [
                 os.path.join(_base_dir, "tabular_configs_gpu", x)
@@ -764,6 +750,26 @@ class TabularUtilizedAutoMLGPU(TabularUtilizedAutoML):
         n_jobs: Optional[int] = 1,
         return_all_predictions: Optional[bool] = None,
     ) -> NumpyDataset:
+        """Get dataset with predictions (GPU version).
+
+        Additionally supports:
+            - :class:`~cupy.ndarray`.
+            - :class:`cudf.DataFrame`.
+            - :class:`daskcudf.DataFrame`.
+
+        Parallel inference is not available (n_jobs will be set to 1).
+
+        Args:
+            data: Dataset to perform inference.
+            features_names: Optional features names,
+              if cannot be inferred from `train_data`.
+            batch_size: Batch size or ``None``.
+            n_jobs: Number of jobs (available only for consistency).
+            return_all_predictions: if True,
+              returns all model predictions from last level
+        Returns:
+            Dataset with predictions on CPU. Call ``.data`` to get predictions array.
+        """
         return (
             super(TabularUtilizedAutoMLGPU.__bases__[0], self)
             .predict(

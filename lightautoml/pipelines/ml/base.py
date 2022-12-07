@@ -6,8 +6,6 @@ from typing import Sequence
 from typing import Tuple
 from typing import Union
 
-from copy import deepcopy
-
 from lightautoml.validation.base import TrainValidIterator
 
 from ...dataset.gpu.gpu_dataset import CupyDataset, CudfDataset, DaskCudfDataset

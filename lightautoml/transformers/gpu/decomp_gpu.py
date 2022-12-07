@@ -1,17 +1,19 @@
-"""Dimension reduction transformers."""
+"""Dimension reduction transformers (GPU version)."""
 
-from typing import List, Optional, Union
+from typing import List
+from typing import Optional
+from typing import Union
 
 import cupy as cp
 import numpy as np
-from cuml import PCA, TruncatedSVD
+from cuml import PCA
+from cuml import TruncatedSVD
 
-from lightautoml.dataset.gpu.gpu_dataset import (
-    CudfDataset,
-    CupyDataset,
-    DaskCudfDataset,
-    CupySparseDataset
-)
+from lightautoml.dataset.gpu.gpu_dataset import CudfDataset
+from lightautoml.dataset.gpu.gpu_dataset import CupyDataset
+from lightautoml.dataset.gpu.gpu_dataset import DaskCudfDataset
+from lightautoml.dataset.gpu.gpu_dataset import CupySparseDataset
+
 from lightautoml.dataset.roles import NumericRole
 from lightautoml.transformers.base import LAMLTransformer
 from lightautoml.transformers.decomposition import numeric_check
@@ -23,7 +25,13 @@ GpuDataset = Union[CupyDataset, CudfDataset, DaskCudfDataset]
 
 
 class PCATransformerGPU(LAMLTransformer):
-    """PCA."""
+    """PCA.
+
+    Args:
+        subs: Subsample to fit algorithm. If None - full data.
+        random_state: Random state to take subsample.
+        n_components: Number of PCA components
+    """
 
     _fit_checks = (numeric_check,)
     _transform_checks = ()
@@ -37,14 +45,7 @@ class PCATransformerGPU(LAMLTransformer):
     def __init__(
         self, subs: Optional[int] = None, random_state: int = 42, n_components: int = 500
     ):
-        """
 
-        Args:
-            subs: Subsample to fit algorithm. If None - full data.
-            random_state: Random state to take subsample.
-            n_components: Number of PCA components
-
-        """
         self.subs = subs
         self.random_state = random_state
         self.n_components = n_components
@@ -108,7 +109,13 @@ class PCATransformerGPU(LAMLTransformer):
 
 
 class SVDTransformerGPU(LAMLTransformer):
-    """TruncatedSVD."""
+    """TruncatedSVD.
+
+    Args:
+        subs: Subsample to fit algorithm. If None - full data.
+        random_state: Random state to take subsample.
+        n_components: Number of SVD components.
+    """
 
     _fit_checks = (numeric_check,)
     _transform_checks = ()
@@ -122,14 +129,7 @@ class SVDTransformerGPU(LAMLTransformer):
     def __init__(
         self, subs: Optional[int] = None, random_state: int = 42, n_components: int = 100
     ):
-        """
 
-        Args:
-            subs: Subsample to fit algorithm. If None - full data.
-            random_state: Random state to take subsample.
-            n_components: Number of SVD components.
-
-        """
         self.subs = subs
         self.random_state = random_state
         self.n_components = n_components

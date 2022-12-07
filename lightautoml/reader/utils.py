@@ -10,16 +10,9 @@ from sklearn.model_selection import GroupKFold
 from sklearn.model_selection import KFold
 from sklearn.model_selection import StratifiedKFold
 
-gpu_available = True
-
-try:
-    import cudf
-    import cupy as cp
-    import dask_cudf
-except ModuleNotFoundError:
-    gpu_available = False
-    print("Warning: GPU is not supported on this machine")
-    pass
+import cudf
+import cupy as cp
+import dask_cudf
 
 from ..tasks import Task
 
@@ -44,9 +37,10 @@ def set_sklearn_folds(
         Array with fold indices.
 
     """
-    # GPU PART 
-    if (gpu_available) and (isinstance(target, (cp.ndarray, cudf.Series,
-        cudf.DataFrame, dask_cudf.Series, dask_cudf.DataFrame))):
+    # GPU PART
+    if (isinstance(target, (cp.ndarray, cudf.Series,
+                            cudf.DataFrame, dask_cudf.Series, dask_cudf.DataFrame)
+                   )):
         def KFolds_gpu(
             target: Union[cudf.Series, cudf.DataFrame],
             n_splits: int = 5,
@@ -144,7 +138,7 @@ def set_sklearn_folds(
                 output = KFolds_gpu(target, cv, shuffle, random_state)
 
             return output
-    #CPU PART
+    # CPU PART
     if type(cv) is int:
         if group is not None:
             split = GroupKFold(cv).split(group, group, group)

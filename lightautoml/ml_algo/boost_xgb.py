@@ -1,44 +1,27 @@
-from time import perf_counter
-
 import logging
 from copy import copy
-from copy import deepcopy
 from typing import Optional
 from typing import Callable
 from typing import Tuple
 from typing import Dict
 
 import xgboost as xgb
-from xgboost import dask as dxgb
 
 import numpy as np
 import pandas as pd
 
-from pandas import Series
-
-from ..dataset.np_pd_dataset import NumpyDataset, PandasDataset
+from ..dataset.np_pd_dataset import PandasDataset
 from .base import TabularMLAlgo
 from .base import TabularDataset
 from ..pipelines.selection.base import ImportanceEstimator
 from ..validation.base import TrainValidIterator
-from .tuning.base import Choice
 from .tuning.base import Uniform
 
 logger = logging.getLogger(__name__)
 
+
 class BoostXGB(TabularMLAlgo, ImportanceEstimator):
-    """Gradient boosting on decision trees from LightGBM library.
-
-    default_params: All available parameters listed in lightgbm documentation:
-
-        - https://lightgbm.readthedocs.io/en/latest/Parameters.html
-
-    freeze_defaults:
-
-        - ``True`` :  params may be rewritten depending on dataset.
-        - ``False``:  params may be changed only manually or with tuning.
-
-    timer: :class:`~lightautoml.utils.timer.Timer` instance or ``None``.
+    """Gradient boosting on decision trees from xgboost library.
 
     """
     _name: str = 'XGB'
@@ -61,11 +44,10 @@ class BoostXGB(TabularMLAlgo, ImportanceEstimator):
     }
 
     def _infer_params(self) -> Tuple[dict, int, int, int, Optional[Callable], Optional[Callable]]:
-        """Infer all parameters in lightgbm format.
+        """Infer all parameters.
 
         Returns:
             Tuple (params, num_trees, early_stopping_rounds, verbose_eval, fobj, feval).
-            About parameters: https://lightgbm.readthedocs.io/en/latest/_modules/lightgbm/engine.html
 
         """
         params = copy(self.params)
@@ -96,7 +78,6 @@ class BoostXGB(TabularMLAlgo, ImportanceEstimator):
         params = {**params, **loss.fobj_params, **loss.metric_params}
 
         return params, num_trees, early_stopping_rounds, verbose_eval, fobj, feval
-
 
     def init_params_on_input(self, train_valid_iterator: TrainValidIterator) -> dict:
         """Get model parameters depending on dataset parameters.
@@ -200,8 +181,7 @@ class BoostXGB(TabularMLAlgo, ImportanceEstimator):
 
         return optimization_search_space
 
-    def fit_predict_single_fold(self, train: TabularDataset, valid: TabularDataset) -> Tuple[
-        xgb.Booster, np.ndarray]:
+    def fit_predict_single_fold(self, train: TabularDataset, valid: TabularDataset) -> Tuple[xgb.Booster, np.ndarray]:
         """Implements training and prediction on single fold.
 
         Args:
@@ -212,7 +192,6 @@ class BoostXGB(TabularMLAlgo, ImportanceEstimator):
             Tuple (model, predicted_values)
 
         """
-        st = perf_counter()
         train_target = train.target
         train_weights = train.weights
         valid_target = valid.target
@@ -253,8 +232,6 @@ class BoostXGB(TabularMLAlgo, ImportanceEstimator):
         val_pred = model.inplace_predict(valid_data)
         val_pred = self.task.losses['xgb'].bw_func(val_pred)
 
-        print(perf_counter() - st, "xgb single fold time")
-
         val_pred = np.copy(val_pred)
         return model, val_pred
 
@@ -262,7 +239,7 @@ class BoostXGB(TabularMLAlgo, ImportanceEstimator):
         """Predict target values for dataset.
 
         Args:
-            model: Lightgbm object.
+            model: xgboost object.
             dataset: Test Dataset.
 
         Return:
@@ -276,7 +253,7 @@ class BoostXGB(TabularMLAlgo, ImportanceEstimator):
         return pred
 
     def get_features_score(self) -> pd.Series:
-        """Computes feature importance as mean values of feature importance provided by lightgbm per all models.
+        """Computes feature importance.
 
         Returns:
             Series with feature importances.

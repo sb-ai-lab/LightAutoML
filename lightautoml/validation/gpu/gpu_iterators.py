@@ -1,17 +1,19 @@
-"""Tabular iterators."""
+"""Tabular iterators (GPU version)."""
 
 from typing import Optional, Tuple, Union, cast
 
 import cupy as cp
+import numpy as np
 
-from lightautoml.dataset.gpu.gpu_dataset import CudfDataset, CupyDataset, DaskCudfDataset
-from lightautoml.validation.base import (
-    CustomIdxs,
-    CustomIterator,
-    DummyIterator,
-    HoldoutIterator,
-    TrainValidIterator,
-)
+from lightautoml.dataset.gpu.gpu_dataset import CudfDataset
+from lightautoml.dataset.gpu.gpu_dataset import CupyDataset
+from lightautoml.dataset.gpu.gpu_dataset import DaskCudfDataset
+
+from lightautoml.validation.base import CustomIdxs
+from lightautoml.validation.base import CustomIterator
+from lightautoml.validation.base import DummyIterator
+from lightautoml.validation.base import HoldoutIterator
+from lightautoml.validation.base import TrainValidIterator
 
 from lightautoml.validation.np_iterators import FoldsIterator
 
@@ -19,16 +21,17 @@ GpuDataset = Union[CupyDataset, CudfDataset, DaskCudfDataset]
 
 
 class HoldoutIteratorGPU(HoldoutIterator):
-    """Iterator for classic holdout - just predefined train and valid samples (GPU version requires indexing)."""
+    """Iterator for classic holdout - just predefined train and valid samples (GPU version requires indexing).
+
+    Create iterator.
+
+    Args:
+        train: Dataset of train data.
+        valid: Dataset of valid data.
+    """
 
     def __init__(self, train: GpuDataset, valid: GpuDataset):
-        """Create iterator.
 
-        Args:
-            train: Dataset of train data.
-            valid: Dataset of valid data.
-
-        """
         self.train = train
         self.valid = valid
 
@@ -51,7 +54,7 @@ class HoldoutIteratorGPU(HoldoutIterator):
 
         return iter([(None, self.train, self.valid)])
 
-    def __getitem__(self, number):
+    def __getitem__(self, number: int):
         if number >= 1:
             raise IndexError("index out of range")
 
@@ -62,16 +65,17 @@ class FoldsIteratorGPU(TrainValidIterator):
     """Classic cv iterator.
 
     Folds should be defined in Reader, based on cross validation method.
+
+    Creates iterator (GPU version).
+
+    Args:
+        train: Dataset for folding.
+        n_folds: Number of folds.
+
     """
 
     def __init__(self, train: GpuDataset, n_folds: Optional[int] = None):
-        """Creates iterator (GPU version).
 
-        Args:
-            train: Dataset for folding.
-            n_folds: Number of folds.
-
-        """
         assert hasattr(
             train, "folds"
         ), "Folds in dataset should be defined to make folds iterator."
@@ -104,7 +108,7 @@ class FoldsIteratorGPU(TrainValidIterator):
         self._curr_idx = 0
         return self
 
-    def __getitem__(self, number):
+    def __getitem__(self, number: int) -> Tuple[np.ndarray, GpuDataset, GpuDataset]:
         if number >= self.n_folds:
             raise IndexError("index out of range")
 
@@ -125,7 +129,7 @@ class FoldsIteratorGPU(TrainValidIterator):
 
         return val_idx, cast(GpuDataset, train), cast(GpuDataset, valid)
 
-    def __next__(self) -> Tuple[cp.ndarray, GpuDataset, GpuDataset]:
+    def __next__(self) -> Tuple[np.ndarray, GpuDataset, GpuDataset]:
         """Define how to get next object.
 
         Returns:

@@ -1,7 +1,12 @@
-"""Categorical features transformers."""
+"""Categorical features transformers (GPU version)."""
 
 from itertools import combinations
-from typing import List, Optional, Sequence, Tuple, Union, cast
+from typing import List
+from typing import Optional
+from typing import Sequence
+from typing import Tuple
+from typing import Union
+from typing import cast
 
 from copy import deepcopy
 
@@ -11,28 +16,41 @@ import dask_cudf
 import numpy as np
 from torch.cuda import device_count
 from cuml.preprocessing import OneHotEncoder
+from sklearn.preprocessing import OneHotEncoder as OHE_CPU
 from cupyx import scatter_add
 
-from lightautoml.dataset.gpu.gpu_dataset import CudfDataset, CupyDataset, DaskCudfDataset
-from lightautoml.dataset.roles import CategoryRole, NumericRole
+from lightautoml.dataset.np_pd_dataset import PandasDataset
+from lightautoml.dataset.gpu.gpu_dataset import CudfDataset
+from lightautoml.dataset.gpu.gpu_dataset import CupyDataset
+from lightautoml.dataset.gpu.gpu_dataset import DaskCudfDataset
+from lightautoml.dataset.roles import CategoryRole
+from lightautoml.dataset.roles import NumericRole
 from lightautoml.transformers.base import LAMLTransformer
-from lightautoml.transformers.categorical import (
-    categorical_check,
-    encoding_check,
-    multiclass_task_check,
-    oof_task_check,
-)
+from lightautoml.transformers.categorical import categorical_check
+from lightautoml.transformers.categorical import encoding_check
+from lightautoml.transformers.categorical import multiclass_task_check
+from lightautoml.transformers.categorical import oof_task_check
+
+from ..categorical import LabelEncoder
+from ..categorical import OHEEncoder
+from ..categorical import FreqEncoder
+from ..categorical import TargetEncoder
+from ..categorical import MultiClassTargetEncoder
+from ..categorical import OrdinalEncoder
+from ..categorical import MultioutputTargetEncoder
 
 GpuNumericalDataset = Union[CupyDataset, CudfDataset, DaskCudfDataset]
 
-from ..categorical import LabelEncoder, OHEEncoder, FreqEncoder, TargetEncoder, MultiClassTargetEncoder,\
-    CatIntersectstions, OrdinalEncoder, MultioutputTargetEncoder
 
 class LabelEncoderGPU(LAMLTransformer):
     """Simple LabelEncoder in order of frequency.
 
     Labels are integers from 1 to n. Unknown category encoded as 0.
     NaN is handled as a category value.
+
+    Args:
+        subs: Subsample to calculate freqs. If None - full data.
+        random_state: Random state to take subsample.
 
     """
 
@@ -42,13 +60,7 @@ class LabelEncoderGPU(LAMLTransformer):
     _fillna_val = 0
 
     def __init__(self, subs: Optional[int] = None, random_state: int = 42):
-        """
 
-        Args:
-            subs: Subsample to calculate freqs. If None - full data.
-            random_state: Random state to take subsample.
-
-        """
         self.subs = subs
         self.random_state = random_state
         self._output_role = CategoryRole(cp.int32, label_encoded=True)
@@ -74,6 +86,12 @@ class LabelEncoderGPU(LAMLTransformer):
         return subs
 
     def to_cpu(self):
+        """Move the class properties to CPU and change class to CPU counterpart for CPU inference.
+
+        Returns:
+            self
+        """
+
         subs = deepcopy(self.subs)
         random_state = self.random_state
         features = deepcopy(self._features)
@@ -154,7 +172,7 @@ class LabelEncoderGPU(LAMLTransformer):
             self._fit_cupy(dataset)
         return self
 
-    def encode_labels(self, df):
+    def encode_labels(self, df: cudf.DataFrame) -> cudf.DataFrame:
         new_arr = cudf.DataFrame(index=df.index, columns=self.features)
 
         for n, i in enumerate(df.columns):
@@ -188,11 +206,9 @@ class LabelEncoderGPU(LAMLTransformer):
         dataset = dataset.to_cudf()
         data = dataset.data
         # transform
-        # data = self.encode_labels(data).values
         data = self.encode_labels(data)
         data = data.astype(self._output_role.dtype)
         data = data.fillna(cp.nan).values.reshape(data.shape)
-        # data
         # create resulted
         output = dataset.empty().to_cupy()
         output.set_data(data, self.features, self._output_role)
@@ -231,6 +247,11 @@ class LabelEncoderGPU(LAMLTransformer):
 class OHEEncoderGPU(LAMLTransformer):
     """
     Simple OneHotEncoder over label encoded categories (GPU version).
+
+    Args:
+        make_sparse: Create sparse matrix.
+        total_feats_cnt: Initial features number.
+        dtype: Dtype of new features.
     """
 
     _fit_checks = (categorical_check, encoding_check)
@@ -248,14 +269,7 @@ class OHEEncoderGPU(LAMLTransformer):
         total_feats_cnt: Optional[int] = None,
         dtype: type = cp.float32,
     ):
-        """
 
-        Args:
-            make_sparse: Create sparse matrix.
-            total_feats_cnt: Initial features number.
-            dtype: Dtype of new features.
-
-        """
         self.make_sparse = make_sparse
         self.total_feats_cnt = total_feats_cnt
         self.dtype = dtype
@@ -266,6 +280,12 @@ class OHEEncoderGPU(LAMLTransformer):
             ), "Param total_feats_cnt should be defined if make_sparse is None"
 
     def to_cpu(self):
+        """Move the class properties to CPU and change class to CPU counterpart for CPU inference.
+
+        Returns:
+            self
+        """
+
         make_sparse = self.make_sparse
         total_feats_cnt = self.total_feats_cnt
         dtype = self.dtype
@@ -342,14 +362,9 @@ class OHEEncoderGPU(LAMLTransformer):
             handle_unknown="ignore",
         )
 
-        #max_val = int(max_idx.max())
-        #temp_data = cp.ones((len(data.columns), max_val + 1)) * (max_val + 1)
-        #for i, col in enumerate(data.columns):
-        #    uniques = data[col].unique().compute().values
-        #    temp_data[i][: uniques.shape[0]] = uniques
         ngpus = device_count()
         train_len = len(data)
-        sub_size = int(1./ngpus*train_len)
+        sub_size = int(1. / ngpus * train_len)
         idx = np.random.RandomState(42).permutation(train_len)[:sub_size]
         self.ohe.fit(data.loc[idx].compute().values)
 
@@ -410,17 +425,15 @@ class OHEEncoderGPU(LAMLTransformer):
     def _transform_daskcudf(self, dataset: DaskCudfDataset) -> DaskCudfDataset:
 
         output = dataset.empty()
-        
+
         if self.make_sparse:
             data = dataset.data.to_dask_array(lengths=True,
-                           meta=cp.array(()))
+                                              meta=cp.array(()))
             data = data.map_blocks(self.ohe.transform)
             data = data.compute().tocsr()
             output = output.to_sparse_gpu()
         else:
-            data = dataset.data.map_partitions(self._call_ohe,
-                   meta=cudf.DataFrame(columns=self.features)
-            )
+            data = dataset.data.map_partitions(self._call_ohe, meta=cudf.DataFrame(columns=self.features))
         output.set_data(data, self.features, NumericRole(self.dtype))
 
         return output
@@ -449,6 +462,10 @@ class FreqEncoderGPU(LabelEncoderGPU):
     Labels are encoded with frequency in train data (GPU version).
 
     Labels are integers from 1 to n. Unknown category encoded as 1.
+
+    Args:
+        subs: Subsample to calculate freqs. If None - full data.
+        random_state: Random state to take subsample.
     """
 
     _fit_checks = (categorical_check,)
@@ -458,10 +475,17 @@ class FreqEncoderGPU(LabelEncoderGPU):
     _fillna_val = 1
 
     def __init__(self, *args, **kwargs):
+
         super().__init__(*args, **kwargs)
         self._output_role = NumericRole(cp.float32)
 
     def to_cpu(self):
+        """Move the class properties to CPU and change class to CPU counterpart for CPU inference.
+
+        Returns:
+            self
+        """
+
         subs = deepcopy(self.subs)
         random_state = self.random_state
         features = deepcopy(self._features)
@@ -518,6 +542,8 @@ class TargetEncoderGPU(LAMLTransformer):
         - Required .folds attribute in dataset - array of int from 0 to n_folds-1.
         - Working only after label encoding.
 
+    Args:
+        alphas: Smooth coefficients.
     """
 
     _fit_checks = (categorical_check, oof_task_check, encoding_check)
@@ -527,15 +553,15 @@ class TargetEncoderGPU(LAMLTransformer):
     def __init__(
         self, alphas: Sequence[float] = (0.5, 1.0, 2.0, 5.0, 10.0, 50.0, 250.0, 1000.0)
     ):
-        """
 
-        Args:
-            alphas: Smooth coefficients.
-
-        """
         self.alphas = alphas
 
     def to_cpu(self):
+        """Move the class properties to CPU and change class to CPU counterpart for CPU inference.
+
+           Returns:
+               self
+        """
         output_role = deepcopy(self.output_role)
         features = deepcopy(self._features)
         encodings = deepcopy([cp.asnumpy(enc) for enc in self.encodings])
@@ -555,7 +581,7 @@ class TargetEncoderGPU(LAMLTransformer):
             scatter_add(output, data[col].values, val)
         else:
             scatter_add(output, data[col].values, data[val].values)
-        return cudf.DataFrame([output])  # , columns=np.arange(size))
+        return cudf.DataFrame([output])
 
     @staticmethod
     def dask_add_at_2d(
@@ -572,7 +598,7 @@ class TargetEncoderGPU(LAMLTransformer):
             scatter_add(
                 output, (data[cols[0]].values, data[cols[-1]].values), data[val].values
             )
-        return cudf.DataFrame(output)  # , columns=np.arange(n_folds))
+        return cudf.DataFrame(output)
 
     @staticmethod
     def find_candidates(
@@ -750,7 +776,7 @@ class TargetEncoderGPU(LAMLTransformer):
 
         folds_prior = (f_sum.sum() - f_sum) / (f_count.sum() - f_count)
 
-        oof_feats = dataset.data  # data[dataset.features]#.persist()
+        oof_feats = dataset.data
 
         for n in range(oof_feats.shape[1]):
             vec_col = data.columns[n]
@@ -809,7 +835,7 @@ class TargetEncoderGPU(LAMLTransformer):
                 .values
             )
             idx = int(scores.argmin().get())
-            oof_feats[vec_col] = candidates[candidates.columns[idx]]  # .persist()
+            oof_feats[vec_col] = candidates[candidates.columns[idx]]
             # calc best encoding
             enc = (
                 (t_sum[:, 0] + alphas[0, idx] * prior) / (t_count[:, 0] + alphas[0, idx])
@@ -925,14 +951,14 @@ class TargetEncoderGPU(LAMLTransformer):
         else:
             return self._transform_cupy(dataset)
 
-    def create_output(self, df):
+    def create_output(self, df: cudf.DataFrame) -> cudf.DataFrame:
         new_arr = cudf.DataFrame(index=df.index, columns=self.features)
         assert len(new_arr.columns) == len(df.columns)
         for i, col in df.columns:
             new_arr[self.features[i]] = df[col]
         return new_arr
 
-    def _transform_daskcudf(self, dataset: GpuNumericalDataset):
+    def _transform_daskcudf(self, dataset: DaskCudfDataset) -> DaskCudfDataset:
 
         super().transform(dataset)
         data = dataset.data
@@ -984,6 +1010,9 @@ class MultiClassTargetEncoderGPU(LAMLTransformer):
         - Required .folds attribute in dataset - array of int from 0 to n_folds-1.
         - Working only after label encoding
 
+    Args:
+        alphas: Smooth coefficients.
+
     """
 
     _fit_checks = (categorical_check, multiclass_task_check, encoding_check)
@@ -995,6 +1024,12 @@ class MultiClassTargetEncoderGPU(LAMLTransformer):
         return self._features
 
     def to_cpu(self):
+        """Move the class properties to CPU and change class to CPU counterpart for CPU inference.
+
+        Returns:
+            self
+        """
+
         n_classes = self.n_classes
         encodings = deepcopy([cp.asnumpy(enc) for enc in self.encodings])
         features = deepcopy(self._features)
@@ -1029,16 +1064,16 @@ class MultiClassTargetEncoderGPU(LAMLTransformer):
         return idx
 
     @staticmethod
-    def dask_add_at_2d(data, cols, val, shape):
+    def dask_add_at_2d(data: cudf.DataFrame, cols, val, shape) -> cudf.DataFrame:
         output = cp.zeros(shape, dtype=cp.float32)
         if isinstance(cols[0], int):
             scatter_add(output, (cols[0], data[cols[-1]].values), val)
         else:
             scatter_add(output, (data[cols[0]].values, data[cols[-1]].values), val)
-        return cudf.DataFrame(output)  # , columns=np.arange(n_folds))
+        return cudf.DataFrame(output)
 
     @staticmethod
-    def dask_add_at_3d(data, cols, val, shape):
+    def dask_add_at_3d(data: cudf.DataFrame, cols, val, shape) -> cudf.DataFrame:
         output = cp.zeros(shape, dtype=cp.float32)
         if isinstance(cols[1], int):
             scatter_add(
@@ -1052,10 +1087,10 @@ class MultiClassTargetEncoderGPU(LAMLTransformer):
             )
 
         output = output.reshape((shape[0], shape[1] * shape[2]))
-        return cudf.DataFrame(output)  # , columns=np.arange(n_folds))
+        return cudf.DataFrame(output)
 
     @staticmethod
-    def dask_score_func(data, target_col, shape):
+    def dask_score_func(data: cudf.DataFrame, target_col, shape) -> cudf.DataFrame:
         target = data[target_col].values
         target = target[:, cp.newaxis, cp.newaxis]
         # the fact that target_col is the last is hardcoded here
@@ -1176,7 +1211,7 @@ class MultiClassTargetEncoderGPU(LAMLTransformer):
                 self._features.append("{0}_{1}__{2}".format("multioof", j, i))
 
         for n, col in enumerate(dataset.features):
-            vec_col = col  # data.columns[n]
+            vec_col = col
 
             enc_dim = int(data[vec_col].max().compute() + 1)
 
@@ -1266,20 +1301,11 @@ class MultiClassTargetEncoderGPU(LAMLTransformer):
         return output
 
     def _fit_transform_cupy(self, dataset: GpuNumericalDataset) -> CudfDataset:
-        """Estimate label frequencies and create encoding dicts.
-
-        Args:
-            dataset: Cudf or Cupy dataset of categorical label encoded features.
-
-        Returns:
-            CudfDataset - target encoded features.
-
-        """
 
         # convert to accepted dtype and get attributes
         dataset = dataset.to_cupy()
         data = dataset.data
-        target = dataset.target  # .astype(cp.int32)
+        target = dataset.target
         n_classes = int(target.max() + 1)
         self.n_classes = n_classes
         folds = dataset.folds
@@ -1394,15 +1420,6 @@ class MultiClassTargetEncoderGPU(LAMLTransformer):
         return output
 
     def _transform_cupy(self, dataset: GpuNumericalDataset) -> CupyDataset:
-        """Transform categorical dataset to target encoding.
-
-        Args:
-            dataset: Cudf or Cupy dataset of categorical features.
-
-        Returns:
-            Cupy dataset with encoded labels.
-
-        """
 
         dataset = dataset.to_cupy()
         data = dataset.data
@@ -1419,6 +1436,7 @@ class MultiClassTargetEncoderGPU(LAMLTransformer):
 
         return output
 
+
 class MultioutputTargetEncoderGPU(LAMLTransformer):
     """Out-of-fold target encoding for multi:reg and multilabel task. (GPU version)
 
@@ -1426,6 +1444,9 @@ class MultioutputTargetEncoderGPU(LAMLTransformer):
 
         - Required .folds attribute in dataset - array of int from 0 to n_folds-1.
         - Working only after label encoding
+
+    Args:
+        alphas: Smooth coefficients.
 
     """
 
@@ -1437,12 +1458,15 @@ class MultioutputTargetEncoderGPU(LAMLTransformer):
     def features(self) -> List[str]:
         return self._features
 
-    def __init__(
-        self, alphas: Sequence[float] = (0.5, 1.0, 2.0, 5.0, 10.0, 50.0, 250.0, 1000.0)
-    ):
+    def __init__(self, alphas: Sequence[float] = (0.5, 1.0, 2.0, 5.0, 10.0, 50.0, 250.0, 1000.0)):
         self.alphas = alphas
 
     def to_cpu(self):
+        """Move the class properties to CPU and change class to CPU counterpart for CPU inference.
+
+        Returns:
+            self
+        """
         n_classes = self.n_classes
         encodings = deepcopy([cp.asnumpy(enc) for enc in self.encodings])
         features = deepcopy(self._features)
@@ -1530,7 +1554,17 @@ class MultioutputTargetEncoderGPU(LAMLTransformer):
         scores = ((target - candidates) ** 2).mean(axis=0)[0]
         return cudf.DataFrame([scores])
 
-    def fit_transform(self, dataset):
+    def fit_transform(self, dataset: GpuNumericalDataset):
+        """Estimate label frequencies and create encoding dicts (GPU version).
+
+        Args:
+            dataset: Cupy or Cudf or DaskCudf dataset of categorical label encoded features.
+
+        Returns:
+            Respective dataset - target encoded features.
+
+        """
+
         # set transformer names and add checks
         for check_func in self._fit_checks:
             check_func(dataset)
@@ -1540,13 +1574,24 @@ class MultioutputTargetEncoderGPU(LAMLTransformer):
         else:
             return self._fit_transform_cupy(dataset)
 
-    def transform(self, dataset):
+    def transform(self, dataset: GpuNumericalDataset) -> GpuNumericalDataset:
+        """Transform categorical dataset to target encoding.
+
+        Args:
+            dataset: Cudf or Cupy or DaskCudf dataset of categorical features.
+
+        Returns:
+            Respective dataset with encoded labels.
+
+        """
+
         if isinstance(dataset, DaskCudfDataset):
             return self._transform_daskcudf(dataset)
         else:
             return self._transform_cupy(dataset)
 
-    def _fit_transform_cupy(self, dataset):
+    def _fit_transform_cupy(self, dataset: GpuNumericalDataset) -> GpuNumericalDataset:
+
         # convert to accepted dtype and get attributes
         dataset = dataset.to_cupy()
 
@@ -1630,7 +1675,7 @@ class MultioutputTargetEncoderGPU(LAMLTransformer):
         return output
 
     @staticmethod
-    def dask_add_at_2d(data, cols, val, shape):
+    def dask_add_at_2d(data: cudf.DataFrame, cols, val, shape):
         output = cp.zeros(shape, dtype=cp.float32)
         if isinstance(cols[0], int):
             scatter_add(output, (cols[0], data[cols[-1]].values), val)
@@ -1639,7 +1684,7 @@ class MultioutputTargetEncoderGPU(LAMLTransformer):
         return cudf.DataFrame(output)
 
     @staticmethod
-    def dask_add_at_3d(data, cols, val, shape):
+    def dask_add_at_3d(data: cudf.DataFrame, cols, val, shape):
         output = cp.zeros(shape, dtype=cp.float32)
         if isinstance(cols[1], int):
             scatter_add(
@@ -1657,7 +1702,7 @@ class MultioutputTargetEncoderGPU(LAMLTransformer):
 
     @staticmethod
     def find_candidates(
-        data, vec_col, fold_col, oof_sum, oof_count, alphas, folds_prior
+        data: cudf.DataFrame, vec_col, fold_col, oof_sum, oof_count, alphas, folds_prior
     ):
         vec = data[vec_col].values
         folds = data[fold_col].values
@@ -1673,7 +1718,7 @@ class MultioutputTargetEncoderGPU(LAMLTransformer):
         candidates = candidates.reshape(data.shape[0], -1)
         return cudf.DataFrame(candidates, index=data.index)
 
-    def _fit_transform_daskcudf(self, dataset):
+    def _fit_transform_daskcudf(self, dataset: dask_cudf.DataFrame) -> dask_cudf.DataFrame:
 
         score_func = self.dask_class_score_func if dataset.task.name == "multilabel" else self.dask_reg_score_func
 
@@ -1731,7 +1776,7 @@ class MultioutputTargetEncoderGPU(LAMLTransformer):
             / (f_count_final.sum(axis=1, keepdims=True) - f_count_final)
         ).T
 
-        oof_feats = []#cp.zeros((data.shape[0].compute(), data.shape[1]) + (n_classes,), dtype=cp.float32)
+        oof_feats = []
 
         self._features = []
         for i in dataset.features:
@@ -1739,7 +1784,7 @@ class MultioutputTargetEncoderGPU(LAMLTransformer):
                 self._features.append("{0}_{1}__{2}".format("multioof", j, i))
 
         for n, col in enumerate(dataset.features):
-            vec_col = col  # data.columns[n]
+            vec_col = col
 
             enc_dim = int(data[vec_col].max().compute() + 1)
 
@@ -1808,7 +1853,7 @@ class MultioutputTargetEncoderGPU(LAMLTransformer):
                 .values
             )
             idx = scores.argmin().get()
-            orig_cols = [idx+i*len(self.alphas) for i in range(n_classes)]
+            orig_cols = [idx + i * len(self.alphas) for i in range(n_classes)]
 
             new_cols = self.features[n * n_classes : (n + 1) * n_classes]
 
@@ -1833,7 +1878,7 @@ class MultioutputTargetEncoderGPU(LAMLTransformer):
         output.set_data(oof_feats, self.features, NumericRole(cp.float32, prob=dataset.task.name == "multilabel"))
         return output
 
-    def _transform_cupy(self, dataset):
+    def _transform_cupy(self, dataset: GpuNumericalDataset) -> GpuNumericalDataset:
         super().transform(dataset)
         dataset = dataset.to_cupy()
         data = dataset.data
@@ -1850,7 +1895,7 @@ class MultioutputTargetEncoderGPU(LAMLTransformer):
         output.set_data(out, self.features, NumericRole(cp.float32, prob=dataset.task.name == "multilabel"))
         return output
 
-    def _transform_daskcudf(self, dataset):
+    def _transform_daskcudf(self, dataset: dask_cudf.DataFrame) -> dask_cudf.DataFrame:
         super().transform(dataset)
         data = dataset.data
 
@@ -1868,14 +1913,23 @@ class MultioutputTargetEncoderGPU(LAMLTransformer):
             self.features,
             meta=cudf.DataFrame(columns=self.features),
         ).persist()
-        
+
         # create resulted
         output = dataset.empty()
         output.set_data(res, self.features, NumericRole(cp.float32, prob=dataset.task.name == "multilabel"))
         return output
 
+
 class CatIntersectionsGPU(LabelEncoderGPU):
-    """Build label encoded intersections of categorical variables (GPU version)."""
+    """Build label encoded intersections of categorical variables (GPU version).
+
+       Create label encoded intersection columns for categories.
+
+       Args:
+           intersections: Columns to create intersections.
+                          Default is None - all.
+           max_depth: Max intersection depth.
+    """
 
     _fit_checks = (categorical_check,)
     _transform_checks = ()
@@ -1888,38 +1942,19 @@ class CatIntersectionsGPU(LabelEncoderGPU):
         intersections: Optional[Sequence[Sequence[str]]] = None,
         max_depth: int = 2,
     ):
-        """Create label encoded intersection columns for categories.
 
-        Args:
-            intersections: Columns to create intersections.
-              Default is None - all.
-            max_depth: Max intersection depth.
-
-        """
         super().__init__(subs, random_state)
         self.intersections = intersections
         self.max_depth = max_depth
+        self.cpu_inf = False
 
     def to_cpu(self):
-        intersections = deepcopy(self.intersections)
-        max_depth = self.max_depth
-        subs = deepcopy(self.subs)
-        random_state = self.random_state
-        features = deepcopy(self._features)
-        internal_dict = {
-            i: v.to_pandas() for i, v in zip(
-                                self.dicts.keys(),
-                                self.dicts.values()
-                                )
-        }
+        """Move the class properties to CPU and change class to CPU counterpart for CPU inference.
 
-        self.__class__ = CatIntersectstions
-        self.intersections = intersections
-        self.max_depth = max_depth
-        self.subs = subs
-        self.random_state = random_state
-        self.features = features
-        self.dicts = internal_dict
+        Returns:
+            self
+        """
+        self.cpu_inf = True
         return self
 
     @staticmethod
@@ -1955,7 +1990,6 @@ class CatIntersectionsGPU(LabelEncoderGPU):
         Returns:
             Dataset.
         """
-
         col_names = []
         if type(dataset) == DaskCudfDataset:
             df = dataset.data
@@ -1975,7 +2009,21 @@ class CatIntersectionsGPU(LabelEncoderGPU):
             new_df = dask_cudf.concat(new_df, axis=1).rename(columns=mapper).persist()
 
         else:
-            dataset = dataset.to_cudf()
+            if (type(dataset) == PandasDataset):
+                data = cudf.from_pandas(dataset.data)
+                roles = dataset.roles
+                # target and etc ..
+                params = dict(
+                    (
+                        (x, cudf.Series(dataset.__dict__[x]) if len(dataset.__dict__[x].shape) == 1 else cudf.DataFrame(dataset.__dict__[x]))
+                        for x in dataset._array_like_attrs
+                    )
+                )
+                task = dataset.task
+
+                dataset = CudfDataset(data, roles, task, **params)
+            else:
+                dataset = dataset.to_cudf()
             df = dataset.data
 
             roles = {}
@@ -2029,6 +2077,10 @@ class CatIntersectionsGPU(LabelEncoderGPU):
 
         inter_dataset = self._build_df(dataset)
         out_df = super().transform(inter_dataset)
+        if self.cpu_inf:
+            for x in out_df.features:
+                out_df.roles[x]._name = "Numeric"
+            out_df = out_df.to_numpy()
         return out_df
 
 
@@ -2049,6 +2101,12 @@ class OrdinalEncoderGPU(LabelEncoderGPU):
         self._output_role = NumericRole(cp.float32)
 
     def to_cpu(self):
+        """Move the class properties to CPU and change class to CPU counterpart for CPU inference.
+
+        Returns:
+            self
+        """
+
         subs = deepcopy(self.subs)
         random_state = self.random_state
         features = deepcopy(self._features)

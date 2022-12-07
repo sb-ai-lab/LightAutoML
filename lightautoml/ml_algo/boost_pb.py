@@ -4,6 +4,9 @@ import logging
 
 import pandas as pd
 import numpy as np
+from py_boost import TLPredictor
+
+from lightautoml.dataset.np_pd_dataset import NumpyDataset
 
 from lightautoml.pipelines.selection.base import ImportanceEstimator
 from .base import TabularMLAlgo
@@ -18,12 +21,12 @@ class PBPredictor(TabularMLAlgo, ImportanceEstimator):
     _name: str = "PB"
 
     def predict_single_fold(
-        self, model, dataset
+        self, model: TLPredictor, dataset: NumpyDataset
     ) -> np.ndarray:
         """Predict target values for dataset.
 
         Args:
-            model: Lightgbm object.
+            model: TLPredictor object.
             dataset: Test Dataset.
 
         Return:
@@ -49,4 +52,3 @@ class PBPredictor(TabularMLAlgo, ImportanceEstimator):
         imp = imp / len(self.models)
 
         return pd.Series(imp, index=self.features).sort_values(ascending=False)
-

@@ -1,29 +1,32 @@
 """Bunch of metrics with unified interface (GPU version)."""
 
 from functools import partial
-from typing import Callable, Optional
+from typing import Callable
+from typing import Optional
 
 from sklearn.metrics import f1_score
 
 import cudf
 import cupy as cp
 import dask.array as da
-from cuml.metrics import accuracy_score, log_loss, roc_auc_score
-from cuml.metrics.regression import (
-    mean_absolute_error,
-    mean_squared_log_error,
-    r2_score,
-)
+from cuml.metrics import accuracy_score
+from cuml.metrics import log_loss
+from cuml.metrics import roc_auc_score
+from cuml.metrics.regression import mean_absolute_error
+from cuml.metrics.regression import mean_squared_log_error
+from cuml.metrics.regression import r2_score
 from dask_ml.metrics import accuracy_score as dask_accuracy_score
 from dask_ml.metrics import mean_absolute_error as dask_mean_absolute_error
 
-def log_loss_raw(y_true, y_pred, sample_weight=None, eps = 1e-15):
+
+def log_loss_raw(y_true, y_pred, sample_weight=None, eps=1e-15):
     y_pred /= y_pred.sum(axis=1)[:, cp.newaxis]
     loss = -(y_true * cp.log(y_pred)).sum(axis=1)
     if sample_weight is None:
-        return loss.sum()/len(loss)
+        return loss.sum() / len(loss)
     else:
-        return (loss*sample_weight).sum()/len(loss)
+        return (loss * sample_weight).sum() / len(loss)
+
 
 def log_loss_gpu(y_true, y_pred, sample_weight=None, eps: float = 1e-15) -> float:
 
@@ -34,7 +37,7 @@ def log_loss_gpu(y_true, y_pred, sample_weight=None, eps: float = 1e-15) -> floa
         y_pred = y_pred.compute().squeeze()
         if sample_weight is not None:
             sample_weight = sample_weight.compute().squeeze()
-    if y_true.shape == y_pred.shape and y_true.ndim>1:
+    if y_true.shape == y_pred.shape and y_true.ndim > 1:
         func = log_loss_raw
     else:
         func = log_loss
@@ -61,16 +64,7 @@ def roc_auc_score_gpu(y_true, y_pred, sample_weight=None) -> float:
         y_pred = y_pred.compute().squeeze()
         if sample_weight is not None:
             sample_weight = sample_weight.compute().squeeze()
-        #this method is unstable
-        #output = da.map_blocks(
-        #    roc_auc_score,
-        #    y_true,
-        #    y_pred,
-        #    meta=cp.array((), dtype=cp.float32),
-        #    drop_axis=1,
-        #)
-        #res = cp.array(output.compute()).mean()
-    #else:
+
     res = roc_auc_score(y_true, y_pred)
     return res
 
@@ -359,7 +353,6 @@ def auc_mu_gpu(
                 (n_classes, n_classes), class_weights.shape
             )
         )
-    # check sum?
     confusion_matrix = cp.ones((n_classes, n_classes)) - cp.eye(n_classes)
     auc_full = 0.0
 
@@ -395,7 +388,7 @@ class F1FactoryGPU:
         self.average = average
 
     def __call__(self, y_true: cp.ndarray, y_pred: cp.ndarray,
-                  sample_weight: Optional[cp.ndarray] = None) -> float:
+                 sample_weight: Optional[cp.ndarray] = None) -> float:
         """Compute metric.
 
          Args:
@@ -461,7 +454,7 @@ class AccuracyScoreWrapper:
         if type(y_pred) == cp.ndarray:
             return accuracy_score(
                 y_true, y_pred
-            )  #, sample_weight=sample_weight, **kwargs)
+            )  # , sample_weight=sample_weight, **kwargs)
         elif type(y_pred) == da.Array:
             res = dask_accuracy_score(
                 y_true, y_pred

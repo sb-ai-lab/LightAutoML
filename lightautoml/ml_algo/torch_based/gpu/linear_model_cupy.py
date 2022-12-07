@@ -364,9 +364,7 @@ class TorchBasedLinearEstimator:
         all_params = torch.cat(
             [y.view(-1) for (x, y) in self.model.named_parameters() if x != "bias"]
         )
-        # print("AP device:", all_params.device)
         penalty = torch.norm(all_params, 2).pow(2) / 2 / n
-        # print("Penalty device:", penalty.device)
         return loss + 0.5 / c * penalty
 
     def fit(
@@ -418,7 +416,7 @@ class TorchBasedLinearEstimator:
             self._optimize(data, data_cat, y, weights, c)
             val_pred = self._score(data_val, data_val_cat)
             score = self.metric(y_val, val_pred, weights_val)
-            logger.info("Linear model: C = {0} score = {1}".format(c, score))
+            logger.info3("Linear model (gpu): C = {0} score = {1}".format(c, score))
             if score > best_score:
 
                 best_score = score

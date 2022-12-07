@@ -47,7 +47,6 @@ class OptunaTunerGPU(OptunaTuner):
     mean_trial_time: Optional[int] = None
 
     def __init__(
-        # TODO: For now, metric is designed to be greater is better. Change maximize param after metric refactor if needed
         self,
         ngpus: int = 1,
         gpu_queue: GpuQueue = None,
@@ -77,13 +76,11 @@ class OptunaTunerGPU(OptunaTuner):
 
         """
         assert not ml_algo.is_fitted, "Fitted algo cannot be tuned."
-        # optuna.logging.set_verbosity(logger.getEffectiveLevel())
         # upd timeout according to ml_algo timer
         estimated_tuning_time = ml_algo.timer.estimate_tuner_time(
             len(train_valid_iterator)
         )
         if estimated_tuning_time:
-            # TODO: Check for minimal runtime!
             estimated_tuning_time = max(estimated_tuning_time, 1)
             self._upd_timeout(estimated_tuning_time)
 
@@ -99,7 +96,6 @@ class OptunaTunerGPU(OptunaTuner):
             train_valid_iterator = train_valid_iterator.convert_to_holdout_iterator()
             flg_new_iterator = True
 
-        # TODO: Check if time estimation will be ok with multiprocessing
         def update_trial_time(
             study: optuna.study.Study, trial: optuna.trial.FrozenTrial
         ):
@@ -135,7 +131,6 @@ class OptunaTunerGPU(OptunaTuner):
                 n_trials=self.n_trials,
                 timeout=self.timeout,
                 callbacks=[update_trial_time],
-                # show_progress_bar=True,
                 n_jobs=self.ngpus,
             )
             # need to update best params here
@@ -183,8 +178,6 @@ class OptunaTunerGPU(OptunaTuner):
                 _ml_algo = deepcopy(ml_algo)
                 _ml_algo.parallel_folds = False
                 _ml_algo.gpu_ids = [gpu_id]
-                print(_ml_algo.gpu_ids, gpu_id)
-                print("####################")
 
                 optimization_search_space = _ml_algo.optimization_search_space
 

@@ -1,6 +1,12 @@
-"""Roles guess on gpu."""
+"""Roles guess on GPU."""
 
-from typing import Any, Dict, List, Optional, Tuple, Union, cast
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Tuple
+from typing import Union
+from typing import cast
 
 from copy import deepcopy
 
@@ -11,22 +17,23 @@ import numpy as np
 import pandas as pd
 from joblib import Parallel, delayed
 
-from lightautoml.dataset.gpu.gpu_dataset import CudfDataset, CupyDataset
-from lightautoml.dataset.roles import CategoryRole, ColumnRole, NumericRole
+from lightautoml.dataset.gpu.gpu_dataset import CudfDataset
+from lightautoml.dataset.gpu.gpu_dataset import CupyDataset
+from lightautoml.dataset.roles import CategoryRole
+from lightautoml.dataset.roles import ColumnRole
+from lightautoml.dataset.roles import NumericRole
 from lightautoml.reader.utils import set_sklearn_folds
-from lightautoml.transformers.base import (
-    ChangeRoles,
-    LAMLTransformer,
-    SequentialTransformer,
-)
-from lightautoml.transformers.gpu.categorical_gpu import (
-    FreqEncoderGPU,
-    LabelEncoderGPU,
-    MultiClassTargetEncoderGPU,
-    OrdinalEncoderGPU,
-    TargetEncoderGPU,
-    MultioutputTargetEncoderGPU
-)
+from lightautoml.transformers.base import ChangeRoles
+from lightautoml.transformers.base import LAMLTransformer
+from lightautoml.transformers.base import SequentialTransformer
+
+from lightautoml.transformers.gpu.categorical_gpu import FreqEncoderGPU
+from lightautoml.transformers.gpu.categorical_gpu import LabelEncoderGPU
+from lightautoml.transformers.gpu.categorical_gpu import MultiClassTargetEncoderGPU
+from lightautoml.transformers.gpu.categorical_gpu import OrdinalEncoderGPU
+from lightautoml.transformers.gpu.categorical_gpu import TargetEncoderGPU
+from lightautoml.transformers.gpu.categorical_gpu import MultioutputTargetEncoderGPU
+
 from lightautoml.transformers.gpu.numeric_gpu import QuantileBinningGPU
 
 RolesDict = Dict[str, ColumnRole]
@@ -46,12 +53,11 @@ def ginic_gpu(actual: GpuFrame, pred: GpuFrame, empty_slice) -> float:
         Metric value
 
     """
-    
+
     actual[empty_slice] = 0
     pred[empty_slice] = 0
     n = cp.sum(~empty_slice, axis=0)
-    
-    #ids = np.argsort(cp.asnumpy(pred), axis=0)
+
     ids = cp.argsort(pred, axis=0)
     a_s = cp.take_along_axis(actual, ids, axis=0)
 
@@ -188,7 +194,7 @@ def calc_ginis_gpu(
     scores = cp.zeros(new_len)
     len_ratio = int(new_len / orig_len)
 
-    ind = cp.arange(new_len, dtype=cp.int32)//len_ratio
+    ind = cp.arange(new_len, dtype=cp.int32) // len_ratio
 
     scores = gini_normalized_gpu(data, target, empty_slice[:, ind])
 
@@ -221,22 +227,19 @@ def _get_score_from_pipe_gpu(
     if dev_id is not None:
         cp.cuda.runtime.setDevice(dev_id)
         if isinstance(train.data, cp.ndarray):
-            #train.data = cp.copy(train.data)
             train.set_data(cp.copy(train.data), train.features,
                            train.roles)
         else:
-            #train.data = train.data.copy()
             train.set_data(train.data.copy(), None, train.roles)
         target = cp.copy(target)
         if empty_slice is not None:
-            if isinstance(empty_slice, cp.ndarray): 
+            if isinstance(empty_slice, cp.ndarray):
                 empty_slice = cp.copy(empty_slice)
             else:
                 empty_slice = empty_slice.copy()
     if pipe is not None:
         train = pipe.fit_transform(train)
 
-    #data = train.data
     scores = calc_ginis_gpu(train.data, target, empty_slice)
     return scores
 
@@ -269,18 +272,17 @@ def rule_based_roles_guess_gpu(stat: cudf.DataFrame) -> Dict[str, ColumnRole]:
 
     # numbers with discrete features
     role = NumericRole(np.float32, discretization=True)
-    feats = numbers[numbers["discrete_rule"]].index#.to_pandas().index
+    feats = numbers[numbers["discrete_rule"]].index
     roles_dict = {**roles_dict, **{x: role for x in feats}}
 
     # classic numbers
     role = NumericRole(np.float32)
-    feats = numbers[~numbers["discrete_rule"]].index#.to_pandas().index
+    feats = numbers[~numbers["discrete_rule"]].index
     roles_dict = {**roles_dict, **{x: role for x in feats}}
 
     # low cardinal categories
-    # role = CategoryRole(np.float32, encoding_type='int')
-    feats = categories[categories["int_rule"]].index#.to_pandas().index
-    ordinal = categories["ord_rule"][categories["int_rule"]].index#.to_pandas().values
+    feats = categories[categories["int_rule"]].index
+    ordinal = categories["ord_rule"][categories["int_rule"]].index
     roles_dict = {
         **roles_dict,
         **{
@@ -290,9 +292,8 @@ def rule_based_roles_guess_gpu(stat: cudf.DataFrame) -> Dict[str, ColumnRole]:
     }
 
     # frequency encoded feats
-    # role = CategoryRole(np.float32, encoding_type='freq')
-    feats = categories[categories["freq_rule"]].index#.to_pandas().index
-    ordinal = categories["ord_rule"][categories["freq_rule"]].index#.to_pandas().values
+    feats = categories[categories["freq_rule"]].index
+    ordinal = categories["ord_rule"][categories["freq_rule"]].index
     roles_dict = {
         **roles_dict,
         **{
@@ -305,12 +306,10 @@ def rule_based_roles_guess_gpu(stat: cudf.DataFrame) -> Dict[str, ColumnRole]:
     # role = CategoryRole(np.float32)
     feats = (
         categories[(~categories["freq_rule"]) & (~categories["int_rule"])]
-        #.to_pandas()
         .index
     )
     ordinal = (
         categories["ord_rule"][(~categories["freq_rule"]) & (~categories["int_rule"])]
-        #.to_pandas()
         .values
     )
     roles_dict = {
@@ -345,24 +344,18 @@ def get_score_from_pipe_gpu(
 
     """
     if n_jobs == 1:
-        return _get_score_from_pipe_gpu(train, target, 
-                                        pipe, empty_slice)
+        return _get_score_from_pipe_gpu(train, target, pipe, empty_slice)
 
     idx = np.array_split(np.arange(len(train.features)), n_jobs)
     idx = [x for x in idx if len(x) > 0]
     n_jobs = len(idx)
 
     n_gpus = torch.cuda.device_count()
-    ids = [i%n_gpus for i in range(n_jobs)]
+    ids = [i % n_gpus for i in range(n_jobs)]
     names = [[train.features[x] for x in y] for y in idx]
     pipes = [deepcopy(pipe) for i in range(n_jobs)]
-    with Parallel(
-        n_jobs=n_jobs, prefer="threads") as p:
-        res = p(
-            delayed(_get_score_from_pipe_gpu)(
-                train[:, names[i]], target, pipes[i], empty_slice[names[i]], ids[i]
-            ) for i in range(n_jobs)
-        )
+    with Parallel(n_jobs=n_jobs, prefer="threads") as p:
+        res = p(delayed(_get_score_from_pipe_gpu)(train[:, names[i]], target, pipes[i], empty_slice[names[i]], ids[i]) for i in range(n_jobs))
     return cp.concatenate(list(map(cp.array, res)))
 
 
@@ -478,7 +471,6 @@ def get_numeric_roles_stat_gpu(
     else:
         raise NotImplementedError
     res = res.fillna(np.nan)
-    
     return res
 
 
@@ -527,7 +519,6 @@ def get_category_roles_stat_gpu(
     train_len = train.shape[0]
 
     if train.folds is None:
-        print("No train folds! Assigning...")
         train.folds = set_sklearn_folds(
             train.task, train.target, cv=5, random_state=random_state, group=train.group
         )
@@ -601,7 +592,5 @@ def get_null_scores_gpu(
         notnan_inds = np.array(notnan_inds).reshape(-1, 1)
         scores_ = calc_ginis_gpu(empty_slice, target, empty_slice)
         scores[notnan.values_host] = scores_
-
     res = pd.Series(cp.asnumpy(scores), index=train.features, name="max_score_2")
-    
     return res

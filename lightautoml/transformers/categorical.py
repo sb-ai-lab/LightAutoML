@@ -510,7 +510,6 @@ class TargetEncoder(LAMLTransformer):
         # create resulted
         output = dataset.empty()
         output.set_data(out, self.features, self.output_role)
-
         return output
 
 
@@ -1027,7 +1026,7 @@ class OrdinalEncoder(LabelEncoder):
                 cnts = subs[i].value_counts(dropna=True)
                 cnts = cnts[cnts > co].reset_index()
                 cnts = Series(cnts["index"].astype(str).rank().values, index=cnts["index"].values)
-                cnts = pd.concat([cnts,Series([cnts.shape[0] + 1], index=[np.nan])])
+                cnts = pd.concat([cnts, Series([cnts.shape[0] + 1], index=[np.nan])])
                 self.dicts[i] = cnts
 
         return self

@@ -192,7 +192,6 @@ class SnapshotEns:
         self._sort()
         self.set_weights(model, best=False if self.swa else True)
 
-        # TODO: think about dropping all models if use SWA. Change state_dict and load_state_dict
         # drop empty slots
         min_k = min(self.k, sum(self.best_loss != np.inf))
         self.models = self.models[:min_k]

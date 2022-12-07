@@ -1,4 +1,4 @@
-"""AutoML presets for data with texts."""
+"""AutoML presets for data with texts (GPU version)."""
 
 from lightautoml.utils.installation import __validate_extra_deps
 
@@ -16,15 +16,11 @@ import torch
 
 from pandas import DataFrame
 
-from lightautoml.dataset.gpu.gpu_dataset import CupyDataset
-from lightautoml.dataset.gpu.gpu_dataset import CudfDataset
-from lightautoml.dataset.gpu.gpu_dataset import DaskCudfDataset
 from lightautoml.dataset.np_pd_dataset import NumpyDataset
 from lightautoml.ml_algo.gpu.boost_cb_gpu import BoostCBGPU
 from lightautoml.ml_algo.gpu.boost_xgb_gpu import BoostXGB
 from lightautoml.ml_algo.gpu.boost_xgb_gpu import BoostXGB_dask
 from lightautoml.ml_algo.gpu.linear_gpu import LinearLBFGSGPU
-from lightautoml.ml_algo.dl_model import TorchModel
 from lightautoml.ml_algo.gpu.dl_model_gpu import TorchModelGPU
 from lightautoml.ml_algo.tuning.optuna import OptunaTuner
 from lightautoml.ml_algo.tuning.gpu.optuna_gpu import OptunaTunerGPU
@@ -40,13 +36,12 @@ from lightautoml.pipelines.ml.nested_ml_pipe import NestedTabularMLPipeline
 from lightautoml.pipelines.selection.base import SelectionPipeline
 
 from lightautoml.reader.gpu.cudf_reader import CudfReader
+from lightautoml.reader.gpu.daskcudf_reader import DaskCudfReader
 from lightautoml.reader.tabular_batch_generator import ReadableToDf
 from lightautoml.tasks import Task
 from lightautoml.automl.gpu.blend_gpu import WeightedBlenderGPU
 from lightautoml.automl.presets.base import upd_params
 
-# from .tabular_presets import NumpyDataset
-from lightautoml.automl.presets.tabular_presets import TabularAutoML
 from lightautoml.automl.presets.gpu.tabular_gpu_presets import TabularAutoMLGPU
 
 
@@ -65,14 +60,12 @@ _time_scores = {
 }
 
 
-# TODO: add text feature selection
 class TabularNLPAutoMLGPU(TabularAutoMLGPU):
-    """Classic preset - work with tabular and text data.
+    """Classic preset - work with tabular and text data (GPU version).
 
     Supported data roles - numbers, dates, categories, text
     Limitations - no memory management.
 
-    GPU support in catboost/lightgbm (if installed for GPU),
     NN models training.
 
     Commonly _params kwargs (ex. timing_params) set via
@@ -151,7 +144,7 @@ class TabularNLPAutoMLGPU(TabularAutoMLGPU):
         text_params: Optional[dict] = None,
         tfidf_params: Optional[dict] = None,
         autonlp_params: Optional[dict] = None,
-        client = None
+        client=None
     ):
         super().__init__(
             task,
@@ -278,7 +271,6 @@ class TabularNLPAutoMLGPU(TabularAutoMLGPU):
         nn_pipe = NestedTabularMLPipeline(
             [nn_model], pre_selection=None, features_pipeline=nn_feats, **self.nested_cv_params
         )
-        print("Created nn pipe")
         return nn_pipe
 
     def get_linear(self, n_level: int = 1, pre_selector: Optional[SelectionPipeline] = None) -> NestedTabularMLPipeline:
@@ -321,12 +313,9 @@ class TabularNLPAutoMLGPU(TabularAutoMLGPU):
             algo_key = key.split("_")[0]
             time_score = self.get_time_score(n_level, key)
             gbm_timer = self.timer.get_task_timer(algo_key, time_score)
-            # if algo_key == "lgb":
-            #     gbm_model = BoostLGBM(timer=gbm_timer, **self.lgb_params)
             if algo_key == "cb":
                 gbm_model = BoostCBGPU(timer=gbm_timer, **self.cb_params)
             elif algo_key == "xgb":
-                #gbm_model = BoostXGB(timer=gbm_timer, **self.xgb_params)
                 if self.task.device == "mgpu" and not self.xgb_params["parallel_folds"]:
                     gbm_model = BoostXGB_dask(client=self.client, timer=gbm_timer, **self.xgb_params)
                 else:
@@ -352,11 +341,10 @@ class TabularNLPAutoMLGPU(TabularAutoMLGPU):
 
                 if folds:
                     gbm_tuner = OptunaTunerGPU(ngpus=gpu_cnt,
-                        gpu_queue=GpuQueue(ngpus=gpu_cnt),
-                        n_trials=self.tuning_params["max_tuning_iter"],
-                        timeout=self.tuning_params["max_tuning_time"],
-                        fit_on_holdout=self.tuning_params["fit_on_holdout"],
-                    )
+                                               gpu_queue=GpuQueue(ngpus=gpu_cnt),
+                                               n_trials=self.tuning_params["max_tuning_iter"],
+                                               timeout=self.tuning_params["max_tuning_time"],
+                                               fit_on_holdout=self.tuning_params["fit_on_holdout"])
                 else:
                     gbm_tuner = OptunaTuner(
                         n_trials=self.tuning_params["max_tuning_iter"],
@@ -374,7 +362,7 @@ class TabularNLPAutoMLGPU(TabularAutoMLGPU):
         return gbm_pipe
 
     def create_automl(self, **fit_args):
-        """Create basic automl instance.
+        """Create basic automl instance (GPU version).
 
         Args:
             **fit_args: Contain all information needed for creating automl.
@@ -445,32 +433,15 @@ class TabularNLPAutoMLGPU(TabularAutoMLGPU):
     ) -> NumpyDataset:
         """Get dataset with predictions.
 
-        Almost same as :meth:`lightautoml.automl.base.AutoML.predict`
-        on new dataset, with additional features.
-
-        Additional features - working with different data formats.
-        Supported now:
-
-            - Path to ``.csv``, ``.parquet``, ``.feather`` files.
-            - :class:`~numpy.ndarray`, or dict of :class:`~numpy.ndarray`. For example,
-              ``{'data': X...}``. In this case roles are optional,
-              but `train_features` and `valid_features` required.
-            - :class:`pandas.DataFrame`.
-
-        Parallel inference - you can pass ``n_jobs`` to speedup
-        prediction (requires more RAM).
-        Batch_inference - you can pass ``batch_size``
-        to decrease RAM usage (may be longer).
-
         Args:
             data: Dataset to perform inference.
             features_names: Optional features names,
               if cannot be inferred from `train_data`.
             batch_size: Batch size or ``None``.
-            n_jobs: Number of jobs.
+            n_jobs: Number of jobs (not used).
 
         Returns:
-            Dataset with predictions.
+            Dataset with predictions on CPU.
 
         """
         return super().predict(data, features_names, batch_size)

@@ -1,12 +1,17 @@
 """Metrics and loss functions for Torch based models."""
 
 from functools import partial
-from typing import Callable, Dict, Optional, Union
+from typing import Callable
+from typing import Dict
+from typing import Optional
+from typing import Union
 
 from lightautoml.tasks.gpu.common_metric_gpu import _valid_str_metric_names_gpu
 from lightautoml.tasks.gpu.utils_gpu import infer_gib_gpu
-from lightautoml.tasks.losses.base import Loss, MetricFunc
-from lightautoml.tasks.losses.torch import TorchLossWrapper, _torch_loss_dict
+from lightautoml.tasks.losses.base import Loss
+from lightautoml.tasks.losses.base import MetricFunc
+from lightautoml.tasks.losses.torch import TorchLossWrapper
+from lightautoml.tasks.losses.torch import _torch_loss_dict
 
 
 class TORCHLossGPU(Loss):
@@ -102,7 +107,6 @@ class TORCHLossGPU(Loss):
             self.metric_name = metric
 
         else:
-            # TODO: create check for gpu-compatibility
             self.metric_func = self.metric_wrapper(
                 metric, greater_is_better, metric_params
             )

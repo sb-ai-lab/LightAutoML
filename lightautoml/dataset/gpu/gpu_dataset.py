@@ -1,39 +1,43 @@
 """Internal representation of dataset in cudf formats."""
 
 from copy import copy, deepcopy
-from typing import Any, List, Optional, Sequence, Tuple, TypeVar, Union
+from typing import Any
+from typing import List
+from typing import Optional
+from typing import Sequence
+from typing import Tuple
+from typing import TypeVar
+from typing import Union
+from typing import Callable
 
 import warnings
 
 import numpy as np
 import pandas as pd
 
-try:
-    import cudf
-    import cupy as cp
-    import dask_cudf
-    from cudf.core.dataframe import DataFrame
-    from cudf.core.series import Series
-    from cupyx.scipy import sparse as sparse_cupy
-    from dask_cudf.core import DataFrame as DataFrame_dask
-    from dask_cudf.core import Series as Series_dask
-except:
-    pass
+import cudf
+import cupy as cp
+import dask_cudf
+from cudf.core.dataframe import DataFrame
+from cudf.core.series import Series
+from cupyx.scipy import sparse as sparse_cupy
+from dask_cudf.core import DataFrame as DataFrame_dask
+from dask_cudf.core import Series as Series_dask
 
-from lightautoml.dataset.base import (
-    IntIdx,
-    LAMLDataset,
-    LAMLColumn,
-    RolesDict,
-    array_attr_roles,
-    valid_array_attributes,
-)
-from lightautoml.dataset.np_pd_dataset import (
-    CSRSparseDataset,
-    NumpyDataset,
-    PandasDataset,
-)
-from lightautoml.dataset.roles import ColumnRole, DropRole, NumericRole
+from lightautoml.dataset.base import IntIdx
+from lightautoml.dataset.base import LAMLDataset
+from lightautoml.dataset.base import LAMLColumn
+from lightautoml.dataset.base import RolesDict
+from lightautoml.dataset.base import array_attr_roles
+from lightautoml.dataset.base import valid_array_attributes
+
+from lightautoml.dataset.np_pd_dataset import CSRSparseDataset
+from lightautoml.dataset.np_pd_dataset import NumpyDataset
+from lightautoml.dataset.np_pd_dataset import PandasDataset
+
+from lightautoml.dataset.roles import ColumnRole
+from lightautoml.dataset.roles import DropRole
+from lightautoml.dataset.roles import NumericRole
 from lightautoml.tasks.base import Task
 
 NpFeatures = Union[Sequence[str], str, None]
@@ -42,22 +46,14 @@ DenseSparseArray = Union[cp.ndarray, sparse_cupy.csr_matrix]
 FrameOrSeries = Union[DataFrame, Series]
 FrameOrSeries_dask = Union[DataFrame_dask, Series_dask]
 Dataset = TypeVar("Dataset", bound=LAMLDataset)
+RowSlice = Optional[Union[Sequence[int], Sequence[bool]]]
+ColSlice = Optional[Union[Sequence[str], str]]
 
 
 class CupyDataset(NumpyDataset):
-    """Dataset that contains info in cp.ndarray format."""
+    """Dataset that contains info in cp.ndarray format.
 
-    _dataset_type = "CupyDataset"
-
-    def __init__(
-        self,
-        data: Optional[DenseSparseArray],
-        features: NpFeatures = (),
-        roles: NpRoles = None,
-        task: Optional[Task] = None,
-        **kwargs: np.ndarray
-    ):
-        """Create dataset from numpy/cupy arrays.
+    Create dataset from numpy/cupy arrays.
 
         Args:
             data: 2d array of features.
@@ -80,7 +76,19 @@ class CupyDataset(NumpyDataset):
                 - ColumnRole - single role.
                 - dict.
 
-        """
+    """
+
+    _dataset_type = "CupyDataset"
+
+    def __init__(
+        self,
+        data: Optional[DenseSparseArray],
+        features: NpFeatures = (),
+        roles: NpRoles = None,
+        task: Optional[Task] = None,
+        **kwargs: np.ndarray
+    ):
+
         self._initialize(task, **kwargs)
         for k in kwargs:
             self.__dict__[k] = cp.asarray(kwargs[k])
@@ -94,7 +102,6 @@ class CupyDataset(NumpyDataset):
             AttributeError: If there is non-numeric type in dataset.
 
         """
-        # dtypes = list(set(map(lambda x: x.dtype, self.roles.values())))
         dtypes = list(set([i.dtype for i in self.roles.values()]))
         self.dtype = cp.find_common_type(dtypes, [])
 
@@ -208,8 +215,6 @@ class CupyDataset(NumpyDataset):
         Returns:
             Same dataset in CudfDataset format.
         """
-        # check for empty case
-        # data = None if self.data is None else cudf.DataFrame(self.data, columns=self.features)
         data = None if self.data is None else cudf.DataFrame()
         if data is not None:
             data_gpu = cudf.DataFrame()
@@ -267,7 +272,25 @@ class CupyDataset(NumpyDataset):
 
 
 class CupySparseDataset(CupyDataset):
-    """Dataset that contains sparse features on GPU and cp.ndarray targets."""
+    """Dataset that contains sparse features on GPU and cp.ndarray targets.
+    Create dataset from csr_matrix.
+        Args:
+            data: csr_matrix of features.
+            features: Features names.
+            roles: Roles specifier.
+            task: Task specifier.
+            **kwargs: Named attributes like target, group etc ..
+        Note:
+            For different type of parameter feature there is different behavior:
+                - list, should be same len as data.shape[1]
+                - None - automatic set names like feat_0, feat_1 ...
+                - Prefix - automatic set names like Prefix_0, Prefix_1 ...
+            For different type of parameter feature there is different behavior:
+                - list, should be same len as data.shape[1].
+                - None - automatic set NumericRole(cp.float32).
+                - ColumnRole - single role.
+                - dict.
+    """
 
     _dataset_type = "CupySparseDataset"
 
@@ -337,24 +360,6 @@ class CupySparseDataset(CupyDataset):
         task: Optional[Task] = None,
         **kwargs: np.ndarray
     ):
-        """Create dataset from csr_matrix.
-        Args:
-            data: csr_matrix of features.
-            features: Features names.
-            roles: Roles specifier.
-            task: Task specifier.
-            **kwargs: Named attributes like target, group etc ..
-        Note:
-            For different type of parameter feature there is different behavior:
-                - list, should be same len as data.shape[1]
-                - None - automatic set names like feat_0, feat_1 ...
-                - Prefix - automatic set names like Prefix_0, Prefix_1 ...
-            For different type of parameter feature there is different behavior:
-                - list, should be same len as data.shape[1].
-                - None - automatic set NumericRole(cp.float32).
-                - ColumnRole - single role.
-                - dict.
-        """
         self._initialize(task, **kwargs)
         if data is not None:
             self.set_data(data, features, roles)
@@ -398,7 +403,19 @@ class CupySparseDataset(CupyDataset):
 
 class CudfDataset(PandasDataset):
     """Dataset that contains `cudf.core.dataframe.DataFrame` features and
-       ` cudf.core.series.Series` targets."""
+       ` cudf.core.series.Series` targets.
+
+    Create dataset from `cudf.core.dataframe.DataFrame` and
+           ` cudf.core.series.Series`
+
+        Args:
+            data: Table with features.
+            features: features names.
+            roles: Roles specifier.
+            task: Task specifier.
+            **kwargs: Series, array like attrs target, group etc...
+
+    """
 
     _dataset_type = "CudfDataset"
 
@@ -409,17 +426,6 @@ class CudfDataset(PandasDataset):
         task: Optional[Task] = None,
         **kwargs: Series
     ):
-        """Create dataset from `cudf.core.dataframe.DataFrame` and
-           ` cudf.core.series.Series`
-
-        Args:
-            data: Table with features.
-            features: features names.
-            roles: Roles specifier.
-            task: Task specifier.
-            **kwargs: Series, array like attrs target, group etc...
-
-        """
         if roles is None:
             roles = {}
         # parse parameters
@@ -485,7 +491,10 @@ class CudfDataset(PandasDataset):
             else:
                 self.dtypes[f] = self.roles[f].dtype
 
-        self.data = self.data.astype(self.dtypes)
+        try:
+            self.data = self.data.astype(self.dtypes)
+        except:
+            pass
 
         # handle dates types
         self.data = self._convert_datetime(self.data, date_columns)
@@ -607,8 +616,8 @@ class CudfDataset(PandasDataset):
 
         if self.data is None:
             return CupyDataset(None, features, roles, task, **params)
-        
-        return CupyDataset(cp.asarray(self.data.fillna(cp.nan).values), 
+
+        return CupyDataset(cp.asarray(self.data.fillna(cp.nan).values),
                            features, roles, task, **params)
 
     def to_numpy(self) -> NumpyDataset:
@@ -635,8 +644,8 @@ class CudfDataset(PandasDataset):
         params = dict(
             (
                 (x, pd.Series(cp.asnumpy(self.__dict__[x].values))
-                    if len(self.__dict__[x].shape) == 1 else pd.DataFrame(cp.asnumpy(self.__dict__[x].values)))
-                    for x in self._array_like_attrs
+                 if len(self.__dict__[x].shape) == 1 else pd.DataFrame(cp.asnumpy(self.__dict__[x].values))
+                 ) for x in self._array_like_attrs
             )
         )
 
@@ -689,10 +698,18 @@ class CudfDataset(PandasDataset):
 
 
 class SeqCudfDataset(CudfDataset):
+    """Sequential Dataset, that contains info in cudf.DataFrame format."""
 
     _dataset_type = "SeqCudfDatset"
 
-    def _initialize(self, task, **kwargs):
+    def _initialize(self, task: Optional[Task], **kwargs: Any):
+        """Initialize empty dataset with task and array like attributes.
+
+        Args:
+            task: Task name for dataset.
+            **kwargs: 1d arrays like attrs like target, group etc.
+
+        """
         super()._initialize(task, **kwargs)
         self._idx = None
 
@@ -738,22 +755,14 @@ class SeqCudfDataset(CudfDataset):
             self.set_data(data, roles, idx)
 
     def set_data(self, data: DenseSparseArray, roles: NpRoles = None, idx: Optional[List] = None):
-        """Inplace set data, features, roles for empty dataset.
 
-        Args:
-            data: 2d array like or ``None``.
-            roles: roles dict.
-            idx: list.
-
-        """
-        # assert data is None or type(data) is np.ndarray, 'Numpy dataset support only np.ndarray features'
         super().set_data(data, None, roles)
         if idx is None:
             idx = np.arange(len(data)).reshape(-1, 1)
         self.idx = idx
         self._check_dtype()
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.idx)
 
     def _get_cols_idx(self, columns: Union[Sequence[str], str]) -> Union[Sequence[int], int]:
@@ -774,7 +783,7 @@ class SeqCudfDataset(CudfDataset):
 
         return idx
 
-    def __getitem__(self, k):
+    def __getitem__(self, k: Tuple[RowSlice, ColSlice]) -> Union["LAMLDataset", LAMLColumn]:
         """Select a subset of dataset.
 
         Define how to slice a dataset
@@ -789,7 +798,6 @@ class SeqCudfDataset(CudfDataset):
             Subset.
 
         """
-        # TODO: Maybe refactor this part?
         if type(k) is tuple:
             rows, cols = k
             if isinstance(cols, str):
@@ -820,7 +828,7 @@ class SeqCudfDataset(CudfDataset):
             rows = np.arange(len(self.data))
         else:
             warnings.warn(
-                "Resulted sequential dataset may have different structure. It's not recommended to slice new dataset"
+                "Resulted sequential dataset may have different structure. It's not recommended to slice new dataset (GPU)"
             )
 
         # case when columns are defined
@@ -846,25 +854,24 @@ class SeqCudfDataset(CudfDataset):
 
         return dataset
 
-    def get_first_frame(self, k = None):
-        """Select a subset of dataset and transform it to sequence.
+    def get_first_frame(self, k: Tuple[RowSlice, ColSlice] = None) -> CudfDataset:
+        """Select a subset of dataset with only first elements of the sequential features.
 
         Define how to slice a dataset in way ``dataset[[1, 2, 3...], ['feat_0', 'feat_1'...]]``.
-        Default behavior based on ``._get_cols``, ``._get_rows``, ``._get_2d``.
+        Default behavior based on ``._get_cols_idx``, ``._get_slice``.
 
         Args:
             k: First element optional integer columns indexes,
                 second - optional feature name or list of features names.
 
         Returns:
-            respective Dataset with new sequential dimension.
+            respective Dataset with first elements of the sequential features.
 
         """
         self._check_dtype()
         if k is None:
             k = slice(None, None, None)
 
-        # TODO: Maybe refactor this part?
         if type(k) is tuple:
             rows, cols = k
             if isinstance(cols, str):
@@ -879,21 +886,25 @@ class SeqCudfDataset(CudfDataset):
         if cols is not None:
             idx = self._get_cols_idx(cols)
             roles = dict(((x, self.roles[x]) for x in self.roles if x in cols))
-            features = [x for x in cols if x in set(self.features)]
         else:
-            roles, features = self.roles, self.features
+            roles = self.roles
             idx = self._get_cols_idx(self.data.columns)
 
+        data = self.data
+        if type(self.idx == np.ndarray) and (np.isnan(self.idx).any()):
+            data = cudf.concat([data, cudf.DataFrame([cp.nan])])
+            self.idx = np.nan_to_num(self.idx, nan=[-1])
         first_frame_idx = [self.idx[i][0] for i in rows]
-        data = self._get_slice(self.data, (first_frame_idx, idx))
+
+        data = self._get_slice(data, (first_frame_idx, idx))
 
         if rows is None:
             dataset = CudfDataset(None, deepcopy(roles), task=self.task)
         else:
-            dataset = CudfDataset(data, deepcopy(roles), task=self.task) 
+            dataset = CudfDataset(data, deepcopy(roles), task=self.task)
         return dataset
 
-    def apply_func(self, k = None, func = None) -> np.ndarray:
+    def apply_func(self, k: Tuple[RowSlice, ColSlice] = None, func: Callable = None) -> cudf.DataFrame:
         """Apply function to each sequence.
 
         Args:
@@ -902,14 +913,13 @@ class SeqCudfDataset(CudfDataset):
             func: any callable function
 
         Returns:
-            output np.ndarray
+            output cudf.DataFrame
 
         """
         self._check_dtype()
         if k is None:
             k = slice(None, None, None)
 
-        # TODO: Maybe refactor this part?
         if type(k) is tuple:
             rows, cols = k
             if isinstance(cols, str):
@@ -922,7 +932,6 @@ class SeqCudfDataset(CudfDataset):
 
         # case when columns are defined
         if cols is not None:
-            idx = self._get_cols_idx(cols)
 
             # case when seqs have different shape, return array with arrays
             data = []
@@ -937,29 +946,28 @@ class SeqCudfDataset(CudfDataset):
 
         return cudf.DataFrame(data)
 
-    def _get_slice(self, data, k) -> np.ndarray:
-        """Get 3d slice.
+    def _get_slice(self, data: cudf.DataFrame, k: Tuple[RowSlice, ColSlice]) -> cudf.DataFrame:
+        """Get 2d slice.
 
         Args:
             data: Data.
             k: Tuple of integer sequences.
 
         Returns:
-            3d slice.
+            2d slice.
 
         """
         rows, cols = k
         if isinstance(data, cudf.DataFrame):
             return data.iloc[rows, cols]
         else:
-            raise TypeError("wrong data type for _get_slice() in "+
-                            self.__class__.__name__)
+            raise TypeError("wrong data type for _get_slice() in " + self.__class__.__name__)
 
-    def to_cudf(self) -> "PandasDataset":
-        """Convert to plain PandasDataset.
+    def to_cudf(self) -> "CudfDataset":
+        """Convert to plain CudfDataset.
 
         Returns:
-            Same dataset in PandasDataset format without sequential features.
+            Same dataset in CudfDataset format without sequential features.
 
         """
         # check for empty case
@@ -970,7 +978,6 @@ class SeqCudfDataset(CudfDataset):
         task = self.task
 
         return CudfDataset(data, roles, task, **params)
-
 
     @classmethod
     def concat(cls, datasets: Sequence["LAMLDataset"]) -> "LAMLDataset":
@@ -1014,7 +1021,20 @@ class SeqCudfDataset(CudfDataset):
 
 class DaskCudfDataset(CudfDataset):
     """Dataset that contains `dask_cudf.core.DataFrame` features and
-       `dask_cudf.Series` or `dask_cudf.DataFrame` targets."""
+       `dask_cudf.Series` or `dask_cudf.DataFrame` targets.
+
+    Dataset that contains `dask_cudf.core.DataFrame` and
+       `dask_cudf.core.Series` target
+
+    Args:
+        data: Table with features.
+        features: features names.
+        roles: Roles specifier.
+        task: Task specifier.
+        index_ok: if input data index is reset before use (if not, the class will to a reset_index)
+        **kwargs: Series, array like attrs target, group etc...
+
+    """
 
     _dataset_type = "DaskCudfDataset"
 
@@ -1026,17 +1046,6 @@ class DaskCudfDataset(CudfDataset):
         index_ok: bool = False,
         **kwargs: Series_dask
     ):
-        """Dataset that contains `dask_cudf.core.DataFrame` and
-           `dask_cudf.core.Series` target
-
-        Args:
-            data: Table with features.
-            features: features names.
-            roles: Roles specifier.
-            task: Task specifier.
-            **kwargs: Series, array like attrs target, group etc...
-
-        """
         if roles is None:
             roles = {}
         # parse parameters
@@ -1077,7 +1086,10 @@ class DaskCudfDataset(CudfDataset):
             else:
                 self.dtypes[f] = self.roles[f].dtype
 
-        self.data = self.data.astype(self.dtypes).persist()
+        try:
+            self.data = self.data.astype(self.dtypes).persist()
+        except:
+            pass
         # handle dates types
 
         self.data = self.data.map_partitions(
@@ -1091,20 +1103,20 @@ class DaskCudfDataset(CudfDataset):
     def slice_cudf(data, rows, cols):
         mini = data.index[0]
         maxi = data.index[-1]
-        step = data.index[1]-data.index[0]
-        new_rows = [x for x in rows if x>=mini and x<=maxi]
-        inds = [int((x-mini)/step) for x in new_rows]
+        step = data.index[1] - data.index[0]
+        new_rows = [x for x in rows if x >= mini and x <= maxi]
+        inds = [int((x - mini) / step) for x in new_rows]
         return data.iloc[inds, cols]
 
-    def _get_slice(self, data, k) -> np.ndarray:
-        """Get 3d slice.
+    def _get_slice(self, data: dask_cudf.DataFrame, k: Tuple[RowSlice, ColSlice]) -> dask_cudf.DataFrame:
+        """Get 2d slice.
 
         Args:
             data: Data.
             k: Tuple of integer sequences.
 
         Returns:
-            3d slice.
+            2d slice.
 
         """
         rows, cols = k
@@ -1112,13 +1124,9 @@ class DaskCudfDataset(CudfDataset):
         if isinstance(data, dask_cudf.DataFrame):
 
             return data.loc[rows][data.columns[cols]]
-            #data = data.map_partitions(self.slice_cudf, rows, cols,
-            #           meta=cudf.DataFrame(columns=data.columns[cols])
-            #       ).persist().repartition(npartitions=data.npartitions)
-            #return data.persist()
+
         else:
-            raise TypeError("wrong data type for _get_slice() in "+
-                            self.__class__.__name__)
+            raise TypeError("wrong data type for _get_slice() in " + self.__class__.__name__)
 
     def _get_2d(self, data: DataFrame, k: Tuple[IntIdx, IntIdx]) -> FrameOrSeries:
         """Define 2d slice of table.
@@ -1131,10 +1139,10 @@ class DaskCudfDataset(CudfDataset):
             2d sliced table.
 
         """
-        
+
         rows, cols = k
-        if cols.size==0:
-            if isinstance(rows,slice):
+        if cols.size == 0:
+            if isinstance(rows, slice):
                 return data[cols]
             return self._get_slice(data, k)
         if isinstance(rows, np.ndarray) and\
@@ -1270,10 +1278,19 @@ class DaskCudfDataset(CudfDataset):
 
 
 class SeqDaskCudfDataset(DaskCudfDataset):
+    """Sequential Dataset, that contains info in dask_cudf.DataFrame format.
+    """
 
-    _dataset_type = "SeqCudfDatset"
+    _dataset_type = "SeqDaskCudfDatset"
 
-    def _initialize(self, task, **kwargs):
+    def _initialize(self, task: Optional[Task], **kwargs: Any):
+        """Initialize empty dataset with task and array like attributes.
+
+        Args:
+            task: Task name for dataset.
+            **kwargs: 1d arrays like attrs like target, group etc.
+
+        """
         super()._initialize(task, **kwargs)
         self._idx = None
 
@@ -1353,7 +1370,7 @@ class SeqDaskCudfDataset(DaskCudfDataset):
 
         return idx
 
-    def __getitem__(self, k):
+    def __getitem__(self, k: Tuple[RowSlice, ColSlice]) -> Union["LAMLDataset", LAMLColumn]:
         """Select a subset of dataset.
 
         Define how to slice a dataset
@@ -1368,7 +1385,6 @@ class SeqDaskCudfDataset(DaskCudfDataset):
             Subset.
 
         """
-        # TODO: Maybe refactor this part?
         if type(k) is tuple:
             rows, cols = k
             if isinstance(cols, str):
@@ -1426,25 +1442,24 @@ class SeqDaskCudfDataset(DaskCudfDataset):
 
         return dataset
 
-    def get_first_frame(self, k = None):
-        """Select a subset of dataset and transform it to sequence.
+    def get_first_frame(self, k: Tuple[RowSlice, ColSlice] = None) -> DaskCudfDataset:
+        """Select a subset of dataset with only first elements of the sequential features.
 
         Define how to slice a dataset in way ``dataset[[1, 2, 3...], ['feat_0', 'feat_1'...]]``.
-        Default behavior based on ``._get_cols``, ``._get_rows``, ``._get_2d``.
+        Default behavior based on ``._get_cols_idx``, ``._get_slice``.
 
         Args:
             k: First element optional integer columns indexes,
                 second - optional feature name or list of features names.
 
         Returns:
-            respective Dataset with new sequential dimension.
+            respective Dataset with first elements of the sequential features.
 
         """
         self._check_dtype()
         if k is None:
             k = slice(None, None, None)
 
-        # TODO: Maybe refactor this part?
         if type(k) is tuple:
             rows, cols = k
             if isinstance(cols, str):
@@ -1459,20 +1474,26 @@ class SeqDaskCudfDataset(DaskCudfDataset):
         if cols is not None:
             idx = self._get_cols_idx(cols)
             roles = dict(((x, self.roles[x]) for x in self.roles if x in cols))
-            features = [x for x in cols if x in set(self.features)]
         else:
-            roles, features = self.roles, self.features
+            roles = self.roles
             idx = self._get_cols_idx(self.data.columns)
 
+        data = self.data
+        if type(self.idx == np.ndarray) and (np.isnan(self.idx).any()):
+            size = len(data)
+            data = dask_cudf.concat([data, dask_cudf.from_cudf(cudf.DataFrame([cp.nan], index=[size]), npartitions=self.data.npartitions)])
+            data = data[data.columns[:-1]]
+            self.idx = np.nan_to_num(self.idx, nan=[-1])
         first_frame_idx = [self.idx[i][0] for i in rows]
-        data = self._get_slice(self.data, (first_frame_idx, idx))
+
+        data = self._get_slice(data, (first_frame_idx, idx))
         if rows is None:
             dataset = DaskCudfDataset(None, deepcopy(roles), task=self.task)
         else:
-            dataset = DaskCudfDataset(data, deepcopy(roles), task=self.task) 
+            dataset = DaskCudfDataset(data, deepcopy(roles), task=self.task)
         return dataset
 
-    def apply_func(self, k = None, func = None) -> np.ndarray:
+    def apply_func(self, k: Tuple[RowSlice, ColSlice] = None, func: Callable = None) -> dask_cudf.DataFrame:
         """Apply function to each sequence.
 
         Args:
@@ -1481,14 +1502,13 @@ class SeqDaskCudfDataset(DaskCudfDataset):
             func: any callable function
 
         Returns:
-            output np.ndarray
+            output dask_cudf.DataFrame
 
         """
         self._check_dtype()
         if k is None:
             k = slice(None, None, None)
 
-        # TODO: Maybe refactor this part?
         if type(k) is tuple:
             rows, cols = k
             if isinstance(cols, str):
@@ -1501,10 +1521,9 @@ class SeqDaskCudfDataset(DaskCudfDataset):
 
         # case when columns are defined
         if cols is not None:
-            idx = self._get_cols_idx(cols)
 
             # case when seqs have different shape, return array with arrays
-            #should be able to write this with map_partitions
+            # should be able to write this with map_partitions
             data = []
             _d = self.data[cols].values
             for row in rows:
@@ -1517,11 +1536,11 @@ class SeqDaskCudfDataset(DaskCudfDataset):
 
         return dask_cudf.from_cudf(cudf.DataFrame(data), npartitions=self.data.npartitions)
 
-    def to_daskcudf(self) -> "PandasDataset":
-        """Convert to plain PandasDataset.
+    def to_daskcudf(self) -> DaskCudfDataset:
+        """Convert to plain DaskCudfDataset.
 
         Returns:
-            Same dataset in PandasDataset format without sequential features.
+            Same dataset in DaskCudfDataset format without sequential features.
 
         """
         # check for empty case
@@ -1572,4 +1591,3 @@ class SeqDaskCudfDataset(DaskCudfDataset):
         dataset.set_idx(data, idx)
 
         return dataset
-

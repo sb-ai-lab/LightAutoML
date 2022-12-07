@@ -18,12 +18,8 @@ reader_params:
   max_nan_rate: 0.999
   # maximum frequency of top frequent value to keep feature
   max_constant_rate: 0.999
-  #num_cpu_readers: 3
-#  num_gpu_readers: 1
-  #gpu_ratio: 0.5
   index_ok: True
   npartitions: 2
-#  npartitions: 1
   # create validation folds. Folds will be created even if valid samples or custom validation will be passed
   # it will be used for feature generation
   cv: 3
@@ -90,7 +86,7 @@ tuning_params:
   # pretrain tuner on holdout set. True - fast/ False - accurate
   # Ex. if you have 5-fold cv, validate tuner only on 1 fold
   fit_on_holdout: True
-  # max tuning iter for lightgbm. Auto - depends on dataset
+  # max tuning iter for gbm. Auto - depends on dataset
   # smaller dataset gets more iters (int or 'auto')
   max_tuning_iter: 101
   # max tuning time. Tuning time might be set lower during train by automl's timer, but cannot be higher
@@ -98,7 +94,6 @@ tuning_params:
 
 # params for BoostXGB MLAlgo. Note - params are default and may be changed during train if not freeze_defaults
 xgb_params:
-  # Look for lightgbm train params here. (num_threads will be rewrited by global preset's cpu limit)
   default_params:
     nthread: 100
   freeze_defaults: False
@@ -106,7 +101,6 @@ xgb_params:
 
 # params for BoostCB MLAlgo. Note - params are default and may be changed during train if not freeze_defaults
 cb_params:
-  # Look for lightgbm train params here. (thread_count will be rewrited by global preset's cpu limit)
   default_params:
     # task type - auto based on gpu available
     task_type: 'GPU'

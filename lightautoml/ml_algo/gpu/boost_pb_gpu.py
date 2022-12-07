@@ -1,28 +1,28 @@
 """Wrapped pboost for tabular datasets."""
 
 import logging
-from copy import copy, deepcopy
-from typing import Callable, Dict, Optional, Tuple
+from copy import copy
+from typing import Dict
+from typing import Tuple
 
-from py_boost import GradientBoosting, TLPredictor
-from py_boost.multioutput.sketching import *
+from py_boost import GradientBoosting
+from py_boost import TLPredictor
+from py_boost.multioutput.sketching import RandomProjectionSketch
 
-import cudf
 import cupy as cp
-import dask_cudf
 import numpy as np
 import pandas as pd
-import torch
 from torch.cuda import device_count
 
-from lightautoml.dataset.gpu.gpu_dataset import CupyDataset, CudfDataset, DaskCudfDataset
+from lightautoml.dataset.gpu.gpu_dataset import DaskCudfDataset
 from lightautoml.ml_algo.tuning.base import Uniform
 from lightautoml.pipelines.selection.base import ImportanceEstimator
 from lightautoml.validation.base import TrainValidIterator
 
 from lightautoml.tasks.base import Task
 
-from .base_gpu import TabularDatasetGpu, TabularMLAlgoGPU
+from .base_gpu import TabularDatasetGpu
+from .base_gpu import TabularMLAlgoGPU
 from ..boost_pb import PBPredictor
 
 logger = logging.getLogger(__name__)
@@ -57,17 +57,14 @@ class BoostPB(TabularMLAlgoGPU, ImportanceEstimator):
 
     def _infer_params(
         self,
-    ) -> Tuple[dict, int, int, int, Optional[Callable], Optional[Callable]]:
-        """Infer all parameters in lightgbm format.
+    ) -> dict:
+        """Infer all parameters.
 
         Returns:
-            Tuple (params, num_trees, early_stopping_rounds, verbose_eval, fobj, feval).
-            About parameters: https://lightgbm.readthedocs.io/en/latest/_modules/lightgbm/engine.html
+            Tuple params.
 
         """
         params = copy(self.params)
-        early_stopping_rounds = params.pop("es")
-        num_trees = params.pop("ntrees")
 
         root_logger = logging.getLogger()
         level = root_logger.getEffectiveLevel()
@@ -185,14 +182,16 @@ class BoostPB(TabularMLAlgoGPU, ImportanceEstimator):
         if estimated_n_trials > 100:
             optimization_search_space["lambda_l2"] = Uniform(low=1e-8, high=10.0, log=True)
 
-        optimization_search_space["sketch_arg"] = Uniform(low=1, high=suggested_params["n_classes"]//2, q=1)
+        optimization_search_space["sketch_arg"] = Uniform(low=1, high=suggested_params["n_classes"] // 2, q=1)
 
         return optimization_search_space
 
     def to_cpu(self):
-        print("PB:", self.__dict__)
-        print("PB model type:", self.models[0].__class__.__name__)
-        print("PB model:", self.models[0].__dict__)
+        """Move the class properties to CPU and change class to CPU counterpart for CPU inference.
+
+        Returns:
+            self
+        """
         models = []
         for i in range(len(self.models)):
             models.append(TLPredictor(self.models[i]))
@@ -224,7 +223,7 @@ class BoostPB(TabularMLAlgoGPU, ImportanceEstimator):
         if type(train) == DaskCudfDataset:
             ngpus = device_count()
             train_len = len(train)
-            sub_size = int(1./ngpus*train_len)
+            sub_size = int(1. / ngpus * train_len)
             idx = np.random.RandomState(42).permutation(train_len)[:sub_size]
             train_data = train.data.loc[idx].compute().values
             train_target = train.target.loc[idx].compute().values
@@ -235,7 +234,6 @@ class BoostPB(TabularMLAlgoGPU, ImportanceEstimator):
             train_weights = train.weights
             train_data = train.data
 
-        valid_len = len(valid)
         valid = valid.to_cupy()
         valid_target = valid.target
         valid_weights = valid.weights
@@ -264,22 +262,21 @@ class BoostPB(TabularMLAlgoGPU, ImportanceEstimator):
             params.pop("n_classes")
         if "sketch_arg" in params.keys():
             sketch_arg = params.pop("sketch_arg")
-            model = GradientBoosting(**params, multioutput_sketch=RandomProjectionSketch(sketch_arg) )
+            model = GradientBoosting(**params, multioutput_sketch=RandomProjectionSketch(sketch_arg))
         else:
             model = GradientBoosting(**params)
-        model.fit(train_data, train_target, 
-                  eval_sets=[{'X': valid_data, 'y': valid_target}])
+        model.fit(train_data, train_target, eval_sets=[{'X': valid_data, 'y': valid_target}])
         val_pred = model.predict(valid_data)
 
         return model, val_pred
 
     def predict_single_fold(
-        self, model, dataset: TabularDatasetGpu
+        self, model: GradientBoosting, dataset: TabularDatasetGpu
     ) -> np.ndarray:
         """Predict target values for dataset.
 
         Args:
-            model: Lightgbm object.
+            model: pyboost object.
             dataset: Test Dataset.
 
         Return:
@@ -287,12 +284,6 @@ class BoostPB(TabularMLAlgoGPU, ImportanceEstimator):
 
         """
         dataset_data = dataset.to_cupy().data
-        #if type(dataset) == DaskCudfDataset:
-        #    ngpus = torch.cuda.device_count()
-        #    dataset_data = dataset_data.sample(frac=1./ngpus).compute().values_host
-        #elif type(dataset) == CudfDataset:
-        #    dataset_data = dataset_data.values_host
-        #elif type(dataset) == CupyDataset:
         dataset_data = cp.asnumpy(dataset_data)
 
         pred = model.predict(dataset_data)

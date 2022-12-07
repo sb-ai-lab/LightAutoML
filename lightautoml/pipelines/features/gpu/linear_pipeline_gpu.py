@@ -1,28 +1,29 @@
 """Linear models features (GPU version)."""
 
-from typing import Optional, Union
+from typing import Optional
+from typing import Union
 
 import numpy as np
 
-from lightautoml.dataset.gpu.gpu_dataset import CudfDataset, CupyDataset, DaskCudfDataset
+from lightautoml.dataset.gpu.gpu_dataset import CudfDataset
+from lightautoml.dataset.gpu.gpu_dataset import CupyDataset
+from lightautoml.dataset.gpu.gpu_dataset import DaskCudfDataset
 from lightautoml.dataset.roles import CategoryRole
 from lightautoml.pipelines.features.base import FeaturesPipeline
 from lightautoml.pipelines.selection.base import ImportanceEstimator
 from lightautoml.pipelines.utils import get_columns_by_role
-from lightautoml.transformers.base import (
-    ChangeRoles,
-    LAMLTransformer,
-    SequentialTransformer,
-    UnionTransformer,
-)
-from lightautoml.transformers.gpu.categorical_gpu import LabelEncoderGPU, OHEEncoderGPU
-from lightautoml.transformers.gpu.numeric_gpu import (
-    FillInfGPU,
-    FillnaMedianGPU,
-    LogOddsGPU,
-    NaNFlagsGPU,
-    StandardScalerGPU,
-)
+from lightautoml.transformers.base import ChangeRoles
+from lightautoml.transformers.base import LAMLTransformer
+from lightautoml.transformers.base import SequentialTransformer
+from lightautoml.transformers.base import UnionTransformer
+
+from lightautoml.transformers.gpu.categorical_gpu import LabelEncoderGPU
+from lightautoml.transformers.gpu.categorical_gpu import OHEEncoderGPU
+from lightautoml.transformers.gpu.numeric_gpu import FillInfGPU
+from lightautoml.transformers.gpu.numeric_gpu import FillnaMedianGPU
+from lightautoml.transformers.gpu.numeric_gpu import LogOddsGPU
+from lightautoml.transformers.gpu.numeric_gpu import NaNFlagsGPU
+from lightautoml.transformers.gpu.numeric_gpu import StandardScalerGPU
 
 from .base_gpu import TabularDataFeaturesGPU
 

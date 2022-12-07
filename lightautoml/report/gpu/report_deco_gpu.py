@@ -237,8 +237,6 @@ def f1_score_w_co(input_data, min_co=0.01, max_co=0.99, step=0.01):
     best_score = grp["f1_score"].max()
     best_co = grp.index.values[grp["f1_score"] == best_score].mean()
 
-    # print((y_pred < best_co).mean())
-
     return best_score, best_co
 
 

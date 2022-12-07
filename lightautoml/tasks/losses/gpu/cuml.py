@@ -2,7 +2,10 @@
 
 import logging
 from functools import partial
-from typing import Callable, Dict, Optional, Union
+from typing import Callable
+from typing import Dict
+from typing import Optional
+from typing import Union
 
 import cupy as cp
 

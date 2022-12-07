@@ -1,7 +1,3 @@
-import re
-
-from functools import partial
-from multiprocessing import Pool
 from typing import Any
 from typing import List
 from typing import Optional
@@ -19,7 +15,6 @@ except:
     warnings.warn("'nltk' - package isn't installed")
 
 import cudf
-import dask_cudf
 
 from lightautoml.dataset.base import RolesDict
 from lightautoml.dataset.roles import ColumnRole
@@ -115,7 +110,6 @@ class BaseTokenizerGPU:
 
         """
         res = self.preprocess_sentence(snt)
-        # res = self.tokenize_sentence(res)
         res = self.filter_tokens(res)
         res = self.postprocess_tokens(res)
 

@@ -1,17 +1,11 @@
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Union
-from typing import Tuple
-
-import torch
 # necessary for custom torch.svd_lowrank realization
-from torch import Tensor
+import torch
 from torch import _linalg_utils as _utils
 
 # get_approximate_basis() and _svd_lowrank() functions are taken from torch library
 # with a minor correction allowing not to store large matrices when input matrices are sparse
+
+
 def get_approximate_basis(A,        # type: Tensor
                           q,        # type: int
                           niter=2,  # type: Optional[int]
@@ -61,7 +55,7 @@ def get_approximate_basis(A,        # type: Tensor
 
     A_H = _utils.transjugate(A)
     if M is None:
-        (Q, _) = torch.linalg.qr(matmul(A, R))#.qr()
+        (Q, _) = torch.linalg.qr(matmul(A, R))  # .qr()
         for i in range(niter):
             # (Q, _) = matmul(A_H, Q).qr()
             # (Q, _) = matmul(A, Q).qr()
@@ -69,10 +63,10 @@ def get_approximate_basis(A,        # type: Tensor
             (Q, _) = torch.linalg.qr(matmul(A, Q))
     else:
         M_H = _utils.transjugate(M)
-        (Q, _) = torch.linalg.qr(matmul(A, R) - matmul(M, R))#.qr()
+        (Q, _) = torch.linalg.qr(matmul(A, R) - matmul(M, R))  # .qr()
         for i in range(niter):
-            (Q, _) = torch.linalg.qr(matmul(A_H, Q) - matmul(M_H, Q))#.qr()
-            (Q, _) = torch.linalg.qr(matmul(A, Q) - matmul(M, Q))#.qr()
+            (Q, _) = torch.linalg.qr(matmul(A_H, Q) - matmul(M_H, Q))  # .qr()
+            (Q, _) = torch.linalg.qr(matmul(A, Q) - matmul(M, Q))  # .qr()
 
     return Q
 

@@ -143,7 +143,8 @@ class AutoML:
         self.return_all_predictions = return_all_predictions
 
     def to_cpu(self):
-        print(self.__class__.__name__)
+        """Function added for compatibility reasons to be able to convert GPU class properties of reader/blender/models to CPU.
+        """
         self.reader = self.reader.to_cpu()
 
         self.blender = self.blender.to_cpu()

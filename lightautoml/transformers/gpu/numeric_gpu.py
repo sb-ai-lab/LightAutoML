@@ -1,4 +1,4 @@
-"""Numeric features transformers."""
+"""Numeric features transformers (GPU version)."""
 
 from typing import Union
 
@@ -9,34 +9,42 @@ import dask.array as da
 
 from copy import deepcopy
 
-from lightautoml.dataset.gpu.gpu_dataset import CudfDataset, CupyDataset, DaskCudfDataset
-from lightautoml.dataset.np_pd_dataset import NumpyDataset, PandasDataset
-from lightautoml.dataset.roles import CategoryRole, NumericRole
+from lightautoml.dataset.gpu.gpu_dataset import CudfDataset
+from lightautoml.dataset.gpu.gpu_dataset import CupyDataset
+from lightautoml.dataset.gpu.gpu_dataset import DaskCudfDataset
+from lightautoml.dataset.np_pd_dataset import NumpyDataset
+from lightautoml.dataset.np_pd_dataset import PandasDataset
+from lightautoml.dataset.roles import CategoryRole
+from lightautoml.dataset.roles import NumericRole
 from lightautoml.transformers.base import LAMLTransformer
 from lightautoml.transformers.numeric import numeric_check
 
-# type - something that can be converted to pandas dataset
+from ..numeric import NaNFlags
+from ..numeric import FillnaMedian
+from ..numeric import FillInf
+from ..numeric import LogOdds
+from ..numeric import StandardScaler
+from ..numeric import QuantileBinning
+
 CupyTransformable = Union[
     NumpyDataset, PandasDataset, CupyDataset, CudfDataset, DaskCudfDataset
 ]
 GpuDataset = Union[CupyDataset, CudfDataset, DaskCudfDataset]
 
-from ..numeric import NaNFlags, FillnaMedian, FillInf, LogOdds, StandardScaler, QuantileBinning
 
 class NaNFlagsGPU(LAMLTransformer):
-    """Create NaN flags (GPU version)."""
+    """Create NaN flags (GPU version).
+
+    Args:
+        nan_rate: Nan rate cutoff.
+    """
 
     _fit_checks = (numeric_check,)
     _transform_checks = ()
     _fname_prefix = "nanflg"
 
     def __init__(self, nan_rate: float = 0.005):
-        """
 
-        Args:
-            nan_rate: Nan rate cutoff.
-
-        """
         self.nan_rate = nan_rate
 
     def to_cpu(self):
@@ -172,7 +180,7 @@ class FillnaMedianGPU(LAMLTransformer):
     def _fit_daskcudf(self, dataset: DaskCudfDataset):
 
         self.meds = da.nanmedian(dataset.data.to_dask_array(lengths=True), axis=0)
-        self.meds = cudf.Series(self.meds.compute(),index=dataset.data.columns).astype(cp.float32).fillna(0.0)
+        self.meds = cudf.Series(self.meds.compute(), index=dataset.data.columns).astype(cp.float32).fillna(0.0)
 
         return self
 
@@ -216,7 +224,7 @@ class FillnaMedianGPU(LAMLTransformer):
 
         data = data.fillna(self.meds)
         output = dataset.empty()
-        
+
         output.set_data(data, self.features, NumericRole(np.float32))
         return output
 
@@ -466,19 +474,18 @@ class StandardScalerGPU(LAMLTransformer):
 
 
 class QuantileBinningGPU(LAMLTransformer):
-    """Discretization of numeric features by quantiles (GPU version)."""
+    """Discretization of numeric features by quantiles (GPU version).
+
+    Args:
+        nbins: maximum number of bins.
+    """
 
     _fit_checks = (numeric_check,)
     _transform_checks = ()
     _fname_prefix = "qntl"
 
     def __init__(self, nbins: int = 10):
-        """
 
-        Args:
-            nbins: maximum number of bins.
-
-        """
         self.nbins = nbins
 
     def to_cpu(self):

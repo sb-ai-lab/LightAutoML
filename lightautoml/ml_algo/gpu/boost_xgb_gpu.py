@@ -1,8 +1,11 @@
 """Wrapped xgboost for tabular datasets."""
 
 import logging
-from copy import copy, deepcopy
-from typing import Callable, Dict, Optional, Tuple
+from copy import copy
+from typing import Callable
+from typing import Dict
+from typing import Optional
+from typing import Tuple
 
 from dask.distributed import Client
 from dask_cuda import LocalCUDACluster
@@ -20,12 +23,14 @@ from xgboost import dask as dxgb
 from lightautoml.tasks.base import Task
 from copy import deepcopy
 
-from lightautoml.dataset.gpu.gpu_dataset import CudfDataset, DaskCudfDataset
+from lightautoml.dataset.gpu.gpu_dataset import CudfDataset
+from lightautoml.dataset.gpu.gpu_dataset import DaskCudfDataset
 from lightautoml.ml_algo.tuning.base import Uniform
 from lightautoml.pipelines.selection.base import ImportanceEstimator
 from lightautoml.validation.base import TrainValidIterator
 
-from .base_gpu import TabularDatasetGpu, TabularMLAlgoGPU
+from .base_gpu import TabularDatasetGpu
+from .base_gpu import TabularMLAlgoGPU
 
 from ..boost_xgb import BoostXGB as BoosterCPU
 
@@ -33,19 +38,7 @@ logger = logging.getLogger(__name__)
 
 
 class BoostXGB(TabularMLAlgoGPU, ImportanceEstimator):
-    """Gradient boosting on decision trees from LightGBM library.
-
-    default_params: All available parameters listed in lightgbm documentation:
-
-        - https://lightgbm.readthedocs.io/en/latest/Parameters.html
-
-    freeze_defaults:
-
-        - ``True`` :  params may be rewritten depending on dataset.
-        - ``False``:  params may be changed only manually or with tuning.
-
-    timer: :class:`~lightautoml.utils.timer.Timer` instance or ``None``.
-
+    """Gradient boosting on decision trees from xgboost library.
     """
 
     _name: str = "XGB"
@@ -70,11 +63,10 @@ class BoostXGB(TabularMLAlgoGPU, ImportanceEstimator):
     def _infer_params(
         self,
     ) -> Tuple[dict, int, int, int, Optional[Callable], Optional[Callable]]:
-        """Infer all parameters in lightgbm format.
+        """Infer all parameters.
 
         Returns:
             Tuple (params, num_trees, early_stopping_rounds, verbose_eval, fobj, feval).
-            About parameters: https://lightgbm.readthedocs.io/en/latest/_modules/lightgbm/engine.html
 
         """
         params = copy(self.params)
@@ -159,7 +151,6 @@ class BoostXGB(TabularMLAlgoGPU, ImportanceEstimator):
             suggested_params["max_leaves"] = 64 if task == "reg" else 128
         elif rows_num > 50000:
             suggested_params["max_leaves"] = 32 if task == "reg" else 64
-            # params['reg_alpha'] = 1 if task == 'reg' else 0.5
         elif rows_num > 20000:
             suggested_params["max_leaves"] = 32 if task == "reg" else 32
             suggested_params["reg_alpha"] = 0.5 if task == "reg" else 0.0
@@ -306,7 +297,7 @@ class BoostXGB(TabularMLAlgoGPU, ImportanceEstimator):
         """Predict target values for dataset.
 
         Args:
-            model: Lightgbm object.
+            model: xgboost object.
             dataset: Test Dataset.
 
         Return:
@@ -322,7 +313,7 @@ class BoostXGB(TabularMLAlgoGPU, ImportanceEstimator):
         return pred
 
     def get_features_score(self) -> pd.Series:
-        """Computes feature importance as mean values of feature importance provided by lightgbm per all models.
+        """Computes feature importance.
 
         Returns:
             Series with feature importances.
@@ -353,9 +344,6 @@ class BoostXGB(TabularMLAlgoGPU, ImportanceEstimator):
         self.fit_predict(train_valid)
 
     def to_cpu(self):
-        print("XGB:", self.__dict__)
-        print("XGB model type:", self.models[0].__class__.__name__)
-        print("XGB model:", self.models[0].__dict__)
         models = deepcopy(self.models)
         for i in range(len(models)):
             models[i].set_param({"predictor": "cpu_predictor"})
@@ -377,10 +365,10 @@ class BoostXGB_dask(BoostXGB):
 
         if client is None:
             self.client = Client(LocalCUDACluster(
-                                     rmm_managed_memory=True,
-                                     protocol='ucx',
-                                     enable_nvlink=True,
-                                     memory_limit="30GB"))
+                                 rmm_managed_memory=True,
+                                 protocol='ucx',
+                                 enable_nvlink=True,
+                                 memory_limit="30GB"))
             self.client.run(cudf.set_allocator, 'managed')
         else:
             self.client = client
@@ -430,12 +418,10 @@ class BoostXGB_dask(BoostXGB):
             valid = valid.to_daskcudf(nparts=torch.cuda.device_count())
             train_target = dask_cudf.from_cudf(
                 cudf.DataFrame(train_target),
-                #cudf.Series(train_target), 
                 npartitions=torch.cuda.device_count()
             )
             valid_target = dask_cudf.from_cudf(
                 cudf.DataFrame(valid_target),
-                #cudf.Series(valid_target), 
                 npartitions=torch.cuda.device_count()
             )
         xgb_train = dxgb.DaskDeviceQuantileDMatrix(
@@ -466,7 +452,7 @@ class BoostXGB_dask(BoostXGB):
         """Predict target values for dataset.
 
         Args:
-            model: Lightgbm object.
+            model: xgboost object.
             dataset: Test Dataset.
 
         Return:
@@ -482,7 +468,7 @@ class BoostXGB_dask(BoostXGB):
         return pred
 
     def get_features_score(self) -> pd.Series:
-        """Computes feature importance as mean values of feature importance provided by lightgbm per all models.
+        """Computes feature importance.
 
         Returns:
             Series with feature importances.

@@ -1,13 +1,7 @@
+"""Seq readers on GPU."""
+
 from typing import Any
 from typing import Dict
-from typing import List
-from typing import Mapping
-from typing import Optional
-from typing import Sequence
-from typing import Tuple
-from typing import TypeVar
-from typing import Union
-from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -19,33 +13,18 @@ from copy import deepcopy
 
 from torch.cuda import device_count
 
-from lightautoml.dataset.base import array_attr_roles
-from lightautoml.dataset.base import valid_array_attributes
 from lightautoml.dataset.gpu.gpu_dataset import CudfDataset
 from lightautoml.dataset.gpu.gpu_dataset import DaskCudfDataset
-from lightautoml.dataset.roles import CategoryRole
-from lightautoml.dataset.roles import ColumnRole
-from lightautoml.dataset.roles import DatetimeRole
 from lightautoml.dataset.roles import DropRole
-from lightautoml.dataset.roles import NumericRole
 from lightautoml.dataset.gpu.gpu_dataset import SeqCudfDataset
 from lightautoml.dataset.gpu.gpu_dataset import SeqDaskCudfDataset
 from lightautoml.dataset.utils import roles_parser
 from lightautoml.tasks import Task
-from lightautoml.reader.guess_roles import (
-    calc_category_rules,
-    calc_encoding_rules,
-    rule_based_cat_handler_guess,
-)
-from .guess_roles_gpu import (
-    get_category_roles_stat_gpu,
-    get_null_scores_gpu,
-    get_numeric_roles_stat_gpu,
-    rule_based_roles_guess_gpu,
-)
+
 from ..utils import set_sklearn_folds
 
-from .seq_gpu import TopIndGPU, IDSIndGPU
+from .seq_gpu import TopIndGPU
+from .seq_gpu import IDSIndGPU
 from .cudf_reader import CudfReader
 from .daskcudf_reader import DaskCudfReader
 
@@ -53,9 +32,10 @@ from lightautoml.reader.base import DictToPandasSeqReader
 
 from ..base import attrs_dict
 
+
 class DictToCudfSeqReader(CudfReader):
 
-    def __init__(self, task: Task, seq_params = None, *args: Any, **kwargs: Any):
+    def __init__(self, task: Task, seq_params=None, *args: Any, **kwargs: Any):
         """
 
         Args:
@@ -207,7 +187,7 @@ class DictToCudfSeqReader(CudfReader):
             raise NotImplementedError
 
     def fit_read(
-        self, train_data: Dict, features_names: Any = None, roles = None, **kwargs: Any
+        self, train_data: Dict, features_names: Any = None, roles=None, **kwargs: Any
     ):
         """Get dataset with initial feature selection.
 
@@ -272,9 +252,7 @@ class DictToCudfSeqReader(CudfReader):
         # add target from seq dataset to plain
         for seq_name, values in self.meta.items():
             if values["seq_idx_target"] is not None:
-                dat = seq_datasets[seq_name].get_first_frame((slice(None),
-                                                roles["target"])).data
-                #DON"T FORGET TO MAKE A COMPARISON HER WITH CPU VER.
+                dat = seq_datasets[seq_name].get_first_frame((slice(None), roles["target"])).data
                 kwargs["target"] = dat[dat.columns[0]].astype(float)
 
                 break
@@ -430,10 +408,8 @@ class DictToCudfSeqReader(CudfReader):
                 except KeyError:
                     continue
 
-                if array_attr == "target" \
-                    and self.class_mapping is not None:
-                    val = self._apply_class_mapping(val, 
-                                        plain_data.index, col_name)
+                if array_attr == "target" and self.class_mapping is not None:
+                    val = self._apply_class_mapping(val, plain_data.index, col_name)
                 kwargs[array_attr] = val
 
         dataset = CudfDataset(
@@ -458,7 +434,7 @@ class DictToCudfSeqReader(CudfReader):
             random_state=self.random_state,
             roles_params=self.roles_params,
             n_jobs=self.n_jobs,
-            seq_params = self.seq_params,
+            seq_params=self.seq_params,
             **kwargs)
         cpu_reader.class_mapping = self.class_mapping
         cpu_reader._dropped_features = self.dropped_features
@@ -474,9 +450,10 @@ class DictToCudfSeqReader(CudfReader):
             cpu_reader.ti[elem] = self.ti[elem].to_cpu()
         return cpu_reader
 
+
 class DictToDaskCudfSeqReader(DaskCudfReader):
 
-    def __init__(self, task: Task, seq_params = None, *args: Any, **kwargs: Any):
+    def __init__(self, task: Task, seq_params=None, *args: Any, **kwargs: Any):
         """
 
         Args:
@@ -514,7 +491,7 @@ class DictToDaskCudfSeqReader(DaskCudfReader):
 
         sampl = seq_dataset
         if self.samples is not None and self.samples < len(sampl):
-            sampl = sampl.sample(frac=float(self.samples/len(sampl)),
+            sampl = sampl.sample(frac=float(self.samples / len(sampl)),
                                  random_state=self.random_state).persist()
 
         seq_roles = {}
@@ -623,18 +600,13 @@ class DictToDaskCudfSeqReader(DaskCudfReader):
             return x
         elif isinstance(x, (cudf.DataFrame, cudf.Series)):
             return dask_cudf.from_cudf(x, npartitions=self.npartitions)
-        elif isinstance(x, (dd.DataFrame, dd.Series)):
-            return x.map_partitions(cudf.DataFrame.from_pandas,
-                       nan_as_null=False,
-                       meta=cudf.DataFrame(columns=train_data.columns),
-                       ).persist()
         elif isinstance(x, (dask_cudf.DataFrame, dask_cudf.Series)):
             return x
         else:
             raise NotImplementedError
 
     def fit_read(
-        self, train_data: Dict, features_names: Any = None, roles = None, **kwargs: Any
+        self, train_data: Dict, features_names: Any = None, roles=None, **kwargs: Any
     ):
         """Get dataset with initial feature selection.
 
@@ -699,9 +671,7 @@ class DictToDaskCudfSeqReader(DaskCudfReader):
         # add target from seq dataset to plain
         for seq_name, values in self.meta.items():
             if values["seq_idx_target"] is not None:
-                dat = seq_datasets[seq_name].get_first_frame((slice(None),
-                                                roles["target"])).data
-                #DON"T FORGET TO MAKE A COMPARISON HER WITH CPU VER.
+                dat = seq_datasets[seq_name].get_first_frame((slice(None), roles["target"])).data
                 kwargs["target"] = dat[dat.columns[0]].astype(float)
 
                 break
@@ -719,8 +689,7 @@ class DictToDaskCudfSeqReader(DaskCudfReader):
 
             sampl = plain_data
             if self.samples is not None and self.samples < len(sampl):
-                sampl = sampl.sample(frac=float(self.samples/len(sampl)),
-                                 random_state=42).persist()
+                sampl = sampl.sample(frac=float(self.samples / len(sampl)), random_state=42).persist()
             # infer roles
             for feat in sampl.columns:
                 assert isinstance(
@@ -752,7 +721,7 @@ class DictToDaskCudfSeqReader(DaskCudfReader):
                 else:
                     # if no - infer
                     cur_feat = sampl[feat].compute()
-                    
+
                     if self._is_ok_feature(cur_feat):
                         r = self._guess_role(cur_feat)
                     else:
@@ -784,14 +753,14 @@ class DictToDaskCudfSeqReader(DaskCudfReader):
 
         ngpus = device_count()
         train_len = len(plain_data)
-        sub_size = int(1./ngpus*train_len)
+        sub_size = int(1. / ngpus * train_len)
         idx = np.random.RandomState(self.random_state).permutation(train_len)[:sub_size]
         computed_kwargs = {}
         for item in kwargs:
             computed_kwargs[item] = kwargs[item].loc[idx].compute()
         dataset = CudfDataset(
             plain_data[self.plain_used_features].loc[idx].compute() if plain_data is not None else cudf.DataFrame(),
-            roles = self.plain_roles,
+            roles=self.plain_roles,
             task=self.task,
             **computed_kwargs
         )
@@ -807,8 +776,8 @@ class DictToDaskCudfSeqReader(DaskCudfReader):
             dataset = DaskCudfDataset(
                 plain_data[self.plain_used_features] if plain_data is not None else dask_cudf.DataFrame(),
                 self.plain_roles,
-                index_ok = self.index_ok,
-                task = self.task,
+                index_ok=self.index_ok,
+                task=self.task,
                 **kwargs
             )
 
@@ -867,8 +836,7 @@ class DictToDaskCudfSeqReader(DaskCudfReader):
                 except KeyError:
                     continue
 
-                if array_attr == "target" \
-                    and self.class_mapping is not None:
+                if array_attr == "target" and self.class_mapping is not None:
 
                     kwargs[array_attr] = val.map_partitions(
                         self._apply_class_mapping, col_name, meta=val

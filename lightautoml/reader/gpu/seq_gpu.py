@@ -1,4 +1,4 @@
-"""Calculating inds for different TS datasets."""
+"""Calculating inds for different TS datasets (GPU version)."""
 
 import numpy as np
 import pandas as pd
@@ -8,6 +8,7 @@ import dask_cudf
 
 from lightautoml.dataset.roles import DatetimeRole
 from ..seq import TopInd, IDSInd
+
 
 class TopIndGPU(TopInd):
 
@@ -47,19 +48,14 @@ class TopIndGPU(TopInd):
         else:
             return cudf.to_datetime(x).diff().fillna(delta).values_host, delta
 
-
     def read(self, data, plain_data=None):
         self.len_data = len(data)
         self.date_col = [col for col, role in self.roles.items() if isinstance(role, DatetimeRole)][0]
         time_data = None
         if isinstance(data, cudf.DataFrame):
-            time_data = data[self.date_col]#.iloc[[0,-1]].to_pandas().reset_index(drop=True)
+            time_data = data[self.date_col]
         elif isinstance(data, dask_cudf.DataFrame):
             time_data = data[self.date_col].compute()
-            #inds = time_data.index.compute()[0,-1]
-            #time_data = cudf.concat([col_data.loc[inds[0]].compute(), 
-            #                         col_data.loc[inds[1]].compute()]
-            #            ).to_pandas().reset_index(drop=True)
         else:
             raise TypeError("wrong data type for read() in "
                             + self.__class__.__name__)
@@ -71,13 +67,9 @@ class TopIndGPU(TopInd):
     def _get_ids(self, data=None, plain_data=None, func=None, cond=None):
         time_data = None
         if isinstance(data, cudf.DataFrame):
-            time_data = data[self.date_col]#.iloc[[0,-1]].to_pandas().reset_index(drop=True)
+            time_data = data[self.date_col]
         elif isinstance(data, dask_cudf.DataFrame):
             time_data = data[self.date_col].compute()
-            #inds = time_data.index.compute()[0,-1]
-            #time_data = cudf.concat([col_data.loc[inds[0]].compute(), 
-            #                         col_data.loc[inds[1]].compute()]
-            #            ).to_pandas().reset_index(drop=True)
         else:
             raise TypeError("wrong data type for read() in "
                             + self.__class__.__name__)
@@ -95,6 +87,7 @@ class TopIndGPU(TopInd):
         inds = np.vstack(inds)
         return inds
 
+
 class IDSIndGPU(IDSInd):
 
     def __init__(self, *args, **kwargs):
@@ -108,14 +101,13 @@ class IDSIndGPU(IDSInd):
 
     def create_data(self, data, plain_data):
         if isinstance(data, cudf.DataFrame):
-            data = data[self.scheme["from_id"]]#.to_pandas()
+            data = data[self.scheme["from_id"]]
         elif isinstance(data, dask_cudf.DataFrame):
-            data = data[self.scheme["from_id"]].compute()#.to_pandas()
+            data = data[self.scheme["from_id"]].compute()
         else:
             raise TypeError("wrong data type for read() in "
                             + self.__class__.__name__)
         ids = data.reset_index().groupby(self.scheme["from_id"])["index"].agg('collect').to_pandas().to_dict()
-
 
         if isinstance(plain_data, cudf.DataFrame):
             plain_data = plain_data[self.scheme["to_id"]].to_pandas()
@@ -128,4 +120,3 @@ class IDSIndGPU(IDSInd):
         s.loc[s.isna()] = [[] for i in range(len(s.loc[s.isna()]))]
         result = np.array([x for x in s.values])
         return result
-

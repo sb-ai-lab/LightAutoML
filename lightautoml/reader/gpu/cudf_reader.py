@@ -2,7 +2,15 @@
 
 import logging
 from copy import deepcopy
-from typing import Any, Dict, Optional, Sequence, TypeVar, Union, Tuple, Mapping, cast
+from typing import Any
+from typing import Dict
+from typing import Optional
+from typing import Sequence
+from typing import TypeVar
+from typing import Union
+from typing import Tuple
+from typing import Mapping
+from typing import cast
 
 import cudf
 import cupy as cp
@@ -13,32 +21,29 @@ import pandas as pd
 from cudf.core.dataframe import DataFrame
 from cudf.core.series import Series
 
-from lightautoml.dataset.base import array_attr_roles, valid_array_attributes
+from lightautoml.dataset.base import array_attr_roles
+from lightautoml.dataset.base import valid_array_attributes
 from lightautoml.dataset.gpu.gpu_dataset import CudfDataset
-from lightautoml.dataset.roles import (
-    CategoryRole,
-    ColumnRole,
-    DatetimeRole,
-    DropRole,
-    NumericRole,
-)
+from lightautoml.dataset.roles import CategoryRole
+from lightautoml.dataset.roles import ColumnRole
+from lightautoml.dataset.roles import DatetimeRole
+from lightautoml.dataset.roles import DropRole
+from lightautoml.dataset.roles import NumericRole
+
 from lightautoml.dataset.utils import roles_parser
 from lightautoml.reader.base import PandasToPandasReader
-from lightautoml.reader.guess_roles import (
-    calc_category_rules,
-    calc_encoding_rules,
-    rule_based_cat_handler_guess,
-)
+from lightautoml.reader.guess_roles import calc_category_rules
+from lightautoml.reader.guess_roles import calc_encoding_rules
+from lightautoml.reader.guess_roles import rule_based_cat_handler_guess
+
 from lightautoml.tasks import Task
 
 from ..utils import set_sklearn_folds
 
-from .guess_roles_gpu import (
-    get_category_roles_stat_gpu,
-    get_null_scores_gpu,
-    get_numeric_roles_stat_gpu,
-    rule_based_roles_guess_gpu,
-)
+from .guess_roles_gpu import get_category_roles_stat_gpu
+from .guess_roles_gpu import get_null_scores_gpu
+from .guess_roles_gpu import get_numeric_roles_stat_gpu
+from .guess_roles_gpu import rule_based_roles_guess_gpu
 
 logger = logging.getLogger(__name__)
 
@@ -127,8 +132,6 @@ class CudfReader(PandasToPandasReader):
     def _prepare_data_and_target(self, train_data, **kwargs):
 
         if isinstance(train_data, (pd.DataFrame, pd.Series)):
-            #if self.task == "mgpu":
-            #    cp.cuda.runtime.setDevice(self.device_num)
             train_data = cudf.from_pandas(train_data, nan_as_null=False)
             for col in train_data.columns:
                 if pd.api.types.is_bool_dtype(train_data[col]):
@@ -139,8 +142,6 @@ class CudfReader(PandasToPandasReader):
             pass
 
         elif isinstance(train_data, (dask_cudf.DataFrame, dask_cudf.Series)):
-            #if self.task == "mgpu":
-            #    cp.cuda.runtime.setDevice(self.device_num)
             train_data = train_data.compute()
             kwargs["target"] = train_data[self.target]
 
@@ -283,7 +284,7 @@ class CudfReader(PandasToPandasReader):
         if (self.task.name == "binary") or (self.task.name == "multiclass"):
             # expect binary or multiclass here
             target, self.class_mapping = self.check_class_target(target)
-            
+
         elif self.task.name == "multilabel":
             self.class_mapping = {}
 
@@ -315,7 +316,7 @@ class CudfReader(PandasToPandasReader):
 
         # case - create mapping
         class_mapping = {n: x for (x, n) in enumerate(cp.asnumpy(unqiues))}
-        return target.map(class_mapping).astype(cp.int32),class_mapping
+        return target.map(class_mapping).astype(cp.int32), class_mapping
 
     def _guess_role(self, feature: Series) -> RoleType:
         """Try to infer role, simple way.
@@ -377,14 +378,12 @@ class CudfReader(PandasToPandasReader):
         """
 
         if isinstance(data, (pd.DataFrame, pd.Series)):
-            #cp.cuda.runtime.setDevice(self.device_num)
             data = cudf.from_pandas(data, nan_as_null=False)
 
         elif isinstance(data, (cudf.DataFrame, cudf.Series)):
             pass
 
         elif isinstance(data, (dask_cudf.DataFrame, dask_cudf.Series)):
-            #cp.cuda.runtime.setDevice(self.device_num)
             data = data.compute()
 
         elif isinstance(data, (dd.DataFrame, dd.Series)):
@@ -459,7 +458,7 @@ class CudfReader(PandasToPandasReader):
             subsample=self.samples,
             n_jobs=self.n_jobs,
         )
-        
+
         if len(stat) > 0:
             # upd stat with rules
 
@@ -467,25 +466,23 @@ class CudfReader(PandasToPandasReader):
             stat['dtype'] = dtypes
             new_roles_dict = {
                 **new_roles_dict,
-                **rule_based_cat_handler_guess(stat),#, dtypes),
+                **rule_based_cat_handler_guess(stat)
             }
             top_scores.append(stat["max_score"])
         # # get top scores of feature
         if len(top_scores) > 0:
-            top_scores = pd.concat(top_scores, axis=0)#.to_pandas()
+            top_scores = pd.concat(top_scores, axis=0)
 
             null_scores = get_null_scores_gpu(
                 dataset,
                 top_scores.index.values,
                 random_state=self.random_state,
                 subsample=self.samples,
-            )#.to_pandas()
+            )
             top_scores = pd.concat([null_scores, top_scores], axis=1).max(axis=1)
 
             rejected = list(top_scores[top_scores < drop_co].index.values)
-            print(
-                "Feats was rejected during automatic roles guess: {0}".format(rejected)
-            )
+            logger.info("Feats was rejected during automatic roles guess: {0}".format(rejected))
             new_roles_dict = {**new_roles_dict, **{x: DropRole() for x in rejected}}
         return new_roles_dict
 
@@ -549,6 +546,11 @@ class CudfReader(PandasToPandasReader):
         return val
 
     def to_cpu(self, **kwargs):
+        """Move the class properties to CPU and change class to CPU counterpart for CPU inference.
+
+        Returns:
+            self
+        """
         task_cpu = deepcopy(self.task)
         task_cpu.device = 'cpu'
         cpu_reader = PandasToPandasReader(

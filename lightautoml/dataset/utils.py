@@ -14,20 +14,11 @@ from .np_pd_dataset import PandasDataset
 from .roles import ColumnRole
 from .seq_np_pd_dataset import SeqNumpyPandasDataset
 
-gpu_available = True
-
-try:
-    from lightautoml.dataset.gpu.gpu_dataset import CudfDataset
-    from lightautoml.dataset.gpu.gpu_dataset import CupyDataset
-    from lightautoml.dataset.gpu.gpu_dataset import DaskCudfDataset
-    from lightautoml.dataset.gpu.gpu_dataset import SeqCudfDataset
-    from lightautoml.dataset.gpu.gpu_dataset import SeqDaskCudfDataset
-    
-except ModuleNotFoundError:
-    gpu_available = False
-    print("No GPUs detected. Switching  to CPU...")
-    pass
-
+from lightautoml.dataset.gpu.gpu_dataset import CudfDataset
+from lightautoml.dataset.gpu.gpu_dataset import CupyDataset
+from lightautoml.dataset.gpu.gpu_dataset import DaskCudfDataset
+from lightautoml.dataset.gpu.gpu_dataset import SeqCudfDataset
+from lightautoml.dataset.gpu.gpu_dataset import SeqDaskCudfDataset
 
 # RoleType = TypeVar("RoleType", bound=ColumnRole)
 
@@ -95,14 +86,12 @@ def get_common_concat(
     ):
         return numpy_or_pandas_and_seq_concat, None
 
-    elif (gpu_available) and (dataset_types == {CudfDataset, CupyDataset}):
+    elif (dataset_types == {CudfDataset, CupyDataset}):
         return cupy_and_cudf_concat, None
 
-    elif (gpu_available) and ( ( dataset_types == {CupyDataset, SeqCudfDataset}) or (
-                                 dataset_types == {CudfDataset, SeqCudfDataset}) or (
-                                 dataset_types == {DaskCudfDataset, SeqDaskCudfDataset}
-                             )
-    ):
+    elif ((dataset_types == {CupyDataset, SeqCudfDataset}) or (
+            dataset_types == {CudfDataset, SeqCudfDataset}) or (
+            dataset_types == {DaskCudfDataset, SeqDaskCudfDataset})):
         return dask_or_cudf_and_seq_gpu_concat, None
 
     raise TypeError("Unable to concatenate dataset types {0}".format(list(dataset_types)))
@@ -156,67 +145,61 @@ def numpy_or_pandas_and_seq_concat(
         return plain_dataset
 
 
-if gpu_available:
+def dask_or_cudf_and_seq_gpu_concat(
+    datasets: Union[Sequence[Union[CupyDataset, CudfDataset, SeqCudfDataset]], Sequence[Union[DaskCudfDataset, SeqDaskCudfDataset]]]
+) -> Union[CudfDataset, DaskCudfDataset]:
+    """Concat plain and sequential dataset (GPU version).
 
-    def dask_or_cudf_and_seq_gpu_concat(
-        datasets: Union[Sequence[Union[CupyDataset, CudfDataset, SeqCudfDataset]],
-        Sequence[Union[DaskCudfDataset, SeqDaskCudfDataset]]]
-    ) -> Union[CudfDataset, DaskCudfDataset]:
-        """Concat plain and sequential dataset (GPU version).
+     If both datasets have same size then concat them as plain, otherwise include seq dataset inside plain one.
 
-        If both datasets have same size then concat them as plain, otherwise include seq dataset inside plain one.
+     Args:
+         datasets: one plain and one seq dataset.
 
-        Args:
-            datasets: one plain and one seq dataset.
-
-        Returns:
-            Concatenated dataset.
+    Returns:
+        Concatenated dataset.
 
         """
 
-        assert len(datasets) == 2, "should be 1 sequential and 1 plain dataset"
-        # get 1 numpy / pandas dataset
-        for n, dataset in enumerate(datasets):
-            if isinstance(dataset, (SeqCudfDataset, SeqDaskCudfDataset)):
-                seq_dataset = dataset
-            else:
-                plain_dataset = dataset
-
-        if len(seq_dataset.data) == len(plain_dataset):
-            if isinstance(dataset, SeqCudfDataset):
-                return SeqCudfDataset.concat([seq_dataset, plain_dataset.to_cudf()])
-            elif isinstance(dataset, SeqDaskCudfDataset):
-                return SeqDaskCudfDataset.concat([seq_dataset, plain_dataset.to_daskcudf()])
-            else:
-                raise NotImplementedError
-
+    assert len(datasets) == 2, "should be 1 sequential and 1 plain dataset"
+    for n, dataset in enumerate(datasets):
+        if isinstance(dataset, (SeqCudfDataset, SeqDaskCudfDataset)):
+            seq_dataset = dataset
         else:
-            if hasattr(plain_dataset, "seq_data"):
-                plain_dataset.seq_data[seq_dataset.name] = seq_dataset
-            else:
-                plain_dataset.seq_data = {seq_dataset.name: seq_dataset}
+            plain_dataset = dataset
 
-            return plain_dataset
+    if len(seq_dataset.data) == len(plain_dataset):
+        if isinstance(dataset, SeqCudfDataset):
+            return SeqCudfDataset.concat([seq_dataset, plain_dataset.to_cudf()])
+        elif isinstance(dataset, SeqDaskCudfDataset):
+            return SeqDaskCudfDataset.concat([seq_dataset, plain_dataset.to_daskcudf()])
+        else:
+            raise NotImplementedError
+
+    else:
+        if hasattr(plain_dataset, "seq_data"):
+            plain_dataset.seq_data[seq_dataset.name] = seq_dataset
+        else:
+            plain_dataset.seq_data = {seq_dataset.name: seq_dataset}
+
+        return plain_dataset
 
 
-    def cupy_and_cudf_concat(
-        datasets: Sequence[Union[CupyDataset, CudfDataset]]
-    ) -> CupyDataset:
-        """Concat of cupy and cudf dataset.
+def cupy_and_cudf_concat(
+    datasets: Sequence[Union[CupyDataset, CudfDataset]]
+) -> CupyDataset:
+    """Concat of cupy and cudf dataset.
 
-        Args:
-            datasets: Sequence of datasets to concatenate.
+    Args:
+        datasets: Sequence of datasets to concatenate.
 
-        Returns:
-            Concatenated dataset.
+    Returns:
+        Concatenated dataset.
 
-        """
+    """
 
-        # is it better to convert to cudf?
-        # concating to cudf made problem with convert_to_holdout_iterator (shape difference)
-        datasets = [x.to_cupy() for x in datasets]
+    datasets = [x.to_cupy() for x in datasets]
 
-        return CupyDataset.concat(datasets)
+    return CupyDataset.concat(datasets)
 
 
 def concatenate(datasets: Sequence[LAMLDataset]) -> LAMLDataset:

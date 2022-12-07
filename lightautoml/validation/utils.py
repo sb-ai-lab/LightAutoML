@@ -25,6 +25,7 @@ except ModuleNotFoundError:
 NpDataset = Union[CSRSparseDataset, NumpyDataset, PandasDataset]
 GpuDataset = Union[CupyDataset, CudfDataset, DaskCudfDataset]
 
+
 def create_validation_iterator(
     train: LAMLDataset,
     valid: Optional[LAMLDataset] = None,

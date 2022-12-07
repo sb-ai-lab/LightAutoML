@@ -1,10 +1,7 @@
 """Weighted average transformer for sequence embeddings."""
 
 import logging
-import time
 
-from collections import Counter
-from itertools import repeat
 from typing import Any
 from typing import Dict
 from typing import Sequence
@@ -153,4 +150,3 @@ class WeightedAverageTransformerGPU:
     def fit_transform(self, sentences: Sequence[str]) -> cp.ndarray:
         self.fit(sentences)
         return self.transform(sentences)
-

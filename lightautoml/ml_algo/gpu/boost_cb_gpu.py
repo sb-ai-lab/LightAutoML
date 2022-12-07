@@ -2,18 +2,21 @@
 
 import logging
 from copy import copy
-from typing import Callable, Dict, Tuple, Union
+from typing import Callable
+from typing import Dict
+from typing import Tuple
+from typing import Union
 
 import catboost as cb
 import numpy as np
 from pandas import Series
 
-from lightautoml.dataset.gpu.gpu_dataset import CudfDataset, CupyDataset
-from lightautoml.dataset.np_pd_dataset import (
-    CSRSparseDataset,
-    NumpyDataset,
-    PandasDataset,
-)
+from lightautoml.dataset.gpu.gpu_dataset import CudfDataset
+from lightautoml.dataset.gpu.gpu_dataset import CupyDataset
+
+from lightautoml.dataset.np_pd_dataset import CSRSparseDataset
+from lightautoml.dataset.np_pd_dataset import NumpyDataset
+from lightautoml.dataset.np_pd_dataset import PandasDataset
 from lightautoml.ml_algo.tuning.base import Choice
 from lightautoml.ml_algo.tuning.base import Uniform
 from lightautoml.pipelines.selection.base import ImportanceEstimator
@@ -143,7 +146,6 @@ class BoostCBGPU(TabularMLAlgoGPU, ImportanceEstimator):
 
         init_lr, ntrees, es = 0.01, 2000, 100
         if self.task.name == "binary":
-            # TODO: with an increase in the number of columns, the learning rate decreases
             if rows_num <= 6000:
                 init_lr = 0.02
                 ntrees = 500
@@ -307,7 +309,6 @@ class BoostCBGPU(TabularMLAlgoGPU, ImportanceEstimator):
                 {
                     **params,
                     **{
-                        #"gpu_ram_part": 0.7,
                         "num_trees": num_trees,
                         "objective": fobj,
                         "eval_metric": feval,
@@ -321,7 +322,6 @@ class BoostCBGPU(TabularMLAlgoGPU, ImportanceEstimator):
                 {
                     **params,
                     **{
-                        #"gpu_ram_part": 0.7,
                         "devices": cur_gpu,
                         "num_trees": num_trees,
                         "objective": fobj,
@@ -366,7 +366,6 @@ class BoostCBGPU(TabularMLAlgoGPU, ImportanceEstimator):
             Series with feature importances.
 
         """
-        # TODO: Not worked if used text features, there is a ticket in their github
         assert self.is_fitted, "Model must be fitted to compute importance."
         imp = 0
         for model in self.models:
@@ -396,20 +395,17 @@ class BoostCBGPU(TabularMLAlgoGPU, ImportanceEstimator):
                 pool,
                 prediction_type="Probability",
                 thread_count=params["thread_count"],
-                # task_type='GPU'
             )
         elif self.task.name == "binary":
             pred = model.predict(
                 pool,
                 prediction_type="Probability",
                 thread_count=params["thread_count"],
-                # task_type='GPU'
             )[..., 1]
         elif (self.task.name == "reg") or (self.task.name == "multi:reg"):
             pred = model.predict(
                 pool,
                 thread_count=params["thread_count"],
-                # task_type='GPU'
             )
 
         pred = self.task.losses["cb"].bw_func(pred)
@@ -426,14 +422,11 @@ class BoostCBGPU(TabularMLAlgoGPU, ImportanceEstimator):
                     greater_is_better=self.task.greater_is_better)
         algo = BoostCB(default_params=default_params,
                        )
-        print("Models parameters:", self.models[0].__dict__)
-        print("Models type:", type(self.models[0]))
         models = deepcopy(self.models)
         for i in range(len(models)):
             models[i]._init_params['task_type'] = 'CPU'
         algo.task = task
         algo.models = models
-        print("CB feats:", self.__dict__)
         algo._le_cat_features = self._le_cat_features
         algo._le_text_features = self._text_features
         algo._nan_rate = self._nan_rate

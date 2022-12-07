@@ -623,5 +623,4 @@ class TorchBasedLinearRegression(TorchBasedLinearEstimator):
         """
         if self.output_size == 1:
             return super().predict(data)[:, 0]
-        else:
-            return super().predict(data)
+        return super().predict(data)

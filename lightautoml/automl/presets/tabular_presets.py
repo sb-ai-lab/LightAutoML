@@ -191,7 +191,7 @@ class TabularAutoML(AutoMLPreset):
                 self.general_params["use_algos"].append(["linear_l2", "lgb"])
 
             if (self.task.name == "multi:reg") or (self.task.name == "multilabel"):
-                self.general_params["use_algos"] = [["linear_l2", "cb", "rf"]]#, "rf_tuned", "cb_tuned"]]
+                self.general_params["use_algos"] = [["linear_l2", "cb", "rf", "rf_tuned", "cb_tuned"]]
 
         if not self.general_params["nested_cv"]:
             self.nested_cv_params["cv"] = 1

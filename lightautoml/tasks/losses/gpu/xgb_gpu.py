@@ -2,15 +2,17 @@
 
 import logging
 from functools import partial
-from typing import Callable, Dict, Optional, Tuple, Union
+from typing import Callable
+from typing import Dict
+from typing import Optional
+from typing import Tuple
+from typing import Union
 
 import numpy as np
 import xgboost as xgb
 from xgboost import dask as dxgb
 
-from lightautoml.tasks.gpu.common_metric_gpu import (
-    _valid_str_multiclass_metric_names_gpu,
-)
+from lightautoml.tasks.gpu.common_metric_gpu import _valid_str_multiclass_metric_names_gpu
 from lightautoml.tasks.losses.base import Loss
 from lightautoml.tasks.gpu.utils_gpu import infer_gib_gpu
 
@@ -103,8 +105,6 @@ class XGBFuncGPU:
             val = self.metric_func(label, pred, sample_weight=weights)
         except TypeError:
             val = self.metric_func(label, pred)
-
-        # TODO: what if grouped case
 
         return "Opt metric", val, self.greater_is_better
 
@@ -249,12 +249,10 @@ class XGBLoss(Loss):
                 self.feval = None
             else:
                 self.metric_name = None
-                # _metric = CustomWrapper(_metric)
                 self.feval = self.metric_wrapper(_metric, greater_is_better, {})
 
         else:
             self.metric_name = None
-            # metric = CustomWrapper(metric)
             self.feval = self.metric_wrapper(
                 metric, greater_is_better, self.metric_params
             )

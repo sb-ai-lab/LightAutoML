@@ -93,7 +93,7 @@ class TorchBasedLinearEstimator:
         if weights is not None:
 
             if type(weights) != cp.ndarray:
-                weigths = cp.copy(
+                weights = cp.copy(
                     weights.compute().values[
                         offset : offset + size_base + int(residue > ind)
                     ]
@@ -265,10 +265,7 @@ class TorchBasedLinearEstimator:
             opt.zero_grad(set_to_none=True)
             output = model(data, data_cat)
 
-            #reshape hurts the multioutput case
-            #once you find the place where fixed line breakes the pipeline you can do a proper reshape
             loss = self._loss_fn(model, y, output, weights, c)
-            #loss = self._loss_fn(model, y.reshape(-1, 1), output, weights, c)
             if loss.requires_grad:
                 loss.backward()
             return loss
@@ -343,9 +340,9 @@ class TorchBasedLinearEstimator:
                 weights_val_slice,
             ) = self._prepare_data(data_val, y_val, weights_val, i)
 
-            if not y_slice is None and len(y_slice.shape) == 1:
+            if y_slice is not None and len(y_slice.shape) == 1:
                 y_slice = torch.reshape(y_slice, (y_slice.shape[0], 1))
-            if not weights_slice is None and len(weights_slice.shape) == 1:
+            if weights_slice is not None and len(weights_slice.shape) == 1:
                 weights_slice = torch.reshape(weights_slice, (weights_slice.shape[0], 1))
 
             data_slices.append(data_slice)
@@ -360,29 +357,16 @@ class TorchBasedLinearEstimator:
 
         def get_optimized_models(optimize, model, data_slice,
                                  data_cat, y_slice, weights_slice, c):
-            optimize(
-                    model,
-                    data_slice,
-                    data_cat,
-                    y_slice,
-                    weights_slice,
-                    c,
-            )
+
+            optimize(model, data_slice, data_cat,
+                     y_slice, weights_slice, c)
             return model
 
         for c in self.cs:
             models = []
             for i in range(len(self.gpu_ids)):
                 models.append(deepcopy(self.model.to(f"cuda:{i}")))
-            #for i in range(len(self.gpu_ids)):
-            #    self._optimize(
-            #        models[i],
-            #        data_slices[i],
-            #        data_cats[i],
-            #        y_slices[i],
-            #        weights_slices[i],
-            #        c,
-            #    )
+
             with Parallel(n_jobs=len(self.gpu_ids), prefer="threads")as p:
                 res = p(delayed(get_optimized_models)(
                     self._optimize,
@@ -416,20 +400,14 @@ class TorchBasedLinearEstimator:
 
             scores = np.zeros(len(self.gpu_ids))
 
-
             for i in range(len(self.gpu_ids)):
                 model = self.model.to(f"cuda:{i}")
                 val_pred = self._score(model, data_slices_val[i],
                                        data_cats_val[i])
-                # TODO: check if this conversion is necessary
-                scores[i] = cp.asnumpy(
-                    self.metric(
-                        cp.asarray(y_slices_val[i]), val_pred,
-                                   weights_slices_val[i]
-                    )
-                )
+
+                scores[i] = cp.asnumpy(self.metric(cp.asarray(y_slices_val[i]), val_pred, weights_slices_val[i]))
             score = scores.mean()
-            print("Score:", score)
+            logger.info3("Linear model (mgpu): C = {0} score = {1}".format(c, score))
             if score > best_score:
                 best_score = score
                 best_model_params = deepcopy(new_state_dict)
@@ -438,7 +416,6 @@ class TorchBasedLinearEstimator:
                 es += 1
             if es >= self.early_stopping:
                 break
-            # [torch.cuda.synchronize(device=f'cuda:{i}') for i in range(len(self.gpu_ids))]
 
         self.model.to("cuda").load_state_dict(best_model_params)
         return self
@@ -538,8 +515,6 @@ class TorchBasedLogisticRegression(TorchBasedLinearEstimator):
 
         """
         pred = super().predict(data)
-        # if self._binary:
-        #    pred = pred[:, 0]
         return pred
 
 

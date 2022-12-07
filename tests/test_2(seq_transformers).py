@@ -139,15 +139,6 @@ if __name__ == "__main__":
                'seq': seq_data
               }
     name = 'data2'
-    #
-    #
-    #
-    #
-    #DATA1 THROWS ERROR ONLY ON GPU
-    #
-    #
-    #
-    #
     ## Data preparation finished
 
     task = Task('reg', metric='mae')

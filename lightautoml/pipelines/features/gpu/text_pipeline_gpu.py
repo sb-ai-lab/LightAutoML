@@ -10,7 +10,6 @@ from lightautoml.transformers.base import ColumnsSelector
 from lightautoml.transformers.base import LAMLTransformer
 from lightautoml.transformers.base import SequentialTransformer
 from lightautoml.transformers.base import UnionTransformer
-from lightautoml.transformers.gpu.decomp_gpu import SVDTransformerGPU
 from lightautoml.transformers.gpu.numeric_gpu import StandardScalerGPU
 from lightautoml.transformers.gpu.text_gpu import AutoNLPWrapGPU
 from lightautoml.transformers.gpu.text_gpu import ConcatTextTransformerGPU
@@ -184,8 +183,8 @@ class NLPTFiDFFeaturesGPU(FeaturesPipeline, NLPDataFeaturesGPU):
         union_all = UnionTransformer(transformers_list)
 
         return union_all
-    
-    
+
+
 class NLPTFiDFFeaturesSubwordGPU(FeaturesPipeline, NLPDataFeaturesGPU):
     """
     Class contains tfidf features for text data.
@@ -209,11 +208,11 @@ class NLPTFiDFFeaturesSubwordGPU(FeaturesPipeline, NLPDataFeaturesGPU):
             transforms = [
                 ColumnsSelector(keys=texts),
                 SubwordTokenizerTransformerGPU(vocab_path=self.vocab_path, data_path=self.data_path,
-                                                is_hash=self.is_hash,
-                                                max_length=self.max_length, tokenizer=self.tokenizer,
-                                                vocab_size=self.vocab_size, save_path=self.tokenizer_save_path),
+                                               is_hash=self.is_hash,
+                                               max_length=self.max_length, tokenizer=self.tokenizer,
+                                               vocab_size=self.vocab_size, save_path=self.tokenizer_save_path),
                 TfidfTextTransformerGPU(default_params=self.tfidf_params, subs=None, random_state=42,
-                                         n_components=self.n_components),
+                                        n_components=self.n_components),
             ]
 
             text_processing = SequentialTransformer(transforms)
