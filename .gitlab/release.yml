@@ -1,0 +1,24 @@
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
+
+.job_template: &ssh_key_configuration
+  before_script:
+      # TODO: add clearml config
+    - mkdir -p ~/.ssh
+    - echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+    - chmod 600 ~/.ssh/id_rsa
+    - echo "Host *" >> ~/.ssh/config
+    - echo "  StrictHostKeyChecking no" >> ~/.ssh/config
+    - echo "  CheckHostIP no" >> ~/.ssh/config
+    - echo "  LogLevel ERROR" >> ~/.ssh/config
+    - echo "  UserKnownHostsFile /dev/null" >> ~/.ssh/config
+
+stages:
+  - run_benchmark
+
+mirror-code:
+  <<: *ssh_key_configuration
+  stage: run_benchmark
+  script: |
+    sh ./experiments/run_bench_release.sh Releases
