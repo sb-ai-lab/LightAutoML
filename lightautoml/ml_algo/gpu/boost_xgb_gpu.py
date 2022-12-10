@@ -320,7 +320,6 @@ class BoostXGB(TabularMLAlgoGPU, ImportanceEstimator):
 
         """
 
-        # FIRST SORT TO FEATURES AND THEN SORT BACK TO IMPORTANCES - BAD
         imp = 0
         for model in self.models:
             val = model.get_score(importance_type="gain")
@@ -344,17 +343,20 @@ class BoostXGB(TabularMLAlgoGPU, ImportanceEstimator):
         self.fit_predict(train_valid)
 
     def to_cpu(self):
+        features = deepcopy(self.features)
         models = deepcopy(self.models)
         for i in range(len(models)):
             models[i].set_param({"predictor": "cpu_predictor"})
 
         task = Task(name=self.task._name,
                     device='cpu',
+                    loss=self.task.loss,
                     metric=self.task.metric_name,
                     greater_is_better=self.task.greater_is_better)
 
         algo = BoosterCPU()
-        algo.models = deepcopy(models)
+        algo.features = features
+        algo.models = models
         algo.task = task
 
         return algo
@@ -475,7 +477,6 @@ class BoostXGB_dask(BoostXGB):
 
         """
 
-        # FIRST SORT TO FEATURES AND THEN SORT BACK TO IMPORTANCES - BAD
         imp = 0
         for model in self.models:
             val = model["booster"].get_score(importance_type="gain")
@@ -488,3 +489,24 @@ class BoostXGB_dask(BoostXGB):
         imp = imp / len(self.models)
 
         return pd.Series(imp, index=self.features).sort_values(ascending=False)
+
+    def to_cpu(self):
+        features = deepcopy(self.features)
+        models = deepcopy(self.models)
+        for i in range(len(models)):
+            models[i] = models[i]["booster"]
+        for i in range(len(models)):
+            models[i].set_param({"predictor": "cpu_predictor"})
+
+        task = Task(name=self.task._name,
+                    device='cpu',
+                    loss=self.task.loss,
+                    metric=self.task.metric_name,
+                    greater_is_better=self.task.greater_is_better)
+
+        algo = BoosterCPU()
+        algo.models = deepcopy(models)
+        algo.task = task
+        algo.features = features
+
+        return algo

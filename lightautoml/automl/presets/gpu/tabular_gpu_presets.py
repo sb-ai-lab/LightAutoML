@@ -309,6 +309,7 @@ class TabularAutoMLGPU(TabularAutoML):
                 # timer will be useful to estimate time for next gbm runs
                 time_score = self.get_time_score(n_level, "pb", False)
                 sel_timer_0 = self.timer.get_task_timer("pb", time_score)
+                selection_gbm = BoostPB(timer=sel_timer_0, **self.pb_params)
             else:
                 time_score = self.get_time_score(n_level, "cb", False)
                 sel_timer_0 = self.timer.get_task_timer("cb", time_score)

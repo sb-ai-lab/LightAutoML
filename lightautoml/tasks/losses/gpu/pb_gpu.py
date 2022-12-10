@@ -58,6 +58,7 @@ class PBLoss(Loss):
         """
         if type(loss) is str:
             if loss == 'mae':
+                logger.info("MAE loss is not supported in pyboost, switching to MSE")
                 loss = 'mse'
             self.fobj_name = loss
             self.fobj = None

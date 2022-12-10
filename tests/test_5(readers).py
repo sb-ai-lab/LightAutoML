@@ -115,4 +115,4 @@ print(perf_counter() - st)
 
 print(ds.data.shape)
 print(gpu_ds.data.shape)
-print(dd_ds.data.shape)
+print(dd_ds.data.compute().shape)

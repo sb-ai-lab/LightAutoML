@@ -2,6 +2,7 @@
 
 import logging
 from copy import copy
+from copy import deepcopy
 from typing import Dict
 from typing import Tuple
 
@@ -192,18 +193,21 @@ class BoostPB(TabularMLAlgoGPU, ImportanceEstimator):
         Returns:
             self
         """
+        features = deepcopy(self.features)
         models = []
         for i in range(len(self.models)):
             models.append(TLPredictor(self.models[i]))
 
         task = Task(name=self.task._name,
                     device='cpu',
+                    loss=self.task.loss,
                     metric=self.task.metric_name,
                     greater_is_better=self.task.greater_is_better)
 
         algo = PBPredictor()
         algo.models = models
         algo.task = task
+        algo.features = features
 
         return algo
 

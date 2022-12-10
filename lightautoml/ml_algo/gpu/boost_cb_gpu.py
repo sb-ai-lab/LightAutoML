@@ -413,11 +413,13 @@ class BoostCBGPU(TabularMLAlgoGPU, ImportanceEstimator):
         return pred
 
     def to_cpu(self):
+        features = deepcopy(self.features)
         default_params = deepcopy(self._default_params)
         default_params['task_type'] = 'CPU'
         default_params['devices'] = None
         task = Task(name=self.task._name,
                     device='cpu',
+                    loss=self.task.loss,
                     metric=self.task.metric_name,
                     greater_is_better=self.task.greater_is_better)
         algo = BoostCB(default_params=default_params,
@@ -430,4 +432,5 @@ class BoostCBGPU(TabularMLAlgoGPU, ImportanceEstimator):
         algo._le_cat_features = self._le_cat_features
         algo._le_text_features = self._text_features
         algo._nan_rate = self._nan_rate
+        algo.features = features
         return algo

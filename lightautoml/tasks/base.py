@@ -446,7 +446,7 @@ class Task:
         ], "The device must be either `cpu`, `gpu` or `mgpu`!"
 
         self.device = device
-
+        self.loss = loss
         # add losses
         # if None - infer from task
         self.losses = {}

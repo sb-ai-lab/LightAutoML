@@ -88,10 +88,12 @@ if __name__ == '__main__':
         cudf.set_allocator("managed")
 
         task_type = 'multi:reg' if data_info['task_type']=='multitask' else data_info['task_type']
-        automl = TabularAutoMLGPU(task=Task(task_type, device="mgpu"), 
-                                   timeout=args.timeout,
-                                   config_path=args.config,
-                                   client=client)
+        loss = 'mse' if task_type == 'multi:reg' else 'logloss'
+        automl = TabularAutoMLGPU(task=Task(task_type, loss = loss, 
+                                            device="mgpu"), 
+                                  timeout=args.timeout,
+                                  config_path=args.config,
+                                  client=client)
 
         roles = {TargetRole(): target_columns}
 

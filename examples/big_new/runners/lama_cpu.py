@@ -79,7 +79,8 @@ if __name__ == '__main__':
         train, test = train_test_split(data, test_size=0.2, random_state=args.seed)
     data = None
     task_type = 'multi:reg' if data_info['task_type']=='multitask' else data_info['task_type']
-    automl = TabularAutoML(task=Task(task_type),     
+    loss = 'mse' if task_type == 'multi:reg' else 'logloss'
+    automl = TabularAutoML(task=Task(task_type, loss = loss),     
                                timeout=args.timeout,
                                config_path=args.config,)
     

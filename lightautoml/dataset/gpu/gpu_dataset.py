@@ -1522,8 +1522,6 @@ class SeqDaskCudfDataset(DaskCudfDataset):
         # case when columns are defined
         if cols is not None:
 
-            # case when seqs have different shape, return array with arrays
-            # should be able to write this with map_partitions
             data = []
             _d = self.data[cols].values
             for row in rows:

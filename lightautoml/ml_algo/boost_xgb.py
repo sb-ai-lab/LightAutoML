@@ -260,7 +260,6 @@ class BoostXGB(TabularMLAlgo, ImportanceEstimator):
 
         """
 
-        # FIRST SORT TO FEATURES AND THEN SORT BACK TO IMPORTANCES - BAD
         imp = 0
         for model in self.models:
             val = model.get_score(importance_type='gain')

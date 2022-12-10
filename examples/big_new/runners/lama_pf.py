@@ -73,7 +73,9 @@ if __name__ == '__main__':
     print("Started")
 
     task_type = 'multi:reg' if data_info['task_type']=='multitask' else data_info['task_type']
-    automl = TabularAutoMLGPU(task=Task(task_type, device="mgpu"), 
+    loss = 'mse' if task_type == 'multi:reg' else 'logloss'
+    automl = TabularAutoMLGPU(task=Task(task_type, loss = loss,
+                                        device="mgpu"), 
                               timeout=args.timeout,
                               config_path=args.config)
 

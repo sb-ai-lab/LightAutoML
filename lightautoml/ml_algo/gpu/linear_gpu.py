@@ -270,6 +270,7 @@ class LinearLBFGSGPU(TabularMLAlgoGPU):
                            timer=self.timer)
         algo.task = Task(name=self.task._name,
                          device='cpu',
+                         loss=self.task.loss,
                          metric=self.task.metric_name,
                          greater_is_better=self.task.greater_is_better)
         algo.models = deepcopy(models)
