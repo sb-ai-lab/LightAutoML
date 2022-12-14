@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "LightAutoML"
+name = "LightAutoML_gpu"
 version = "0.2.15"
 description = "Fast and customizable framework for automatic ML model creation (AutoML)"
 authors = ["Alexander Ryzhkov <AMRyzhkov@sberbank.ru>",

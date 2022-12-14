@@ -42,9 +42,9 @@ if __name__ == '__main__':
 
     client = Client(cluster)
 
-    from lightautoml.automl.presets.gpu.tabular_gpu_presets import TabularAutoMLGPU
-    from lightautoml.tasks import Task
-    from lightautoml.dataset.roles import TargetRole
+    from lightautoml_gpu.automl.presets.gpu.tabular_gpu_presets import TabularAutoMLGPU
+    from lightautoml_gpu.tasks import Task
+    from lightautoml_gpu.dataset.roles import TargetRole
     
     import joblib
     import numpy as np

@@ -10,17 +10,17 @@ from numba import jit
 import string
 from sklearn.model_selection import train_test_split
 
-from lightautoml.reader.gpu.cudf_reader import CudfReader
-from lightautoml.reader.base import PandasToPandasReader
-from lightautoml.reader.gpu.daskcudf_reader import DaskCudfReader
+from lightautoml_gpu.reader.gpu.cudf_reader import CudfReader
+from lightautoml_gpu.reader.base import PandasToPandasReader
+from lightautoml_gpu.reader.gpu.daskcudf_reader import DaskCudfReader
 
-from lightautoml.transformers.base import SequentialTransformer
-from lightautoml.pipelines.utils import get_columns_by_role
+from lightautoml_gpu.transformers.base import SequentialTransformer
+from lightautoml_gpu.pipelines.utils import get_columns_by_role
 
-from lightautoml.transformers.gpu import numeric_gpu, categorical_gpu, datetime_gpu
-from lightautoml.transformers import numeric, categorical, datetime
+from lightautoml_gpu.transformers.gpu import numeric_gpu, categorical_gpu, datetime_gpu
+from lightautoml_gpu.transformers import numeric, categorical, datetime
 
-from lightautoml.tasks import Task
+from lightautoml_gpu.tasks import Task
 
 RANDS_CHARS = np.array(list(string.ascii_letters + string.digits),
                        dtype=(np.str_, 1))

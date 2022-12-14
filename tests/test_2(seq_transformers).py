@@ -5,17 +5,17 @@ import random
 from numba import jit
 import string
 
-from lightautoml.reader.gpu.seq_reader_gpu import DictToCudfSeqReader
-from lightautoml.reader.gpu.seq_reader_gpu import DictToDaskCudfSeqReader
-from lightautoml.reader.base import DictToPandasSeqReader
-from lightautoml.tasks import Task
+from lightautoml_gpu.reader.gpu.seq_reader_gpu import DictToCudfSeqReader
+from lightautoml_gpu.reader.gpu.seq_reader_gpu import DictToDaskCudfSeqReader
+from lightautoml_gpu.reader.base import DictToPandasSeqReader
+from lightautoml_gpu.tasks import Task
 
-from lightautoml.transformers.seq import SeqNumCountsTransformer
-from lightautoml.transformers.seq import SeqStatisticsTransformer
-from lightautoml.transformers.seq import GetSeqTransformer
-from lightautoml.transformers.gpu.seq_gpu import SeqNumCountsTransformerGPU
-from lightautoml.transformers.gpu.seq_gpu import SeqStatisticsTransformerGPU
-from lightautoml.transformers.gpu.seq_gpu import GetSeqTransformerGPU
+from lightautoml_gpu.transformers.seq import SeqNumCountsTransformer
+from lightautoml_gpu.transformers.seq import SeqStatisticsTransformer
+from lightautoml_gpu.transformers.seq import GetSeqTransformer
+from lightautoml_gpu.transformers.gpu.seq_gpu import SeqNumCountsTransformerGPU
+from lightautoml_gpu.transformers.gpu.seq_gpu import SeqStatisticsTransformerGPU
+from lightautoml_gpu.transformers.gpu.seq_gpu import GetSeqTransformerGPU
 
 RANDS_CHARS = np.array(list(string.ascii_letters + string.digits),
                        dtype=(np.str_, 1))

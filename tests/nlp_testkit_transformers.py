@@ -104,27 +104,27 @@ if __name__ == "__main__":
     from cudf.utils.hash_vocab_utils import hash_vocab
     import dask_cudf
 
-    from lightautoml.dataset.roles import TextRole
-    from lightautoml.dataset.utils import roles_parser
-    from lightautoml.dataset.np_pd_dataset import PandasDataset
-    from lightautoml.dataset.gpu.gpu_dataset import CudfDataset
-    from lightautoml.dataset.gpu.gpu_dataset import DaskCudfDataset
+    from lightautoml_gpu.dataset.roles import TextRole
+    from lightautoml_gpu.dataset.utils import roles_parser
+    from lightautoml_gpu.dataset.np_pd_dataset import PandasDataset
+    from lightautoml_gpu.dataset.gpu.gpu_dataset import CudfDataset
+    from lightautoml_gpu.dataset.gpu.gpu_dataset import DaskCudfDataset
 
-    from lightautoml.text.tokenizer import SimpleRuTokenizer
-    from lightautoml.text.tokenizer import SimpleEnTokenizer
-    from lightautoml.text.gpu.tokenizer_gpu import SimpleRuTokenizerGPU
-    from lightautoml.text.gpu.tokenizer_gpu import SimpleEnTokenizerGPU
+    from lightautoml_gpu.text.tokenizer import SimpleRuTokenizer
+    from lightautoml_gpu.text.tokenizer import SimpleEnTokenizer
+    from lightautoml_gpu.text.gpu.tokenizer_gpu import SimpleRuTokenizerGPU
+    from lightautoml_gpu.text.gpu.tokenizer_gpu import SimpleEnTokenizerGPU
 
-    from lightautoml.transformers.text import TokenizerTransformer
-    from lightautoml.transformers.text import ConcatTextTransformer
-    from lightautoml.transformers.text import TfidfTextTransformer
-    from lightautoml.transformers.text import AutoNLPWrap
-    from lightautoml.transformers.decomposition import SVDTransformer
-    from lightautoml.transformers.gpu.text_gpu import TokenizerTransformerGPU
-    from lightautoml.transformers.gpu.text_gpu import SubwordTokenizerTransformerGPU
-    from lightautoml.transformers.gpu.text_gpu import ConcatTextTransformerGPU
-    from lightautoml.transformers.gpu.text_gpu import TfidfTextTransformerGPU
-    from lightautoml.transformers.gpu.text_gpu import AutoNLPWrapGPU
+    from lightautoml_gpu.transformers.text import TokenizerTransformer
+    from lightautoml_gpu.transformers.text import ConcatTextTransformer
+    from lightautoml_gpu.transformers.text import TfidfTextTransformer
+    from lightautoml_gpu.transformers.text import AutoNLPWrap
+    from lightautoml_gpu.transformers.decomposition import SVDTransformer
+    from lightautoml_gpu.transformers.gpu.text_gpu import TokenizerTransformerGPU
+    from lightautoml_gpu.transformers.gpu.text_gpu import SubwordTokenizerTransformerGPU
+    from lightautoml_gpu.transformers.gpu.text_gpu import ConcatTextTransformerGPU
+    from lightautoml_gpu.transformers.gpu.text_gpu import TfidfTextTransformerGPU
+    from lightautoml_gpu.transformers.gpu.text_gpu import AutoNLPWrapGPU
 
     df = prepare_dummy_data()
     check_roles = {

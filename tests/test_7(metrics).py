@@ -1,13 +1,13 @@
-from lightautoml.tasks.common_metric import _valid_str_binary_metric_names as bin_cpu
-from lightautoml.tasks.common_metric import _valid_str_reg_metric_names as reg_cpu
-from lightautoml.tasks.common_metric import _valid_str_multiclass_metric_names as multi_cpu
+from lightautoml_gpu.tasks.common_metric import _valid_str_binary_metric_names as bin_cpu
+from lightautoml_gpu.tasks.common_metric import _valid_str_reg_metric_names as reg_cpu
+from lightautoml_gpu.tasks.common_metric import _valid_str_multiclass_metric_names as multi_cpu
 
-from lightautoml.tasks.gpu.common_metric_gpu import _valid_str_binary_metric_names_gpu as bin_gpu
-from lightautoml.tasks.gpu.common_metric_gpu import _valid_str_reg_metric_names_gpu as reg_gpu
-from lightautoml.tasks.gpu.common_metric_gpu import _valid_str_multiclass_metric_names_gpu as multi_gpu
+from lightautoml_gpu.tasks.gpu.common_metric_gpu import _valid_str_binary_metric_names_gpu as bin_gpu
+from lightautoml_gpu.tasks.gpu.common_metric_gpu import _valid_str_reg_metric_names_gpu as reg_gpu
+from lightautoml_gpu.tasks.gpu.common_metric_gpu import _valid_str_multiclass_metric_names_gpu as multi_gpu
 
 
-from lightautoml.tasks.gpu import common_metric_gpu as metric_gpu
+from lightautoml_gpu.tasks.gpu import common_metric_gpu as metric_gpu
 
 import numpy as np
 import pandas as pd

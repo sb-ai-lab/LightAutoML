@@ -25,11 +25,11 @@ if __name__ == "__main__":
 
     import cudf
 
-    # import lightautoml
-    from lightautoml.automl.presets.text_presets import TabularNLPAutoML
-    from lightautoml.automl.presets.gpu.text_gpu_presets import TabularNLPAutoMLGPU
-    from lightautoml.tasks import Task
-    from lightautoml.dataset.utils import roles_parser
+    # import lightautoml_gpu
+    from lightautoml_gpu.automl.presets.text_presets import TabularNLPAutoML
+    from lightautoml_gpu.automl.presets.gpu.text_gpu_presets import TabularNLPAutoMLGPU
+    from lightautoml_gpu.tasks import Task
+    from lightautoml_gpu.dataset.utils import roles_parser
 
     # define nlp constants
     N_THREADS = 4

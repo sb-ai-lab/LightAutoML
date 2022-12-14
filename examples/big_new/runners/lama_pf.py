@@ -30,9 +30,9 @@ if __name__ == '__main__':
     os.environ["MKL_NUM_THREADS"] = str_nthr
     os.environ["VECLIB_MAXIMUM_THREADS"] = str_nthr
     os.environ["NUMEXPR_NUM_THREADS"] = str_nthr
-    from lightautoml.automl.presets.gpu.tabular_gpu_presets import TabularAutoMLGPU
-    from lightautoml.tasks import Task
-    from lightautoml.dataset.roles import TargetRole
+    from lightautoml_gpu.automl.presets.gpu.tabular_gpu_presets import TabularAutoMLGPU
+    from lightautoml_gpu.tasks import Task
+    from lightautoml_gpu.dataset.roles import TargetRole
 
     import joblib
     import numpy as np

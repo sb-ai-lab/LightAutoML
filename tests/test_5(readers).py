@@ -9,11 +9,11 @@ from numba import jit
 
 from time import perf_counter
 
-from lightautoml.tasks import Task
+from lightautoml_gpu.tasks import Task
 
-from lightautoml.reader.gpu.cudf_reader import CudfReader
-from lightautoml.reader.gpu.daskcudf_reader import DaskCudfReader
-from lightautoml.reader.base import PandasToPandasReader
+from lightautoml_gpu.reader.gpu.cudf_reader import CudfReader
+from lightautoml_gpu.reader.gpu.daskcudf_reader import DaskCudfReader
+from lightautoml_gpu.reader.base import PandasToPandasReader
 
 import os
 import time

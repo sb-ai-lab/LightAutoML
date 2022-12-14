@@ -5,10 +5,10 @@ import random
 from numba import jit
 import string
 
-from lightautoml.reader.gpu.seq_reader_gpu import DictToCudfSeqReader
-from lightautoml.reader.gpu.seq_reader_gpu import DictToDaskCudfSeqReader
-from lightautoml.reader.base import DictToPandasSeqReader
-from lightautoml.tasks import Task
+from lightautoml_gpu.reader.gpu.seq_reader_gpu import DictToCudfSeqReader
+from lightautoml_gpu.reader.gpu.seq_reader_gpu import DictToDaskCudfSeqReader
+from lightautoml_gpu.reader.base import DictToPandasSeqReader
+from lightautoml_gpu.tasks import Task
 
 RANDS_CHARS = np.array(list(string.ascii_letters + string.digits),
                        dtype=(np.str_, 1))
