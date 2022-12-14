@@ -14,11 +14,11 @@ from lightautoml.automl.presets.tabular_presets import TabularAutoML
 from lightautoml.tasks import Task
 
 
-def main(dataset, cpu_limit, memory_limit):
+def main(dataset_name, cpu_limit, memory_limit):
     cml_task = clearml.Task.get_task(clearml.config.get_remote_task_id())
     logger = cml_task.get_logger()
 
-    dataset = clearml.Dataset.get(dataset_id=None, dataset_name="sampled_app_train")
+    dataset = clearml.Dataset.get(dataset_id=None, dataset_name=dataset_name)
     dataset_local_path = dataset.get_local_copy()
 
     with open(os.path.join(dataset_local_path, 'task_type.txt'), 'r') as f:
@@ -66,4 +66,4 @@ if __name__ == "__main__":
     parser.add_argument('--memory_limit', type=str, help='', default=16)
     args = parser.parse_args()
     
-    main(dataset=args.dataset, cpu_limit=args.cpu_limit, memory_limit=args.memory_limit)
+    main(dataset_name=args.dataset, cpu_limit=args.cpu_limit, memory_limit=args.memory_limit)
