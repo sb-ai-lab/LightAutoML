@@ -255,35 +255,35 @@ class BoostXGB(TabularMLAlgoGPU, ImportanceEstimator):
                     + str(self._name)
                 )
 
-        (
-            params,
-            num_trees,
-            early_stopping_rounds,
-            verbose_eval,
-            fobj,
-            feval,
-        ) = self._infer_params()
-        train_target, train_weight = self.task.losses["xgb"].fw_func(
-            train_target, train_weights
-        )
-        valid_target, valid_weight = self.task.losses["xgb"].fw_func(
-            valid_target, valid_weights
-        )
+            (
+                params,
+                num_trees,
+                early_stopping_rounds,
+                verbose_eval,
+                fobj,
+                feval,
+            ) = self._infer_params()
+            train_target, train_weight = self.task.losses["xgb"].fw_func(
+                train_target, train_weights
+            )
+            valid_target, valid_weight = self.task.losses["xgb"].fw_func(
+                valid_target, valid_weights
+            )
 
-        xgb_train = xgb.DMatrix(train_data, label=train_target, weight=train_weight)
+            xgb_train = xgb.DMatrix(train_data, label=train_target, weight=train_weight)
 
-        xgb_valid = xgb.DMatrix(valid_data, label=valid_target, weight=valid_weight)
-        params["gpu_id"] = dev_id
-        model = xgb.train(
-            params,
-            xgb_train,
-            num_boost_round=num_trees,
-            evals=[(xgb_train, "train"), (xgb_valid, "valid")],
-            obj=fobj,
-            feval=feval,
-            early_stopping_rounds=early_stopping_rounds,
-            verbose_eval=verbose_eval,
-        )
+            xgb_valid = xgb.DMatrix(valid_data, label=valid_target, weight=valid_weight)
+            params["gpu_id"] = dev_id
+            model = xgb.train(
+                params,
+                xgb_train,
+                num_boost_round=num_trees,
+                evals=[(xgb_train, "train"), (xgb_valid, "valid")],
+                obj=fobj,
+                feval=feval,
+                early_stopping_rounds=early_stopping_rounds,
+                verbose_eval=verbose_eval,
+            )
         val_pred = model.inplace_predict(valid_data)
         val_pred = self.task.losses["xgb"].bw_func(val_pred)
 

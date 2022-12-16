@@ -221,6 +221,19 @@ class TabularAutoMLGPU(TabularAutoML):
 
             self.xgb_params["gpu_ids"] = cur_gpu_ids.split(",")
 
+        if self.task.device == "gpu" or self.pb_params["parallel_folds"]:
+            gpu_cnt = 1
+        else:
+            gpu_cnt = torch.cuda.device_count()
+
+        if gpu_cnt > 0 and gpu_ids:
+            if gpu_ids == "all":
+                cur_gpu_ids = ",".join(list(map(str, range(gpu_cnt))))
+            else:
+                cur_gpu_ids = copy(gpu_ids)
+
+            self.pb_params["gpu_ids"] = cur_gpu_ids.split(",")
+
         if self.task.device == "gpu" or self.linear_l2_params["parallel_folds"]:
             gpu_cnt = 1
         else:
