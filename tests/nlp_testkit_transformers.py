@@ -94,11 +94,11 @@ if __name__ == "__main__":
     n_gpu = torch.cuda.device_count()
     visible_devices = ",".join([str(i) for i in range(n_gpu)])
 
-    #from dask.distributed import Client
-    #from dask_cuda import LocalCUDACluster
+    from dask.distributed import Client
+    from dask_cuda import LocalCUDACluster
 
-    #cluster = LocalCUDACluster(CUDA_VISIBLE_DEVICES=visible_devices)
-    #client = Client(cluster)
+    cluster = LocalCUDACluster(CUDA_VISIBLE_DEVICES=visible_devices)
+    client = Client(cluster)
 
     import cudf
     from cudf.utils.hash_vocab_utils import hash_vocab
@@ -342,6 +342,6 @@ if __name__ == "__main__":
         check_transformer(autonlp_gpu, dataset_gpu, transformer_name="autonlp_gpu", modes=["fit_transform", "transform"])
         check_transformer(autonlp_mgpu, dataset_mgpu, transformer_name="autonlp_mgpu", modes=["fit_transform", "transform"])
 
-    #client.close()
-    #cluster.close()
+    client.close()
+    cluster.close()
 

@@ -492,7 +492,7 @@ class TabularAutoMLGPU(TabularAutoML):
 
         num_data = train_data.shape[0] * train_data.shape[1]
 
-        if num_data < 1e8 or self.task.device == "gpu":
+        if num_data < 1e10 or self.task.device == "gpu":
             reader = CudfReader(task=self.task, **self.reader_params)
         else:
             if self.task.device != "cpu":

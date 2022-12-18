@@ -17,7 +17,18 @@ parser.add_argument('-t', '--timeout', type=int)
 
 if __name__ == '__main__':
     
+    args = parser.parse_args()
     import os
+    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.device
+    
+    str_nthr = str(args.njobs)
+    
+    os.environ["OMP_NUM_THREADS"] = str_nthr
+    os.environ["OPENBLAS_NUM_THREADS"] = str_nthr
+    os.environ["MKL_NUM_THREADS"] = str_nthr
+    os.environ["VECLIB_MAXIMUM_THREADS"] = str_nthr
+    os.environ["NUMEXPR_NUM_THREADS"] = str_nthr
     from dask.distributed import Client
     from dask_cuda import LocalCUDACluster
     
@@ -29,18 +40,7 @@ if __name__ == '__main__':
                           memory_limit="30GB") as cluster:
         client = Client(cluster)
         from time import sleep
-        args = parser.parse_args()
         
-        os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-        os.environ["CUDA_VISIBLE_DEVICES"] = args.device
-        
-        str_nthr = str(args.njobs)
-        
-        os.environ["OMP_NUM_THREADS"] = str_nthr
-        os.environ["OPENBLAS_NUM_THREADS"] = str_nthr
-        os.environ["MKL_NUM_THREADS"] = str_nthr
-        os.environ["VECLIB_MAXIMUM_THREADS"] = str_nthr
-        os.environ["NUMEXPR_NUM_THREADS"] = str_nthr
         
         from lightautoml_gpu.automl.presets.gpu.tabular_gpu_presets import TabularAutoMLGPU
         from lightautoml_gpu.tasks import Task

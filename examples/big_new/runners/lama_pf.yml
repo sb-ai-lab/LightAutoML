@@ -11,7 +11,7 @@ reader_params:
   max_nan_rate: 0.999
   max_constant_rate: 0.999
   index_ok: True
-  npartitions: 2
+  npartitions: 32
   cv: 5
   random_state: 42
   roles_params:

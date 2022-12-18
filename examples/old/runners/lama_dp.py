@@ -35,9 +35,10 @@ if __name__ == '__main__':
     from dask_cuda import LocalCUDACluster
 
 
-    cluster = LocalCUDACluster(rmm_managed_memory=True,
+    cluster = LocalCUDACluster(CUDA_VISIBLE_DEVICES=args.device,
+                          rmm_managed_memory=True,
                           protocol="ucx", enable_nvlink=True,
-                          threads_per_worker=1, memory_limit="30GB",
+                          threads_per_worker=1, memory_limit="15GB",
                           rmm_pool_size="5GB")
 
     client = Client(cluster)

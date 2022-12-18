@@ -29,7 +29,18 @@ if __name__ == '__main__':
     os.environ["MKL_NUM_THREADS"] = str_nthr # export MKL_NUM_THREADS=6
     os.environ["VECLIB_MAXIMUM_THREADS"] = str_nthr # export VECLIB_MAXIMUM_THREADS=4
     os.environ["NUMEXPR_NUM_THREADS"] = str_nthr # export NUMEXPR_NUM_THREADS=6
-    
+    #from dask.distributed import Client
+    #from dask_cuda import LocalCUDACluster
+
+
+    #cluster = LocalCUDACluster(CUDA_VISIBLE_DEVICES=args.device,
+    #                      rmm_managed_memory=True,
+    #                      protocol="ucx", enable_nvlink=True,
+    #                      threads_per_worker=1, memory_limit="30GB",
+    #                      rmm_pool_size="5GB")
+
+    #client = Client(cluster)
+
     from lightautoml_gpu.automl.presets.gpu.tabular_gpu_presets import TabularAutoMLGPU
     from lightautoml_gpu.tasks import Task
     from lightautoml_gpu.dataset.roles import TargetRole
