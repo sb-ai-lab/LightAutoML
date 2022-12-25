@@ -204,6 +204,7 @@ def calc_ginis_gpu(
         scores = scores.mean(axis=1)
     return scores
 
+from lightautoml_gpu.reader.guess_roles import calc_ginis
 
 def _get_score_from_pipe_gpu(
     train: GpuDataset,
@@ -240,7 +241,22 @@ def _get_score_from_pipe_gpu(
     if pipe is not None:
         train = pipe.fit_transform(train)
 
-    scores = calc_ginis_gpu(train.data, target, empty_slice)
+    train = train.to_numpy()
+    data = train.data
+    new_len = data.shape[1]
+
+    if isinstance(empty_slice, cp.ndarray):
+        orig_len = empty_slice.shape[1]
+    else:
+        orig_len = len(empty_slice.columns)
+        empty_slice = empty_slice.values
+
+    empty_slice = cp.asnumpy(empty_slice)
+    len_ratio = int(new_len / orig_len)
+    target = cp.asnumpy(target)
+    data = data.reshape((data.shape[0], orig_len, len_ratio))
+    
+    scores = calc_ginis(data, target, empty_slice)
     return scores
 
 
@@ -356,7 +372,7 @@ def get_score_from_pipe_gpu(
     pipes = [deepcopy(pipe) for i in range(n_jobs)]
     with Parallel(n_jobs=n_jobs, prefer="threads") as p:
         res = p(delayed(_get_score_from_pipe_gpu)(train[:, names[i]], target, pipes[i], empty_slice[names[i]], ids[i]) for i in range(n_jobs))
-    return cp.concatenate(list(map(cp.array, res)))
+    return np.concatenate(list(map(np.array, res)))
 
 
 def get_numeric_roles_stat_gpu(
@@ -426,9 +442,9 @@ def get_numeric_roles_stat_gpu(
     target, encoder = get_target_and_encoder_gpu(train)
     empty_slice = train.data.isna()
     # check scores as is
-    res["raw_scores"] = cp.asnumpy(get_score_from_pipe_gpu(
+    res["raw_scores"] = get_score_from_pipe_gpu(
         train, target, empty_slice=empty_slice, n_jobs=n_jobs
-    ))
+    )
     # check unique values
     unique_values = None
     top_freq_values = None
@@ -447,25 +463,25 @@ def get_numeric_roles_stat_gpu(
 
     # check binned categorical score
     trf = SequentialTransformer([QuantileBinningGPU(), encoder()])
-    res["binned_scores"] = cp.asnumpy(get_score_from_pipe_gpu(
+    res["binned_scores"] = get_score_from_pipe_gpu(
         train, target, pipe=trf, empty_slice=empty_slice, n_jobs=n_jobs
-    ))
+    )
     # check label encoded scores
     trf = SequentialTransformer(
         [ChangeRoles(CategoryRole(np.float32)), LabelEncoderGPU(), encoder()]
     )
 
-    res["encoded_scores"] = cp.asnumpy(get_score_from_pipe_gpu(
+    res["encoded_scores"] = get_score_from_pipe_gpu(
         train, target, pipe=trf, empty_slice=empty_slice, n_jobs=n_jobs
-    ))
+    )
     # check frequency encoding
     trf = SequentialTransformer(
         [ChangeRoles(CategoryRole(np.float32)), FreqEncoderGPU()]
     )
 
-    res["freq_scores"] = cp.asnumpy(get_score_from_pipe_gpu(
+    res["freq_scores"] = get_score_from_pipe_gpu(
         train, target, pipe=trf, empty_slice=empty_slice, n_jobs=n_jobs
-    ))
+    )
     if isinstance(empty_slice, cudf.DataFrame):
         res["nan_rate"] = empty_slice.mean(axis=0).values_host
     else:
@@ -533,19 +549,19 @@ def get_category_roles_stat_gpu(
 
     # check label encoded scores
     trf = SequentialTransformer([LabelEncoderGPU(), encoder()])
-    res["encoded_scores"] = cp.asnumpy(get_score_from_pipe_gpu(
+    res["encoded_scores"] = get_score_from_pipe_gpu(
         train, target, pipe=trf, empty_slice=empty_slice, n_jobs=n_jobs
-    ))
+    )
     # check frequency encoding
     trf = FreqEncoderGPU()
-    res["freq_scores"] = cp.asnumpy(get_score_from_pipe_gpu(
+    res["freq_scores"] = get_score_from_pipe_gpu(
         train, target, pipe=trf, empty_slice=empty_slice, n_jobs=n_jobs
-    ))
+    )
     # check ordinal encoding
     trf = OrdinalEncoderGPU()
-    res["ord_scores"] = cp.asnumpy(get_score_from_pipe_gpu(
+    res["ord_scores"] = get_score_from_pipe_gpu(
         train, target, pipe=trf, empty_slice=empty_slice, n_jobs=n_jobs
-    ))
+    )
     return res, dtypes
 
 
@@ -586,11 +602,11 @@ def get_null_scores_gpu(
     notnan = (notnan != shape[0]) & (notnan != 0)
     notnan_inds = empty_slice.columns[notnan.values_host]
     empty_slice = empty_slice[notnan_inds]
-    scores = cp.zeros(shape[1])
+    scores = np.zeros(shape[1])
 
     if len(notnan_inds) != 0:
         notnan_inds = np.array(notnan_inds).reshape(-1, 1)
         scores_ = calc_ginis_gpu(empty_slice, target, empty_slice)
         scores[notnan.values_host] = scores_
-    res = pd.Series(cp.asnumpy(scores), index=train.features, name="max_score_2")
+    res = pd.Series(scores, index=train.features, name="max_score_2")
     return res

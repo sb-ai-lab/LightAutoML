@@ -628,7 +628,7 @@ class CudfDataset(PandasDataset):
 
         """
 
-        self.to_cupy().to_numpy()
+        return self.to_cupy().to_numpy()
 
     def to_pandas(self) -> PandasDataset:
         """Convert dataset to pandas.
