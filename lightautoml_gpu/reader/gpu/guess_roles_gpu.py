@@ -602,11 +602,11 @@ def get_null_scores_gpu(
     notnan = (notnan != shape[0]) & (notnan != 0)
     notnan_inds = empty_slice.columns[notnan.values_host]
     empty_slice = empty_slice[notnan_inds]
-    scores = np.zeros(shape[1])
+    scores = cp.zeros(shape[1])
 
     if len(notnan_inds) != 0:
         notnan_inds = np.array(notnan_inds).reshape(-1, 1)
         scores_ = calc_ginis_gpu(empty_slice, target, empty_slice)
         scores[notnan.values_host] = scores_
-    res = pd.Series(scores, index=train.features, name="max_score_2")
+    res = pd.Series(cp.asnumpy(scores), index=train.features, name="max_score_2")
     return res
