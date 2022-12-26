@@ -1,9 +1,10 @@
+"""Utils for running experiments."""
+
 import os
 import time
 
 
-class Timer:
-
+class Timer:  # noqa: D101
     @staticmethod
     def _zero():
         return 0
@@ -23,6 +24,7 @@ class Timer:
 
     @property
     def tick(self):
+        """Make one tick."""
         if self.stop > 0:
             return -1
         now = self._time()
@@ -32,22 +34,25 @@ class Timer:
 
     @property
     def duration(self):
+        """Get dureation in seconds."""
         if self.stop > 0:
             return self.stop - self.start
         return self._time() - self.start
 
 
 def install_lightautoml():
+    """Install lightautoml using pip."""
     os.system("python ./scripts/poetry_fix.py -c")
-    os.system("""
+    os.system(
+        """
         pip install .
     """
     )
 
-        # poetry config virtualenvs.create false --local
-        # poetry run python ./scripts/poetry_fix.py -c
-        # ls -la
-        # poetry run pip install pillow==9.2.0
-        # poetry install
-        # poetry run pip freeze
-        # poetry run python -c "import sys; print(sys.path)"
+    # poetry config virtualenvs.create false --local
+    # poetry run python ./scripts/poetry_fix.py -c
+    # ls -la
+    # poetry run pip install pillow==9.2.0
+    # poetry install
+    # poetry run pip freeze
+    # poetry run python -c "import sys; print(sys.path)"
