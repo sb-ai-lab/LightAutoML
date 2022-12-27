@@ -13,7 +13,7 @@ You can install library `LightAutoML` from PyPI.
 
 
 Development
----------------
+-----------
 
 You can also clone repository and install with poetry.
 First, install `poetry <https://python-poetry.org/docs/#installation>`_.

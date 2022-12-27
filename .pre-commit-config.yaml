@@ -1,3 +1,6 @@
+default_stages:
+  - commit
+
 repos:
   - repo: https://github.com/psf/black
     rev: 20.8b1
@@ -20,7 +23,7 @@ repos:
       - id: debug-statements
       - id: check-yaml
 
-  - repo: https://gitlab.com/pycqa/flake8
+  - repo: https://github.com/PyCQA/flake8
     rev: 3.8.4
     hooks:
       - id: flake8
@@ -49,3 +52,13 @@ repos:
     rev: 0.18.2
     hooks:
       - id: check-github-workflows
+
+  - repo: local
+    hooks:
+      - id: exp-branch-push
+        name: experiment branch push
+        description: prevent pushing 'experiment/*' branches to LAMA github
+        stages: [push]
+        language: python
+        entry: python ./scripts/exp_branch_push.py
+        pass_filenames: false

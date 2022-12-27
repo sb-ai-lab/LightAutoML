@@ -18,3 +18,8 @@ help:
 # "make mode" option.  $(O) is meant as a shortcut for $(SPHINXOPTS).
 %: Makefile
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
+
+clean:
+	sphinx-build -M clean "$(SOURCEDIR)" "$(BUILDDIR)"
+	sphinx-build -M clean "$(SOURCEDIR)" "imgs"
+	sphinx-build -M clean "$(SOURCEDIR)" "pages/modules/generated/"

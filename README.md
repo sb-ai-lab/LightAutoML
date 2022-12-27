@@ -6,6 +6,8 @@
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/lightautoml?color=green&label=PyPI%20downloads&logo=pypi&logoColor=orange&style=plastic)
 ![Read the Docs](https://img.shields.io/readthedocs/lightautoml?style=plastic)
 [![Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+![Poetry-Lock](https://img.shields.io/github/workflow/status/sb-ai-lab/LightAutoML/Poetry%20run/master?label=Poetry-Lock)
+
 
 LightAutoML (LAMA) is an AutoML framework which provides automatic model creation for the following tasks:
 - binary classification
