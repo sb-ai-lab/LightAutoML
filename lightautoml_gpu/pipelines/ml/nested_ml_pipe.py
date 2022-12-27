@@ -15,7 +15,11 @@ import pandas as pd
 
 from pandas import Series
 
-from ...dataset.gpu.gpu_dataset import CupyDataset, CudfDataset, DaskCudfDataset
+try:
+    from ...dataset.gpu.gpu_dataset import CupyDataset, CudfDataset, DaskCudfDataset
+except:
+    print("could not load gpu related libs (pipelines/ml/nested_ml_pipe.py")
+    pass
 
 from ...dataset.np_pd_dataset import NumpyDataset
 from ...ml_algo.base import PandasDataset

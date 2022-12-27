@@ -10,6 +10,9 @@ from typing import cast
 
 from copy import deepcopy
 
+from sklearn.utils.murmurhash import murmurhash3_32
+import pandas as pd
+
 import cudf
 import cupy as cp
 import dask_cudf
@@ -38,6 +41,7 @@ from ..categorical import TargetEncoder
 from ..categorical import MultiClassTargetEncoder
 from ..categorical import OrdinalEncoder
 from ..categorical import MultioutputTargetEncoder
+from ..categorical import CatIntersectstions
 
 GpuNumericalDataset = Union[CupyDataset, CudfDataset, DaskCudfDataset]
 
@@ -1946,7 +1950,6 @@ class CatIntersectionsGPU(LabelEncoderGPU):
         super().__init__(subs, random_state)
         self.intersections = intersections
         self.max_depth = max_depth
-        self.cpu_inf = False
 
     def to_cpu(self):
         """Move the class properties to CPU and change class to CPU counterpart for CPU inference.
@@ -1954,11 +1957,25 @@ class CatIntersectionsGPU(LabelEncoderGPU):
         Returns:
             self
         """
-        self.cpu_inf = True
+
+        intersections = deepcopy(self.intersections)
+        max_depth = self.max_depth
+        subs = deepcopy(self.subs)
+        random_state = self.random_state
+        features = deepcopy(self._features)
+        #internal_dict = {i: v.to_pandas() for i, v in zip(self.dicts.keys(), self.dicts.values())}
+
+        self.__class__ = CatIntersectstions
+        self.intersections = intersections
+        self.max_depth = max_depth
+        self.subs = subs
+        self.random_state = random_state
+        self.features = features
+        self.dicts = self.dicts_cpu
         return self
 
     @staticmethod
-    def _make_category(df: cudf.DataFrame, cols: Sequence[str]) -> cudf.DataFrame:
+    def _make_category_gpu(df: cudf.DataFrame, cols: Sequence[str]) -> cudf.DataFrame:
         """Make hash for category interactions.
 
         Args:
@@ -1980,6 +1997,26 @@ class CatIntersectionsGPU(LabelEncoderGPU):
 
         res = res.hash_values()
         return res
+
+    @staticmethod
+    def _make_category(df: cudf.DataFrame, cols: Sequence[str]) -> cudf.DataFrame:
+        """Make hash for category interactions.
+
+        Args:
+            df: Input DataFrame
+            cols: List of columns
+
+        Returns:
+            Hash cudf.DataFrame.
+
+        """
+        df = df.to_pandas()
+        res = np.empty((df.shape[0],), dtype=np.int32)
+
+        for n, inter in enumerate(zip(*(df[x] for x in cols))):
+            h = murmurhash3_32("_".join(map(str, inter)), seed=42)
+            res[n] = h
+        return cudf.Series(res)
 
     def _build_df(self, dataset: GpuNumericalDataset) -> GpuNumericalDataset:
         """
@@ -2063,7 +2100,30 @@ class CatIntersectionsGPU(LabelEncoderGPU):
                 self.intersections.extend(list(combinations(dataset.features, i)))
 
         inter_dataset = self._build_df(dataset)
-        return super().fit(inter_dataset)
+        super().fit(inter_dataset)
+        roles = inter_dataset.roles
+        df = inter_dataset.to_pandas().data
+
+        if self.subs is not None and df.shape[0] >= self.subs:
+            subs = df.sample(n=self.subs, random_state=self.random_state)
+        else:
+            subs = df
+
+        self.dicts_cpu = {}
+        for i in subs.columns:
+            role = roles[i]
+            co = role.unknown
+            cnts = (
+                subs[i]
+                .value_counts(dropna=False)
+                .reset_index()
+                .sort_values([i, "index"], ascending=[False, True])
+                .set_index("index")
+            )
+            vals = cnts[cnts[i] > co].index.astype(int).values
+            self.dicts_cpu[i] = pd.Series(np.arange(vals.shape[0], dtype=np.int32) + 1, index=vals)
+
+        return self
 
     def transform(self, dataset: GpuNumericalDataset) -> GpuNumericalDataset:
         """Create label encoded intersections and apply mapping (GPU version).
@@ -2077,10 +2137,6 @@ class CatIntersectionsGPU(LabelEncoderGPU):
 
         inter_dataset = self._build_df(dataset)
         out_df = super().transform(inter_dataset)
-        if self.cpu_inf:
-            for x in out_df.features:
-                out_df.roles[x]._name = "Numeric"
-            out_df = out_df.to_numpy()
         return out_df
 
 

@@ -681,6 +681,13 @@ class TabularAutoMLGPU(TabularAutoML):
         else:
             return res
 
+    def to_cpu(self):
+        """Move the class properties to CPU and change class to CPU counterpart for CPU inference.
+        """
+
+        self.client = None
+        super().to_cpu()
+        self.__class__ = TabularAutoML
 
 class TabularUtilizedAutoMLGPU(TabularUtilizedAutoML):
     """Template to make TimeUtilization from TabularAutoML (GPU version).

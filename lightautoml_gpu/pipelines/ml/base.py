@@ -8,7 +8,12 @@ from typing import Union
 
 from lightautoml_gpu.validation.base import TrainValidIterator
 
-from ...dataset.gpu.gpu_dataset import CupyDataset, CudfDataset, DaskCudfDataset
+try:
+    from ...dataset.gpu.gpu_dataset import CupyDataset, CudfDataset, DaskCudfDataset
+except:
+    print("could not load gpu related libs (pipelines/ml/base.py)")
+    pass
+
 from ...dataset.np_pd_dataset import NumpyDataset, PandasDataset
 
 from ...dataset.base import LAMLDataset

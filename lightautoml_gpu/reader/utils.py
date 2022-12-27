@@ -10,9 +10,13 @@ from sklearn.model_selection import GroupKFold
 from sklearn.model_selection import KFold
 from sklearn.model_selection import StratifiedKFold
 
-import cudf
-import cupy as cp
-import dask_cudf
+try:
+    import cudf
+    import cupy as cp
+    import dask_cudf
+except:
+    print("could not load gpu related libs (reader/utils.py)")
+    pass
 
 from ..tasks import Task
 

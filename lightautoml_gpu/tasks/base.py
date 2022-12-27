@@ -27,25 +27,31 @@ from .losses import TORCHLoss
 from .utils import infer_gib
 from .utils import infer_gib_multiclass
 
-from lightautoml_gpu.tasks.losses.gpu import TORCHLossGPU
-from lightautoml_gpu.tasks.losses.gpu import CUMLLoss
-from lightautoml_gpu.tasks.losses.gpu import XGBLoss
-from lightautoml_gpu.tasks.losses.gpu import PBLoss
-from lightautoml_gpu.tasks.gpu.common_metric_gpu import _valid_str_metric_names_gpu
-from lightautoml_gpu.tasks.gpu.utils_gpu import infer_gib_gpu
-from lightautoml_gpu.tasks.gpu.utils_gpu import infer_gib_multiclass_gpu
+try:
+    from lightautoml_gpu.tasks.losses.gpu import TORCHLossGPU
+    from lightautoml_gpu.tasks.losses.gpu import CUMLLoss
+    from lightautoml_gpu.tasks.losses.gpu import XGBLoss
+    from lightautoml_gpu.tasks.losses.gpu import PBLoss
+    from lightautoml_gpu.tasks.gpu.common_metric_gpu import _valid_str_metric_names_gpu
+    from lightautoml_gpu.tasks.gpu.utils_gpu import infer_gib_gpu
+    from lightautoml_gpu.tasks.gpu.utils_gpu import infer_gib_multiclass_gpu
+
+    if TYPE_CHECKING:
+        from ..dataset.gpu.gpu_dataset import CudfDataset
+        from ..dataset.gpu.gpu_dataset import CupyDataset
+        from ..dataset.gpu.gpu_dataset import DaskCudfDataset
+
+        CumlCompatible = Union[CupyDataset, CudfDataset, DaskCudfDataset]
+except:
+    print("could not load gpu related libs (tasks/base.py)")
+    pass
 
 if TYPE_CHECKING:
     from ..dataset.base import LAMLDataset
     from ..dataset.np_pd_dataset import NumpyDataset
     from ..dataset.np_pd_dataset import PandasDataset
 
-    from ..dataset.gpu.gpu_dataset import CudfDataset
-    from ..dataset.gpu.gpu_dataset import CupyDataset
-    from ..dataset.gpu.gpu_dataset import DaskCudfDataset
-
     SklearnCompatible = Union[NumpyDataset, PandasDataset]
-    CumlCompatible = Union[CupyDataset, CudfDataset, DaskCudfDataset]
 
 logger = logging.getLogger(__name__)
 
