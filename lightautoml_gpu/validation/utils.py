@@ -18,7 +18,7 @@ try:
     from lightautoml_gpu.dataset.gpu.gpu_dataset import CudfDataset, CupyDataset, DaskCudfDataset
     from lightautoml_gpu.validation.gpu.gpu_iterators import get_gpu_iterator
 except ModuleNotFoundError:
-    print("No GPU detected on this machine. Switching to CPU mode")
+    print("could not load gpu related libs (validation/utils.py)")
     pass
 
 

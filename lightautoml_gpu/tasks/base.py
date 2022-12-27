@@ -13,11 +13,6 @@ from typing import Union
 
 import numpy as np
 
-import cudf
-import cupy as cp
-import dask.array as da
-import dask_cudf
-
 from .common_metric import _valid_metric_args
 from .common_metric import _valid_str_metric_names
 from .losses import CBLoss
@@ -28,6 +23,10 @@ from .utils import infer_gib
 from .utils import infer_gib_multiclass
 
 try:
+    import cudf
+    import cupy as cp
+    import dask.array as da
+    import dask_cudf
     from lightautoml_gpu.tasks.losses.gpu import TORCHLossGPU
     from lightautoml_gpu.tasks.losses.gpu import CUMLLoss
     from lightautoml_gpu.tasks.losses.gpu import XGBLoss
