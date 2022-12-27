@@ -19,7 +19,7 @@ import torch
 if torch.cuda.is_available():
     from ...dataset.gpu.gpu_dataset import CupyDataset, CudfDataset, DaskCudfDataset
 else:
-    print("could not load gpu related libs (pipelines/ml/nested_ml_pipe.py")
+    print("could not load gpu related libs (pipelines/ml/nested_ml_pipe.py)")
 
 from ...dataset.np_pd_dataset import NumpyDataset
 from ...ml_algo.base import PandasDataset

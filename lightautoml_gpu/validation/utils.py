@@ -15,15 +15,14 @@ from .base import TrainValidIterator
 from .np_iterators import get_numpy_iterator
 
 import torch
-if torch.cuda.is_available()
+if torch.cuda.is_available():
     from lightautoml_gpu.dataset.gpu.gpu_dataset import CudfDataset, CupyDataset, DaskCudfDataset
     from lightautoml_gpu.validation.gpu.gpu_iterators import get_gpu_iterator
+    GpuDataset = Union[CupyDataset, CudfDataset, DaskCudfDataset]
 else:
     print("could not load gpu related libs (validation/utils.py)")
 
-
 NpDataset = Union[CSRSparseDataset, NumpyDataset, PandasDataset]
-GpuDataset = Union[CupyDataset, CudfDataset, DaskCudfDataset]
 
 
 def create_validation_iterator(
