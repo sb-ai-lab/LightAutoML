@@ -14,12 +14,12 @@ from .base import HoldoutIterator
 from .base import TrainValidIterator
 from .np_iterators import get_numpy_iterator
 
-try:
+import torch
+if torch.cuda.is_available()
     from lightautoml_gpu.dataset.gpu.gpu_dataset import CudfDataset, CupyDataset, DaskCudfDataset
     from lightautoml_gpu.validation.gpu.gpu_iterators import get_gpu_iterator
-except ModuleNotFoundError:
+else:
     print("could not load gpu related libs (validation/utils.py)")
-    pass
 
 
 NpDataset = Union[CSRSparseDataset, NumpyDataset, PandasDataset]

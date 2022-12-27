@@ -14,15 +14,15 @@ from .np_pd_dataset import PandasDataset
 from .roles import ColumnRole
 from .seq_np_pd_dataset import SeqNumpyPandasDataset
 
-try:
+import torch
+if torch.cuda.is_available():
     from lightautoml_gpu.dataset.gpu.gpu_dataset import CudfDataset
     from lightautoml_gpu.dataset.gpu.gpu_dataset import CupyDataset
     from lightautoml_gpu.dataset.gpu.gpu_dataset import DaskCudfDataset
     from lightautoml_gpu.dataset.gpu.gpu_dataset import SeqCudfDataset
     from lightautoml_gpu.dataset.gpu.gpu_dataset import SeqDaskCudfDataset
-except:
+else:
     print("could not load gpu related libs (dataset/utils.py)")
-    pass
 
 # RoleType = TypeVar("RoleType", bound=ColumnRole)
 

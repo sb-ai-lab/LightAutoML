@@ -22,7 +22,8 @@ from .losses import TORCHLoss
 from .utils import infer_gib
 from .utils import infer_gib_multiclass
 
-try:
+import torch
+if torch.cuda.is_available():
     import cudf
     import cupy as cp
     import dask.array as da
@@ -41,9 +42,8 @@ try:
         from ..dataset.gpu.gpu_dataset import DaskCudfDataset
 
         CumlCompatible = Union[CupyDataset, CudfDataset, DaskCudfDataset]
-except:
+else:
     print("could not load gpu related libs (tasks/base.py)")
-    pass
 
 if TYPE_CHECKING:
     from ..dataset.base import LAMLDataset

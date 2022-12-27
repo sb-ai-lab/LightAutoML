@@ -15,11 +15,11 @@ import pandas as pd
 
 from pandas import Series
 
-try:
+import torch
+if torch.cuda.is_available():
     from ...dataset.gpu.gpu_dataset import CupyDataset, CudfDataset, DaskCudfDataset
-except:
+else:
     print("could not load gpu related libs (pipelines/ml/nested_ml_pipe.py")
-    pass
 
 from ...dataset.np_pd_dataset import NumpyDataset
 from ...ml_algo.base import PandasDataset

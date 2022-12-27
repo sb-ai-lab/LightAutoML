@@ -10,13 +10,13 @@ from sklearn.model_selection import GroupKFold
 from sklearn.model_selection import KFold
 from sklearn.model_selection import StratifiedKFold
 
-try:
+import torch
+if torch.cuda.is_available():
     import cudf
     import cupy as cp
     import dask_cudf
-except:
+else:
     print("could not load gpu related libs (reader/utils.py)")
-    pass
 
 from ..tasks import Task
 

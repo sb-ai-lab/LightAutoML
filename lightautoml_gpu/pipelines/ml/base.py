@@ -8,11 +8,11 @@ from typing import Union
 
 from lightautoml_gpu.validation.base import TrainValidIterator
 
-try:
+import torch
+if torch.cuda.is_available():
     from ...dataset.gpu.gpu_dataset import CupyDataset, CudfDataset, DaskCudfDataset
-except:
+else:
     print("could not load gpu related libs (pipelines/ml/base.py)")
-    pass
 
 from ...dataset.np_pd_dataset import NumpyDataset, PandasDataset
 
