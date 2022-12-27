@@ -555,8 +555,8 @@ class CudfReader(PandasToPandasReader):
         Returns:
             self
         """
-        task_cpu = deepcopy(self.task)
-        task_cpu.device = 'cpu'
+        task_cpu = Task(self.task._name, loss = self.task.loss,
+                        no_gpu=True)
         cpu_reader = PandasToPandasReader(
             task=task_cpu,
             samples=self.samples,
