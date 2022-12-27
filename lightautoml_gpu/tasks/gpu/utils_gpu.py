@@ -1,5 +1,6 @@
 """."""
 
+print("TRYING TO IMPORT UTILS_GPU")
 from typing import Callable
 
 import cupy as cp
