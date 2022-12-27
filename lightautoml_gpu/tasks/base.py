@@ -28,10 +28,10 @@ if torch.cuda.is_available():
     import cupy as cp
     import dask.array as da
     import dask_cudf
-    from lightautoml_gpu.tasks.losses.gpu import TORCHLossGPU
-    from lightautoml_gpu.tasks.losses.gpu import CUMLLoss
-    from lightautoml_gpu.tasks.losses.gpu import XGBLoss
-    from lightautoml_gpu.tasks.losses.gpu import PBLoss
+    from .losses.gpu.torch_gpu import TORCHLossGPU
+    from .losses.gpu.cuml import CUMLLoss
+    from .losses.gpu.xgb_gpu import XGBLoss
+    from .losses.gpu.pb_gpu import PBLoss
     from lightautoml_gpu.tasks.gpu.common_metric_gpu import _valid_str_metric_names_gpu
     from lightautoml_gpu.tasks.gpu.utils_gpu import infer_gib_gpu
     from lightautoml_gpu.tasks.gpu.utils_gpu import infer_gib_multiclass_gpu
