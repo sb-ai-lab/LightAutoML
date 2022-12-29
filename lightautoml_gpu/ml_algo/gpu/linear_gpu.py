@@ -261,7 +261,7 @@ class LinearLBFGSGPU(TabularMLAlgoGPU):
                          output_size=self.models[i].output_size,
                          cs=self.models[i].cs) for i in range(len(self.models))]
         for i in range(len(models)):
-            models[i].model = deepcopy(self.models[i].model.cpu())
+            models[i].model = deepcopy(self.models[i].model.to_cpu())
             models[i].loss = deepcopy(self.models[i].loss.cpu())
             models[i].metric = None
 
@@ -272,9 +272,7 @@ class LinearLBFGSGPU(TabularMLAlgoGPU):
                          device='cpu',
                          loss=self.task.loss,
                          metric=self.task.metric_name,
-                         greater_is_better=self.task.greater_is_better,
-                         no_gpu=True)
-        print(algo.task.losses)
+                         greater_is_better=self.task.greater_is_better)
         algo.models = deepcopy(models)
         algo._features = self._features
         algo._nan_rate = self._nan_rate

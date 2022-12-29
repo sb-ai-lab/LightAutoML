@@ -686,8 +686,16 @@ class TabularAutoMLGPU(TabularAutoML):
         """
 
         self.client = None
+        task = Task(name=self.task._name,
+                    device='cpu',
+                    loss=self.task.loss,
+                    metric=self.task.metric_name,
+                    greater_is_better=self.task.greater_is_better,)
+                    #no_gpu=True)
+        self.task = task
         super().to_cpu()
         self.__class__ = TabularAutoML
+
 
 class TabularUtilizedAutoMLGPU(TabularUtilizedAutoML):
     """Template to make TimeUtilization from TabularAutoML (GPU version).

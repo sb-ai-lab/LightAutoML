@@ -25,7 +25,9 @@ from lightautoml_gpu.transformers.gpu.numeric_gpu import LogOddsGPU
 from lightautoml_gpu.transformers.gpu.numeric_gpu import NaNFlagsGPU
 from lightautoml_gpu.transformers.gpu.numeric_gpu import StandardScalerGPU
 
+
 from .base_gpu import TabularDataFeaturesGPU
+from ..linear_pipeline import LinearFeatures
 
 GpuDataset = Union[CupyDataset, CudfDataset, DaskCudfDataset]
 
@@ -218,3 +220,12 @@ class LinearFeaturesGPU(FeaturesPipeline, TabularDataFeaturesGPU):
         union_all = UnionTransformer(transformers_list)
 
         return union_all
+
+    def to_cpu(self):
+        """Move the class properties to CPU and change class to CPU counterpart for CPU inference.
+
+        Returns:
+            self
+        """
+        self.__class__ = LinearFeatures
+        return self

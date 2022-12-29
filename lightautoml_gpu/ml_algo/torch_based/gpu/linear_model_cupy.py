@@ -12,6 +12,8 @@ from torch import nn, optim
 
 from lightautoml_gpu.tasks.losses import TorchLossWrapper
 
+from ..linear_model import CatLinear as CatLinearCPU
+
 logger = logging.getLogger(__name__)
 ArrayOrSparseMatrix = Union[cp.ndarray, sparse_cupy.spmatrix]
 
@@ -76,6 +78,18 @@ class CatLinear(nn.Module):
                 torch.LongTensor(embed_sizes).cumsum(dim=0)
                 - torch.LongTensor(embed_sizes),
             )
+
+    def to_cpu(self):
+        """Move the class properties to CPU and change class to CPU counterpart for CPU inference.
+
+        Returns:
+            self
+        """
+
+        #self.__class__ = CatLinearCPU
+        self = self.cpu()
+        self.__class__ = CatLinearCPU
+        return self
 
     def forward(
         self,

@@ -131,7 +131,7 @@ class MLPipeline:
                         pipeline.dataset_type = NumpyDataset
 
         convert_recursive_cpu(self.features_pipeline._pipeline)
-
+        self.features_pipeline = self.features_pipeline.to_cpu()
         for i in range(len(self.ml_algos)):
             self.ml_algos[i] = self.ml_algos[i].to_cpu()
         return self

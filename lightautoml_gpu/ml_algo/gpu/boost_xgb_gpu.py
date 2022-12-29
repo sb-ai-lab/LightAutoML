@@ -352,8 +352,7 @@ class BoostXGB(TabularMLAlgoGPU, ImportanceEstimator):
                     device='cpu',
                     loss=self.task.loss,
                     metric=self.task.metric_name,
-                    greater_is_better=self.task.greater_is_better,
-                    no_gpu=True)
+                    greater_is_better=self.task.greater_is_better)
 
         algo = BoosterCPU()
         algo.features = features
@@ -503,8 +502,7 @@ class BoostXGB_dask(BoostXGB):
                     device='cpu',
                     loss=self.task.loss,
                     metric=self.task.metric_name,
-                    greater_is_better=self.task.greater_is_better,
-                    no_gpu=True)
+                    greater_is_better=self.task.greater_is_better)
 
         algo = BoosterCPU()
         algo.models = deepcopy(models)

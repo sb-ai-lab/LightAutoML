@@ -1,6 +1,5 @@
 """Bunch of metrics with unified interface (GPU version)."""
 
-print("TRYING TO IMPORT COMMON_METRIC_GPU")
 from functools import partial
 from typing import Callable
 from typing import Optional

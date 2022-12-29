@@ -435,7 +435,7 @@ class Task:
         metric_params: Optional[Dict] = None,
         greater_is_better: Optional[bool] = None,
         device: Optional[str] = None,
-        no_gpu=False
+        #no_gpu=False
     ):
 
         assert name in _valid_task_names, "Invalid task name: {}, allowed task names: {}".format(
@@ -487,9 +487,9 @@ class Task:
             loss_factories = [LGBLoss, SKLoss, TORCHLoss, CBLoss]
             loss_keys = ["lgb", "sklearn", "torch", "cb"]
 
-            if not no_gpu and torch.cuda.is_available():
-                loss_factories.extend([TORCHLossGPU, CUMLLoss, XGBLoss, PBLoss])
-                loss_keys.extend(["torch_gpu", "cuml", "xgb", "pb"])
+            #if not no_gpu and torch.cuda.is_available():
+            loss_factories.extend([TORCHLossGPU, CUMLLoss, XGBLoss, PBLoss])
+            loss_keys.extend(["torch_gpu", "cuml", "xgb", "pb"])
             for loss_key, loss_factory in zip(loss_keys, loss_factories):
                 try:
                     self.losses[loss_key] = loss_factory(loss, loss_params=loss_params)
