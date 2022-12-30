@@ -12,7 +12,13 @@ import numpy as np
 import xgboost as xgb
 from xgboost import dask as dxgb
 
-from lightautoml_gpu.tasks.gpu.common_metric_gpu import _valid_str_multiclass_metric_names_gpu
+import torch
+if torch.cuda.is_available():
+    from lightautoml_gpu.tasks.gpu.common_metric_gpu import _valid_str_multiclass_metric_names_gpu as _valid_str_multiclass_metric_names
+    from lightautoml_gpu.tasks.gpu.utils_gpu import infer_gib_gpu as infer_gib
+else:
+    from lightautoml_gpu.tasks.common_metric import _valid_str_multiclass_metric_names
+    from lightautoml_gpu.tasks.utils import infer_gib
 from lightautoml_gpu.tasks.losses.base import Loss
 from lightautoml_gpu.tasks.gpu.utils_gpu import infer_gib_gpu
 
@@ -39,7 +45,7 @@ _xgb_reg_metrics_dict = {
 }
 
 _xgb_multiclass_metrics_dict_gpu = {
-    "auc": _valid_str_multiclass_metric_names_gpu["auc"],
+    "auc": _valid_str_multiclass_metric_names["auc"],
     "crossentropy": "mlogloss",
     "accuracy": "merror",
 }

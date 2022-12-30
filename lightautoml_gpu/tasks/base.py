@@ -22,6 +22,10 @@ from .losses import TORCHLoss
 from .utils import infer_gib
 from .utils import infer_gib_multiclass
 
+from .losses.gpu.xgb_gpu import XGBLoss
+from .losses.gpu.pb_gpu import PBLoss
+    
+
 import torch
 if torch.cuda.is_available():
     import cudf
@@ -30,8 +34,6 @@ if torch.cuda.is_available():
     import dask_cudf
     from .losses.gpu.torch_gpu import TORCHLossGPU
     from .losses.gpu.cuml import CUMLLoss
-    from .losses.gpu.xgb_gpu import XGBLoss
-    from .losses.gpu.pb_gpu import PBLoss
     from lightautoml_gpu.tasks.gpu.common_metric_gpu import _valid_str_metric_names_gpu
     from lightautoml_gpu.tasks.gpu.utils_gpu import infer_gib_gpu
     from lightautoml_gpu.tasks.gpu.utils_gpu import infer_gib_multiclass_gpu
@@ -435,7 +437,7 @@ class Task:
         metric_params: Optional[Dict] = None,
         greater_is_better: Optional[bool] = None,
         device: Optional[str] = None,
-        #no_gpu=False
+        no_gpu=False
     ):
 
         assert name in _valid_task_names, "Invalid task name: {}, allowed task names: {}".format(
@@ -487,9 +489,11 @@ class Task:
             loss_factories = [LGBLoss, SKLoss, TORCHLoss, CBLoss]
             loss_keys = ["lgb", "sklearn", "torch", "cb"]
 
-            #if not no_gpu and torch.cuda.is_available():
-            loss_factories.extend([TORCHLossGPU, CUMLLoss, XGBLoss, PBLoss])
-            loss_keys.extend(["torch_gpu", "cuml", "xgb", "pb"])
+            loss_factories.extend([XGBLoss, PBLoss])
+            loss_keys.extend(["xgb", "pb"])
+            if not no_gpu and torch.cuda.is_available():
+                loss_factories.extend([TORCHLossGPU, CUMLLoss])
+                loss_keys.extend(["torch_gpu", "cuml"])
             for loss_key, loss_factory in zip(loss_keys, loss_factories):
                 try:
                     self.losses[loss_key] = loss_factory(loss, loss_params=loss_params)

@@ -29,6 +29,10 @@ from lightautoml_gpu.transformers.gpu.seq_gpu import GetSeqTransformerGPU
 
 from .base_gpu import TabularDataFeaturesGPU
 
+from ..lgb_pipeline import LGBSimpleFeatures
+from ..lgb_pipeline import LGBAdvancedPipeline
+from ..lgb_pipeline import LGBMultiSeqSimpleFeatures
+
 GpuDataset = Union[CupyDataset, CudfDataset, DaskCudfDataset]
 
 
@@ -95,6 +99,15 @@ class LGBSimpleFeaturesGPU(FeaturesPipeline):
             transformers_list.append(num_processing)
         union_all = UnionTransformer(transformers_list)
         return union_all
+
+    def to_cpu(self):
+        """Move the class properties to CPU and change class to CPU counterpart for CPU inference.
+
+        Returns:
+            self
+        """
+        self.__class__ = LGBSimpleFeatures
+        return self
 
 
 class LGBMultiSeqSimpleFeaturesGPU(FeaturesPipeline, TabularDataFeaturesGPU):
@@ -244,6 +257,15 @@ class LGBMultiSeqSimpleFeaturesGPU(FeaturesPipeline, TabularDataFeaturesGPU):
 
         return union_all
 
+    def to_cpu(self):
+        """Move the class properties to CPU and change class to CPU counterpart for CPU inference.
+
+        Returns:
+            self
+        """
+        self.__class__ = LGBMultiSeqSimpleFeaturesGPU
+        return self
+
 
 class LGBAdvancedPipelineGPU(FeaturesPipeline, TabularDataFeaturesGPU):
     """Create advanced pipeline for trees based models.
@@ -390,3 +412,12 @@ class LGBAdvancedPipelineGPU(FeaturesPipeline, TabularDataFeaturesGPU):
         # final pipeline
         union_all = UnionTransformer([x for x in transformer_list if x is not None])
         return union_all
+
+    def to_cpu(self):
+        """Move the class properties to CPU and change class to CPU counterpart for CPU inference.
+
+        Returns:
+            self
+        """
+        self.__class__ = LGBAdvancedPipelineGPU
+        return self
