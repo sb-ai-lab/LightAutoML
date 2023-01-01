@@ -2,6 +2,8 @@
 
 import logging
 
+import os
+
 import pandas as pd
 import numpy as np
 from py_boost import TLPredictor
@@ -19,6 +21,20 @@ class PBPredictor(TabularMLAlgo, ImportanceEstimator):
     """
 
     _name: str = "PB"
+
+    def __getstate__(self):
+        for i in range(len(self.models)):
+            self.models[i].dump("./treelite/"+str(i))
+        self.__dict__.pop("models")
+        return self.__dict__
+
+    def __setstate__(self, d):
+        self.__dict__ = d
+        models = []
+        names = os.listdir("./treelite")
+        for name in names:
+            models.append(TLPredictor.load("./treelite/"+name))
+        self.__dict__["models"] = models
 
     def predict_single_fold(
         self, model: TLPredictor, dataset: NumpyDataset
