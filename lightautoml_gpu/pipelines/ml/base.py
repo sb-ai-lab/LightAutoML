@@ -1,5 +1,7 @@
 """Base classes for MLPipeline."""
 
+from copy import deepcopy
+
 from typing import List
 from typing import Optional
 from typing import Sequence
@@ -116,6 +118,7 @@ class MLPipeline:
         Returns:
             instance of pipeline with CPU inference.
         """
+
         def convert_recursive_cpu(pipeline):
             if hasattr(pipeline, 'transformer_list'):
                 for i in range(len(pipeline.transformer_list)):
@@ -132,8 +135,29 @@ class MLPipeline:
 
         convert_recursive_cpu(self.features_pipeline._pipeline)
         self.features_pipeline = self.features_pipeline.to_cpu()
+
+        if self.pre_selection.features_pipeline is not None:
+            convert_recursive_cpu(self.pre_selection.features_pipeline._pipeline)
+            self.pre_selection.features_pipeline = self.pre_selection.features_pipeline.to_cpu()
+        if self.pre_selection.ml_algo is not None:
+            print("altering preselection ml algo")
+            self.pre_selection.ml_algo = self.pre_selection.ml_algo.to_cpu()
+        if self.pre_selection._empty_algo is not None:
+            print("altering preselection empty algo")
+            self.pre_selection._empty_algo = None
+
         for i in range(len(self.ml_algos)):
-            self.ml_algos[i] = self.ml_algos[i].to_cpu()
+            self.ml_algos[i] = deepcopy(self.ml_algos[i].to_cpu())
+
+        if self.post_selection.features_pipeline is not None:
+            convert_recursive_cpu(self.post_selection.features_pipeline._pipeline)
+            self.post_selection.features_pipeline = self.post_selection.features_pipeline.to_cpu()
+        if self.post_selection.ml_algo is not None:
+            print("altering postselection ml algo")
+            self.post_selection.ml_algo = self.post_selection.ml_algo.to_cpu()
+        if self.post_selection._empty_algo is not None:
+            print("altering postselection empty algo")
+            self.post_selection._empty_algo = None
         return self
 
     def fit_predict(self, train_valid: TrainValidIterator) -> LAMLDataset:

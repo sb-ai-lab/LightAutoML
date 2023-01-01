@@ -263,7 +263,7 @@ class LGBMultiSeqSimpleFeaturesGPU(FeaturesPipeline, TabularDataFeaturesGPU):
         Returns:
             self
         """
-        self.__class__ = LGBMultiSeqSimpleFeaturesGPU
+        self.__class__ = LGBMultiSeqSimpleFeatures
         return self
 
 
@@ -419,5 +419,5 @@ class LGBAdvancedPipelineGPU(FeaturesPipeline, TabularDataFeaturesGPU):
         Returns:
             self
         """
-        self.__class__ = LGBAdvancedPipelineGPU
+        self.__class__ = LGBAdvancedPipeline
         return self

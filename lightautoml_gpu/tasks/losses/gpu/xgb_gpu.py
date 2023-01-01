@@ -20,7 +20,6 @@ else:
     from lightautoml_gpu.tasks.common_metric import _valid_str_multiclass_metric_names
     from lightautoml_gpu.tasks.utils import infer_gib
 from lightautoml_gpu.tasks.losses.base import Loss
-from lightautoml_gpu.tasks.gpu.utils_gpu import infer_gib_gpu
 
 XGBMatrix = Union[xgb.DMatrix, dxgb.DaskDeviceQuantileDMatrix]
 

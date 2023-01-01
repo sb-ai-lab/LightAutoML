@@ -189,6 +189,9 @@ class BoostPB(TabularMLAlgoGPU, ImportanceEstimator):
 
         optimization_search_space["sketch_arg"] = Uniform(low=1, high=suggested_params["n_classes"] // 2, q=1)
 
+        optimization_search_space["calsample"] = Uniform(low=0.0, high=1.0)
+        optimization_search_space["subsample"] = Uniform(low=0.0, high=1.0)
+
         return optimization_search_space
 
     def to_cpu(self):
