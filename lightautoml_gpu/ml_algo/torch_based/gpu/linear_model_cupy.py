@@ -13,6 +13,9 @@ from torch import nn, optim
 from lightautoml_gpu.tasks.losses import TorchLossWrapper
 
 from .catlinear import CatLinear
+from .catlinear import CatLogisticRegression
+from .catlinear import CatRegression
+from .catlinear import CatMulticlass
 
 logger = logging.getLogger(__name__)
 ArrayOrSparseMatrix = Union[cp.ndarray, sparse_cupy.spmatrix]
@@ -37,64 +40,6 @@ def convert_cupy_scipy_sparse_to_torch_float(
     sparse_tensor = torch.sparse_coo_tensor(idx, values, size=matrix.shape)
 
     return sparse_tensor
-
-
-class CatLogisticRegression(CatLinear):
-    """Realisation of torch-based logistic regression (GPU version)."""
-
-    def __init__(
-        self, numeric_size: int, embed_sizes: Sequence[int] = (), output_size: int = 1
-    ):
-        super().__init__(numeric_size, embed_sizes=embed_sizes, output_size=output_size)
-        self.sigmoid = nn.Sigmoid()
-
-    def forward(
-        self,
-        numbers: Optional[torch.Tensor] = None,
-        categories: Optional[torch.Tensor] = None,
-    ):
-        """Forward-pass. Sigmoid func at the end of linear layer.
-
-        Args:
-            numbers: Input numeric features.
-            categories: Input categorical features.
-
-        """
-        x = super().forward(numbers, categories)
-        x = torch.clamp(x, -50, 50)
-        x = self.sigmoid(x)
-
-        return x
-
-
-class CatRegression(CatLinear):
-    """Realisation of torch-based linear regreession (GPU version)."""
-
-    def __init__(
-        self, numeric_size: int, embed_sizes: Sequence[int] = (), output_size: int = 1
-    ):
-        super().__init__(numeric_size, embed_sizes=embed_sizes, output_size=output_size)
-
-
-class CatMulticlass(CatLinear):
-    """Realisation of multi-class linear classifier (GPU version)."""
-
-    def __init__(
-        self, numeric_size: int, embed_sizes: Sequence[int] = (), output_size: int = 1
-    ):
-        super().__init__(numeric_size, embed_sizes=embed_sizes, output_size=output_size)
-        self.softmax = nn.Softmax(dim=1)
-
-    def forward(
-        self,
-        numbers: Optional[torch.Tensor] = None,
-        categories: Optional[torch.Tensor] = None,
-    ):
-        x = super().forward(numbers, categories)
-        x = torch.clamp(x, -50, 50)
-        x = self.softmax(x)
-
-        return x
 
 
 class TorchBasedLinearEstimator:

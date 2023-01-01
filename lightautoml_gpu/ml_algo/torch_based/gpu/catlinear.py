@@ -70,3 +70,60 @@ class CatLinear(nn.Module):
             x = x + self.cat_params[categories + self.embed_idx].sum(dim=1)
 
         return x
+
+class CatLogisticRegression(CatLinear):
+    """Realisation of torch-based logistic regression (GPU version)."""
+
+    def __init__(
+        self, numeric_size: int, embed_sizes: Sequence[int] = (), output_size: int = 1
+    ):
+        super().__init__(numeric_size, embed_sizes=embed_sizes, output_size=output_size)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(
+        self,
+        numbers: Optional[torch.Tensor] = None,
+        categories: Optional[torch.Tensor] = None,
+    ):
+        """Forward-pass. Sigmoid func at the end of linear layer.
+
+        Args:
+            numbers: Input numeric features.
+            categories: Input categorical features.
+
+        """
+        x = super().forward(numbers, categories)
+        x = torch.clamp(x, -50, 50)
+        x = self.sigmoid(x)
+
+        return x
+
+
+class CatRegression(CatLinear):
+    """Realisation of torch-based linear regreession (GPU version)."""
+
+    def __init__(
+        self, numeric_size: int, embed_sizes: Sequence[int] = (), output_size: int = 1
+    ):
+        super().__init__(numeric_size, embed_sizes=embed_sizes, output_size=output_size)
+
+
+class CatMulticlass(CatLinear):
+    """Realisation of multi-class linear classifier (GPU version)."""
+
+    def __init__(
+        self, numeric_size: int, embed_sizes: Sequence[int] = (), output_size: int = 1
+    ):
+        super().__init__(numeric_size, embed_sizes=embed_sizes, output_size=output_size)
+        self.softmax = nn.Softmax(dim=1)
+
+    def forward(
+        self,
+        numbers: Optional[torch.Tensor] = None,
+        categories: Optional[torch.Tensor] = None,
+    ):
+        x = super().forward(numbers, categories)
+        x = torch.clamp(x, -50, 50)
+        x = self.softmax(x)
+
+        return x
