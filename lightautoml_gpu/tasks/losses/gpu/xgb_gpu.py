@@ -197,7 +197,7 @@ class XGBLoss(Loss):
 
         """
         if greater_is_better is None:
-            greater_is_better = infer_gib_gpu(metric_func)
+            greater_is_better = infer_gib(metric_func)
 
         if metric_params is not None:
             metric_func = partial(metric_func, **metric_params)

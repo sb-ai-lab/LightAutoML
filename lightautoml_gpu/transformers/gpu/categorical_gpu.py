@@ -1,6 +1,5 @@
 """Categorical features transformers (GPU version)."""
 
-from itertools import combinations
 from typing import List
 from typing import Optional
 from typing import Sequence
@@ -9,9 +8,6 @@ from typing import Union
 from typing import cast
 
 from copy import deepcopy
-
-from sklearn.utils.murmurhash import murmurhash3_32
-import pandas as pd
 
 import cudf
 import cupy as cp
@@ -22,7 +18,6 @@ from cuml.preprocessing import OneHotEncoder
 from sklearn.preprocessing import OneHotEncoder as OHE_CPU
 from cupyx import scatter_add
 
-from lightautoml_gpu.dataset.np_pd_dataset import PandasDataset
 from lightautoml_gpu.dataset.gpu.gpu_dataset import CudfDataset
 from lightautoml_gpu.dataset.gpu.gpu_dataset import CupyDataset
 from lightautoml_gpu.dataset.gpu.gpu_dataset import DaskCudfDataset
@@ -1994,15 +1989,14 @@ class CatIntersectionsGPU(CatIntersectstions):
         data = cudf.from_pandas(dataset.data)
         roles = dataset.roles
         # target and etc ..
-        params = dict(((x, cudf.Series(dataset.__dict__[x]) \
-                 if len(dataset.__dict__[x].shape) == 1 else cudf.DataFrame(dataset.__dict__[x]))
-                 for x in dataset._array_like_attrs
-        ))
+        params = dict(((x, cudf.Series(dataset.__dict__[x])
+                        if len(dataset.__dict__[x].shape) == 1 else cudf.DataFrame(dataset.__dict__[x]))
+                       for x in dataset._array_like_attrs))
         task = dataset.task
         dataset = CudfDataset(data, roles, task, **params)
 
         if not is_cudf:
-            dataset = dataset.to_daskcudf(nparts=nparts)     
+            dataset = dataset.to_daskcudf(nparts=nparts)
         return dataset
 
 

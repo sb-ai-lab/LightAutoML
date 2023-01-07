@@ -71,6 +71,7 @@ class CatLinear(nn.Module):
 
         return x
 
+
 class CatLogisticRegression(CatLinear):
     """Realisation of torch-based logistic regression (GPU version)."""
 

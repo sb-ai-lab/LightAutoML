@@ -422,7 +422,7 @@ class BoostCBGPU(TabularMLAlgoGPU, ImportanceEstimator):
                     loss=self.task.loss,
                     metric=self.task.metric_name,
                     greater_is_better=self.task.greater_is_better,
-                    no_gpu = True)
+                    no_gpu=True)
         algo = BoostCB(default_params=default_params,
                        )
         models = deepcopy(self.models)

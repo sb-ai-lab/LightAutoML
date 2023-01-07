@@ -43,8 +43,7 @@ def set_sklearn_folds(
     """
     # GPU PART
     if (torch.cuda.is_available() and isinstance(target, (cp.ndarray, cudf.Series,
-                            cudf.DataFrame, dask_cudf.Series, dask_cudf.DataFrame)
-                   )):
+                                                 cudf.DataFrame, dask_cudf.Series, dask_cudf.DataFrame))):
         def KFolds_gpu(
             target: Union[cudf.Series, cudf.DataFrame],
             n_splits: int = 5,

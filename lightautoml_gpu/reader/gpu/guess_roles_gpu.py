@@ -36,6 +36,8 @@ from lightautoml_gpu.transformers.gpu.categorical_gpu import MultioutputTargetEn
 
 from lightautoml_gpu.transformers.gpu.numeric_gpu import QuantileBinningGPU
 
+from lightautoml_gpu.reader.guess_roles import calc_ginis
+
 RolesDict = Dict[str, ColumnRole]
 EncoderGPU = Union[TargetEncoderGPU, MultiClassTargetEncoderGPU, MultioutputTargetEncoderGPU]
 GpuFrame = Union[cudf.DataFrame]
@@ -204,7 +206,6 @@ def calc_ginis_gpu(
         scores = scores.mean(axis=1)
     return scores
 
-from lightautoml_gpu.reader.guess_roles import calc_ginis
 
 def _get_score_from_pipe_gpu(
     train: GpuDataset,
@@ -255,7 +256,7 @@ def _get_score_from_pipe_gpu(
     len_ratio = int(new_len / orig_len)
     target = cp.asnumpy(target)
     data = data.reshape((data.shape[0], orig_len, len_ratio))
-    
+
     scores = calc_ginis(data, target, empty_slice)
     return scores
 

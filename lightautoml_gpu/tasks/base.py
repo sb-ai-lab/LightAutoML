@@ -24,7 +24,6 @@ from .utils import infer_gib_multiclass
 
 from .losses.gpu.xgb_gpu import XGBLoss
 from .losses.gpu.pb_gpu import PBLoss
-    
 
 import torch
 if torch.cuda.is_available():

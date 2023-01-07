@@ -188,7 +188,6 @@ if torch.cuda.is_available():
 
             return plain_dataset
 
-
     def cupy_and_cudf_concat(
         datasets: Sequence[Union[CupyDataset, CudfDataset]]
     ) -> CupyDataset:

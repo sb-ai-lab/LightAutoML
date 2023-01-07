@@ -1,8 +1,9 @@
 """Linear models based on Torch library."""
 
 import logging
-from copy import deepcopy
 from typing import Callable, Optional, Sequence, Union
+
+from copy import deepcopy
 
 import cupy as cp
 import numpy as np
@@ -12,7 +13,6 @@ from torch import nn, optim
 
 from lightautoml_gpu.tasks.losses import TorchLossWrapper
 
-from .catlinear import CatLinear
 from .catlinear import CatLogisticRegression
 from .catlinear import CatRegression
 from .catlinear import CatMulticlass

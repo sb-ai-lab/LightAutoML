@@ -14,7 +14,7 @@ from cuml.metrics import log_loss
 from cuml.metrics import roc_auc_score as cuml_roc_auc
 from cuml.metrics.regression import mean_squared_log_error
 from dask_ml.metrics import accuracy_score as dask_accuracy_score
-from dask_ml.metrics import mean_absolute_error as dask_mean_absolute_error
+
 
 def log_loss_raw(y_true, y_pred, sample_weight=None, eps=1e-15, axis=1):
     y_pred /= y_pred.sum(axis=axis)[:, cp.newaxis]
@@ -41,6 +41,7 @@ def log_loss_gpu(y_true, y_pred, sample_weight=None, eps: float = 1e-15) -> floa
     res = func(y_true, y_pred, sample_weight=sample_weight, eps=eps)
     return res
 
+
 # copied from R2Score class of py-boost
 def r2_score(y_true, y_pred, sample_weight=None):
     if sample_weight is not None:
@@ -52,6 +53,7 @@ def r2_score(y_true, y_pred, sample_weight=None):
 
     return (1 - err / std).mean()
 
+
 def r2_score_gpu(y_true, y_pred, sample_weight=None) -> float:
 
     if isinstance(y_true, da.Array):
@@ -62,6 +64,7 @@ def r2_score_gpu(y_true, y_pred, sample_weight=None) -> float:
     else:
         res = r2_score(y_true, y_pred, sample_weight)
     return res
+
 
 # copied from auc function of py-boost
 def roc_auc_score(y, x, sample_weight=None):
@@ -88,6 +91,7 @@ def roc_auc_score(y, x, sample_weight=None):
     tot = cs_0[-1] * sum_1.sum()
 
     return float(auc_.sum() / tot)
+
 
 def roc_auc_score_gpu(y_true, y_pred, sample_weight=None) -> float:
 
@@ -130,13 +134,15 @@ def mean_squared_error_gpu(y_true, y_pred, sample_weight=None) -> float:
 
     return err
 
+
 def mean_absolute_error(y_true, y_pred, sample_weight=None):
-    err = abs(y_true-y_pred)
+    err = abs(y_true - y_pred)
     if sample_weight is None:
         return err.mean()
 
     err = (err.mean(axis=1, keepdims=True) * sample_weight).sum() / sample_weight.sum()
     return err
+
 
 def mean_absolute_error_gpu(y_true, y_pred, sample_weight=None):
 

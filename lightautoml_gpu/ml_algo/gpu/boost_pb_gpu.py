@@ -205,14 +205,14 @@ class BoostPB(TabularMLAlgoGPU, ImportanceEstimator):
         features = deepcopy(self.features)
         models = []
         for i in range(len(self.models)):
-            models.append(TLPredictor(self.models[i], postprocess_fn = BCELossCPU()))
+            models.append(TLPredictor(self.models[i], postprocess_fn=BCELossCPU()))
 
         task = Task(name=self.task._name,
                     device='cpu',
                     loss=self.task.loss,
                     metric=self.task.metric_name,
                     greater_is_better=self.task.greater_is_better,
-                    no_gpu = True)
+                    no_gpu=True)
 
         algo = PBPredictor()
         algo.models = models
