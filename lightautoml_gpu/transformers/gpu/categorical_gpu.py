@@ -1924,7 +1924,7 @@ class MultioutputTargetEncoderGPU(LAMLTransformer):
         return output
 
 
-class CatIntersectionsGPU(LabelEncoderGPU):
+class CatIntersectionsGPU(CatIntersectstions):
     """Build label encoded intersections of categorical variables (GPU version).
 
        Create label encoded intersection columns for categories.
@@ -1947,9 +1947,7 @@ class CatIntersectionsGPU(LabelEncoderGPU):
         max_depth: int = 2,
     ):
 
-        super().__init__(subs, random_state)
-        self.intersections = intersections
-        self.max_depth = max_depth
+        super().__init__(subs, random_state, intersections, max_depth)
 
     def to_cpu(self):
         """Move the class properties to CPU and change class to CPU counterpart for CPU inference.
@@ -1958,127 +1956,8 @@ class CatIntersectionsGPU(LabelEncoderGPU):
             self
         """
 
-        intersections = deepcopy(self.intersections)
-        max_depth = self.max_depth
-        subs = deepcopy(self.subs)
-        random_state = self.random_state
-        features = deepcopy(self._features)
-        #internal_dict = {i: v.to_pandas() for i, v in zip(self.dicts.keys(), self.dicts.values())}
-
         self.__class__ = CatIntersectstions
-        self.intersections = intersections
-        self.max_depth = max_depth
-        self.subs = subs
-        self.random_state = random_state
-        self.features = features
-        self.dicts = self.dicts_cpu
         return self
-
-    @staticmethod
-    def _make_category_gpu(df: cudf.DataFrame, cols: Sequence[str]) -> cudf.DataFrame:
-        """Make hash for category interactions.
-
-        Args:
-            df: Input DataFrame
-            cols: List of columns
-
-        Returns:
-            Hash cudf.DataFrame.
-
-        """
-
-        res = None
-
-        for col in cols:
-            if res is None:
-                res = df[col].astype("str")
-            else:
-                res = res + "_" + df[col].astype("str")
-
-        res = res.hash_values()
-        return res
-
-    @staticmethod
-    def _make_category(df: cudf.DataFrame, cols: Sequence[str]) -> cudf.DataFrame:
-        """Make hash for category interactions.
-
-        Args:
-            df: Input DataFrame
-            cols: List of columns
-
-        Returns:
-            Hash cudf.DataFrame.
-
-        """
-        df = df.to_pandas()
-        res = np.empty((df.shape[0],), dtype=np.int32)
-
-        for n, inter in enumerate(zip(*(df[x] for x in cols))):
-            h = murmurhash3_32("_".join(map(str, inter)), seed=42)
-            res[n] = h
-        return cudf.Series(res)
-
-    def _build_df(self, dataset: GpuNumericalDataset) -> GpuNumericalDataset:
-        """
-
-        Args:
-            dataset: Cudf or Cupy or DaskCudf dataset of categorical features.
-
-        Returns:
-            Dataset.
-        """
-        col_names = []
-        if type(dataset) == DaskCudfDataset:
-            df = dataset.data
-            roles = {}
-            new_df = []
-            for comb in self.intersections:
-                name = "({0})".format("__".join(comb))
-                col_names.append(name)
-                new_df.append(df.map_partitions(self._make_category, comb).persist())
-                roles[name] = CategoryRole(
-                    object,
-                    unknown=max((dataset.roles[x].unknown for x in comb)),
-                    label_encoded=True,
-                )
-            for data in new_df:
-                mapper = dict(zip(np.arange(len(col_names)), col_names))
-            new_df = dask_cudf.concat(new_df, axis=1).rename(columns=mapper).persist()
-
-        else:
-            if (type(dataset) == PandasDataset):
-                data = cudf.from_pandas(dataset.data)
-                roles = dataset.roles
-                # target and etc ..
-                params = dict(
-                    (
-                        (x, cudf.Series(dataset.__dict__[x]) if len(dataset.__dict__[x].shape) == 1 else cudf.DataFrame(dataset.__dict__[x]))
-                        for x in dataset._array_like_attrs
-                    )
-                )
-                task = dataset.task
-
-                dataset = CudfDataset(data, roles, task, **params)
-            else:
-                dataset = dataset.to_cudf()
-            df = dataset.data
-
-            roles = {}
-            new_df = cudf.DataFrame(index=df.index)
-            for comb in self.intersections:
-                name = "({0})".format("__".join(comb))
-                col_names.append(name)
-                new_df[name] = self._make_category(df, comb)
-
-                roles[name] = CategoryRole(
-                    object,
-                    unknown=max((dataset.roles[x].unknown for x in comb)),
-                    label_encoded=True,
-                )
-        output = dataset.empty()
-        output.set_data(new_df, col_names, roles)
-
-        return output
 
     def fit(self, dataset: GpuNumericalDataset):
         """Create label encoded intersections and save mapping (GPU version).
@@ -2090,38 +1969,8 @@ class CatIntersectionsGPU(LabelEncoderGPU):
             self.
 
         """
-        # set transformer names and add checks
-        for check_func in self._fit_checks:
-            check_func(dataset)
-
-        if self.intersections is None:
-            self.intersections = []
-            for i in range(2, min(self.max_depth, len(dataset.features)) + 1):
-                self.intersections.extend(list(combinations(dataset.features, i)))
-
-        inter_dataset = self._build_df(dataset)
-        super().fit(inter_dataset)
-        roles = inter_dataset.roles
-        df = inter_dataset.to_pandas().data
-
-        if self.subs is not None and df.shape[0] >= self.subs:
-            subs = df.sample(n=self.subs, random_state=self.random_state)
-        else:
-            subs = df
-
-        self.dicts_cpu = {}
-        for i in subs.columns:
-            role = roles[i]
-            co = role.unknown
-            cnts = (
-                subs[i]
-                .value_counts(dropna=False)
-                .reset_index()
-                .sort_values([i, "index"], ascending=[False, True])
-                .set_index("index")
-            )
-            vals = cnts[cnts[i] > co].index.astype(int).values
-            self.dicts_cpu[i] = pd.Series(np.arange(vals.shape[0], dtype=np.int32) + 1, index=vals)
+        dataset = dataset.to_pandas()
+        super().fit(dataset)
 
         return self
 
@@ -2134,10 +1983,27 @@ class CatIntersectionsGPU(LabelEncoderGPU):
         Returns:
 
         """
+        is_cudf = True
+        nparts = 0
+        if isinstance(dataset, DaskCudfDataset):
+            is_cudf = False
+            nparts = dataset.data.npartitions
+        dataset = dataset.to_pandas()
+        dataset = super().transform(dataset).to_pandas()
 
-        inter_dataset = self._build_df(dataset)
-        out_df = super().transform(inter_dataset)
-        return out_df
+        data = cudf.from_pandas(dataset.data)
+        roles = dataset.roles
+        # target and etc ..
+        params = dict(((x, cudf.Series(dataset.__dict__[x]) \
+                 if len(dataset.__dict__[x].shape) == 1 else cudf.DataFrame(dataset.__dict__[x]))
+                 for x in dataset._array_like_attrs
+        ))
+        task = dataset.task
+        dataset = CudfDataset(data, roles, task, **params)
+
+        if not is_cudf:
+            dataset = dataset.to_daskcudf(nparts=nparts)     
+        return dataset
 
 
 class OrdinalEncoderGPU(LabelEncoderGPU):

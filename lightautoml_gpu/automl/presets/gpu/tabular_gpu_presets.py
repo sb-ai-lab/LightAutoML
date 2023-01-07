@@ -319,9 +319,9 @@ class TabularAutoMLGPU(TabularAutoML):
 
             if (self.task.name == "multi:reg") or (self.task.name == "multilabel"):
                 # timer will be useful to estimate time for next gbm runs
-                time_score = self.get_time_score(n_level, "xgb", False)
-                sel_timer_0 = self.timer.get_task_timer("xgb", time_score)
-                selection_gbm = BoostXGB(timer=sel_timer_0, **self.xgb_params)
+                time_score = self.get_time_score(n_level, "pb", False)
+                sel_timer_0 = self.timer.get_task_timer("pb", time_score)
+                selection_gbm = BoostPB(timer=sel_timer_0, **self.xgb_params)
             else:
                 time_score = self.get_time_score(n_level, "cb", False)
                 sel_timer_0 = self.timer.get_task_timer("cb", time_score)

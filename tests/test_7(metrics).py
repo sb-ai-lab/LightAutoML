@@ -18,7 +18,7 @@ import cudf
 import dask.array as da
 import dask_cudf
 
-size = (100, 3)
+size = (500, 3)
 
 y_multi = np.random.randint(0,3, size[0])
 y_multi_cp = cp.asarray(y_multi)
@@ -79,10 +79,9 @@ weight_da = dask_cudf.from_cudf(weight_cudf, npartitions=2)\
                           dtype=cp.float32))
 
 ##############################################################
-#DOESN"T SUPPORT WEIGHTS FOR NOW
-res = bin_cpu['auc'](y_bin, y_one)#, sample_weight=w_one)
-res_cp = bin_gpu['auc'](y_bin_cp, y_one_cp)#, w_one_cp)
-res_da = bin_gpu['auc'](y_bin_da, y_one_da)#, w_one_da)
+res = bin_cpu['auc'](y_bin, y_one, sample_weight=w_one)
+res_cp = bin_gpu['auc'](y_bin_cp, y_one_cp, w_one_cp)
+res_da = bin_gpu['auc'](y_bin_da, y_one_da, w_one_da)
 assert abs(res - res_cp) < 1e-2 
 assert abs(res - res_da) < 1e-2
 ##############################################################
@@ -99,26 +98,23 @@ res_da = bin_gpu['accuracy'](y_bin_da, y_one_da)#, w_one_da)
 assert abs(res - res_cp) < 1e-2 
 assert abs(res - res_da) < 1e-2
 ##############################################################
-#DOESN"T SUPPORT WEIGHTS FOR NOW
-res = reg_cpu['r2'](y_one, w_one)#, sample_weight=w_one)
-res_cp = reg_gpu['r2'](y_one_cp, w_one_cp)#, w_one_cp)
-res_da = reg_gpu['r2'](y_one_da, w_one_da)#, w_one_da)
+res = reg_cpu['r2'](y_one, w_one, sample_weight=w_one)
+res_cp = reg_gpu['r2'](y_one_cp, w_one_cp, w_one_cp)
+res_da = reg_gpu['r2'](y_one_da, w_one_da, w_one_da)
+assert abs(res - res_cp) < 1e-1
+assert abs(res - res_da) < 1e-0
+##############################################################
+res = reg_cpu['mse'](y_true, y_pred, sample_weight=weight)
+res_cp = reg_gpu['mse'](y_true_cp, y_pred_cp, weight_cp)
+res_da = reg_gpu['mse'](y_true_da, y_pred_da, weight_da)
+assert abs(res - res_cp) < 1e-2 
+assert abs(res - res_da) < 1e-2
+##############################################################
+res = reg_cpu['mae'](y_true, y_pred, sample_weight = weight)
+res_cp = reg_gpu['mae'](y_true_cp, y_pred_cp, weight_cp)
+res_da = reg_gpu['mae'](y_true_da, y_pred_da, weight_da)
 assert abs(res - res_cp) < 1e-2 
 assert abs(res - res_da) < 1e-1
-##############################################################
-#DOESN"T SUPPORT WEIGHTS FOR NOW
-res = reg_cpu['mse'](y_true, y_pred)#, sample_weight=weight)
-res_cp = reg_gpu['mse'](y_true_cp, y_pred_cp)#, weight_cp)
-res_da = reg_gpu['mse'](y_true_da, y_pred_da)#, weight_da)
-assert abs(res - res_cp) < 1e-2 
-assert abs(res - res_da) < 1e-2
-##############################################################
-#DOESN"T SUPPORT WEIGHTS FOR NOW
-res = reg_cpu['mae'](y_true, y_pred)#, sample_weight = weight)
-res_cp = reg_gpu['mae'](y_true_cp, y_pred_cp)#, weight_cp)
-res_da = reg_gpu['mae'](y_true_da, y_pred_da)#, weight_da)
-assert abs(res - res_cp) < 1e-2 
-assert abs(res - res_da) < 1e-2
 ##############################################################
 res = reg_cpu['rmsle'](y_true, y_pred, weight)
 res_cp = reg_gpu['rmsle'](y_true_cp, y_pred_cp, weight_cp)
@@ -163,10 +159,9 @@ res_da = multi_gpu['auc'](y_multi_da, y_pred_da)#, weight_da)
 assert abs(res - res_cp) < 1e-2 
 assert abs(res - res_da) < 1e-1
 ##############################################################
-#DOESN"T SUPPORT WEIGHTS FOR NOW
-res = multi_cpu['crossentropy'](y_multi, y_pred)#, sample_weight=w_one)
-res_cp = multi_gpu['crossentropy'](y_multi_cp, y_pred_cp)#, weight_cp)
-res_da = multi_gpu['crossentropy'](y_multi_da, y_pred_da)#, weight_da)
+res = multi_cpu['crossentropy'](y_multi, y_pred, sample_weight=w_one)
+res_cp = multi_gpu['crossentropy'](y_multi_cp, y_pred_cp, w_one_cp)
+res_da = multi_gpu['crossentropy'](y_multi_da, y_pred_da, w_one_da)
 assert abs(res - res_cp) < 1e-2 
 assert abs(res - res_da) < 1e-2
 ##############################################################

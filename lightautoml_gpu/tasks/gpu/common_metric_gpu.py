@@ -11,17 +11,14 @@ import cupy as cp
 import dask.array as da
 from cuml.metrics import accuracy_score
 from cuml.metrics import log_loss
-from cuml.metrics import roc_auc_score
-from cuml.metrics.regression import mean_absolute_error
+from cuml.metrics import roc_auc_score as cuml_roc_auc
 from cuml.metrics.regression import mean_squared_log_error
-from cuml.metrics.regression import r2_score
 from dask_ml.metrics import accuracy_score as dask_accuracy_score
 from dask_ml.metrics import mean_absolute_error as dask_mean_absolute_error
 
-
-def log_loss_raw(y_true, y_pred, sample_weight=None, eps=1e-15):
-    y_pred /= y_pred.sum(axis=1)[:, cp.newaxis]
-    loss = -(y_true * cp.log(y_pred)).sum(axis=1)
+def log_loss_raw(y_true, y_pred, sample_weight=None, eps=1e-15, axis=1):
+    y_pred /= y_pred.sum(axis=axis)[:, cp.newaxis]
+    loss = -(y_true * cp.log(y_pred)).sum(axis=axis)
     if sample_weight is None:
         return loss.sum() / len(loss)
     else:
@@ -44,18 +41,53 @@ def log_loss_gpu(y_true, y_pred, sample_weight=None, eps: float = 1e-15) -> floa
     res = func(y_true, y_pred, sample_weight=sample_weight, eps=eps)
     return res
 
+# copied from R2Score class of py-boost
+def r2_score(y_true, y_pred, sample_weight=None):
+    if sample_weight is not None:
+        err = ((y_true - y_pred) ** 2 * sample_weight).sum(axis=0) / sample_weight.sum()
+        std = ((y_true - y_true.mean(axis=0)) ** 2 * sample_weight).sum(axis=0) / sample_weight.sum()
+    else:
+        err = ((y_true - y_pred) ** 2).mean(axis=0)
+        std = y_true.var(axis=0)
 
-def r2_score_gpu(y_true, y_pred) -> float:
+    return (1 - err / std).mean()
+
+def r2_score_gpu(y_true, y_pred, sample_weight=None) -> float:
 
     if isinstance(y_true, da.Array):
         output = da.map_blocks(
-            r2_score, y_true, y_pred, meta=cp.array((), dtype=cp.float32), drop_axis=1
+            r2_score, y_true, y_pred, sample_weight, meta=cp.array((), dtype=cp.float32), drop_axis=1
         )
         res = cp.array(output.compute()).mean()
     else:
-        res = r2_score(y_true, y_pred)
+        res = r2_score(y_true, y_pred, sample_weight)
     return res
 
+# copied from auc function of py-boost
+def roc_auc_score(y, x, sample_weight=None):
+
+    unique_x = cp.unique(x)
+
+    if unique_x.shape[0] <= 1:
+        return 0.5
+
+    if sample_weight is None:
+        sample_weight = cp.ones_like(y)
+
+    rank_x = cp.searchsorted(unique_x, x)
+
+    sum_1 = cp.zeros_like(unique_x, dtype=cp.float64)
+    sum_1.scatter_add(rank_x, sample_weight * y)
+
+    sum_0 = cp.zeros_like(unique_x, dtype=cp.float64)
+    sum_0.scatter_add(rank_x, sample_weight * (1 - y))
+
+    cs_0 = sum_0.cumsum()
+    auc_ = (cs_0 - sum_0 / 2) * sum_1
+
+    tot = cs_0[-1] * sum_1.sum()
+
+    return float(auc_.sum() / tot)
 
 def roc_auc_score_gpu(y_true, y_pred, sample_weight=None) -> float:
 
@@ -65,7 +97,7 @@ def roc_auc_score_gpu(y_true, y_pred, sample_weight=None) -> float:
         if sample_weight is not None:
             sample_weight = sample_weight.compute().squeeze()
 
-    res = roc_auc_score(y_true, y_pred)
+    res = roc_auc_score(y_true, y_pred, sample_weight)
     return res
 
 
@@ -84,19 +116,40 @@ def mean_squared_error_gpu(y_true, y_pred, sample_weight=None) -> float:
     """
     if isinstance(y_true, da.Array):
         err = y_pred - y_true
-        err_sq = da.multiply(err, err)
-        mean = err_sq.mean().compute()
+        err = da.multiply(err, err)
+        if sample_weight is None:
+            return err.mean().compute()
+        err = (err.mean(axis=1, keepdims=True) * sample_weight).sum() / sample_weight.sum()
+        err = err.compute()
     else:
-        err_sq = cp.square(y_pred - y_true)
-        mean = err_sq.mean()
+        err = cp.square(y_pred - y_true)
+        if sample_weight is None:
+            return err.mean()
 
-    return mean
+        err = (err.mean(axis=1, keepdims=True) * sample_weight).sum() / sample_weight.sum()
 
+    return err
+
+def mean_absolute_error(y_true, y_pred, sample_weight=None):
+    err = abs(y_true-y_pred)
+    if sample_weight is None:
+        return err.mean()
+
+    err = (err.mean(axis=1, keepdims=True) * sample_weight).sum() / sample_weight.sum()
+    return err
 
 def mean_absolute_error_gpu(y_true, y_pred, sample_weight=None):
 
     if isinstance(y_true, da.Array):
-        return dask_mean_absolute_error(y_true, y_pred, sample_weight)
+        res = da.map_blocks(
+            mean_absolute_error,
+            y_true,
+            y_pred,
+            sample_weight,
+            meta=cp.array((), dtype=cp.float32),
+            drop_axis=1,
+        )
+        return cp.array(res.compute()).mean()
     else:
         return mean_absolute_error(y_true, y_pred, sample_weight)
 
@@ -247,7 +300,7 @@ def roc_auc_ovr_gpu(y_true, y_pred, sample_weight=None):
         n_classes = y_pred.shape[1]
         res = 0.0
         for i in range(n_classes):
-            res += roc_auc_score(cp.where(y_true == i, 1, 0), y_pred[:, i])
+            res += cuml_roc_auc(cp.where(y_true == i, 1, 0), y_pred[:, i])
         return res / n_classes
 
 

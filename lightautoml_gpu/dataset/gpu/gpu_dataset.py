@@ -198,7 +198,7 @@ class CupyDataset(NumpyDataset):
             Same dataset in PandasDataset format.
         """
 
-        return self.to_numpy().to_pandas()
+        return self.to_cudf().to_pandas()
 
     def to_csr(self) -> CSRSparseDataset:
         """Convert to csr.

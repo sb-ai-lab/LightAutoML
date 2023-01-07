@@ -12,6 +12,8 @@ from typing import Tuple
 from typing import Mapping
 from typing import cast
 
+from cuml.preprocessing import OneHotEncoder
+
 import cudf
 import cupy as cp
 import dask.dataframe as dd
@@ -76,7 +78,7 @@ class CudfReader(PandasToPandasReader):
 
     """
 
-    def __init__(self, task: Task, device_num: int = 0, n_targets=100, *args: Any, **kwargs: Any):
+    def __init__(self, task: Task, device_num: int = 0, n_targets=10, max_classes=50, *args: Any, **kwargs: Any):
         """
 
         Args:
@@ -86,6 +88,7 @@ class CudfReader(PandasToPandasReader):
         super().__init__(task, *args, **kwargs)
         self.device_num = device_num
         self.n_targets = n_targets
+        self.max_classes = max_classes
 
     def _prepare_roles_and_kwargs(
         self, roles, train_data, roles_parsed: bool = False, **kwargs
@@ -433,6 +436,17 @@ class CudfReader(PandasToPandasReader):
         """
         if (self.task.name == "multi:reg") or (self.task.name == "multilabel"):
             if dataset.target.shape[1] > self.n_targets:
+                dataset.target = dataset.target[dataset.target.std().sort_values(ascending=False).iloc[:self.n_targets].index.values_host]
+        if (self.task.name == "multiclass"):
+            if int(dataset.target.max() + 1) > self.max_classes:
+                ohe = OneHotEncoder(
+                    categories="auto",
+                    dtype=float,
+                    sparse=False,
+                    handle_unknown="ignore",
+                )
+                dataset.task._name = "multilabel"
+                dataset.target = cudf.DataFrame(ohe.fit_transform(cudf.DataFrame(dataset.target)))
                 dataset.target = dataset.target[dataset.target.std().sort_values(ascending=False).iloc[:self.n_targets].index.values_host]
         if manual_roles is None:
             manual_roles = {}

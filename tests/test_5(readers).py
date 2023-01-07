@@ -79,7 +79,7 @@ def generate_data(n, n_num, n_cat, n_date, n_str, max_n_cat):
     for i in range(n_date):
         data[cols[nn+i]] = pd.Series(date_data[:,i])
 
-    data['TARGET'] = pd.Series(np.random.randint(0, 4, n)).astype('i')
+    data['TARGET'] = pd.Series(np.random.randint(0, 60, n)).astype('i')
 
     return 'TARGET', cols, data
 
@@ -87,9 +87,9 @@ def generate_data(n, n_num, n_cat, n_date, n_str, max_n_cat):
 adv_roles = True
 roles = {'target': 'TARGET'}
 
-task = Task("reg")
-task_gpu = Task("reg", device="gpu")
-task_mgpu = Task("reg", device="mgpu")
+task = Task("multiclass")
+task_gpu = Task("multiclass", device="gpu")
+task_mgpu = Task("multiclass", device="mgpu")
 
 reader = PandasToPandasReader(task, advanced_roles=adv_roles)
 
