@@ -218,6 +218,7 @@ class BoostPB(TabularMLAlgoGPU, ImportanceEstimator):
         algo.models = models
         algo.task = task
         algo.features = features
+        algo._name = self._name
 
         return algo
 

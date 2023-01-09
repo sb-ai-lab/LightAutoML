@@ -21,19 +21,27 @@ class PBPredictor(TabularMLAlgo, ImportanceEstimator):
     """
 
     _name: str = "PB"
+    _folder_name = "treelite"
 
     def __getstate__(self):
+        if os.path.exists(self._folder_name + "/" + self._name):
+            logger.info("Folder \"{}\" already exists".format(self._folder_name + "/" + self._name))
+            i = 1
+            while os.path.exists(self._folder_name + "/" + self._name + "_" + str(i)):
+                i+=1
+            self._name = self._name + "_" + str(i)
+            logger.info("Saving py-boost model to \"{}\"".format(self._folder_name + "/" + self._name)) 
         for i in range(len(self.models)):
-            self.models[i].dump("./treelite/" + str(i))
+            self.models[i].dump("./" + self._folder_name + "/" + self._name + "/" + str(i))
         self.__dict__.pop("models")
         return self.__dict__
 
     def __setstate__(self, d):
         self.__dict__ = d
         models = []
-        names = os.listdir("./treelite")
+        names = os.listdir("./" + self._folder_name + "/" + self._name)
         for name in names:
-            models.append(TLPredictor.load("./treelite/" + name))
+            models.append(TLPredictor.load("./" + self._folder_name + "/" + self._name + "/" + name))
         self.__dict__["models"] = models
 
     def predict_single_fold(
