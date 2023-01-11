@@ -21,7 +21,7 @@ def test_groupby_transformer():
     logging.basicConfig(format="[%(asctime)s] (%(levelname)s): %(message)s", level=logging.DEBUG)
 
     logging.debug("Load data...")
-    data = pd.read_csv("./examples/data/sampled_app_train.csv")
+    data = pd.read_csv("./data/sampled_app_train.csv")
     data = data[USED_COLS]
     logging.debug("Data loaded")
 
