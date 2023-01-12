@@ -126,4 +126,18 @@ if __name__ == '__main__':
         results['score'] = cent(test[data_info['target']].values, test_pred)
         
     print(results)
-    
+
+    automl.to_cpu()
+    cpu_inf = automl.predict(test.reset_index().drop(['index'],axis=1)).data
+    print("cpu_inf vs test_pred")
+    print(cpu_inf)
+    print(test_pred)
+
+    from joblib import dump, load
+    import time
+    pickle_file = './old_pf_mgpu.joblib'
+    start = time.time()
+    with open(pickle_file, 'wb') as f:
+        dump(automl, f)
+    raw_dump_duration = time.time() - start
+    print("Raw dump duration: %0.3fs" % raw_dump_duration)
