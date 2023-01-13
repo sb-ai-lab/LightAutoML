@@ -17,7 +17,6 @@ from pandas import Series
 from ...dataset.base import LAMLDataset
 from ...dataset.np_pd_dataset import NumpyDataset
 from ...dataset.np_pd_dataset import PandasDataset
-from ...dataset.roles import CategoryRole
 from ...dataset.roles import ColumnRole
 from ...dataset.roles import NumericRole
 from ...transformers.base import ChangeRoles
@@ -38,7 +37,6 @@ from ...transformers.datetime import BaseDiff
 from ...transformers.datetime import DateSeasons
 from ...transformers.numeric import FillInf
 from ...transformers.numeric import FillnaMedian
-from ...transformers.numeric import NaNFlags
 from ...transformers.numeric import QuantileBinning
 from ..utils import get_columns_by_role
 from ..utils import map_pipeline_names
