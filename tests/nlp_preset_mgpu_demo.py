@@ -1,8 +1,6 @@
 if __name__ == "__main__":
     # import usual libraries
     import time
-    import os
-    import gc
     import numpy as np
     import pandas as pd
     from sklearn.metrics import roc_auc_score
@@ -23,10 +21,7 @@ if __name__ == "__main__":
     cluster = LocalCUDACluster(CUDA_VISIBLE_DEVICES=visible_devices)
     client = Client(cluster)
 
-    import cudf
-
     # import lightautoml_gpu
-    from lightautoml_gpu.automl.presets.text_presets import TabularNLPAutoML
     from lightautoml_gpu.automl.presets.gpu.text_gpu_presets import TabularNLPAutoMLGPU
     from lightautoml_gpu.tasks import Task
     from lightautoml_gpu.dataset.utils import roles_parser
@@ -50,11 +45,9 @@ if __name__ == "__main__":
     data = pd.read_csv(DATASET_FULLNAME)[["message", "title", "is_good"]].fillna("")[:1000]
 
     # split data
-    tr_data, te_data = train_test_split(data,
-            test_size=TEST_SIZE,
-            stratify=data[TARGET_NAME],
-            random_state=RANDOM_STATE
-        )
+    tr_data, te_data = train_test_split(data, test_size=TEST_SIZE,
+                                        stratify=data[TARGET_NAME],
+                                        random_state=RANDOM_STATE)
     print(data.head())
     tr_data = pd.DataFrame(data, index=[i for i in range(tr_data.shape[0])])
     te_data = pd.DataFrame(data, index=[i for i in range(te_data.shape[0])])
@@ -93,58 +86,54 @@ if __name__ == "__main__":
     n_oversample = 0
     ngram = (1, 1)
     # required algo
-    algos_gpu = ['linear_l2'] # or cb or xgb
+    algos_gpu = ['linear_l2']
     # text features
-    text_features_gpu = 'tfidf' # or tfidf_subword or embed
+    text_features_gpu = 'tfidf'
     model_name = 'random_lstm'
 
-
     automl = TabularNLPAutoMLGPU(task=task,
-                                  timeout=600,
-                                  cpu_limit=1,
-                                  #gpu_ids="0,1",
-                                  gpu_ids="0",
-                                  client=client, # note that client is passed
-                                  general_params={
-                                      'nested_cv': False,
-                                      'use_algos': [algos_gpu]
-                                  },
-                                  reader_params={
-                                      'npartitions': 2
-                                  },
-                                  text_params={
-                                      'lang': 'ru',
-                                      'verbose': False,
-                                      'use_stem': False,
-                                      'vocab_path': '../data/nlp/vocab_hash/bankiru_isgood_vocab_hash.txt',
-                                      'is_hash': True,
-                                      # 'data_path': file_name,
-                                      # 'max_length': 320,
-                                      # 'tokenizer': "bpe",
-                                      # 'vocab_size': 31000
-                                  },
-                                  autonlp_params={
-                                      'model_name': model_name,
-                                      # 'sent_scaler': 'l1',
-                                      'embedding_model': 'fasttext',
-                                      'cache_dir': None
-                                  },
-                                  tfidf_params={
-                                      'n_components': n_components,
-                                      'n_oversample': n_oversample,
-                                      'tfidf_params': {'ngram_range': ngram}
-                                  },
-                                  gbm_pipeline_params={
-                                      'text_features': text_features_gpu
-                                  },
-                                  linear_pipeline_params={
-                                      'text_features': text_features_gpu
-                                  },
-                                  )
+                                 timeout=600,
+                                 cpu_limit=1,
+                                 gpu_ids="0",
+                                 client=client,
+                                 general_params={
+                                     'nested_cv': False,
+                                     'use_algos': [algos_gpu]
+                                 },
+                                 reader_params={
+                                     'npartitions': 2
+                                 },
+                                 text_params={
+                                     'lang': 'ru',
+                                     'verbose': False,
+                                     'use_stem': False,
+                                     'vocab_path': '../data/nlp/vocab_hash/bankiru_isgood_vocab_hash.txt',
+                                     'is_hash': True,
+                                     # 'data_path': file_name,
+                                     # 'max_length': 320,
+                                     # 'tokenizer': "bpe",
+                                     # 'vocab_size': 31000
+                                 },
+                                 autonlp_params={
+                                     'model_name': model_name,
+                                     # 'sent_scaler': 'l1',
+                                     'embedding_model': 'fasttext',
+                                     'cache_dir': None
+                                 },
+                                 tfidf_params={
+                                     'n_components': n_components,
+                                     'n_oversample': n_oversample,
+                                     'tfidf_params': {'ngram_range': ngram}
+                                 },
+                                 gbm_pipeline_params={
+                                     'text_features': text_features_gpu
+                                 },
+                                 linear_pipeline_params={
+                                     'text_features': text_features_gpu
+                                 },
+                                 )
 
     run_automl(automl, tr_data, te_data)
 
     client.close()
     cluster.close()
-
-

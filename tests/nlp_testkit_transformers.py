@@ -5,13 +5,14 @@ This script provides tests for NLP preprocessing transformers on dummy data:
 3) where applicable, compare the output of transformers from CPU and GPU/MGPU versions
 """
 
+
 def prepare_dummy_data(lang="en"):
     if lang == "en":
-        data = pd.DataFrame({"column_1": ["Here is dummy sentence 1", "What to say?", "... No way"]*10,
-                             "column_2": ["Nothing happening here.", "Say whatever you want", "Is this for real?!"]*10})
+        data = pd.DataFrame({"column_1": ["Here is dummy sentence 1", "What to say?", "... No way"] * 10,
+                             "column_2": ["Nothing happening here.", "Say whatever you want", "Is this for real?!"] * 10})
     elif lang == "ru":
-        data = pd.DataFrame({"column_1": ["Всееем привет!", "Дамми предложение на русском", "Ну что сказать, ну что сказать"]*10,
-                             "column_2": ["Устроены так люди", "Желают знать, желают знать", "Желают знать, что будет"]*10})
+        data = pd.DataFrame({"column_1": ["Всееем привет!", "Дамми предложение на русском", "Ну что сказать, ну что сказать"] * 10,
+                             "column_2": ["Устроены так люди", "Желают знать, желают знать", "Желают знать, что будет"] * 10})
     return data
 
 
@@ -74,13 +75,11 @@ def check_transformer_devices(transformers, datasets, transformer_name="[empty]"
     check_outputs(outputs[0], outputs[2], mode=mode, message=f"{transformer_name}: CPU and MGPU output is similar")
 
 
-
 if __name__ == "__main__":
     import numpy as np
     import pandas as pd
     import scipy
     import torch
-    import time
     import os
 
     from tokenizers import Tokenizer
@@ -132,7 +131,7 @@ if __name__ == "__main__":
     }
     df_cudf = cudf.DataFrame(data=df)
     n_gpu = torch.cuda.device_count()
-    df_daskcudf = dask_cudf.from_cudf(df_cudf, npartitions=n_gpu)#.persist()
+    df_daskcudf = dask_cudf.from_cudf(df_cudf, npartitions=n_gpu)
 
     dataset = PandasDataset(df, roles_parser(check_roles))
     dataset_gpu = CudfDataset(df_cudf, roles_parser(check_roles))
@@ -229,8 +228,7 @@ if __name__ == "__main__":
     print("################ Subword tests starting ############################")
     print(f"Setting 1: vocab_path = {vocab_save_path_hash}, data_path = {None}, is_hash = {True},"
           f"max_length = {3}")
-    subword_tokenizer_gpu = SubwordTokenizerTransformerGPU(vocab_path=vocab_save_path_hash, data_path=None,
-                                                            is_hash=True, max_length=3)
+    subword_tokenizer_gpu = SubwordTokenizerTransformerGPU(vocab_path=vocab_save_path_hash, data_path=None, is_hash=True, max_length=3)
     check_transformer(subword_tokenizer_gpu, dataset_gpu, transformer_name="subword_tokenizer_gpu", modes=["fit_transform", "transform"])
     check_transformer(subword_tokenizer_gpu, dataset_mgpu, transformer_name="subword_tokenizer_mgpu",
                       modes=["fit_transform", "transform"])
@@ -238,8 +236,7 @@ if __name__ == "__main__":
 
     print(f"Setting 2: vocab_path = {vocab_save_path}, data_path = {None}, is_hash = {False},"
           f"max_length = {30}")
-    subword_tokenizer_gpu = SubwordTokenizerTransformerGPU(vocab_path=vocab_save_path, data_path=None,
-                                                            is_hash=False, max_length=30)
+    subword_tokenizer_gpu = SubwordTokenizerTransformerGPU(vocab_path=vocab_save_path, data_path=None, is_hash=False, max_length=30)
     check_transformer(subword_tokenizer_gpu, dataset_gpu, transformer_name="subword_tokenizer_gpu",
                       modes=["fit_transform", "transform"])
     check_transformer(subword_tokenizer_gpu, dataset_mgpu, transformer_name="subword_tokenizer_mgpu",
@@ -248,8 +245,7 @@ if __name__ == "__main__":
 
     print(f"Setting 3: vocab_path = {None}, data_path = {file_name}, is_hash = {False},"
           f"tokenizer = {'bpe'}, vocab_size = {10}")
-    subword_tokenizer_gpu = SubwordTokenizerTransformerGPU(vocab_path=None, data_path=file_name,
-                                                            is_hash=False, tokenizer="bpe", vocab_size=10)
+    subword_tokenizer_gpu = SubwordTokenizerTransformerGPU(vocab_path=None, data_path=file_name, is_hash=False, tokenizer="bpe", vocab_size=10)
     check_transformer(subword_tokenizer_gpu, dataset_gpu, transformer_name="subword_tokenizer_gpu",
                       modes=["fit_transform", "transform"])
     check_transformer(subword_tokenizer_gpu, dataset_mgpu, transformer_name="subword_tokenizer_mgpu",
@@ -258,8 +254,7 @@ if __name__ == "__main__":
 
     print(f"Setting 4: vocab_path = {None}, data_path = {file_name}, is_hash = {False},"
           f"tokenizer = {'wordpiece'}, vocab_size = {20}")
-    subword_tokenizer_gpu = SubwordTokenizerTransformerGPU(vocab_path=None, data_path=file_name,
-                                                            is_hash=False, tokenizer="wordpiece", vocab_size=20)
+    subword_tokenizer_gpu = SubwordTokenizerTransformerGPU(vocab_path=None, data_path=file_name, is_hash=False, tokenizer="wordpiece", vocab_size=20)
     check_transformer(subword_tokenizer_gpu, dataset_gpu, transformer_name="subword_tokenizer_gpu",
                       modes=["fit_transform", "transform"])
     check_transformer(subword_tokenizer_gpu, dataset_mgpu, transformer_name="subword_tokenizer_mgpu",
@@ -285,7 +280,6 @@ if __name__ == "__main__":
     check_transformer(tfidf, dataset, transformer_name="tfidf_cpu", modes=["fit_transform", "transform"])
     check_transformer(tfidf_gpu, dataset_gpu, transformer_name="tfidf_gpu", modes=["fit_transform", "transform"])
     check_transformer(tfidf_mgpu, dataset_mgpu, transformer_name="tfidf_mgpu", modes=["fit_transform", "transform"])
-
 
     # Check AutoNLP transformer
     print("======================================")
@@ -344,4 +338,3 @@ if __name__ == "__main__":
 
     client.close()
     cluster.close()
-
