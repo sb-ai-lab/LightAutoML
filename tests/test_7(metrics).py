@@ -84,12 +84,12 @@ res_da = bin_gpu['logloss'](y_bin_da, y_one_da, w_one_da)
 assert abs(res - res_cp) < 1e-2
 assert abs(res - res_da) < 1e-2
 ##############################################################
-# DOESN"T SUPPORT WEIGHTS FOR NOW
-res = bin_cpu['accuracy'](y_bin, y_one)  # , w_one)
-res_cp = bin_gpu['accuracy'](y_bin_cp, y_one_cp)  # , w_one_cp)
-res_da = bin_gpu['accuracy'](y_bin_da, y_one_da)  # , w_one_da)
+res = bin_cpu['accuracy'](y_bin, y_one, w_one)
+res_cp = bin_gpu['accuracy'](y_bin_cp, y_one_cp, w_one_cp)
+res_da = bin_gpu['accuracy'](y_bin_da, y_one_da, w_one_da)
 assert abs(res - res_cp) < 1e-2
 assert abs(res - res_da) < 1e-2
+
 ##############################################################
 res = reg_cpu['r2'](y_one, w_one, sample_weight=w_one)
 res_cp = reg_gpu['r2'](y_one_cp, w_one_cp, w_one_cp)
@@ -145,10 +145,9 @@ res_da = multi_gpu['auc_mu'](y_multi_da, y_pred_da, weight_da)
 assert abs(res - res_cp) < 1e-2
 assert abs(res - res_da) < 1e-2
 ##############################################################
-# DOESN"T SUPPORT WEIGHTS FOR NOW
-res = multi_cpu['auc'](y_multi, y_pred)  # , weight)
-res_cp = multi_gpu['auc'](y_multi_cp, y_pred_cp)  # , weight_cp)
-res_da = multi_gpu['auc'](y_multi_da, y_pred_da)  # , weight_da)
+res = multi_cpu['auc'](y_multi, y_pred)
+res_cp = multi_gpu['auc'](y_multi_cp, y_pred_cp, weight_cp)
+res_da = multi_gpu['auc'](y_multi_da, y_pred_da, weight_da)
 assert abs(res - res_cp) < 1e-2
 assert abs(res - res_da) < 1e-1
 ##############################################################

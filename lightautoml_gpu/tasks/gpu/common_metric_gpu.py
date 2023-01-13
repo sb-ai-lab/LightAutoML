@@ -15,6 +15,10 @@ from cuml.metrics import roc_auc_score as cuml_roc_auc
 from cuml.metrics.regression import mean_squared_log_error
 from dask_ml.metrics import accuracy_score as dask_accuracy_score
 
+from py_boost.gpu.losses.metrics import R2Score
+from py_boost.gpu.losses.metrics import auc
+from py_boost.gpu.losses.metrics import AccuracyMetric
+
 
 def log_loss_raw(y_true, y_pred, sample_weight=None, eps=1e-15, axis=1):
     y_pred /= y_pred.sum(axis=axis)[:, cp.newaxis]
@@ -42,20 +46,9 @@ def log_loss_gpu(y_true, y_pred, sample_weight=None, eps: float = 1e-15) -> floa
     return res
 
 
-# copied from R2Score class of py-boost
-def r2_score(y_true, y_pred, sample_weight=None):
-    if sample_weight is not None:
-        err = ((y_true - y_pred) ** 2 * sample_weight).sum(axis=0) / sample_weight.sum()
-        std = ((y_true - y_true.mean(axis=0)) ** 2 * sample_weight).sum(axis=0) / sample_weight.sum()
-    else:
-        err = ((y_true - y_pred) ** 2).mean(axis=0)
-        std = y_true.var(axis=0)
-
-    return (1 - err / std).mean()
-
-
 def r2_score_gpu(y_true, y_pred, sample_weight=None) -> float:
 
+    r2_score = R2Score()
     if isinstance(y_true, da.Array):
         output = da.map_blocks(
             r2_score, y_true, y_pred, sample_weight, meta=cp.array((), dtype=cp.float32), drop_axis=1
@@ -66,33 +59,6 @@ def r2_score_gpu(y_true, y_pred, sample_weight=None) -> float:
     return res
 
 
-# copied from auc function of py-boost
-def roc_auc_score(y, x, sample_weight=None):
-
-    unique_x = cp.unique(x)
-
-    if unique_x.shape[0] <= 1:
-        return 0.5
-
-    if sample_weight is None:
-        sample_weight = cp.ones_like(y)
-
-    rank_x = cp.searchsorted(unique_x, x)
-
-    sum_1 = cp.zeros_like(unique_x, dtype=cp.float64)
-    sum_1.scatter_add(rank_x, sample_weight * y)
-
-    sum_0 = cp.zeros_like(unique_x, dtype=cp.float64)
-    sum_0.scatter_add(rank_x, sample_weight * (1 - y))
-
-    cs_0 = sum_0.cumsum()
-    auc_ = (cs_0 - sum_0 / 2) * sum_1
-
-    tot = cs_0[-1] * sum_1.sum()
-
-    return float(auc_.sum() / tot)
-
-
 def roc_auc_score_gpu(y_true, y_pred, sample_weight=None) -> float:
 
     if isinstance(y_true, da.Array):
@@ -101,7 +67,7 @@ def roc_auc_score_gpu(y_true, y_pred, sample_weight=None) -> float:
         if sample_weight is not None:
             sample_weight = sample_weight.compute().squeeze()
 
-    res = roc_auc_score(y_true, y_pred, sample_weight)
+    res = auc(y_true, y_pred, sample_weight)
     return res
 
 
@@ -306,7 +272,10 @@ def roc_auc_ovr_gpu(y_true, y_pred, sample_weight=None):
         n_classes = y_pred.shape[1]
         res = 0.0
         for i in range(n_classes):
-            res += cuml_roc_auc(cp.where(y_true == i, 1, 0), y_pred[:, i])
+            s_w = None
+            if sample_weight is not None:
+                s_w = sample_weight[:, i]
+            res += auc(cp.where(y_true == i, 1, 0).squeeze(), y_pred[:, i], s_w)
         return res / n_classes
 
 
@@ -427,7 +396,7 @@ def auc_mu_gpu(
             tmp_pres = cp.vstack((preds_i, preds_j))
             v = confusion_matrix[class_i, :] - confusion_matrix[class_j, :]
             scores = cp.dot(tmp_pres, v)
-            score_ij = roc_auc_score(tmp_labels, scores)
+            score_ij = auc(tmp_labels, scores)
             auc_full += class_weights[class_i, class_j] * score_ij
 
     return auc_full
@@ -499,7 +468,7 @@ class BestClassBinaryWrapperGPU:
     ):
         y_pred = (y_pred > 0.5).astype(cp.float32)
 
-        return self.func(y_true, y_pred)  # , sample_weight=sample_weight, **kwargs)
+        return self.func(y_true, y_pred, sample_weight=sample_weight, **kwargs)
 
 
 class AccuracyScoreWrapper:
@@ -507,18 +476,21 @@ class AccuracyScoreWrapper:
         self,
         y_true: cp.ndarray,
         y_pred: cp.ndarray,
-        sample_weight: Optional[cp.ndarray] = None,
-        **kwargs
+        sample_weight: Optional[cp.ndarray] = None
     ):
-        if type(y_pred) == cp.ndarray:
-            return accuracy_score(
-                y_true, y_pred
-            )  # , sample_weight=sample_weight, **kwargs)
-        elif type(y_pred) == da.Array:
-            res = dask_accuracy_score(
-                y_true, y_pred
-            )  # , sample_weight=sample_weight, **kwargs)
-            return res
+        accuracy_score = AccuracyMetric()
+        if type(y_pred) == da.Array:
+            y_pred = y_pred.compute()
+            y_true = y_true.compute()
+            if sample_weight is not None:
+                sample_weight = sample_weight.compute()
+
+        if len(y_pred.shape) == 1:
+             y_pred = y_pred[:, cp.newaxis]
+             y_true = y_true[:, cp.newaxis]
+        if sample_weight is not None and len(sample_weight.shape) == 1:
+             sample_weight = sample_weight[:, cp.newaxis]
+        return accuracy_score(y_true, y_pred, sample_weight)
 
 
 class BestClassMulticlassWrapperGPU:
