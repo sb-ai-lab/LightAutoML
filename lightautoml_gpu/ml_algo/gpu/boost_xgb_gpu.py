@@ -358,6 +358,7 @@ class BoostXGB(TabularMLAlgoGPU, ImportanceEstimator):
         algo = BoosterCPU()
         algo.features = features
         algo.models = models
+        algo._name = self._name
         algo.task = task
 
         return algo
@@ -509,6 +510,7 @@ class BoostXGB_dask(BoostXGB):
         algo = BoosterCPU()
         algo.models = deepcopy(models)
         algo.task = task
+        algo._name = self._name
         algo.features = features
 
         return algo

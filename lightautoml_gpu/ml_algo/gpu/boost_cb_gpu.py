@@ -434,4 +434,5 @@ class BoostCBGPU(TabularMLAlgoGPU, ImportanceEstimator):
         algo._le_text_features = self._text_features
         algo._nan_rate = self._nan_rate
         algo.features = features
+        algo._name = self._name
         return algo
