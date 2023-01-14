@@ -22,7 +22,7 @@ from lightautoml_gpu.validation.base import TrainValidIterator
 
 from lightautoml_gpu.tasks.base import Task
 
-from lightautoml_gpu.tasks.losses.bce_loss import BCELossCPU
+from lightautoml_gpu.tasks.losses.pb import postprocess_fns
 
 from .base_gpu import TabularDatasetGpu
 from .base_gpu import TabularMLAlgoGPU
@@ -205,7 +205,7 @@ class BoostPB(TabularMLAlgoGPU, ImportanceEstimator):
         features = deepcopy(self.features)
         models = []
         for i in range(len(self.models)):
-            models.append(TLPredictor(self.models[i], postprocess_fn=BCELossCPU()))
+            models.append(TLPredictor(self.models[i], postprocess_fn=postprocess_fns[self.task.name]))
 
         task = Task(name=self.task._name,
                     device='cpu',

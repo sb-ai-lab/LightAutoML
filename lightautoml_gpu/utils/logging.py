@@ -49,7 +49,11 @@ def add_logging_level(levelName, levelNum, methodName=None):
         methodName = levelName.lower()
 
     if hasattr(logging, levelName):
-        raise AttributeError("{} already defined in logging module".format(levelName))
+        if levelNum == logging.__dict__[levelName]:
+            print("Level \"{}: {}\" already defined, skipping...".format(levelName, levelNum))
+            return
+        else:
+            raise AttributeError("{} already defined in logging module".format(levelName))
     if hasattr(logging, methodName):
         raise AttributeError("{} already defined in logging module".format(methodName))
     if hasattr(logging.getLoggerClass(), methodName):
