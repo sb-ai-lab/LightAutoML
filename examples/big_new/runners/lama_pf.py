@@ -69,12 +69,12 @@ if __name__ == '__main__':
     print("Started")
 
     task_type = 'multi:reg' if data_info['task_type'] == 'multitask' else data_info['task_type']
-    loss = 'mse' if task_type == 'multi:reg' else 'logloss'
+    loss = 'mse' if task_type == 'multi:reg' else 'crossentropy'
     automl = TabularAutoMLGPU(task=Task(task_type, loss=loss,
                                         device="mgpu"),
                               timeout=args.timeout,
                               config_path=args.config)
-
+    print("task type: ", task_type)
     roles = {TargetRole(): target_columns}
 
     # TRAIN
@@ -98,6 +98,8 @@ if __name__ == '__main__':
     if data_info['task_type'] == 'multitask':
         results['score'] = mean_squared_error(test[target_columns].values, test_pred)
 
+    if data_info['task_type'] == 'multiclass':
+        results['score'] = cent(test[target_columns].values, test_pred)
     print(results)
 
     automl.to_cpu()

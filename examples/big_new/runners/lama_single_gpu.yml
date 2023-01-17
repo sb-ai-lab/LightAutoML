@@ -1,5 +1,5 @@
 general_params:
-  use_algos: "auto"
+  use_algos: ["xgb"]
   nested_cv: False
   skip_conn: True
   return_all_predictions: False
@@ -16,7 +16,7 @@ reader_params:
   random_state: 42
   roles_params:
   n_jobs: 4
-  advanced_roles: True
+  advanced_roles: False
   numeric_unique_rate: 0.999
   max_to_3rd_rate: 1.1
   binning_enc_rate: 2
@@ -36,7 +36,7 @@ nested_cv_params:
   refit_tuner: False
 
 selection_params:
-  mode: 1
+  mode: 0
   importance_type: 'gain'
   fit_on_holdout: True
   cutoff: 0
