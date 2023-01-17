@@ -1,5 +1,5 @@
 general_params:
-  use_algos: ["lgbm"]
+  use_algos: ["cb"]
   nested_cv: False
   skip_conn: True
   return_all_predictions: False

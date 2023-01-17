@@ -1,5 +1,5 @@
 general_params:
-  use_algos: "xgb"
+  use_algos: ["xgb"]
   nested_cv: False
   skip_conn: True
   return_all_predictions: False
@@ -36,7 +36,7 @@ nested_cv_params:
   refit_tuner: False
 
 selection_params:
-  mode: 1
+  mode: 0
   importance_type: 'gain'
   fit_on_holdout: True
   cutoff: 0

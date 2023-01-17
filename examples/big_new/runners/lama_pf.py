@@ -38,11 +38,6 @@ if __name__ == '__main__':
     import torch
     import pandas as pd
 
-    def cent(y_true, y_pred):
-
-        y_pred = np.clip(y_pred, 1e-7, 1 - 1e-7)
-        return -np.log(np.take_along_axis(y_pred, y_true[:, np.newaxis].astype(np.int32), axis=1)).mean()
-
     torch.set_num_threads(args.njobs)
     np.random.seed(args.seed)
 
@@ -99,22 +94,22 @@ if __name__ == '__main__':
         results['score'] = mean_squared_error(test[target_columns].values, test_pred)
 
     if data_info['task_type'] == 'multiclass':
-        results['score'] = cent(test[target_columns].values, test_pred)
+        results['score'] = log_loss(test[target_columns].values, test_pred, eps=1e-7)
     print(results)
 
     automl.to_cpu()
     cpu_inf = automl.predict(test.reset_index().drop(['index'], axis=1)).data
-    print("cpu_inf vs test_pred")
-    print(cpu_inf)
-    print(test_pred)
+    #print("cpu_inf vs test_pred")
+    #print(cpu_inf)
+    #print(test_pred)
 
-    from joblib import dump
-    import time
-    pickle_file = './pf_mgpu.joblib'
-    start = time.time()
-    with open(pickle_file, 'wb') as f:
-        dump(automl, f)
-    raw_dump_duration = time.time() - start
-    print("Raw dump duration: %0.3fs" % raw_dump_duration)
+    #from joblib import dump
+    #import time
+    #pickle_file = './pf_mgpu.joblib'
+    #start = time.time()
+    #with open(pickle_file, 'wb') as f:
+    #    dump(automl, f)
+    #raw_dump_duration = time.time() - start
+    #print("Raw dump duration: %0.3fs" % raw_dump_duration)
 
     exit(0)

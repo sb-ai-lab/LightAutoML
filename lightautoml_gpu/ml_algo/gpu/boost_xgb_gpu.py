@@ -286,7 +286,7 @@ class BoostXGB(TabularMLAlgoGPU, ImportanceEstimator):
             )
         val_pred = model.inplace_predict(valid_data)
         val_pred = self.task.losses["xgb"].bw_func(val_pred)
-
+        model.__dict__["gpu_id"] = dev_id
         with cp.cuda.Device(0):
             val_pred = cp.copy(val_pred)
         return model, val_pred
@@ -307,7 +307,19 @@ class BoostXGB(TabularMLAlgoGPU, ImportanceEstimator):
         dataset_data = dataset.data
         if type(dataset) == DaskCudfDataset:
             dataset_data = dataset_data.compute()
-
+        dev_id = model.__dict__.pop("gpu_id")
+        with cp.cuda.Device(dev_id):
+            if type(dataset_data) == cudf.DataFrame:
+                dataset_data = dataset_data.copy()
+            elif type(dataset_data) == cp.ndarray:
+                dataset_data = cp.copy(dataset_data)
+            else:
+                raise NotImplementedError(
+                    "given type of input is not implemented:"
+                    + str(type(dataset_data))
+                    + "class:"
+                    + str(self._name)
+                )
         pred = self.task.losses["xgb"].bw_func(model.inplace_predict(dataset_data))
 
         return pred

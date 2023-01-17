@@ -43,11 +43,6 @@ if __name__ == '__main__':
 
     from sklearn.metrics import log_loss, mean_squared_error
 
-    def cent(y_true, y_pred):
-
-        y_pred = np.clip(y_pred, 1e-7, 1 - 1e-7)
-        return -np.log(np.take_along_axis(y_pred, y_true.astype(np.int32), axis=1)).mean()
-
     torch.set_num_threads(args.njobs)
     np.random.seed(args.seed)
 
@@ -82,7 +77,7 @@ if __name__ == '__main__':
         train, test = train_test_split(data, test_size=0.2, random_state=args.seed)
     data = None
     task_type = 'multi:reg' if data_info['task_type'] == 'multitask' else data_info['task_type']
-    loss = 'mse' if task_type == 'multi:reg' else 'crossentropy'
+    loss = 'mse' if task_type == 'multi:reg' else 'logloss'
     print("task type: ", task_type)
     automl = TabularAutoML(task=Task(task_type, loss=loss),
                            timeout=args.timeout,
@@ -111,6 +106,6 @@ if __name__ == '__main__':
         results['score'] = mean_squared_error(test[target_columns].values, test_pred)
 
     if data_info['task_type'] == 'multiclass':
-        results['score'] = cent(test[target_columns].values, test_pred)
+        results['score'] = log_loss(test[target_columns].values, test_pred, eps=1e-7)
 
     print(results)
