@@ -199,15 +199,14 @@ class SelectionPipeline:
 
         """
         selected_features = copy(self.selected_features)
-        # Add features that forces input
-        sl_set = set(selected_features)
-        roles = dataset.roles
-        for col in (x for x in dataset.features if x not in sl_set):
-            if roles[col].force_input:
-                if col not in sl_set:
-                    selected_features.append(col)
 
-        return dataset[:, self.selected_features]
+        # Add forced features
+        selected_features = selected_features + [
+            feature for feature in dataset.features if dataset.roles[feature].force_input and (feature not in selected_features)
+        ]
+
+        return dataset[:, selected_features]
+
 
     def map_raw_feature_importances(self, raw_importances: Series):
         """Calculate input feature importances.
