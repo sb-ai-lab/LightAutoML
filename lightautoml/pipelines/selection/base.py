@@ -202,7 +202,9 @@ class SelectionPipeline:
 
         # Add forced features
         selected_features = selected_features + [
-            feature for feature in dataset.features if dataset.roles[feature].force_input and (feature not in selected_features)
+            feature
+            for feature in dataset.features
+            if dataset.roles[feature].force_input and (feature not in selected_features)
         ]
 
         return dataset[:, selected_features]
