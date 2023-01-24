@@ -209,7 +209,6 @@ class SelectionPipeline:
 
         return dataset[:, selected_features]
 
-
     def map_raw_feature_importances(self, raw_importances: Series):
         """Calculate input feature importances.
 
