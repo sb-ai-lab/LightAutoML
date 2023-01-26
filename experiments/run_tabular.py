@@ -11,14 +11,14 @@ import clearml
 import numpy as np
 import pandas as pd
 
-from sklearn.metrics import roc_auc_score
 from sklearn.metrics import log_loss
+from sklearn.metrics import roc_auc_score
 
 from lightautoml.automl.presets.tabular_presets import TabularAutoML
 from lightautoml.tasks import Task
 
 
-def main(dataset_name: str, cpu_limit: int, memory_limit: int): # noqa D103
+def main(dataset_name: str, cpu_limit: int, memory_limit: int):  # noqa D103
     cml_task = clearml.Task.get_task(clearml.config.get_remote_task_id())
     logger = cml_task.get_logger()
 
