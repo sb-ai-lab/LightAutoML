@@ -3,22 +3,22 @@
 from utils import Timer
 from utils import install_lightautoml
 
-
 install_lightautoml()
 
 import argparse
 import os
-
 import clearml
+import numpy as np
 import pandas as pd
 
 from sklearn.metrics import roc_auc_score
+from sklearn.metrics import log_loss
 
 from lightautoml.automl.presets.tabular_presets import TabularAutoML
 from lightautoml.tasks import Task
 
 
-def main(dataset_name, cpu_limit, memory_limit):  # noqa: D103
+def main(dataset_name: str, cpu_limit: int, memory_limit: int): # noqa D103
     cml_task = clearml.Task.get_task(clearml.config.get_remote_task_id())
     logger = cml_task.get_logger()
 
@@ -27,27 +27,30 @@ def main(dataset_name, cpu_limit, memory_limit):  # noqa: D103
 
     with open(os.path.join(dataset_local_path, "task_type.txt"), "r") as f:
         task_type = f.readline()
-    train = pd.read_csv(os.path.join(dataset_local_path, "train.csv"))
-    test = pd.read_csv(os.path.join(dataset_local_path, "test.csv"))
+    train = pd.read_csv(os.path.join(dataset_local_path, "train.csv"), index_col=0)
+    test = pd.read_csv(os.path.join(dataset_local_path, "test.csv"), index_col=0)
 
-    automl = TabularAutoML(task=Task(task_type), cpu_limit=cpu_limit, memory_limit=memory_limit)
+    task = Task(task_type)
+    automl = TabularAutoML(task=task, cpu_limit=cpu_limit, memory_limit=memory_limit, timeout=6000)
     cml_task.connect(automl)
 
     with Timer() as timer_training:
-        oof_predictions = automl.fit_predict(train, roles={"target": "TARGET"}, verbose=10)  # TODO reuse target
+        oof_predictions = automl.fit_predict(train, roles={"target": "class"}, verbose=10)
 
     with Timer() as timer_predict:
-        te_pred = automl.predict(test)
+        test_predictions = automl.predict(test)
 
     if task_type == "binary":
-        metric_oof = roc_auc_score(train["TARGET"].values, oof_predictions.data[:, 0])
-        metric_ho = roc_auc_score(test["TARGET"].values, te_pred.data[:, 0])
-    elif task_type == "regression":  # TODO
-        metric_oof = roc_auc_score(train["TARGET"].values, oof_predictions.data[:, 0])
-        metric_ho = roc_auc_score(test["TARGET"].values, te_pred.data[:, 0])
-    elif task_type == "multiclass":  # TODO
-        metric_oof = roc_auc_score(train["TARGET"].values, oof_predictions.data[:, 0])
-        metric_ho = roc_auc_score(test["TARGET"].values, te_pred.data[:, 0])
+        metric_oof = roc_auc_score(train["class"].values, oof_predictions.data[:, 0])
+        metric_ho = roc_auc_score(test["class"].values, test_predictions.data[:, 0])
+
+    elif task_type == "multiclass":
+        metric_oof = log_loss(train["class"].map(automl.reader.class_mapping), oof_predictions.data)
+        metric_ho = log_loss(test["class"].map(automl.reader.class_mapping), test_predictions.data)
+
+    elif task_type == "regression":
+        metric_oof = task.metric_func(train[target].values, oof_predictions.data[:, 0])
+        metric_ho = task.metric_func(test[target].values, test_predictions.data[:, 0])
 
     print(f"Score for out-of-fold predictions: {metric_oof}")
     print(f"Score for hold-out: {metric_ho}")
@@ -66,8 +69,8 @@ def main(dataset_name, cpu_limit, memory_limit):  # noqa: D103
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="")
     parser.add_argument("--dataset", type=str, help="dataset name or id", default="sampled_app_train")
-    parser.add_argument("--cpu_limit", type=str, help="", default=8)
-    parser.add_argument("--memory_limit", type=str, help="", default=16)
+    parser.add_argument("--cpu_limit", type=int, help="", default=8)
+    parser.add_argument("--memory_limit", type=int, help="", default=16)
     args = parser.parse_args()
 
     main(dataset_name=args.dataset, cpu_limit=args.cpu_limit, memory_limit=args.memory_limit)
