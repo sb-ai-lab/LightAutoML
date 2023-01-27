@@ -3,10 +3,12 @@
 from utils import Timer
 from utils import install_lightautoml
 
+
 install_lightautoml()
 
 import argparse
 import os
+
 import clearml
 import numpy as np
 import pandas as pd
@@ -16,6 +18,9 @@ from sklearn.metrics import roc_auc_score
 
 from lightautoml.automl.presets.tabular_presets import TabularAutoML
 from lightautoml.tasks import Task
+
+
+TARGET_NAME = "class"
 
 
 def main(dataset_name: str, cpu_limit: int, memory_limit: int):  # noqa D103
@@ -35,22 +40,25 @@ def main(dataset_name: str, cpu_limit: int, memory_limit: int):  # noqa D103
     cml_task.connect(automl)
 
     with Timer() as timer_training:
-        oof_predictions = automl.fit_predict(train, roles={"target": "class"}, verbose=10)
+        oof_predictions = automl.fit_predict(train, roles={"target": TARGET_NAME}, verbose=10)
 
     with Timer() as timer_predict:
         test_predictions = automl.predict(test)
 
     if task_type == "binary":
-        metric_oof = roc_auc_score(train["class"].values, oof_predictions.data[:, 0])
-        metric_ho = roc_auc_score(test["class"].values, test_predictions.data[:, 0])
+        metric_oof = roc_auc_score(train[TARGET_NAME].values, oof_predictions.data[:, 0])
+        metric_ho = roc_auc_score(test[TARGET_NAME].values, test_predictions.data[:, 0])
 
     elif task_type == "multiclass":
-        metric_oof = log_loss(train["class"].map(automl.reader.class_mapping), oof_predictions.data)
-        metric_ho = log_loss(test["class"].map(automl.reader.class_mapping), test_predictions.data)
+        not_nan = np.any(~np.isnan(oof_predictions.data), axis=1)
+        metric_oof = log_loss(
+            train[TARGET_NAME].values[not_nan].map(automl.reader.class_mapping), oof_predictions.data[not_nan, :]
+        )
+        metric_ho = log_loss(test[TARGET_NAME].map(automl.reader.class_mapping), test_predictions.data)
 
     elif task_type == "regression":
-        metric_oof = task.metric_func(train[target].values, oof_predictions.data[:, 0])
-        metric_ho = task.metric_func(test[target].values, test_predictions.data[:, 0])
+        metric_oof = task.metric_func(train[TARGET_NAME].values, oof_predictions.data[:, 0])
+        metric_ho = task.metric_func(test[TARGET_NAME].values, test_predictions.data[:, 0])
 
     print(f"Score for out-of-fold predictions: {metric_oof}")
     print(f"Score for hold-out: {metric_ho}")

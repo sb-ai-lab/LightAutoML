@@ -31,9 +31,9 @@ def jobs_train_test(nrows=None):
 @pytest.fixture()
 def avito1k_train_test(nrows=None):
     data = pd.read_csv("./data/avito1k_train.csv")
-    train, test = train_test_split(data, test_size=500, random_state=42)
-    
-    return train_data, test_data 
+    train_data, test_data = train_test_split(data, test_size=500, random_state=42)
+
+    return train_data, test_data
 
 
 @pytest.fixture()
