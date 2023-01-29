@@ -62,7 +62,11 @@ if __name__ == '__main__':
         X_tot = joblib.load(os.path.join(args.path, data_info['data']))
         y_tot = joblib.load(os.path.join(args.path, data_info['target']))
         x_cols = ["input_" + str(i) for i in range(X_tot.shape[1])]
-        y_cols = ["output_" + str(i) for i in range(y_tot.shape[1])]
+        if len(y_tot.shape)>1:
+            y_cols = ["output_" + str(i) for i in range(y_tot.shape[1])]
+        else:
+            y_cols = ["output_0"]
+            y_tot = y_tot[:, np.newaxis]
 
         data = pd.DataFrame(np.concatenate([X_tot, y_tot], axis=1),
                             columns=x_cols + y_cols)
@@ -79,7 +83,13 @@ if __name__ == '__main__':
         cudf.set_allocator("managed")
 
         task_type = 'multi:reg' if data_info['task_type'] == 'multitask' else data_info['task_type']
-        loss = 'mse' if task_type == 'multi:reg' else 'crossentropy'
+        #loss = 'mse' if task_type == 'multi:reg' else 'logloss'
+        if task_type == 'multi:reg':
+            loss = 'mse'
+        elif task_type == 'multiclass':
+            loss = 'crossentropy'
+        else:
+            loss = 'logloss'
         automl = TabularAutoMLGPU(task=Task(task_type, loss=loss,
                                             device="mgpu"),
                                   timeout=args.timeout,

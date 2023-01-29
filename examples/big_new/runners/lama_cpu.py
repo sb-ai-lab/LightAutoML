@@ -20,8 +20,8 @@ if __name__ == '__main__':
     import os
     args = parser.parse_args()
 
-    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-    os.environ["CUDA_VISIBLE_DEVICES"] = args.device
+    #os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+    #os.environ["CUDA_VISIBLE_DEVICES"] = args.device
 
     str_nthr = str(args.njobs)
 
@@ -74,10 +74,16 @@ if __name__ == '__main__':
         tr, ts = joblib.load(os.path.join(args.path, data_info['split']))
         train, test = data.iloc[tr], data.iloc[ts]
     else:
-        train, test = train_test_split(data, test_size=0.2, random_state=args.seed)
+        train, test = train_test_split(data, test_size=0.1, random_state=args.seed)
     data = None
     task_type = 'multi:reg' if data_info['task_type'] == 'multitask' else data_info['task_type']
-    loss = 'mse' if task_type == 'multi:reg' else 'logloss'
+    loss = 'mse'
+    if task_type == 'multi:reg':
+        loss = 'mse'
+    elif task_type == 'multiclass':
+        loss = 'crossentropy'
+    else:
+        loss = 'logloss'
     print("task type: ", task_type)
     automl = TabularAutoML(task=Task(task_type, loss=loss),
                            timeout=args.timeout,

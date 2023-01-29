@@ -71,7 +71,13 @@ if __name__ == '__main__':
     train, test = train_test_split(data, test_size=0.2, random_state=args.seed)
     data = None
     task_type = 'multi:reg' if data_info['task_type'] == 'multitask' else data_info['task_type']
-    loss = 'mse' if task_type == 'multi:reg' else 'crossentropy'
+    if task_type == 'multi:reg':
+        loss = 'mse'
+    elif task_type == 'multiclass':
+        loss = 'crossentropy'
+    else:
+        loss = 'logloss'
+    #loss = 'mse' if task_type == 'multi:reg' else 'logloss'
     print("task type: ", task_type)
     automl = TabularAutoMLGPU(task=Task(task_type, loss=loss,
                                         device="gpu"),
