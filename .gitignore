@@ -1,0 +1,12 @@
+__pycache__/
+build/
+dist/
+wheels
+sdist/
+pyvenv
+venv/
+.idea/
+
+data/
+notebooks/
+
