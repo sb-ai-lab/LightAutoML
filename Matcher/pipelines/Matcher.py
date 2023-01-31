@@ -104,7 +104,7 @@ class Matching:
         )
 
         self.df = out_filter.perform_filter(self.df)
-        self.data = self.data.merge(self.df, how='left',
+        self.data = self.data.merge(self.df, how='right',
                                     on=list(self.df.columns).remove(self.outcome)) \
             .drop([self.outcome], axis=1)
 
