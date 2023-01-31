@@ -209,5 +209,5 @@ PLATFORM =
 [testenv]
 whitelist_externals = poetry
 commands =
-    poetry run pytest tests -v
+    poetry run pytest tests -v --ff --maxfail=3
 """
