@@ -1,8 +1,11 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+"""AutoML time utilization preset usage for tabular datasets.
 
-"""AutoML with nested CV usage."""
+Predefined structure of AutoML pipeline and simple interface for users without building from blocks.
+
+"""
 
 import numpy as np
 import pandas as pd
@@ -10,13 +13,14 @@ import pandas as pd
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import train_test_split
 
-from lightautoml.automl.presets.tabular_presets import TabularAutoML
+from lightautoml.automl.presets.tabular_presets import TabularUtilizedAutoML
 from lightautoml.dataset.roles import DatetimeRole
 from lightautoml.tasks import Task
 
 
 np.random.seed(42)
 
+# load and prepare data
 data = pd.read_csv("./data/sampled_app_train.csv")
 
 data["BIRTH_DATE"] = (np.datetime64("2018-01-01") + data["DAYS_BIRTH"].astype(np.dtype("timedelta64[D]"))).astype(str)
@@ -38,31 +42,19 @@ roles = {
     DatetimeRole(base_date=True, seasonality=(), base_feats=False): "report_dt",
 }
 
-task = Task(
-    "binary",
-)
-
-automl = TabularAutoML(
-    task=task,
+# init automl
+automl = TabularUtilizedAutoML(
+    task=Task("binary"),
     timeout=600,
-    general_params={
-        "use_algos": [
-            [
-                "linear_l2",
-                "lgb",
-            ],
-            ["linear_l2", "lgb"],
-        ],
-        "nested_cv": True,
-        "skip_conn": True,
-    },
-    nested_cv_params={"cv": 5, "n_folds": None},
 )
 
+# training
 oof_pred = automl.fit_predict(train, roles=roles)
+
+# get predictions
 test_pred = automl.predict(test)
 
+# calculate scores
 not_nan = np.any(~np.isnan(oof_pred.data), axis=1)
-
-print(f"OOF score: {roc_auc_score(train[roles['target']].values[not_nan], oof_pred.data[not_nan][:, 0])}")
+print(f"OOF score: {roc_auc_score(train['TARGET'].values[not_nan], oof_pred.data[not_nan])}")
 print(f"TEST score: {roc_auc_score(test[roles['target']].values, test_pred.data[:, 0])}")

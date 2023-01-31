@@ -57,7 +57,7 @@ selector = ImportanceCutoffSelector(
             "seed": 42,
             "num_threads": 5,
         }
-    ), 
+    ),
     ModelBasedImportanceEstimator(), cutoff=10
 )
 
@@ -71,11 +71,34 @@ selector = ImportanceCutoffSelector(
 #             "seed": 42,
 #             "num_threads": 5,
 #         }
-#     ), 
-#     NpPermutationImportanceEstimator(), 
+#     ),
+#     NpPermutationImportanceEstimator(),
 #     feature_group_size=1,
 #     max_features_cnt_in_result=15
 # )
+
+# model01 = BoostLGBM(
+#     default_params={
+#         "learning_rate": 0.05,
+#         "num_leaves": 64,
+#         "seed": 42,
+#         "num_threads": 5,
+#     }
+# )
+# model02 = BoostLGBM(
+#     default_params={
+#         "learning_rate": 0.05,
+#         "num_leaves": 64,
+#         "seed": 42,
+#         "num_threads": 5,
+#     }
+# )
+# pipe0 = LGBSimpleFeatures()
+# pie = NpPermutationImportanceEstimator()
+# pie1 = ModelBasedImportanceEstimator()
+# sel1 = ImportanceCutoffSelector(pipe0, model01, pie1, cutoff=0)
+# sel2 = NpIterativeFeatureSelector(pipe0, model02, pie, feature_group_size=1, max_features_cnt_in_result=15)
+# selector = ComposedSelector([sel1, sel2])
 
 # Build pipeline for 1st level
 pipeline_lvl1 = MLPipeline(
@@ -88,7 +111,7 @@ pipeline_lvl1 = MLPipeline(
                     "seed": 1,
                     "num_threads": 5,
                 }
-            ), 
+            ),
             OptunaTuner(n_trials=100, timeout=300)
         ),
         BoostLGBM(
@@ -119,7 +142,7 @@ pipeline_lvl2 = MLPipeline(
             },
             freeze_defaults=True,
         )
-    ], 
+    ],
     pre_selection=None,
     features_pipeline=LGBSimpleFeatures(),
     post_selection=None

@@ -3,10 +3,6 @@
 
 """Building ML pipeline from blocks and fit + predict the pipeline itself."""
 
-import os
-import pickle
-import time
-
 import numpy as np
 import pandas as pd
 
@@ -71,7 +67,7 @@ train_valid = FoldsIterator(pd_dataset)
 
 # Create selector
 selector = ImportanceCutoffSelector(
-    LGBSimpleFeatures(), 
+    LGBSimpleFeatures(),
     BoostLGBM(
         default_params={
             "learning_rate": 0.05,
@@ -79,9 +75,9 @@ selector = ImportanceCutoffSelector(
             "seed": 0,
             "num_threads": 5,
         }
-    ), 
-    ModelBasedImportanceEstimator(), 
-    cutoff=10
+    ),
+    ModelBasedImportanceEstimator(),
+    cutoff=10,
 )
 
 # train our new selector
@@ -97,15 +93,9 @@ print(f"\n{selector.get_features_score()}")
 total = MLPipeline(
     [
         # model 1
-        (
-            BoostLGBM(default_params={"learning_rate": 0.05, "num_leaves": 128}),
-            OptunaTuner(n_trials=10, timeout=300)
-        ), 
+        (BoostLGBM(default_params={"learning_rate": 0.05, "num_leaves": 128}), OptunaTuner(n_trials=10, timeout=300)),
         # model 2
-        (
-            BoostLGBM(default_params={"learning_rate": 0.025, "num_leaves": 64}), 
-            OptunaTuner(n_trials=100, timeout=300)
-        )
+        (BoostLGBM(default_params={"learning_rate": 0.025, "num_leaves": 64}), OptunaTuner(n_trials=100, timeout=300)),
     ],
     pre_selection=selector,
     features_pipeline=LGBSimpleFeatures(),
@@ -113,7 +103,7 @@ total = MLPipeline(
 )
 
 # Fit our pipeline
-predictions = total.fit_predict(train_valid) # fit_predict returns OOF predictions for input dataset
+predictions = total.fit_predict(train_valid)  # fit_predict returns OOF predictions for input dataset
 
 # Predict full train dataset
 train_pred = total.predict(pd_dataset)

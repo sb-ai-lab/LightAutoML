@@ -15,9 +15,13 @@ from lightautoml.tasks import Task
 data = pd.read_csv("./data/sampled_app_train.csv")
 train_data, test_data = train_test_split(data, test_size=0.2, stratify=data["TARGET"], random_state=42)
 
-# run automl
+# init automl
 automl = TabularAutoML(task=Task("binary"))
+
+# training
 oof_predictions = automl.fit_predict(train_data, roles={"target": "TARGET", "drop": ["SK_ID_CURR"]})
+
+# get predictions
 te_pred = automl.predict(test_data)
 
 # calculate scores

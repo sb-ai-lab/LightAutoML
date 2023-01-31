@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+
+"""AutoML with nested CV usage."""
+
 import numpy as np
 import pandas as pd
 
@@ -14,6 +17,7 @@ from lightautoml.tasks import Task
 
 np.random.seed(42)
 
+# load and prepare data
 data = pd.read_csv("./data/sampled_app_train.csv")
 
 data["BIRTH_DATE"] = (np.datetime64("2018-01-01") + data["DAYS_BIRTH"].astype(np.dtype("timedelta64[D]"))).astype(str)
@@ -35,19 +39,31 @@ roles = {
     DatetimeRole(base_date=True, seasonality=(), base_feats=False): "report_dt",
 }
 
-task = Task(
-    "binary",
+# init automl
+automl = TabularAutoML(
+    task=Task("binary"),
+    timeout=600,
+    general_params={
+        "use_algos": [
+            [
+                "linear_l2",
+                "lgb",
+            ],
+            ["linear_l2", "lgb"],
+        ],
+        "nested_cv": True,  # use nested CV
+        "skip_conn": True,
+    },
+    nested_cv_params={"cv": 5, "n_folds": None},
 )
 
-automl = TabularAutoML(
-    task=task,
-    timeout=3600,
-)
+# training
 oof_pred = automl.fit_predict(train, roles=roles)
+
+# get predictions
 test_pred = automl.predict(test)
 
+# calculate scores
 not_nan = np.any(~np.isnan(oof_pred.data), axis=1)
-
-print("Check scores...")
-print("OOF score: {}".format(roc_auc_score(train[roles["target"]].values[not_nan], oof_pred.data[not_nan][:, 0])))
-print("TEST score: {}".format(roc_auc_score(test[roles["target"]].values, test_pred.data[:, 0])))
+print(f"OOF score: {roc_auc_score(train[roles['target']].values[not_nan], oof_pred.data[not_nan][:, 0])}")
+print(f"TEST score: {roc_auc_score(test[roles['target']].values, test_pred.data[:, 0])}")

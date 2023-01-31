@@ -15,6 +15,7 @@ from lightautoml.tasks import Task
 
 np.random.seed(42)
 
+# load and prepare data
 data = pd.read_csv("./data/avito1k_train.csv")
 
 train, test = train_test_split(data, test_size=500, random_state=42)
@@ -25,14 +26,17 @@ roles = {
     "text": ["description", "title", "param_1", "param_2", "param_3"],
 }
 
-task = Task("reg")
+# init automl
+automl = TabularNLPAutoML(task=Task("reg"), timeout=600)
 
-automl = TabularNLPAutoML(task=task, timeout=600)
+# run automl
 oof_pred = automl.fit_predict(train, roles=roles)
-test_pred = automl.predict(test)
-not_nan = np.any(~np.isnan(oof_pred.data), axis=1)
 
-print("Check scores...")
+# get predictions
+test_pred = automl.predict(test)
+
+# calculate scores
+not_nan = np.any(~np.isnan(oof_pred.data), axis=1)
 print("OOF score: {}".format(mean_squared_error(train[roles["target"]].values[not_nan], oof_pred.data[not_nan][:, 0])))
 print("TEST score: {}".format(mean_squared_error(test[roles["target"]].values, test_pred.data[:, 0])))
 
