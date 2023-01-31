@@ -15,10 +15,10 @@ class FaissMatcher:
                  outcomes,
                  treatment,
                  features=None):
-        self.outcomes = outcomes
-        self.treatment = treatment
         self.df = df
         self.data = data
+        self.outcomes = outcomes
+        self.treatment = treatment
         if features is None:
             self.feature_list = list(self.df.columns)
             self.feature_list.remove(self.treatment)
@@ -92,13 +92,12 @@ class FaissMatcher:
         return
 
     def _create_outcome_matched_df(self, dict_outcome, is_treated: bool):
-        df_pred0 = pd.DataFrame(dict_outcome)
-        df_pred0[self.treatment] = int(is_treated)
-        df_pred0[self.treatment + POSTFIX] = int(not is_treated)
-        return df_pred0
+        df_pred = pd.DataFrame(dict_outcome)
+        df_pred[self.treatment] = int(is_treated)
+        df_pred[self.treatment + POSTFIX] = int(not is_treated)
+        return df_pred
 
     def _create_features_matched_df(self, index, is_treated: bool):
-
         x1 = self.data[self.data[self.treatment] == int(not is_treated)].iloc[index].reset_index()
         x2 = self.data[self.data[self.treatment] == int(is_treated)].reset_index()
         x1.columns = [col + POSTFIX for col in x2.columns]
@@ -113,8 +112,8 @@ class FaissMatcher:
 
         df_matched = pd.concat([df_pred0, df_pred1])
 
-        x = self._create_features_matched_df(self.untreated_index, False)
         x_ = self._create_features_matched_df(self.treated_index, True)
+        x = self._create_features_matched_df(self.untreated_index, False)
 
         x = pd.concat([x_, x])
 
@@ -173,6 +172,8 @@ class FaissMatcher:
 
             df_matched = self._create_matched_df()
             self._check_best(df_matched, i)
+
+
 
         return self.df_matched, self.ATE
 

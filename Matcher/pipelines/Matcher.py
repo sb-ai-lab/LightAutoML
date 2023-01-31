@@ -32,7 +32,7 @@ class Matching:
             outcome,
             treatment,
             outcome_type='numeric',
-            is_spearman_filter=True,
+            is_spearman_filter=False,
             is_outliers_filter=False,
             is_feature_select=True,
             generate_report=GENERATE_REPORT,
@@ -85,8 +85,9 @@ class Matching:
         )
 
         self.df = same_filter.perform_filter(self.df)
-        self.data = self.data.merge(self.df, how='left', on=list(self.df.columns).remove(self.outcome))
-
+        self.data = self.data.merge(self.df, how='left',
+                                    on=list(self.df.columns).remove(self.outcome))\
+            .drop([self.outcome], axis=1)
 
     def _outliers_filter(self):
         out_filter = OutliersFilter(
@@ -96,9 +97,10 @@ class Matching:
             max_percentile=self.max_percentile
         )
 
-
         self.df = out_filter.perform_filter(self.df)
-        self.data = self.data.merge(self.df, how='left', on=list(self.df.columns).remove(self.outcome))
+        self.data = self.data.merge(self.df, how='left',
+                                    on=list(self.df.columns).remove(self.outcome)) \
+            .drop([self.outcome], axis=1)
 
 
     def _feature_select(self):
