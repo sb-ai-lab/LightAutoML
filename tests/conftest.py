@@ -29,6 +29,11 @@ def jobs_train_test(nrows=None):
 
 
 @pytest.fixture()
+def jobs_roles():
+    return {"target": "target"}
+
+
+@pytest.fixture()
 def avito1k_train_test(nrows=None):
     data = pd.read_csv("./data/avito1k_train.csv")
     train_data, test_data = train_test_split(data, test_size=500, random_state=42)
@@ -49,15 +54,6 @@ def avito1k_roles():
 def sampled_app_train_test(nrows=None):
     data = pd.read_csv(
         "./examples/data/sampled_app_train.csv",
-        usecols=[
-            "TARGET",
-            "NAME_CONTRACT_TYPE",
-            "AMT_CREDIT",
-            "NAME_TYPE_SUITE",
-            "AMT_GOODS_PRICE",
-            "DAYS_BIRTH",
-            "DAYS_EMPLOYED",
-        ],
         nrows=nrows,
     )
 
@@ -65,7 +61,7 @@ def sampled_app_train_test(nrows=None):
     data["EMP_DATE"] = np.datetime64("2018-01-01") + np.clip(data["DAYS_EMPLOYED"], None, 0).astype(
         np.dtype("timedelta64[D]")
     )
-    data.drop(["DAYS_BIRTH", "DAYS_EMPLOYED"], axis=1, inplace=True)
+    data.drop(["DAYS_BIRTH", "DAYS_EMPLOYED", "SK_ID_CURR"], axis=1, inplace=True)
 
     data["__fold__"] = np.random.randint(0, 5, len(data))
 
