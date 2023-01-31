@@ -208,6 +208,7 @@ PLATFORM =
 
 [testenv]
 whitelist_externals = poetry
+commands_pre = poetry install --extras 'all'
 commands =
     poetry run pytest tests -v --ff --maxfail=3
 """
