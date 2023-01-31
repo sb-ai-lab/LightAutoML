@@ -1,14 +1,11 @@
-import pytest
-
+from presets_utils import check_pickling
+from presets_utils import get_target_name
 from sklearn.metrics import roc_auc_score
 
 from lightautoml.automl.presets.whitebox_presets import WhiteBoxPreset
-from presets_utils import check_pickling
-from presets_utils import get_target_name
 
 
 class TestWhiteBoxPreset:
-
     def test_fit_predict(self, jobs_train_test, jobs_roles, binary_task):
         # load and prepare data
         train, test = jobs_train_test

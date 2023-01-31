@@ -1,17 +1,13 @@
-import pytest
-
 import numpy as np
-import pandas as pd
 
+from presets_utils import check_pickling
+from presets_utils import get_target_name
 from sklearn.metrics import mean_squared_error
 
 from lightautoml.automl.presets.text_presets import TabularNLPAutoML
-from presets_utils import check_pickling
-from presets_utils import get_target_name
 
 
 class TestTabularNLPAutoML:
-
     def test_fit_predict(self, avito1k_train_test, avito1k_roles, regression_task):
         # load and prepare data
         train, test = avito1k_train_test

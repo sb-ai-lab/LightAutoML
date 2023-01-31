@@ -4,13 +4,13 @@
 import os
 import pickle
 import tempfile
-import pytest
 
 from sklearn.metrics import log_loss
-from sklearn.metrics import roc_auc_score
 from sklearn.metrics import mean_squared_error
+from sklearn.metrics import roc_auc_score
 
 from lightautoml.automl.base import AutoML
+from lightautoml.dataset.roles import TargetRole
 from lightautoml.ml_algo.boost_lgbm import BoostLGBM
 from lightautoml.ml_algo.tuning.optuna import OptunaTuner
 from lightautoml.pipelines.features.lgb_pipeline import LGBSimpleFeatures
@@ -20,7 +20,6 @@ from lightautoml.pipelines.selection.importance_based import (
     ModelBasedImportanceEstimator,
 )
 from lightautoml.reader.base import PandasToPandasReader
-from lightautoml.dataset.roles import TargetRole
 
 
 def check_pickling(automl, ho_score, task, test, target_name):
@@ -34,18 +33,19 @@ def check_pickling(automl, ho_score, task, test, target_name):
 
         test_pred = automl.predict(test)
 
-        if task.name == 'binary':
+        if task.name == "binary":
             ho_score_new = roc_auc_score(test[target_name].values, test_pred.data[:, 0])
-        elif task.name == 'multiclass':
+        elif task.name == "multiclass":
             ho_score_new = log_loss(test[target_name].map(automl.reader.class_mapping), test_pred.data)
-        elif task.name == 'reg':
+        elif task.name == "reg":
             ho_score_new = mean_squared_error(test[target_name].values, test_pred.data[:, 0])
 
         assert ho_score == ho_score_new
 
+
 def get_target_name(roles):
     for key, value in roles.items():
-        if (key == 'target') or isinstance(key, TargetRole):
+        if (key == "target") or isinstance(key, TargetRole):
             return value
 
 
@@ -59,15 +59,16 @@ def test_manual_pipeline(sampled_app_train_test, sampled_app_roles, binary_task)
     # Create feature selector that uses importances to cutoff features set
     selector = ImportanceCutoffSelector(
         LGBSimpleFeatures(),
-            BoostLGBM(
+        BoostLGBM(
             default_params={
                 "learning_rate": 0.05,
                 "num_leaves": 64,
                 "seed": 42,
                 "num_threads": 5,
             }
-        ), 
-        ModelBasedImportanceEstimator(), cutoff=10
+        ),
+        ModelBasedImportanceEstimator(),
+        cutoff=10,
     )
 
     # Or you can use iteartive feature selection algorithm:
@@ -80,8 +81,8 @@ def test_manual_pipeline(sampled_app_train_test, sampled_app_roles, binary_task)
     #             "seed": 42,
     #             "num_threads": 5,
     #         }
-    #     ), 
-    #     NpPermutationImportanceEstimator(), 
+    #     ),
+    #     NpPermutationImportanceEstimator(),
     #     feature_group_size=1,
     #     max_features_cnt_in_result=15
     # )
@@ -97,8 +98,8 @@ def test_manual_pipeline(sampled_app_train_test, sampled_app_roles, binary_task)
                         "seed": 1,
                         "num_threads": 5,
                     }
-                ), 
-                OptunaTuner(n_trials=100, timeout=300)
+                ),
+                OptunaTuner(n_trials=100, timeout=300),
             ),
             BoostLGBM(
                 default_params={
@@ -107,7 +108,7 @@ def test_manual_pipeline(sampled_app_train_test, sampled_app_roles, binary_task)
                     "seed": 2,
                     "num_threads": 5,
                 }
-            )
+            ),
         ],
         pre_selection=selector,
         features_pipeline=LGBSimpleFeatures(),
@@ -128,10 +129,10 @@ def test_manual_pipeline(sampled_app_train_test, sampled_app_roles, binary_task)
                 },
                 freeze_defaults=True,
             )
-        ], 
+        ],
         pre_selection=None,
         features_pipeline=LGBSimpleFeatures(),
-        post_selection=None
+        post_selection=None,
     )
 
     # Create AutoML with 2 level stacking
@@ -143,7 +144,6 @@ def test_manual_pipeline(sampled_app_train_test, sampled_app_roles, binary_task)
         ],
         skip_conn=False,
     )
-
 
     # Start AutoML training
     oof_predictions = automl.fit_predict(train, roles=sampled_app_roles)

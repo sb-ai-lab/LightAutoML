@@ -1,14 +1,11 @@
-import pytest
-
+from presets_utils import check_pickling
+from presets_utils import get_target_name
 from sklearn.metrics import roc_auc_score
 
 from lightautoml.automl.presets.tabular_presets import TabularAutoML
-from presets_utils import check_pickling
-from presets_utils import get_target_name
 
 
 class TestTabularAutoML:
-
     def test_fit_predict(self, sampled_app_train_test, sampled_app_roles, binary_task):
         # load and prepare data
         train, test = sampled_app_train_test

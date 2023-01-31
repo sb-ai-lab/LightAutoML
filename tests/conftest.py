@@ -35,7 +35,7 @@ def jobs_roles():
 
 @pytest.fixture()
 def avito1k_train_test(nrows=None):
-    data = pd.read_csv("./data/avito1k_train.csv")
+    data = pd.read_csv("./examples/data/avito1k_train.csv")
     train_data, test_data = train_test_split(data, test_size=500, random_state=42)
 
     return train_data, test_data
