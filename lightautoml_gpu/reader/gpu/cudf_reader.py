@@ -434,6 +434,7 @@ class CudfReader(PandasToPandasReader):
             Dict.
 
         """
+        orig_name = self.task.name
         if (self.task.name == "multi:reg") or (self.task.name == "multilabel"):
             if dataset.target.shape[1] > self.n_targets:
                 dataset.target = dataset.target[dataset.target.std().sort_values(ascending=False).iloc[:self.n_targets].index.values_host]
@@ -502,6 +503,8 @@ class CudfReader(PandasToPandasReader):
             rejected = list(top_scores[top_scores < drop_co].index.values)
             logger.info("Feats was rejected during automatic roles guess: {0}".format(rejected))
             new_roles_dict = {**new_roles_dict, **{x: DropRole() for x in rejected}}
+        if orig_name != self.task.name:
+            self.task._name = orig_name
         return new_roles_dict
 
     def _is_ok_feature(self, feature: Series) -> bool:
