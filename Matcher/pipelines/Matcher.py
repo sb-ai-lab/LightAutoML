@@ -91,9 +91,7 @@ class Matching:
         )
 
         self.df = same_filter.perform_filter(self.df)
-        self.data = self.data.merge(self.df, how='left',
-                                    on=list(self.df.columns).remove(self.outcome))\
-            .drop([self.outcome], axis=1)
+
 
     def _outliers_filter(self):
         out_filter = OutliersFilter(
@@ -103,10 +101,9 @@ class Matching:
             max_percentile=self.max_percentile
         )
 
-        self.df = out_filter.perform_filter(self.df)
-        self.data = self.data.merge(self.df, how='right',
-                                    on=list(self.df.columns).remove(self.outcome)) \
-            .drop([self.outcome], axis=1)
+        rows_for_del =  out_filter.perform_filter(self.df)
+        self.df = self.df.drop(rows_for_del, axis=0)
+        self.data = self.data.drop(rows_for_del, axis=0)
 
 
     def _feature_select(self):

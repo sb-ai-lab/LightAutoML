@@ -13,7 +13,7 @@ class OutliersFilter:
         self.min_percentile = min_percentile
         self.max_percentile = max_percentile
 
-    def _delete_outliers(self, df):
+    def perform_filter(self, df):
         columns_names = df.select_dtypes(include='number').columns
         rows_for_del = []
         for column in columns_names:
@@ -31,8 +31,4 @@ class OutliersFilter:
 
         return rows_for_del
 
-    def perform_filter(self, df):
-        rows_for_del = self._delete_outliers(df)
-        df = df.drop(rows_for_del, 0)
-        return  df
 
