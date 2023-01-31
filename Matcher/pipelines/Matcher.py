@@ -2,6 +2,7 @@ from Matcher.selectors.OutliersFilter import OutliersFilter
 from Matcher.selectors.SpearmanFilter import SpearmanFilter
 from Matcher.selectors.LamaFeatureSelector import LamaFeatureSelector
 from Matcher.algorithms.FaissMatcher import FaissMatcher
+import pandas as pd
 
 
 
@@ -75,6 +76,11 @@ class Matching:
         self.min_percentile = min_percentile
         self.max_percentile = max_percentile
         self.features = None
+        self._preprocessing_data()
+
+
+    def _preprocessing_data(self):
+        self.df = pd.get_dummies(self.df, drop_first=True)
 
 
     def _spearman_filter(self):
