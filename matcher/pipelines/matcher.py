@@ -1,15 +1,15 @@
 import pandas as pd
 
-from Matcher.algorithms.FaissMatcher import FaissMatcher
-from Matcher.selectors.LamaFeatureSelector import LamaFeatureSelector
-from Matcher.selectors.OutliersFilter import OutliersFilter
-from Matcher.selectors.SpearmanFilter import SpearmanFilter
+from matcher.algorithms.faiss_matcher import FaissMatcher
+from matcher.selectors.lama_feature_selector import LamaFeatureSelector
+from matcher.selectors.outliers_filter import OutliersFilter
+from matcher.selectors.spearman_filter import SpearmanFilter
 
 REPORT_FEAT_SELECT_DIR = 'report_feature_selector'
 REPORT_PROP_SCORE_DIR = 'report_prop_score_estimator'
 REPORT_PROP_MATCHER_DIR = 'report_matcher'
 NAME_REPORT = 'lama_interactive_report.html'
-N_THREADS = 32
+N_THREADS = 1
 N_FOLDS = 4
 RANDOM_STATE = 123
 TEST_SIZE = 0.2
