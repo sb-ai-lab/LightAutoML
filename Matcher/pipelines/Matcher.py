@@ -1,10 +1,9 @@
-from Matcher.selectors.OutliersFilter import OutliersFilter
-from Matcher.selectors.SpearmanFilter import SpearmanFilter
-from Matcher.selectors.LamaFeatureSelector import LamaFeatureSelector
-from Matcher.algorithms.FaissMatcher import FaissMatcher
 import pandas as pd
 
-
+from Matcher.algorithms.FaissMatcher import FaissMatcher
+from Matcher.selectors.LamaFeatureSelector import LamaFeatureSelector
+from Matcher.selectors.OutliersFilter import OutliersFilter
+from Matcher.selectors.SpearmanFilter import SpearmanFilter
 
 REPORT_FEAT_SELECT_DIR = 'report_feature_selector'
 REPORT_PROP_SCORE_DIR = 'report_prop_score_estimator'
@@ -78,10 +77,8 @@ class Matching:
         self.features = None
         self._preprocessing_data()
 
-
     def _preprocessing_data(self):
         self.df = pd.get_dummies(self.df, drop_first=True)
-
 
     def _spearman_filter(self):
         same_filter = SpearmanFilter(
@@ -92,7 +89,6 @@ class Matching:
 
         self.df = same_filter.perform_filter(self.df)
 
-
     def _outliers_filter(self):
         out_filter = OutliersFilter(
             interquartile_coeff=self.interquartile_coeff,
@@ -101,10 +97,9 @@ class Matching:
             max_percentile=self.max_percentile
         )
 
-        rows_for_del =  out_filter.perform_filter(self.df)
+        rows_for_del = out_filter.perform_filter(self.df)
         self.df = self.df.drop(rows_for_del, axis=0)
         self.data = self.data.drop(rows_for_del, axis=0)
-
 
     def _feature_select(self):
         feat_select = LamaFeatureSelector(
@@ -124,7 +119,7 @@ class Matching:
         self.features = features
 
     def _matching(self):
-        matcher  = FaissMatcher(self.df, self.data, self.outcome, self.treatment, self.features)
+        matcher = FaissMatcher(self.df, self.data, self.outcome, self.treatment, self.features)
         df_matched, ate = matcher.match()
         return df_matched, ate
 
@@ -137,4 +132,3 @@ class Matching:
             self._feature_select()
 
         return self._matching()
-
