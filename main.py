@@ -2,18 +2,18 @@ import warnings
 
 import pandas as pd
 
-from matcher.pipelines.Matcher import Matching
+from matcher.pipelines.matcher import Matching
 
 warnings.filterwarnings("ignore")
-target = "sum_oper"
-treatment = "treated"
 
-df = pd.read_csv('matcher/data/p2p_data_after_MIS.csv').drop(["Unnamed: 0", "report_dt"], axis=1).sample(1000)
+if __name__ == "__main__":
+    target = "created_variable"
+    treatment = "is_tb_pilot"
 
-print(df)
+    df = pd.read_csv('data/data_for_merge_actual.csv').drop(["Unnamed: 0", "cust_inn"], axis=1)
 
-match = Matching(df, target, treatment)
+    match = Matching(df, target, treatment, is_feature_select=True)
 
-df_matched, ate = match.estimate()
+    df_matched, ate = match.estimate()
 
-print(ate)
+    print(ate)
