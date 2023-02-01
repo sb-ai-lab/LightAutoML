@@ -132,7 +132,6 @@ class FaissMatcher:
             ate_dict[outcome] = ate
         return ate_dict
 
-
     def _check_best(self, df_matched, n_features):
         ate_dict = self._calculate_ate_all_target(df_matched)
         if self.n_features is None:
@@ -173,7 +172,4 @@ class FaissMatcher:
             df_matched = self._create_matched_df()
             self._check_best(df_matched, i)
 
-
-
         return self.df_matched, self.ATE
-
