@@ -208,5 +208,5 @@ PLATFORM =
 [testenv]
 deps = .[all]
 commands =
-    pytest tests/unit/test_automl/test_presets/test_TabularNLPAutoML.py -v --ff --maxfail=3
+    pytest tests/ -v --ff --maxfail=3
 """
