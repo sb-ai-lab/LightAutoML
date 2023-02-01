@@ -2,13 +2,13 @@ import warnings
 
 import pandas as pd
 
-from Matcher.pipelines.Matcher import Matching
+from matcher.pipelines.Matcher import Matching
 
 warnings.filterwarnings("ignore")
 target = "sum_oper"
 treatment = "treated"
 
-df = pd.read_csv('Matcher/data/p2p_data_after_MIS.csv').drop(["Unnamed: 0", "report_dt"], axis=1).sample(1000)
+df = pd.read_csv('matcher/data/p2p_data_after_MIS.csv').drop(["Unnamed: 0", "report_dt"], axis=1).sample(1000)
 
 print(df)
 
