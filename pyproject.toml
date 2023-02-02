@@ -206,7 +206,7 @@ PLATFORM =
     windows-latest: windows
 
 [testenv]
-deps = .[all]
+#deps = .[all]
 commands =
     pytest tests/ -v --ff --maxfail=3
 """
