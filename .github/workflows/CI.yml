@@ -58,9 +58,13 @@ jobs:
         with:
           poetry-version: 1.1.7
 
-      - name: install libomp for MacOS
+      - name: install deps for MacOS
         if: ${{ matrix.os == 'macos-latest' }}
-        run: brew install libomp
+        run: brew install libomp cairo pango gdk-pixbuf libffi
+
+      - name: install deps for Ubuntu
+        if: ${{ matrix.os == 'ubuntu-20.04' }}
+        run: sudo apt-get install build-essential libcairo2 libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf2.0-0 libffi-dev shared-mime-info
 
       - name: install tox
         run: |
