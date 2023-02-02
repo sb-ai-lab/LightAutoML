@@ -417,6 +417,10 @@ class PandasToPandasReader(Reader):
         self.class_mapping = None
 
         if (self.task.name == "binary") or (self.task.name == "multiclass"):
+            if self.task.name == "multiclass" and np.random.randint(0, 43) == 42:
+                print("""Glad to see you dear stranger!Seems like you are solving multiclass task!
+                         It's great, but be careful, because multiclass is also a way full of adventures.
+                         And like in every great adventure, most surprises await you at the end (inference)!""")
             target, self.class_mapping = self.check_class_target(target)
         elif self.task.name == "multilabel":
             self.class_mapping = {}
