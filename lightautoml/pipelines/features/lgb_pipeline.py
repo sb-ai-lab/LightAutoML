@@ -23,15 +23,16 @@ from ...transformers.numeric import FillInf
 from ...transformers.numeric import FillnaMedian
 from ...transformers.numeric import NaNFlags
 from ...transformers.numeric import StandardScaler
+from ...transformers.seq import DiffTransformer
 from ...transformers.seq import GetSeqTransformer
 from ...transformers.seq import SeqLagTransformer
-from ...transformers.seq import DiffTransformer
 from ...transformers.seq import SeqNumCountsTransformer
 from ...transformers.seq import SeqStatisticsTransformer
 from ..selection.base import ImportanceEstimator
 from ..utils import get_columns_by_role
 from .base import FeaturesPipeline
 from .base import TabularDataFeatures
+
 
 NumpyOrPandas = Union[PandasDataset, NumpyDataset]
 
@@ -109,18 +110,18 @@ class LGBSeqSimpleFeatures(FeaturesPipeline, TabularDataFeatures):
     """
 
     def __init__(
-            self,
-            feats_imp: Optional[ImportanceEstimator] = None,
-            top_intersections: int = 5,
-            max_intersection_depth: int = 3,
-            subsample: Optional[Union[int, float]] = None,
-            multiclass_te_co: int = 3,
-            auto_unique_co: int = 10,
-            output_categories: bool = False,
-            fill_na=False,
-            scaler=False,
-            transformers_params=None,
-            **kwargs
+        self,
+        feats_imp: Optional[ImportanceEstimator] = None,
+        top_intersections: int = 5,
+        max_intersection_depth: int = 3,
+        subsample: Optional[Union[int, float]] = None,
+        multiclass_te_co: int = 3,
+        auto_unique_co: int = 10,
+        output_categories: bool = False,
+        fill_na=False,
+        scaler=False,
+        transformers_params=None,
+        **kwargs
     ):
         super().__init__(
             multiclass_te_co=multiclass_te_co,
@@ -148,7 +149,6 @@ class LGBSeqSimpleFeatures(FeaturesPipeline, TabularDataFeatures):
 
         """
         transformers_list = []
-        # process categories
 
         # process datetimes
         datetimes = get_columns_by_role(train, "Datetime")
@@ -158,6 +158,7 @@ class LGBSeqSimpleFeatures(FeaturesPipeline, TabularDataFeatures):
             transformers_list.append(self.get_datetime_diffs(train))
             transformers_list.append(self.get_datetime_seasons(train, NumericRole(np.float32)))
 
+        # process categories
         categories = get_columns_by_role(train, "Category")
         if len(categories) > 0:
             cat_processing = SequentialTransformer(
@@ -191,16 +192,21 @@ class LGBSeqSimpleFeatures(FeaturesPipeline, TabularDataFeatures):
         simple_seq_transforms = UnionTransformer([seq, simple_seq_transforms])
 
         # get seq features
-        lags = self.transformers_params["LagTransformer"]["lags"]
-        diffs = self.transformers_params["DiffTransformer"]["diffs"]
+        lags = self.transformers_params["lag_features"]
+        diffs = self.transformers_params["diff_features"]
 
-        seq_features = [SeqLagTransformer(lags=lags)]
-        if "DiffTransformer" in self.transformers_params:
+        seq_features = []
+        if lags:
+            seq_features.append(SeqLagTransformer(lags=lags))
+
+        if diffs:
             # if we have lag with number 0, we shouldn't have diff with number 0
-            flag_del_0_diff = not(
-                not isinstance(diffs, int) and 0 not in diffs
-                or not isinstance(lags, int) and 0 not in lags
-            )
+            if lags:
+                flag_del_0_diff = not (
+                    not isinstance(diffs, int) and 0 not in diffs or not isinstance(lags, int) and 0 not in lags
+                )
+            else:
+                flag_del_0_diff = False
             seq_features.append(DiffTransformer(diffs=diffs, flag_del_0_diff=flag_del_0_diff))
 
         all_feats = SequentialTransformer(
@@ -208,7 +214,7 @@ class LGBSeqSimpleFeatures(FeaturesPipeline, TabularDataFeatures):
                 GetSeqTransformer(name=train.name),
                 SetAttribute("date", datetimes[0]),
                 simple_seq_transforms,  # preprocessing
-                UnionTransformer(seq_features)
+                UnionTransformer(seq_features),
             ]
         )
 
@@ -286,15 +292,15 @@ class LGBMultiSeqSimpleFeatures(FeaturesPipeline, TabularDataFeatures):
     """
 
     def __init__(
-            self,
-            feats_imp: Optional[ImportanceEstimator] = None,
-            top_intersections: int = 5,
-            max_intersection_depth: int = 3,
-            subsample: Optional[Union[int, float]] = None,
-            multiclass_te_co: int = 3,
-            auto_unique_co: int = 10,
-            output_categories: bool = False,
-            **kwargs
+        self,
+        feats_imp: Optional[ImportanceEstimator] = None,
+        top_intersections: int = 5,
+        max_intersection_depth: int = 3,
+        subsample: Optional[Union[int, float]] = None,
+        multiclass_te_co: int = 3,
+        auto_unique_co: int = 10,
+        output_categories: bool = False,
+        **kwargs
     ):
 
         super().__init__(
@@ -444,16 +450,16 @@ class LGBAdvancedPipeline(FeaturesPipeline, TabularDataFeatures):
     """
 
     def __init__(
-            self,
-            feats_imp: Optional[ImportanceEstimator] = None,
-            top_intersections: int = 5,
-            max_intersection_depth: int = 3,
-            subsample: Optional[Union[int, float]] = None,
-            multiclass_te_co: int = 3,
-            auto_unique_co: int = 10,
-            output_categories: bool = False,
-            fill_na=False,
-            **kwargs
+        self,
+        feats_imp: Optional[ImportanceEstimator] = None,
+        top_intersections: int = 5,
+        max_intersection_depth: int = 3,
+        subsample: Optional[Union[int, float]] = None,
+        multiclass_te_co: int = 3,
+        auto_unique_co: int = 10,
+        output_categories: bool = False,
+        fill_na=False,
+        **kwargs
     ):
         super().__init__(
             multiclass_te_co=multiclass_te_co,
@@ -496,9 +502,9 @@ class LGBAdvancedPipeline(FeaturesPipeline, TabularDataFeatures):
 
         if self.output_categories:
             le = (
-                    auto
-                    + get_columns_by_role(train, "Category", encoding_type="oof")
-                    + get_columns_by_role(train, "Category", encoding_type="int")
+                auto
+                + get_columns_by_role(train, "Category", encoding_type="oof")
+                + get_columns_by_role(train, "Category", encoding_type="int")
             )
             te = []
             ordinal = None

@@ -38,7 +38,7 @@ class SeqLagTransformer(LAMLTransformer):
         return self._features
 
     @staticmethod
-    def get_attributes(dataset):
+    def _get_attributes(dataset):
         params = {}
         for attribute in dataset._array_like_attrs:
             _data = []
@@ -49,7 +49,7 @@ class SeqLagTransformer(LAMLTransformer):
             params[attribute] = _data
         return params
 
-    def __init__(self, lags: Union[int, List[int], np.ndarray[int]] = 10):
+    def __init__(self, lags: Union[int, List[int], np.ndarray] = 10):
         if isinstance(lags, list):
             self.lags = np.array(lags)
         if isinstance(lags, int):
@@ -94,7 +94,7 @@ class SeqLagTransformer(LAMLTransformer):
         data_seq = dataset.to_sequence().data
         data = data_seq[:, (data_seq.shape[1] - 1) - self.current_correct_lags[::-1], :]
 
-        params = self.get_attributes(dataset)
+        params = self._get_attributes(dataset)
 
         # transform
         data = np.moveaxis(data, 1, 2).reshape(len(data), -1)
@@ -121,16 +121,36 @@ class DiffTransformer(SeqLagTransformer, LAMLTransformer):
         """Features list."""
         return self._features
 
-    def __init__(self, diffs: Union[int, List[int], np.ndarray[int]] = 10, flag_del_0_diff=False):
+    def __init__(self, diffs: Union[int, List[int], np.ndarray] = 10, flag_del_0_diff=False):
         SeqLagTransformer.__init__(self, lags=diffs)
-        self.flag_del_0_diff = flag_del_0_diff  # if True, we need to drop diff with number 0 to avoid column duplication
+        self.flag_del_0_diff = (
+            flag_del_0_diff  # if True, we need to drop diff with number 0 to avoid column duplication
+        )
 
     def fit(self, dataset):
+        """Fit algorithm on seq dataset.
+
+        Args:
+            dataset: NumpyDataset.
+
+        Returns:
+            Fitted transformer.
+
+        """
         if self.flag_del_0_diff:
             self.lags = self.lags[self.lags > 0]  # drop diff=0
-        SeqLagTransformer.fit(self, dataset)
+        return SeqLagTransformer.fit(self, dataset)
 
     def transform(self, dataset) -> NumpyDataset:
+        """Transform input seq dataset to normal numpy representation.
+
+        Args:
+            dataset: seq.
+
+        Returns:
+            Numpy dataset with lag features.
+
+        """
         # checks here
         LAMLTransformer.transform(self, dataset)
 
@@ -138,13 +158,14 @@ class DiffTransformer(SeqLagTransformer, LAMLTransformer):
         data_seq = dataset.to_sequence().data
         data_seq_t = data_seq[:, (data_seq.shape[1] - 1) - np.array([0]), :]
 
-        params = self.get_attributes(dataset)
+        params = self._get_attributes(dataset)
 
         # transform
         if 0 in self.current_correct_lags:
             data_seq_diffs = data_seq[:, (data_seq.shape[1] - 1) - self.current_correct_lags[::-1][:-1], :]
             data_seq_diffs = np.concatenate(
-                (data_seq_diffs, np.zeros((data_seq_diffs.shape[0], 1, data_seq_diffs.shape[2]))), axis=1)
+                (data_seq_diffs, np.zeros((data_seq_diffs.shape[0], 1, data_seq_diffs.shape[2]))), axis=1
+            )
         else:
             data_seq_diffs = data_seq[:, (data_seq.shape[1] - 1) - self.current_correct_lags[::-1], :]
 
