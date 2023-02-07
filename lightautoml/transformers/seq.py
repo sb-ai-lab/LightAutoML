@@ -24,7 +24,7 @@ class SeqLagTransformer(LAMLTransformer):
     Flattens different features
 
     Args:
-        n_lags: number of lags to compute.
+        lags: int (number of lags to compute), list / np.ndarray (numbers of certain lags to compute).
 
     """
 
@@ -37,8 +37,12 @@ class SeqLagTransformer(LAMLTransformer):
         """Features list."""
         return self._features
 
-    def __init__(self, n_lags: int = 10):
-        self.n_lags = n_lags
+    def __init__(self, lags: Union[int, List[int], np.ndarray[int]] = 10):
+        if isinstance(lags, list):
+            self.lags = np.array(lags)
+        if isinstance(lags, int):
+            self.lags = np.arange(lags)
+        self.lags.setflags(write=False)   # make it immutable
 
     def fit(self, dataset):
         """Fit algorithm on seq dataset.
@@ -50,14 +54,16 @@ class SeqLagTransformer(LAMLTransformer):
             Fitted transformer.
 
         """
-        sample_data = dataset.to_sequence([0]).data
+        sample_data = dataset.to_sequence([0]).data  # (1 observation, history, features)
 
         # convert to accepted dtype and get attributes
-        self.n_lags = np.minimum(self.n_lags, sample_data.data.shape[1])
+        # leave only correct lags (less than number of observations in sample_data)
+        self.current_correct_lags = self.lags.copy()[self.lags < sample_data.data.shape[1]]
+        self.current_correct_lags.setflags(write=False)  # make it immutable again
 
         feats = []
         for feat in dataset.features:
-            feats.extend([self._fname_prefix + f"_{i}" + "__" + feat for i in reversed(range(self.n_lags))])
+            feats.extend([self._fname_prefix + f"_{i}" + "__" + feat for i in reversed(self.current_correct_lags)])
         self._features = list(feats)
         return self
 
@@ -75,7 +81,8 @@ class SeqLagTransformer(LAMLTransformer):
         super().transform(dataset)
         # convert to accepted dtype and get attributes
 
-        data = dataset.to_sequence().data[:, -self.n_lags :, :]
+        data_seq = dataset.to_sequence().data
+        data = data_seq[:, (data_seq.shape[1]-1)-self.current_correct_lags[::-1], :]
 
         params = {}
         for attribute in dataset._array_like_attrs:
@@ -89,6 +96,95 @@ class SeqLagTransformer(LAMLTransformer):
         data = np.moveaxis(data, 1, 2).reshape(len(data), -1)
         # create resulted
         return NumpyDataset(data, self.features, NumericRole(np.float32), **params)
+
+
+class DiffTransformer(LAMLTransformer):
+    """Diff.
+
+    Args:
+        diffs: int (number of diffs to compute), list / np.ndarray (numbers of certain diffs to compute).
+        diffs = 0 means no diff (y_t), 1 means diff between last and previous (y_t-y_{t-1}), 2 means diff between last and previous to previous (y_t-t_{t-2}), etc.
+
+    """
+
+    _fit_checks = ()
+    _transform_checks = ()
+    _fname_prefix = "diff"
+
+    @property
+    def features(self) -> List[str]:
+        """Features list."""
+        return self._features
+
+    def __init__(self, diffs: Union[int, List[int], np.ndarray[int]] = 10):
+        if isinstance(diffs, list):
+            self.diffs = np.array(diffs)
+        if isinstance(diffs, int):
+            self.diffs = np.arange(diffs)
+        self.diffs.setflags(write=False)  # make it immutable
+
+    def fit(self, dataset):
+        """Fit algorithm on seq dataset.
+
+        Args:
+            dataset: NumpyDataset.
+
+        Returns:
+            Fitted transformer.
+
+        """
+        sample_data = dataset.to_sequence([0]).data  ## (1 observation, history, features)
+
+        # convert to accepted dtype and get attributes
+        # leave only correct diffs (less then number of observations in sample_data)
+        self.current_correct_diffs = self.diffs.copy()[self.diffs < sample_data.data.shape[1]]
+        self.current_correct_diffs.setflags(write=False)  # make it immutable again
+
+        feats = []
+        for feat in dataset.features:
+            feats.extend([self._fname_prefix + f"_{i}" + "__" + feat for i in reversed(self.current_correct_diffs)])
+        self._features = list(feats)
+        return self
+
+    def transform(self, dataset) -> NumpyDataset:
+        """Transform input seq dataset to normal numpy representation.
+
+        Args:
+            dataset: seq.
+
+        Returns:
+            Numpy dataset with diffs features.
+
+        """
+        # checks here
+        super().transform(dataset)
+        # convert to accepted dtype and get attributes
+
+        data_seq = dataset.to_sequence().data
+        data_seq_t = data_seq[:, (data_seq.shape[1] - 1) - np.array([0]), :]
+
+        params = {}
+        for attribute in dataset._array_like_attrs:
+            _data = []
+            _d = getattr(dataset, attribute).values
+            for row in np.arange(len(dataset)):
+                _data.append(_d[dataset.idx[row]][-1])
+            _data = np.array(_data)
+            params[attribute] = _data
+        # transform
+        if 0 in self.current_correct_diffs:
+            data_seq_diffs = data_seq[:, (data_seq.shape[1] - 1) - self.current_correct_diffs[::-1][:-1], :]
+            data_seq_diffs = np.concatenate(
+                (data_seq_diffs, np.zeros((data_seq_diffs.shape[0], 1, data_seq_diffs.shape[2]))), axis=1)
+        else:
+            data_seq_diffs = data_seq[:, (data_seq.shape[1] - 1) - self.current_correct_diffs[::-1], :]
+
+        data_t = np.moveaxis(data_seq_t, 1, 2)[:, :, ::-1].reshape(len(data_seq_t), -1)
+        data_t_diffs = np.moveaxis(data_seq_diffs, 1, 2).reshape(len(data_seq_diffs), -1)
+        final_t = np.repeat(data_t, len(self.current_correct_diffs), axis=1) - data_t_diffs
+
+        # create resulted
+        return NumpyDataset(final_t, self.features, NumericRole(np.float32), **params)
 
 
 class SeqNumCountsTransformer(LAMLTransformer):

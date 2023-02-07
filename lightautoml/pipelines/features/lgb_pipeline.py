@@ -25,6 +25,7 @@ from ...transformers.numeric import NaNFlags
 from ...transformers.numeric import StandardScaler
 from ...transformers.seq import GetSeqTransformer
 from ...transformers.seq import SeqLagTransformer
+from ...transformers.seq import DiffTransformer
 from ...transformers.seq import SeqNumCountsTransformer
 from ...transformers.seq import SeqStatisticsTransformer
 from ..selection.base import ImportanceEstimator
@@ -119,6 +120,7 @@ class LGBSeqSimpleFeatures(FeaturesPipeline, TabularDataFeatures):
         output_categories: bool = False,
         fill_na=False,
         scaler=False,
+        transformers_params=None,
         **kwargs
     ):
         super().__init__(
@@ -134,6 +136,7 @@ class LGBSeqSimpleFeatures(FeaturesPipeline, TabularDataFeatures):
 
         self.fill_na = fill_na
         self.scaler = scaler
+        self.transformers_params = transformers_params
 
     def get_seq_pipeline(self, train):
         """Create pipeline for seq data.
@@ -189,12 +192,16 @@ class LGBSeqSimpleFeatures(FeaturesPipeline, TabularDataFeatures):
         simple_seq_transforms = UnionTransformer([seq, simple_seq_transforms])
 
         # get seq features
+        seq_features = [SeqLagTransformer(lags=self.transformers_params["LagTransformer"]["lags"])]
+        if "DiffTransformer" in self.transformers_params:
+            seq_features.append(DiffTransformer(diffs=self.transformers_params["DiffTransformer"]["diffs"]))
+
         all_feats = SequentialTransformer(
             [
                 GetSeqTransformer(name=train.name),
                 SetAttribute("date", datetimes[0]),
                 simple_seq_transforms,  # preprocessing
-                SeqLagTransformer(n_lags=30),  # plain features
+                UnionTransformer(seq_features)
             ]
         )
 

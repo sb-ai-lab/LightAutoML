@@ -160,6 +160,12 @@ class AutoTS:
         "verbose": 0,
     }
 
+    default_transformers_params = {
+        "LagTransformer": {
+            "lags": 30
+        },
+    }
+
     @property
     def n_target(self):
         """Get length of future prediction.
@@ -192,7 +198,7 @@ class AutoTS:
             .keys[0]
         )
 
-    def __init__(self, task, seq_params=None, trend_params=None):
+    def __init__(self, task, seq_params=None, trend_params=None, transformer_params=None):
         self.task = task
         self.task_trend = Task("reg", greater_is_better=False, metric="mae", loss="mae")
         if seq_params is None:
@@ -211,6 +217,10 @@ class AutoTS:
             self.trend_params.update(trend_params)
         self.TM = TrendModel(params=self.trend_params)
 
+        self.transformers_params = deepcopy(self.default_transformers_params)
+        if transformer_params is not None:
+            self.transformers_params.update(transformer_params)
+
     def fit_predict(self, train_data, roles, verbose=0):
         self.roles = roles
         train_trend = self.TM.fit_predict(train_data, roles)
@@ -224,7 +234,7 @@ class AutoTS:
         train_detrend.loc[:, roles["target"]] = train_detrend.loc[:, roles["target"]] - train_trend
 
         reader_seq = DictToPandasSeqReader(task=self.task, cv=2, seq_params=self.seq_params)
-        feats_seq = LGBSeqSimpleFeatures(fill_na=True, scaler=True)
+        feats_seq = LGBSeqSimpleFeatures(fill_na=True, scaler=True, transformers_params=self.transformers_params)
         model = RandomForestSklearn(default_params={"verbose": 0})
         # model2 = LinearLBFGS(default_params={'cs': [1]})
         model2 = LinearLBFGS()
