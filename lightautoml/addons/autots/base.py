@@ -198,7 +198,7 @@ class AutoTS:
             .keys[0]
         )
 
-    def __init__(self, task, seq_params=None, trend_params=None, transformer_params=None):
+    def __init__(self, task, seq_params=None, trend_params=None, transformers_params=None):
         self.task = task
         self.task_trend = Task("reg", greater_is_better=False, metric="mae", loss="mae")
         if seq_params is None:
@@ -220,8 +220,8 @@ class AutoTS:
 
         # Transformers params
         self.transformers_params = deepcopy(self.default_transformers_params)
-        if transformer_params is not None:
-            self.transformers_params.update(transformer_params)
+        if transformers_params is not None:
+            self.transformers_params.update(transformers_params)
 
         # default params if they have been stated as boolean True
         if isinstance(self.transformers_params["lag_features"], bool) and self.transformers_params["lag_features"]:

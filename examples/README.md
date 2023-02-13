@@ -13,3 +13,4 @@
 11. `demo10.py` - creation pipelines from blocks (including CatBoost) to build AutoML, solving multiclass classification task
 12. `demo11.py` - AutoML NLP preset usage for tabular datasets with text columns
 13. `demo12.py` - AutoML tabular preset usage with custom validation scheme and multiprocessed inference
+14. `demo13.py` - AutoML TS preset usage with lag and diff transformers' parameters selection

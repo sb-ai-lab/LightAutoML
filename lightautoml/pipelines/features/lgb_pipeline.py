@@ -23,8 +23,8 @@ from ...transformers.numeric import FillInf
 from ...transformers.numeric import FillnaMedian
 from ...transformers.numeric import NaNFlags
 from ...transformers.numeric import StandardScaler
-from ...transformers.seq import DiffTransformer
 from ...transformers.seq import GetSeqTransformer
+from ...transformers.seq import SeqDiffTransformer
 from ...transformers.seq import SeqLagTransformer
 from ...transformers.seq import SeqNumCountsTransformer
 from ...transformers.seq import SeqStatisticsTransformer
@@ -207,7 +207,7 @@ class LGBSeqSimpleFeatures(FeaturesPipeline, TabularDataFeatures):
                 )
             else:
                 flag_del_0_diff = False
-            seq_features.append(DiffTransformer(diffs=diffs, flag_del_0_diff=flag_del_0_diff))
+            seq_features.append(SeqDiffTransformer(diffs=diffs, flag_del_0_diff=flag_del_0_diff))
 
         all_feats = SequentialTransformer(
             [

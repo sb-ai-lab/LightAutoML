@@ -103,7 +103,7 @@ class SeqLagTransformer(LAMLTransformer):
         return NumpyDataset(data, self.features, NumericRole(np.float32), **params)
 
 
-class DiffTransformer(SeqLagTransformer, LAMLTransformer):
+class SeqDiffTransformer(SeqLagTransformer, LAMLTransformer):
     """Diff.
 
     Args:
