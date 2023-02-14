@@ -124,6 +124,9 @@ venv.bak/
 # Rope project settings
 .ropeproject
 
+# VSCode
+.vscode
+
 # mkdocs documentation
 /site
 
@@ -141,7 +144,13 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
+# VSCode
+.vscode/
+
 .idea/
 lama_venv/
-poetry.lock
 *.db
+
+temp/
+
+poetry.lock

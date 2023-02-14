@@ -25,26 +25,18 @@ class MyClass:
         attr1 (str): Description of `attr1`.
         attr2 (str): Description of `attr2`.
 
+    Args:
+        attr1: Description of `attr1`.
+        attr2: Description of `attr2`.
+
+
     """
 
     def __init__(self, attr1: str, attr2: str):
-        """
-
-        Also, prints time.
-
-        Args:
-            attr1: Description of `attr1`.
-            attr2: Description of `attr2`.
-
-        """
         self.attr1 = attr1
         self.attr2 = attr2
         date = datetime.datetime.now()
-        print(
-            "{}.{}.{} {}:{}:{}".format(
-                date.day, date.month, date.year, date.hour, date.minute, date.second
-            )
-        )
+        print("{}.{}.{} {}:{}:{}".format(date.day, date.month, date.year, date.hour, date.minute, date.second))
 
 
 # .. toctree::

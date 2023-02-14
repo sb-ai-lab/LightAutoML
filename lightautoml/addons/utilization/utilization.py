@@ -104,7 +104,6 @@ class TimeUtilization:
         memory_limit: Memory limit that are passed to each automl.
         cpu_limit: Cpu limit that that are passed to each automl.
         gpu_ids: Gpu_ids that are passed to each automl.
-        debug: To catch exceptions or not.
         verbose: Controls the verbosity: the higher, the more messages.
             <1  : messages are not displayed;
             >=1 : the computation process for layers is displayed;
@@ -141,7 +140,6 @@ class TimeUtilization:
         memory_limit: int = 16,
         cpu_limit: int = 4,
         gpu_ids: Optional[str] = None,
-        debug: bool = False,
         timing_params: Optional[dict] = None,
         configs_list: Optional[Sequence[str]] = None,
         inner_blend: Optional[Blender] = None,
@@ -159,7 +157,6 @@ class TimeUtilization:
         self.memory_limit = memory_limit
         self.cpu_limit = cpu_limit
         self.gpu_ids = gpu_ids
-        self.debug = debug
 
         self.timing_params = timing_params
         if timing_params is None:
@@ -306,7 +303,6 @@ class TimeUtilization:
                     memory_limit=self.memory_limit,
                     cpu_limit=self.cpu_limit,
                     gpu_ids=self.gpu_ids,
-                    debug=self.debug,
                     timing_params=self.timing_params,
                     config_path=config,
                     **random_states,

@@ -1,13 +1,19 @@
+default_stages:
+  - commit
+
 repos:
   - repo: https://github.com/psf/black
     rev: 20.8b1
     hooks:
       - id: black
+        args: ["--config=pyproject.toml"]
+        additional_dependencies: ["click==8.0.4"]
 
   - repo: https://github.com/PyCQA/isort
     rev: 5.7.0
     hooks:
       - id: isort
+        args: ["--settings-path pyproject.toml"]
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v3.4.0
@@ -15,14 +21,44 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: debug-statements
+      - id: check-yaml
 
-#   - repo: https://gitlab.com/pycqa/flake8
-#     rev: 3.8.4
-#     hooks:
-#       - id: flake8
+  - repo: https://github.com/PyCQA/flake8
+    rev: 3.8.4
+    hooks:
+      - id: flake8
+        additional_dependencies: [flake8-docstrings]
 
-#   - repo: https://github.com/pre-commit/mirrors-mypy
-#     rev: v0.761
-#     hooks:
-#       - id: mypy
-#         args: [--show-error-codes]
+  - repo: https://github.com/terrencepreilly/darglint
+    rev: v1.8.1
+    hooks:
+      - id: darglint
+
+  - repo: https://github.com/myint/rstcheck
+    rev: 3f92957478422df87bd730abde66f089cc1ee19b
+    hooks:
+      - id: rstcheck
+
+  - repo: local
+    hooks:
+      - id: set-py-versions
+        name: set python versions
+        description: set python versions := [3.6.1, 3.10) to `pyproject.toml`
+        language: python
+        entry: python scripts/poetry_fix.py -f
+        pass_filenames: false
+
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.18.2
+    hooks:
+      - id: check-github-workflows
+
+  - repo: local
+    hooks:
+      - id: exp-branch-push
+        name: experiment branch push
+        description: prevent pushing 'experiment/*' branches to LAMA github
+        stages: [push]
+        language: python
+        entry: python ./scripts/exp_branch_push.py
+        pass_filenames: false
