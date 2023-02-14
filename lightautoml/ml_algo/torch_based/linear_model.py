@@ -70,6 +70,7 @@ class CatLinear(nn.Module):
         if len(embed_sizes) > 0:
             self.cat_params = nn.Parameter(torch.zeros(sum(embed_sizes), output_size))
             self.embed_idx = torch.LongTensor(embed_sizes).cumsum(dim=0) - torch.LongTensor(embed_sizes)
+        self.final_act = nn.Identity()
 
     def forward(
         self,
@@ -95,14 +96,22 @@ class CatLinear(nn.Module):
             x = x + self.cat_params[categories + self.embed_idx].sum(dim=1)
 
         return x
-
+    
+    def predict(
+        self,
+        numbers: Optional[torch.Tensor] = None,
+        categories: Optional[torch.Tensor] = None,
+    ):
+        x = self.forward(numbers, categories)
+        x = self.final_act(x)
+        return x
 
 class CatLogisticRegression(CatLinear):
     """Realisation of torch-based logistic regression."""
 
     def __init__(self, numeric_size: int, embed_sizes: Sequence[int] = (), output_size: int = 1):
         super().__init__(numeric_size, embed_sizes=embed_sizes, output_size=output_size)
-        self.sigmoid = nn.Sigmoid()
+        self.final_act = nn.Sigmoid()
 
     def forward(
         self,
@@ -120,11 +129,10 @@ class CatLogisticRegression(CatLinear):
 
         """
         x = super().forward(numbers, categories)
-        x = torch.clamp(x, -50, 50)
-        x = self.sigmoid(x)
+        # x = torch.clamp(x, -50, 50)
+        # x = self.sigmoid(x)
 
         return x
-
 
 class CatRegression(CatLinear):
     """Realisation of torch-based linear regreession."""
@@ -138,7 +146,7 @@ class CatMulticlass(CatLinear):
 
     def __init__(self, numeric_size: int, embed_sizes: Sequence[int] = (), output_size: int = 1):
         super().__init__(numeric_size, embed_sizes=embed_sizes, output_size=output_size)
-        self.softmax = nn.Softmax(dim=1)
+        self.final_act = nn.Softmax(dim=1)
 
     def forward(
         self,
@@ -156,11 +164,10 @@ class CatMulticlass(CatLinear):
 
         """
         x = super().forward(numbers, categories)
-        x = torch.clamp(x, -50, 50)
-        x = self.softmax(x)
+        # x = torch.clamp(x, -50, 50)
+        # x = self.softmax(x)
 
         return x
-
 
 class TorchBasedLinearEstimator:
     """Linear model based on torch L-BFGS solver.
@@ -432,7 +439,7 @@ class TorchBasedLinearEstimator:
         """
         with torch.set_grad_enabled(False):
             self.model.eval()
-            preds = self.model(data, data_cat).numpy()
+            preds = self.model.predict(data, data_cat).numpy()
 
         return preds
 

@@ -42,7 +42,7 @@ class DenseLightBlock(nn.Module):
         noise_std=0.05,
         act_fun=nn.ReLU,
         use_bn=True,
-        use_noise=True,
+        use_noise=False,
         device=torch.device("cuda:0"),
         **kwargs,
     ):
@@ -79,7 +79,7 @@ class DenseLightModel(nn.Module):
         noise_std=0.05,
         num_init_features=None,
         use_bn=True,
-        use_noise=True,
+        use_noise=False,
         concat_input=True,
         device=torch.device("cuda:0"),
         **kwargs,
@@ -207,7 +207,7 @@ class DenseLayer(nn.Module):
 
         self.features1.add_module("dense1", nn.Linear(n_in, int(bn_factor * n_in)))
         self.features1.add_module("act1", act_fun())
-
+        
         if use_bn:
             self.features2.add_module("norm2", nn.BatchNorm1d(int(bn_factor * n_in)))
 
@@ -344,7 +344,7 @@ class ResNetBlock(nn.Module):
         noise_std=0.05,
         act_fun=nn.ReLU,
         use_bn=True,
-        use_noise=True,
+        use_noise=False,
         device=torch.device("cuda:0"),
         **kwargs,
     ):
@@ -387,14 +387,14 @@ class ResNetModel(nn.Module):
         act_fun=nn.ReLU,
         num_init_features=None,
         use_bn=True,
-        use_noise=True,
+        use_noise=False,
         device=torch.device("cuda:0"),
         **kwargs,
     ):
         super(ResNetModel, self).__init__()
         if isinstance(drop_rate, float):
             drop_rate = [[drop_rate, drop_rate]] * len(hid_factor)
-        elif isinstance(drop_rate, tuple) and isinstance(drop_rate[0], float) and isinstance(drop_rate[1], float):
+        elif (isinstance(drop_rate, tuple) or isinstance(drop_rate, list)) and isinstance(drop_rate[0], float) and isinstance(drop_rate[1], float):
             drop_rate = [drop_rate] * len(hid_factor)
         else:
             assert len(drop_rate) == len(hid_factor), "Wrong number hidden_sizes/drop_rates. Must be equal."

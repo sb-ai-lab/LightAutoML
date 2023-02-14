@@ -199,6 +199,7 @@ def torch_f1(
         metric value.
 
     """
+    y_pred = torch.sigmoid(y_pred)
     y_true = y_true[:, 0].type(torch.int64)
     y_true_ohe = torch.zeros_like(y_pred)
 
@@ -252,11 +253,24 @@ def torch_mape(
     return err.mean()
 
 
+# _torch_loss_dict = {
+#     "mse": (nn.MSELoss, False, False),
+#     "mae": (nn.L1Loss, False, False),
+#     "logloss": (nn.BCELoss, False, False),
+#     "crossentropy": (nn.CrossEntropyLoss, True, True),
+#     "rmsle": (torch_rmsle, False, False),
+#     "mape": (torch_mape, False, False),
+#     "quantile": (torch_quantile, False, False),
+#     "fair": (torch_fair, False, False),
+#     "huber": (torch_huber, False, False),
+#     "f1": (torch_f1, False, False),
+# }
+
 _torch_loss_dict = {
     "mse": (nn.MSELoss, False, False),
     "mae": (nn.L1Loss, False, False),
-    "logloss": (nn.BCELoss, False, False),
-    "crossentropy": (nn.CrossEntropyLoss, True, True),
+    "logloss": (nn.BCEWithLogitsLoss, False, False),
+    "crossentropy": (nn.CrossEntropyLoss, True, False),
     "rmsle": (torch_rmsle, False, False),
     "mape": (torch_mape, False, False),
     "quantile": (torch_quantile, False, False),
@@ -277,7 +291,6 @@ class TORCHLoss(Loss):
 
     def __init__(self, loss: Union[str, Callable], loss_params: Optional[Dict] = None):
         self.loss_params = {}
-        self._loss = loss
         if loss_params is not None:
             self.loss_params = loss_params
 

@@ -136,7 +136,6 @@ def set_stdout_level(level):
                 has_console_handler = True
             else:
                 _logger.handlers.remove(handler)
-
     if not has_console_handler:
         handler = logging.StreamHandler(sys.stdout)
         handler.setFormatter(formatter_default)

@@ -19,6 +19,7 @@ from .base import TabularDataset
 from .base import TabularMLAlgo
 from .tuning.base import Distribution
 from .tuning.base import SearchSpace
+from ..utils.logging import get_stdout_level
 
 
 logger = logging.getLogger(__name__)
@@ -68,8 +69,7 @@ class RandomForestSklearn(TabularMLAlgo, ImportanceEstimator):
 
         # Logging
         if "verbose" not in params:
-            root_logger = logging.getLogger()
-            level = root_logger.getEffectiveLevel()
+            level = get_stdout_level()
             if level in (logging.CRITICAL, logging.ERROR, logging.WARNING):
                 params["verbose"] = 0
             else:

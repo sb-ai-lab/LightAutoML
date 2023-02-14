@@ -251,7 +251,7 @@ class TabularNLPAutoML(TabularAutoML):
         # nn model
         time_score = self.get_time_score(n_level, "nn")
         nn_timer = self.timer.get_task_timer("reg_nn", time_score)
-        nn_model = TorchModel(timer=nn_timer, default_params={**self.nn_params, "model": "_linear_layer"})
+        nn_model = TorchModel(timer=nn_timer, default_params={**self.nn_params})
 
         text_nn_feats = self.get_nlp_pipe(self.nn_pipeline_params["text_features"])
         nn_feats = LinearFeatures(output_categories=True, **self.linear_pipeline_params)

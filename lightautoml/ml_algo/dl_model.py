@@ -158,6 +158,7 @@ class TorchModel(TabularMLAlgo):
         "multigpu": False,
         "random_state": 42,
         "model": "dense",
+        "model_with_emb": False,
         "path_to_save": os.path.join("./models/", "model"),
         "verbose_inside": None,
         "verbose": 1,
@@ -181,26 +182,26 @@ class TorchModel(TabularMLAlgo):
         **_default_models_params,
     }
     
-    _torch_loss_dict = {
-        "mse": (nn.MSELoss, False, False),
-        "mae": (nn.L1Loss, False, False),
-        "logloss": (nn.BCEWithLogitsLoss, False, False),
-        "crossentropy": (nn.CrossEntropyLoss, True, False),
-        "rmsle": (torch_rmsle, False, False),
-        "mape": (torch_mape, False, False),
-        "quantile": (torch_quantile, False, False),
-        "fair": (torch_fair, False, False),
-        "huber": (torch_huber, False, False),
-        "f1": (torch_f1, False, False),
-    }
+    # _torch_loss_dict = {
+    #     "mse": (nn.MSELoss, False, False),
+    #     "mae": (nn.L1Loss, False, False),
+    #     "logloss": (nn.BCEWithLogitsLoss, False, False),
+    #     "crossentropy": (nn.CrossEntropyLoss, True, False),
+    #     "rmsle": (torch_rmsle, False, False),
+    #     "mape": (torch_mape, False, False),
+    #     "quantile": (torch_quantile, False, False),
+    #     "fair": (torch_fair, False, False),
+    #     "huber": (torch_huber, False, False),
+    #     "f1": (torch_f1, False, False),
+    # }
     
-    _task_to_loss = {
-        "binary": TorchLossWrapper(nn.BCEWithLogitsLoss),
-        "multiclass": TorchLossWrapper(nn.CrossEntropyLoss, True, False),
-        "reg": TorchLossWrapper(nn.MSELoss),
-        "multi:reg": TorchLossWrapper(nn.L1Loss),
-        "multilabel": TorchLossWrapper(nn.BCEWithLogitsLoss),
-    }
+    # _task_to_loss = {
+    #     "binary": TorchLossWrapper(nn.BCEWithLogitsLoss),
+    #     "multiclass": TorchLossWrapper(nn.CrossEntropyLoss, True, False),
+    #     "reg": TorchLossWrapper(nn.MSELoss),
+    #     "multi:reg": TorchLossWrapper(nn.L1Loss),
+    #     "multilabel": TorchLossWrapper(nn.BCEWithLogitsLoss),
+    # }
 
     def __init__(
             self,
@@ -220,14 +221,17 @@ class TorchModel(TabularMLAlgo):
         
         params = copy(self.params)
         loss = params["loss"]
-        if loss is None:
-            loss = self.task._name
-        if issubclass(type(loss), nn.Module):
+        
+        if isinstance(loss, str):
+            loss = getattr(nn, loss)
+        if loss is not None and issubclass(loss, nn.Module):
             loss = TorchLossWrapper(loss, **params["loss_params"])
-        elif isinstance(loss, str) and loss in self._task_to_loss:
-            loss = self._task_to_loss[loss]
-        else:
-            assert False, "Only support torch loss and loss in {{{}}}".format(str(self._task_to_loss.keys()))
+        if loss is None:
+            loss = self.task.losses['torch'].loss
+        # elif isinstance(loss, str) and loss in self._task_to_loss:
+        #     loss = self._task_to_loss[loss]
+        # else:
+        #     assert False, "Only support torch loss and loss in {{{}}}".format(str(self._task_to_loss.keys()))
         params["loss"] = loss
 
         if params["bert_name"] is None:
@@ -259,13 +263,12 @@ class TorchModel(TabularMLAlgo):
         for p_name, module in [["act_fun", nn],
                                ["dataset", sys.modules[__name__]],
                                ["opt", torch.optim],
-                               ["sch", torch.optim.lr_scheduler],
-                               ["loss", nn]]:
+                               ["sch", torch.optim.lr_scheduler]]:
             if isinstance(params[p_name], str):
                 params[p_name] = getattr(module, params[p_name])
 
         model = Trainer(
-            net=TorchUniversalModel,
+            net=TorchUniversalModel if not params["model_with_emb"] else params["model"],
             net_params={
                 "loss": params["loss"],
                 "task": self.task,

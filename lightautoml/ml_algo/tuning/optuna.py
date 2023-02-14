@@ -94,7 +94,7 @@ class OptunaTuner(ParamsTuner):
 
         """
         assert not ml_algo.is_fitted, "Fitted algo cannot be tuned."
-        # optuna.logging.set_verbosity(logger.getEffectiveLevel())
+        # optuna.logging.set_verbosity(get_stdout_level())
         # upd timeout according to ml_algo timer
         estimated_tuning_time = ml_algo.timer.estimate_tuner_time(len(train_valid_iterator))
         if estimated_tuning_time:
@@ -302,7 +302,7 @@ class DLOptunaTuner(ParamsTuner):
         assert not ml_algo.is_fitted, "Fitted algo cannot be tuned."
         self._params_scores = []
         
-        # optuna.logging.set_verbosity(logger.getEffectiveLevel())
+        # optuna.logging.set_verbosity(get_stdout_level())
         # upd timeout according to ml_algo timer
         estimated_tuning_time = ml_algo.timer.estimate_tuner_time(len(train_valid_iterator))
         if estimated_tuning_time:

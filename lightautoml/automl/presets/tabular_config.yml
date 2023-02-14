@@ -125,66 +125,71 @@ linear_l2_params:
 
 nn_params:
   default_params:
-    act_fun: ReLU
-    bert_name: null
-    bn_factor: 2
-    bs: 512
-    clip_grad: false
-    clip_grad_params: {}
-    compression: 0.5
-    dataset: UniversalDataset
-    deterministic: true
-    device: cuda:0
-    drop_rate: 0.1
-    emb_dropout: 0.1
-    emb_ratio: 3
-    growth_size: 256
-    hidden_size:
-      - 512
-      - 512
-      - 512
-    init_bias: true
-    input_bn: false
-    is_snap: false
-    lang: en
-    loss: null
-    loss_on_logits: true
-    loss_params: {}
-    max_emb_size: 256
-    max_length: 256
-    model: dense
-    multigpu: false
-    n_epochs: 20
     n_out: null
+    
+    hid_factor: [2, 2]
+    hidden_size: [512, 512, 512]
+
+    block_config: [2, 2]
+    compression: 0.5
+    growth_size: 256
+    bn_factor: 2
+
+    drop_rate: 0.1
+    noise_std: 0.05
+    num_init_features: null
+    act_fun: ReLU
+    use_noise: false
+    use_bn: true
+
     num_workers: 0
-    opt: Adam
-    opt_params:
-      lr: 0.0003
-      weight_decay: 0
-    path_to_save: ./models/model
     pin_memory: false
+    max_length: 256
+    is_snap: false
+    input_bn: false
+    max_emb_size: 256
+    bert_name: null
     pooling: cls
+    device: cuda:0
+    use_cont: true
+    use_cat: true
+    use_text: true
+    lang: en
+    deterministic: true
+    multigpu: false
     random_state: 42
-    sch: ReduceLROnPlateau
-    scheduler_params:
-      factor: 0.01
-      min_lr: 0.00001
-      patience: 10
+    model: dense
+    model_with_emb: false
+    path_to_save: null
+    verbose_inside: null
+    verbose: 1
+    n_epochs: 50
     snap_params:
       early_stopping: true
       k: 3
       patience: 16
       swa: true
-    use_bn: true
-    use_cat: true
-    use_cont: true
-    use_dropout: true
-    use_noise: false
-    use_text: true
-    verbose: 1
-    verbose_inside: null
+    bs: 512
+    emb_dropout: 0.1
+    emb_ratio: 3
+    opt: Adam
+    opt_params:
+      lr: 0.0003
+      weight_decay: 0
+    sch: ReduceLROnPlateau
+    scheduler_params:
+      factor: 0.01
+      min_lr: 0.00001
+      patience: 10
+    loss: null
+    loss_on_logits: true
+    loss_params: {}
+    clip_grad: false
+    clip_grad_params: {}
+    init_bias: true
+    dataset: UniversalDataset
     tuned: false
-  
+    
   tuning_params:
     # pretrain tuner on holdout set. True - fast/ False - accurate
     # Ex. if you have 5-fold cv, validate tuner only on 1 fold
@@ -228,6 +233,17 @@ nn_pipeline_params:
   output_distribution: normal
   noise: 0.001
   qnt_factor: 30
+
+  use_te: false
+  top_intersections: 5
+  max_bin_count: 10
+  max_intersection_depth: 3
+  te_subsample: null
+  sparse_ohe: auto
+  auto_unique_co: 50
+  output_categories: true
+  multiclass_te_co: 3
+
 
 timing_params:
   # select timing mode:

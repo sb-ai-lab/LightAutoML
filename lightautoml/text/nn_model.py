@@ -326,15 +326,18 @@ class TorchUniversalModel(nn.Module):
         )
         
         if bias is not None:
-            last_layer = list(filter(lambda x: isinstance(x, nn.Linear) or \
-                                    isinstance(x, nn.Sequential), list(self.torch_model.children())))[-1]
-            while isinstance(last_layer, nn.Sequential):
+            try:
                 last_layer = list(filter(lambda x: isinstance(x, nn.Linear) or \
-                                    isinstance(x, nn.Sequential), last_layer))[-1]
-            bias = torch.Tensor(bias)
-            last_layer.bias.data = bias
-            shape = last_layer.weight.data.shape
-            last_layer.weight.data = torch.zeros(shape[0], shape[1], requires_grad=True)
+                                        isinstance(x, nn.Sequential), list(self.torch_model.children())))[-1]
+                while isinstance(last_layer, nn.Sequential):
+                    last_layer = list(filter(lambda x: isinstance(x, nn.Linear) or \
+                                        isinstance(x, nn.Sequential), last_layer))[-1]
+                bias = torch.Tensor(bias)
+                last_layer.bias.data = bias
+                shape = last_layer.weight.data.shape
+                last_layer.weight.data = torch.zeros(shape[0], shape[1], requires_grad=True)
+            except:
+                print("Last linear layer not founded, so init_bias=False")
         
         self.сlump = Clump()
         self.sig = nn.Sigmoid()

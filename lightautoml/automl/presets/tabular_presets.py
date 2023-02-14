@@ -494,14 +494,6 @@ class TabularAutoML(AutoMLPreset):
         for n, names in enumerate(self.general_params["use_algos"]):
             lvl = []
             # regs
-            rf_models = [x for x in ["rf", "rf_tuned"] if x in names]
-
-            if len(rf_models) > 0:
-                selector = None
-                if "rf" in self.selection_params["select_algos"] and (self.general_params["skip_conn"] or n == 0):
-                    selector = pre_selector
-                lvl.append(self.get_rfs(rf_models, n + 1, selector))
-
             if "linear_l2" in names:
                 selector = None
                 if "linear_l2" in self.selection_params["select_algos"] and (
@@ -509,6 +501,16 @@ class TabularAutoML(AutoMLPreset):
                 ):
                     selector = pre_selector
                 lvl.append(self.get_linear(n + 1, selector))
+            
+            gbm_models = [
+                x for x in ["lgb", "lgb_tuned", "cb", "cb_tuned"] if x in names and x.split("_")[0] in self.task.losses
+            ]
+
+            if len(gbm_models) > 0:
+                selector = None
+                if "gbm" in self.selection_params["select_algos"] and (self.general_params["skip_conn"] or n == 0):
+                    selector = pre_selector
+                lvl.append(self.get_gbms(gbm_models, n + 1, selector))
             
             available_nn_models = ["nn", "mlp", "dense", "denselight", "resnet", "snn", "linear_layer"]
             available_nn_models = available_nn_models + [x + "_tuned" for x in available_nn_models]
@@ -521,15 +523,13 @@ class TabularAutoML(AutoMLPreset):
                 selector = None
                 lvl.append(self.get_nn(nn_models, n + 1, selector))
             
-            gbm_models = [
-                x for x in ["lgb", "lgb_tuned", "cb", "cb_tuned"] if x in names and x.split("_")[0] in self.task.losses
-            ]
+            rf_models = [x for x in ["rf", "rf_tuned"] if x in names]
 
-            if len(gbm_models) > 0:
+            if len(rf_models) > 0:
                 selector = None
-                if "gbm" in self.selection_params["select_algos"] and (self.general_params["skip_conn"] or n == 0):
+                if "rf" in self.selection_params["select_algos"] and (self.general_params["skip_conn"] or n == 0):
                     selector = pre_selector
-                lvl.append(self.get_gbms(gbm_models, n + 1, selector))
+                lvl.append(self.get_rfs(rf_models, n + 1, selector))
 
             levels.append(lvl)
 
@@ -600,7 +600,7 @@ class TabularAutoML(AutoMLPreset):
             cv_iter: Custom cv-iterator. For example, :class:`~lightautoml.validation.np_iterators.TimeSeriesIterator`.
             valid_data: Optional validation dataset.
             valid_features: Optional validation dataset features if cannot be inferred from `valid_data`.
-            verbose: Controls the verbosity: the higher, the more messages.
+                                    : Controls the verbosity: the higher, the more messages.
                 <1  : messages are not displayed;
                 >=1 : the computation process for layers is displayed;
                 >=2 : the information about folds processing is also displayed;

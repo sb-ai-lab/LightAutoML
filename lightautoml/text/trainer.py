@@ -19,7 +19,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from .dp_utils import CustomDataParallel
-
+from ..utils.logging import get_stdout_level
 
 try:
     from apex import amp
@@ -472,7 +472,7 @@ class Trainer:
                     me=self.metric(*val_data, weights), vl=np.mean(val_loss)
                 )
             )
-        elif self.se.early_stop:
+        elif self.se.swa:
             val_loss, val_data, weights = self.test(dataloader=dataloaders["val"])
             logger.info3(
                 "Early stopping: val loss: {vl}, val metric: {me}".format(
@@ -498,8 +498,9 @@ class Trainer:
         self.model.train()
         running_loss = 0
         c = 0
-        logging_level = logger.getEffectiveLevel()
-        if logging_level <= logging.INFO and self.verbose:
+        
+        logging_level = get_stdout_level()
+        if logging_level <= logging.INFO and self.verbose and self.verbose_inside:
             loader = tqdm(dataloaders["train"], desc="train", disable=False)
         else:
             loader = dataloaders["train"]
@@ -531,7 +532,7 @@ class Trainer:
             running_loss += loss
 
             c += 1
-            if self.verbose_inside and logging_level <= logging.INFO:
+            if self.verbose and self.verbose_inside and logging_level <= logging.INFO:
                 if c % self.verbose_inside == 0:
                     val_loss, val_data, weights = self.test(dataloader=dataloaders["val"])
                     if self.stop_by_metric:
@@ -539,16 +540,16 @@ class Trainer:
                     else:
                         cond = np.mean(val_loss)
                     self.se.update(self.model, cond)
-                    if self.verbose is not None:
-                        logger.info3(
-                            "Epoch: {e}, iter: {c}, val loss: {vl}, val metric: {me}".format(
-                                me=self.metric(*val_data, weights),
-                                e=self.epoch,
-                                c=c,
-                                vl=np.mean(val_loss),
-                            )
+                    
+                    logger.info3(
+                        "Epoch: {e}, iter: {c}, val loss: {vl}, val metric: {me}".format(
+                            me=self.metric(*val_data, weights),
+                            e=self.epoch,
+                            c=c,
+                            vl=np.mean(val_loss),
                         )
-            if logging_level <= logging.INFO and self.verbose:
+                    )
+            if logging_level <= logging.INFO and self.verbose  and self.verbose_inside:
                 loader.set_description("train (loss=%g)" % (running_loss / c))
 
         return loss_log
@@ -572,11 +573,11 @@ class Trainer:
         self.model.eval()
         pred = []
         target = []
-        logging_level = logger.getEffectiveLevel()
-        if logging_level <= logging.INFO and self.verbose:
-            loader = tqdm(dataloader, desc=stage, disable=False)
-        else:
-            loader = dataloader
+        logging_level = get_stdout_level()
+        # if logging_level <= logging.INFO and self.verbose and self.verbose_inside:
+        #     loader = tqdm(dataloader, desc=stage, disable=False)
+        # else:
+        loader = dataloader
 
         with torch.no_grad():
             for sample in loader:
