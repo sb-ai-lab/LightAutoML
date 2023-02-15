@@ -233,7 +233,6 @@ nn_pipeline_params:
   output_distribution: normal
   noise: 0.001
   qnt_factor: 30
-
   use_te: false
   top_intersections: 5
   max_bin_count: 10
