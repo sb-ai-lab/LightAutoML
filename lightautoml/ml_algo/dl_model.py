@@ -4,6 +4,12 @@ from pytest import param
 from lightautoml.utils.installation import __validate_extra_deps
 
 # __validate_extra_deps("nlp")
+try:
+    from transformers import AutoTokenizer
+except:
+    import warnings
+
+    warnings.warn("'transformers' - package isn't installed")
 
 import sys
 import gc
@@ -24,7 +30,6 @@ import optuna
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.optim.lr_scheduler import StepLR
-from transformers import AutoTokenizer
 
 from lightautoml.dataset.np_pd_dataset import NumpyDataset
 from lightautoml.tasks.losses.torch import TorchLossWrapper
