@@ -179,7 +179,7 @@ class TabularAutoML(AutoMLPreset):
         ):
             if param is None:
                 param = {}
-            self.__dict__[name] = upd_params(self.__dict__[name], param)
+            self.__dict__[name] = upd_params(self.__dict__.get(name, {}), param)
 
     def infer_auto_params(self, train_data: DataFrame, multilevel_avail: bool = False):
 
