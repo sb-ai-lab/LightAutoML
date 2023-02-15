@@ -1,0 +1,86 @@
+general_params:
+  use_algos: ["linear_l2"]
+  nested_cv: False
+  skip_conn: True
+  return_all_predictions: False
+  weighted_blender_max_nonzero_coef: 0.05
+
+reader_params:
+  samples: 100000
+  max_nan_rate: 0.999
+  max_constant_rate: 0.999
+  cv: 5
+  random_state: 42
+  roles_params:
+  n_jobs: 4
+  advanced_roles: False
+  numeric_unique_rate: 0.999
+  max_to_3rd_rate: 1.1
+  binning_enc_rate: 2
+  raw_decr_rate: 1.1
+  max_score_rate: 0.2
+  abs_score_val: 0.04
+  drop_score_co: 0.00
+
+read_csv_params:
+  decimal: '.'
+  sep: ','
+
+nested_cv_params:
+  cv: 2
+  n_folds:
+  inner_tune: False
+  refit_tuner: False
+
+selection_params:
+  mode: 0
+  importance_type: 'gain'
+  fit_on_holdout: True
+  cutoff: 0
+  feature_group_size: 1
+  max_features_cnt_in_result:
+  select_algos: [ 'gbm' ]
+
+tuning_params:
+  fit_on_holdout: True
+  max_tuning_iter: 101
+  max_tuning_time: 300
+
+lgb_params:
+  default_params:
+    num_threads: 100
+  freeze_defaults: False
+
+cb_params:
+  default_params:
+    task_type: 'CPU'
+    thread_count: 100
+  freeze_defaults: False
+
+rf_params:
+  default_params:
+  freeze_defaults: False
+
+linear_l2_params:
+  default_params: { }
+  freeze_defaults: False
+
+gbm_pipeline_params:
+  top_intersections: 4
+  max_intersection_depth: 3
+  subsample: 100000
+  auto_unique_co: 10
+  multiclass_te_co: 3
+  output_categories: False
+
+linear_pipeline_params:
+  top_intersections: 4
+  max_intersection_depth: 3
+  subsample: 100000
+  auto_unique_co: 50
+  multiclass_te_co: 3
+
+timing_params:
+  mode: 1
+  overhead: 0.1
+  tuning_rate: 0
