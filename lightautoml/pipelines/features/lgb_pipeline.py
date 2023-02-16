@@ -24,6 +24,7 @@ from ...transformers.numeric import FillnaMedian
 from ...transformers.numeric import NaNFlags
 from ...transformers.numeric import StandardScaler
 from ...transformers.seq import GetSeqTransformer
+from ...transformers.seq import SeqDiffTransformer
 from ...transformers.seq import SeqLagTransformer
 from ...transformers.seq import SeqNumCountsTransformer
 from ...transformers.seq import SeqStatisticsTransformer
@@ -119,6 +120,7 @@ class LGBSeqSimpleFeatures(FeaturesPipeline, TabularDataFeatures):
         output_categories: bool = False,
         fill_na=False,
         scaler=False,
+        transformers_params=None,
         **kwargs
     ):
         super().__init__(
@@ -134,6 +136,7 @@ class LGBSeqSimpleFeatures(FeaturesPipeline, TabularDataFeatures):
 
         self.fill_na = fill_na
         self.scaler = scaler
+        self.transformers_params = transformers_params
 
     def get_seq_pipeline(self, train):
         """Create pipeline for seq data.
@@ -146,7 +149,6 @@ class LGBSeqSimpleFeatures(FeaturesPipeline, TabularDataFeatures):
 
         """
         transformers_list = []
-        # process categories
 
         # process datetimes
         datetimes = get_columns_by_role(train, "Datetime")
@@ -156,6 +158,7 @@ class LGBSeqSimpleFeatures(FeaturesPipeline, TabularDataFeatures):
             transformers_list.append(self.get_datetime_diffs(train))
             transformers_list.append(self.get_datetime_seasons(train, NumericRole(np.float32)))
 
+        # process categories
         categories = get_columns_by_role(train, "Category")
         if len(categories) > 0:
             cat_processing = SequentialTransformer(
@@ -189,12 +192,29 @@ class LGBSeqSimpleFeatures(FeaturesPipeline, TabularDataFeatures):
         simple_seq_transforms = UnionTransformer([seq, simple_seq_transforms])
 
         # get seq features
+        lags = self.transformers_params["lag_features"]
+        diffs = self.transformers_params["diff_features"]
+
+        seq_features = []
+        if lags:
+            seq_features.append(SeqLagTransformer(lags=lags))
+
+        if diffs:
+            # if we have lag with number 0, we shouldn't have diff with number 0
+            if lags:
+                flag_del_0_diff = not (
+                    not isinstance(diffs, int) and 0 not in diffs or not isinstance(lags, int) and 0 not in lags
+                )
+            else:
+                flag_del_0_diff = False
+            seq_features.append(SeqDiffTransformer(diffs=diffs, flag_del_0_diff=flag_del_0_diff))
+
         all_feats = SequentialTransformer(
             [
                 GetSeqTransformer(name=train.name),
                 SetAttribute("date", datetimes[0]),
                 simple_seq_transforms,  # preprocessing
-                SeqLagTransformer(n_lags=30),  # plain features
+                UnionTransformer(seq_features),
             ]
         )
 

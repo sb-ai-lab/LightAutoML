@@ -160,6 +160,12 @@ class AutoTS:
         "verbose": 0,
     }
 
+    default_transformers_params = {  # True (then set default value), False, int, list or np.array
+        "lag_features": True,
+        # "lag_time_features": True,
+        "diff_features": False,
+    }
+
     @property
     def n_target(self):
         """Get length of future prediction.
@@ -192,7 +198,7 @@ class AutoTS:
             .keys[0]
         )
 
-    def __init__(self, task, seq_params=None, trend_params=None):
+    def __init__(self, task, seq_params=None, trend_params=None, transformers_params=None):
         self.task = task
         self.task_trend = Task("reg", greater_is_better=False, metric="mae", loss="mae")
         if seq_params is None:
@@ -206,10 +212,24 @@ class AutoTS:
             self.seq_params = seq_params
         self.test_last = self.seq_params["seq0"]["params"]["test_last"]
 
+        # Trend params
         self.trend_params = deepcopy(self.default_trend_params)
         if trend_params is not None:
             self.trend_params.update(trend_params)
         self.TM = TrendModel(params=self.trend_params)
+
+        # Transformers params
+        self.transformers_params = deepcopy(self.default_transformers_params)
+        if transformers_params is not None:
+            self.transformers_params.update(transformers_params)
+
+        # default params if they have been stated as boolean True
+        if isinstance(self.transformers_params["lag_features"], bool) and self.transformers_params["lag_features"]:
+            self.transformers_params["lag_features"] = 30
+        # if isinstance(self.transformers_params["lag_time_features"], bool) and self.transformers_params["lag_time_features"]:
+        #     self.transformers_params["lag_time_features"] = 7
+        if isinstance(self.transformers_params["diff_features"], bool) and self.transformers_params["diff_features"]:
+            self.transformers_params["diff_features"] = 7
 
     def fit_predict(self, train_data, roles, verbose=0):
         self.roles = roles
@@ -224,7 +244,7 @@ class AutoTS:
         train_detrend.loc[:, roles["target"]] = train_detrend.loc[:, roles["target"]] - train_trend
 
         reader_seq = DictToPandasSeqReader(task=self.task, cv=2, seq_params=self.seq_params)
-        feats_seq = LGBSeqSimpleFeatures(fill_na=True, scaler=True)
+        feats_seq = LGBSeqSimpleFeatures(fill_na=True, scaler=True, transformers_params=self.transformers_params)
         model = RandomForestSklearn(default_params={"verbose": 0})
         # model2 = LinearLBFGS(default_params={'cs': [1]})
         model2 = LinearLBFGS()
