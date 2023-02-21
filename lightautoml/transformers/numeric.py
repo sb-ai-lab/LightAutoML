@@ -1,5 +1,6 @@
 """Numeric features transformers."""
 
+from typing import Optional
 from typing import Union
 
 import numpy as np
@@ -69,11 +70,7 @@ class NaNFlags(LAMLTransformer):
         data = dataset.data
         # fit ...
         ds_nan_rate = np.isnan(data).mean(axis=0)
-        self.nan_cols = [
-            name
-            for (name, nan_rate) in zip(dataset.features, ds_nan_rate)
-            if nan_rate > self.nan_rate
-        ]
+        self.nan_cols = [name for (name, nan_rate) in zip(dataset.features, ds_nan_rate) if nan_rate > self.nan_rate]
         self._features = list(self.nan_cols)
 
         return self
@@ -406,22 +403,20 @@ class QuantileBinning(LAMLTransformer):
         new_data = np.zeros(data.shape, dtype=np.int32)
 
         for n, b in enumerate(self.bins):
-            new_data[:, n] = (
-                np.searchsorted(b, np.where(sl[:, n], np.inf, data[:, n])) + 1
-            )
+            new_data[:, n] = np.searchsorted(b, np.where(sl[:, n], np.inf, data[:, n])) + 1
 
         new_data = np.where(sl, 0, new_data)
 
         # create resulted
         output = dataset.empty().to_numpy()
-        output.set_data(
-            new_data, self.features, CategoryRole(np.int32, label_encoded=True)
-        )
+        output.set_data(new_data, self.features, CategoryRole(np.int32, label_encoded=True))
 
         return output
 
 
 class QuantileTransformer(LAMLTransformer):
+    """Discretization of numeric features by quantiles."""
+
     _fit_checks = (numeric_check,)
     _transform_checks = ()
     _fname_prefix = "qntl_tr"
@@ -429,12 +424,21 @@ class QuantileTransformer(LAMLTransformer):
 
     def __init__(
         self,
-        n_quantiles=None,
-        subsample=1e9,
-        output_distribution="normal",
+        n_quantiles: Optional[int] = None,
+        subsample: int = 1e9,
+        output_distribution: str = "normal",
         noise: float = 1e-3,
-        qnt_factor=30,
+        qnt_factor: int = 30,
     ):
+        """QuantileTransformer.
+
+        Args:
+            n_quantiles: Number of quantiles to be computed.
+            subsample: Maximum number of samples used to estimate the quantiles for computational efficiency.
+            output_distribution: Marginal distribution for the transformed data. The choices are 'uniform' or 'normal'.
+            noise: Add noise with certain std to dataset before quantile transformation to make data more smooth.
+            qnt_factor: If number of quantiles is none then it equals dataset size / factor
+        """
         self.params = {
             "n_quantiles": n_quantiles,
             "subsample": subsample,
@@ -446,6 +450,15 @@ class QuantileTransformer(LAMLTransformer):
         self.transformer = None
 
     def fit(self, dataset: NumpyTransformable):
+        """Fit Sklearn QuantileTransformer.
+
+        Args:
+            dataset: Pandas or Numpy dataset of numeric features.
+
+        Returns:
+            self.
+
+        """
         for check_func in self._fit_checks:
             check_func(dataset)
 
@@ -456,9 +469,7 @@ class QuantileTransformer(LAMLTransformer):
             np_dataset += noise_std * np.random.randn(*np_dataset.shape)
 
         if self.params["n_quantiles"] is None:
-            self.params["n_quantiles"] = max(
-                min(np_dataset.shape[0] // self.qnt_factor, 1000), 10
-            )
+            self.params["n_quantiles"] = max(min(np_dataset.shape[0] // self.qnt_factor, 1000), 10)
 
         skl_params = self.params
         del skl_params["noise"]
@@ -468,6 +479,15 @@ class QuantileTransformer(LAMLTransformer):
         return self
 
     def transform(self, dataset: NumpyTransformable) -> NumpyDataset:
+        """Apply transformer.
+
+        Args:
+            dataset: Pandas or Numpy dataset of numeric features.
+
+        Returns:
+            Numpy dataset with encoded labels.
+
+        """
         # checks here
         super().transform(dataset)
         # convert to accepted dtype and get attributes

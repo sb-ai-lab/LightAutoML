@@ -14,12 +14,12 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import RandomForestRegressor
 
 from ..pipelines.selection.base import ImportanceEstimator
+from ..utils.logging import get_stdout_level
 from ..validation.base import TrainValidIterator
 from .base import TabularDataset
 from .base import TabularMLAlgo
 from .tuning.base import Distribution
 from .tuning.base import SearchSpace
-from ..utils.logging import get_stdout_level
 
 
 logger = logging.getLogger(__name__)

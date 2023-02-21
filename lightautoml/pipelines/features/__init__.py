@@ -7,5 +7,5 @@ __all__ = [
     "linear_pipeline",
     "text_pipeline",
     "wb_pipeline",
-    "torch_pipeline"
+    "torch_pipeline",
 ]

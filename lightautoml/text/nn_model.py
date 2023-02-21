@@ -1,5 +1,6 @@
 """Neural Net modules for differen data types."""
 
+import logging
 
 from typing import Any
 from typing import Callable
@@ -9,7 +10,6 @@ from typing import Sequence
 from typing import Union
 
 import numpy as np
-from pyrsistent import v
 import torch
 import torch.nn as nn
 
@@ -24,6 +24,9 @@ except:
 
 from ..tasks.base import Task
 from .dl_transformers import pooling_by_name
+
+
+logger = logging.getLogger(__name__)
 
 
 class UniversalDataset:
@@ -60,9 +63,7 @@ class UniversalDataset:
 
     def __getitem__(self, index: int) -> Dict[str, np.ndarray]:
         res = {"label": self.y[index]}
-        res.update(
-            {key: value[index] for key, value in self.data.items() if key != "text"}
-        )
+        res.update({key: value[index] for key, value in self.data.items() if key != "text"})
         if (self.tokenizer is not None) and ("text" in self.data):
             sent = self.data["text"][index, 0]  # only one column
             _split = sent.split("[SEP]")
@@ -132,11 +133,7 @@ class TextBert(nn.Module):
     def __init__(self, model_name: str = "bert-base-uncased", pooling: str = "cls"):
         super(TextBert, self).__init__()
         if pooling not in self._poolers:
-            raise ValueError(
-                "pooling - {} - not in the list of available types {}".format(
-                    pooling, self._poolers
-                )
-            )
+            raise ValueError("pooling - {} - not in the list of available types {}".format(pooling, self._poolers))
 
         self.transformer = AutoModel.from_pretrained(model_name)
         self.n_out = self.transformer.config.hidden_size
@@ -164,9 +161,7 @@ class TextBert(nn.Module):
         )
 
         # pool the outputs into a vector
-        encoded_layers = self.pooling(
-            encoded_layers, inp["attention_mask"].unsqueeze(-1).bool()
-        )
+        encoded_layers = self.pooling(encoded_layers, inp["attention_mask"].unsqueeze(-1).bool())
         mean_last_hidden_state = self.activation(encoded_layers)
         mean_last_hidden_state = self.dropout(mean_last_hidden_state)
         return mean_last_hidden_state
@@ -185,19 +180,11 @@ class CatEmbedder(nn.Module):
     """
 
     def __init__(
-        self,
-        cat_dims: Sequence[int],
-        emb_dropout: bool = 0.1,
-        emb_ratio: int = 3,
-        max_emb_size: int = 50,
-        **kwargs
+        self, cat_dims: Sequence[int], emb_dropout: bool = 0.1, emb_ratio: int = 3, max_emb_size: int = 50, **kwargs
     ):
         super(CatEmbedder, self).__init__()
 
-        emb_dims = [
-            (int(x), int(min(max_emb_size, max(1, (x + 1) // emb_ratio))))
-            for x in cat_dims
-        ]
+        emb_dims = [(int(x), int(min(max_emb_size, max(1, (x + 1) // emb_ratio)))) for x in cat_dims]
         self.x = [x[0] for x in emb_dims]
         self.no_of_embs = sum([y for x, y in emb_dims])
         assert self.no_of_embs != 0, "The input is empty."
@@ -217,10 +204,7 @@ class CatEmbedder(nn.Module):
     def forward(self, inp: Dict[str, torch.Tensor]) -> torch.Tensor:
         """Forward-pass."""
         output = torch.cat(
-            [
-                emb_layer(inp["cat"][:, i])
-                for i, emb_layer in enumerate(self.emb_layers)
-            ],
+            [emb_layer(inp["cat"][:, i]) for i, emb_layer in enumerate(self.emb_layers)],
             dim=1,
         )
         output = self.emb_dropout_layer(output)
@@ -270,6 +254,7 @@ class TorchUniversalModel(nn.Module):
     Args:
         loss: Callable torch loss with order of arguments (y_true, y_pred).
         task: Task object.
+        torch_model: Torch model.
         n_out: Number of output dimensions.
         cont_embedder: Torch module for numeric data.
         cont_params: Dict with numeric model params.
@@ -277,15 +262,16 @@ class TorchUniversalModel(nn.Module):
         cat_params: Dict with category model params.
         text_embedder: Torch module for text data.
         text_params: Dict with text model params.
+        loss_on_logits: Calculate loss on logits or on predictions of model for classification tasks.
         bias: Array with last hidden linear layer bias.
 
     """
 
     def __init__(
         self,
-        torch_model: nn.Module,
         loss: Callable,
         task: Task,
+        torch_model: nn.Module,
         n_out: int = 1,
         cont_embedder: Optional[Any] = None,
         cont_params: Optional[Dict] = None,
@@ -302,7 +288,7 @@ class TorchUniversalModel(nn.Module):
         self.loss = loss
         self.task = task
         self.loss_on_logits = loss_on_logits
-        
+
         self.cont_embedder = None
         self.cat_embedder = None
         self.text_embedder = None
@@ -318,32 +304,42 @@ class TorchUniversalModel(nn.Module):
             self.text_embedder = text_embedder(**text_params)
             n_in += self.text_embedder.get_out_shape()
 
-        self.torch_model = torch_model(
-            **{
-                **kwargs,
-                **{"n_in": n_in, "n_out": self.n_out, "loss": loss, "task": task},
-            }
+        self.torch_model = (
+            torch_model(
+                **{
+                    **kwargs,
+                    **{"n_in": n_in, "n_out": n_out, "loss": loss, "task": task},
+                }
+            )
+            if torch_model is not None
+            else nn.Sequential(nn.Linear(n_in, n_out))
         )
-        
+
         if bias is not None:
             try:
-                last_layer = list(filter(lambda x: isinstance(x, nn.Linear) or \
-                                        isinstance(x, nn.Sequential), list(self.torch_model.children())))[-1]
+                last_layer = list(
+                    filter(
+                        lambda x: isinstance(x, nn.Linear) or isinstance(x, nn.Sequential),
+                        list(self.torch_model.children()),
+                    )
+                )[-1]
                 while isinstance(last_layer, nn.Sequential):
-                    last_layer = list(filter(lambda x: isinstance(x, nn.Linear) or \
-                                        isinstance(x, nn.Sequential), last_layer))[-1]
+                    last_layer = list(
+                        filter(lambda x: isinstance(x, nn.Linear) or isinstance(x, nn.Sequential), last_layer)
+                    )[-1]
                 bias = torch.Tensor(bias)
                 last_layer.bias.data = bias
                 shape = last_layer.weight.data.shape
                 last_layer.weight.data = torch.zeros(shape[0], shape[1], requires_grad=True)
             except:
-                print("Last linear layer not founded, so init_bias=False")
-        
+                logger.info3("Last linear layer not founded, so init_bias=False")
+
         self.сlump = Clump()
         self.sig = nn.Sigmoid()
         self.softmax = nn.Softmax(dim=1)
-            
+
     def get_logits(self, inp: Dict[str, torch.Tensor]) -> torch.Tensor:
+        """Forward-pass of model with embeddings."""
         outputs = []
         if self.cont_embedder is not None:
             outputs.append(self.cont_embedder(inp))
@@ -358,11 +354,12 @@ class TorchUniversalModel(nn.Module):
             output = torch.cat(outputs, dim=1)
         else:
             output = outputs[0]
-        
+
         logits = self.torch_model(output)
         return logits
-    
-    def get_preds_from_logits(self, logits : torch.Tensor):
+
+    def get_preds_from_logits(self, logits: torch.Tensor) -> torch.Tensor:
+        """Prediction from logits."""
         if self.task.name in ["binary", "multilabel"]:
             out = self.sig(self.сlump(logits))
         elif self.task.name == "multiclass":
@@ -370,20 +367,20 @@ class TorchUniversalModel(nn.Module):
             out = self.softmax(torch.clamp(logits, -50, 50))
         else:
             out = logits
-        
+
         return out
 
     def forward(self, inp: Dict[str, torch.Tensor]) -> torch.Tensor:
+        """Forward-pass with output loss."""
         x = self.get_logits(inp)
         if not self.loss_on_logits:
             x = self.get_preds_from_logits(x)
 
-        loss = self.loss(
-            inp["label"].view(inp["label"].shape[0], -1), x, inp.get("weight", None)
-        )
+        loss = self.loss(inp["label"].view(inp["label"].shape[0], -1), x, inp.get("weight", None))
         return loss
 
     def predict(self, inp: Dict[str, torch.Tensor]) -> torch.Tensor:
+        """Prediction."""
         x = self.get_logits(inp)
         x = self.get_preds_from_logits(x)
         return x

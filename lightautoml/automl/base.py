@@ -120,10 +120,11 @@ class AutoML:
                 input features to next levels.
             return_all_predictions: True if we should return all predictions from last
                 level models.
+            debug: To catch running model exceptions or not.
 
         """
         assert len(levels) > 0, "At least 1 level should be defined"
-        
+
         self.timer = timer
         if timer is None:
             self.timer = PipelineTimer()

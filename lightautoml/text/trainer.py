@@ -18,8 +18,9 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from .dp_utils import CustomDataParallel
 from ..utils.logging import get_stdout_level
+from .dp_utils import CustomDataParallel
+
 
 try:
     from apex import amp
@@ -33,9 +34,7 @@ from .utils import _dtypes_mapping
 logger = logging.getLogger(__name__)
 
 
-def optim_to_device(
-    optim: torch.optim.Optimizer, device: torch.device
-) -> torch.optim.Optimizer:
+def optim_to_device(optim: torch.optim.Optimizer, device: torch.device) -> torch.optim.Optimizer:
     """Change optimizer device.
 
     Args:
@@ -338,15 +337,9 @@ class Trainer:
         self.amp = amp if self.apex else None
         if self.amp is not None:
             opt_level = "O1"
-            self.model, self.optimizer = self.amp.initialize(
-                self.model, self.optimizer, opt_level=opt_level
-            )
+            self.model, self.optimizer = self.amp.initialize(self.model, self.optimizer, opt_level=opt_level)
         self.model.to(self.device)
-        self.scheduler = (
-            self.sch(self.optimizer, **self.scheduler_params)
-            if self.sch is not None
-            else None
-        )
+        self.scheduler = self.sch(self.optimizer, **self.scheduler_params) if self.sch is not None else None
         return self
 
     def load_state(self, path: Union[str, Dict]):
@@ -464,9 +457,7 @@ class Trainer:
         self.se.set_best_params(self.model)
 
         if self.is_snap:
-            val_loss, val_data, weights = self.test(
-                dataloader=dataloaders["val"], snap=True, stage="val"
-            )
+            val_loss, val_data, weights = self.test(dataloader=dataloaders["val"], snap=True, stage="val")
             logger.info3(
                 "Result SE, val loss: {vl}, val metric: {me}".format(
                     me=self.metric(*val_data, weights), vl=np.mean(val_loss)
@@ -498,20 +489,16 @@ class Trainer:
         self.model.train()
         running_loss = 0
         c = 0
-        
+
         logging_level = get_stdout_level()
-        if logging_level <= logging.INFO and self.verbose and self.verbose_inside:
+        if logging_level <= logging.DEBUG and self.verbose:
             loader = tqdm(dataloaders["train"], desc="train", disable=False)
         else:
             loader = dataloaders["train"]
 
         for sample in loader:
             data = {
-                i: (
-                    sample[i].long().to(self.device)
-                    if _dtypes_mapping[i] == "long"
-                    else sample[i].to(self.device)
-                )
+                i: (sample[i].long().to(self.device) if _dtypes_mapping[i] == "long" else sample[i].to(self.device))
                 for i in sample.keys()
             }
 
@@ -532,7 +519,7 @@ class Trainer:
             running_loss += loss
 
             c += 1
-            if self.verbose and self.verbose_inside and logging_level <= logging.INFO:
+            if self.verbose and self.verbose_inside and logging_level <= logging.DEBUG:
                 if c % self.verbose_inside == 0:
                     val_loss, val_data, weights = self.test(dataloader=dataloaders["val"])
                     if self.stop_by_metric:
@@ -540,7 +527,7 @@ class Trainer:
                     else:
                         cond = np.mean(val_loss)
                     self.se.update(self.model, cond)
-                    
+
                     logger.info3(
                         "Epoch: {e}, iter: {c}, val loss: {vl}, val metric: {me}".format(
                             me=self.metric(*val_data, weights),
@@ -549,7 +536,7 @@ class Trainer:
                             vl=np.mean(val_loss),
                         )
                     )
-            if logging_level <= logging.INFO and self.verbose  and self.verbose_inside:
+            if logging_level <= logging.DEBUG and self.verbose and self.verbose_inside:
                 loader.set_description("train (loss=%g)" % (running_loss / c))
 
         return loss_log
@@ -574,19 +561,15 @@ class Trainer:
         pred = []
         target = []
         logging_level = get_stdout_level()
-        # if logging_level <= logging.INFO and self.verbose and self.verbose_inside:
-        #     loader = tqdm(dataloader, desc=stage, disable=False)
-        # else:
-        loader = dataloader
+        if logging_level <= logging.DEBUG and self.verbose:
+            loader = tqdm(dataloader, desc=stage, disable=False)
+        else:
+            loader = dataloader
 
         with torch.no_grad():
             for sample in loader:
                 data = {
-                    i: (
-                        sample[i].long().to(self.device)
-                        if _dtypes_mapping[i] == "long"
-                        else sample[i].to(self.device)
-                    )
+                    i: (sample[i].long().to(self.device) if _dtypes_mapping[i] == "long" else sample[i].to(self.device))
                     for i in sample.keys()
                 }
 
@@ -596,10 +579,10 @@ class Trainer:
                 else:
                     output = self.model.predict(data)
                     loss = self.model(data) if stage != "test" else None
-                
+
                 if stage != "test":
                     loss = loss.mean().data.cpu().numpy()
-                
+
                 loss_log.append(loss)
 
                 output = output.data.cpu().numpy()
@@ -614,10 +597,14 @@ class Trainer:
 
         self.model.train()
 
-        return loss_log, (
-            np.vstack(target) if len(target[0].shape) == 2 else np.hstack(target),
-            np.vstack(pred) if len(pred[0].shape) == 2 else np.hstack(pred),
-        ), np.array(weights_log)
+        return (
+            loss_log,
+            (
+                np.vstack(target) if len(target[0].shape) == 2 else np.hstack(target),
+                np.vstack(pred) if len(pred[0].shape) == 2 else np.hstack(pred),
+            ),
+            np.array(weights_log),
+        )
 
     def predict(self, dataloader: DataLoader, stage: str) -> np.ndarray:
         """Predict model.
@@ -630,8 +617,5 @@ class Trainer:
             Prediction.
 
         """
-
-        loss, (target, pred), _ = self.test(
-            stage=stage, snap=self.is_snap, dataloader=dataloader
-        )
+        loss, (target, pred), _ = self.test(stage=stage, snap=self.is_snap, dataloader=dataloader)
         return pred

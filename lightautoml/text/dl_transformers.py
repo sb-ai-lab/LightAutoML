@@ -24,12 +24,12 @@ except:
 
     warnings.warn("'transformers' - package isn't installed")
 
-from .dp_utils import CustomDataParallel
 from ..ml_algo.torch_based.nn_models import SequenceAvgPooler
 from ..ml_algo.torch_based.nn_models import SequenceClsPooler
 from ..ml_algo.torch_based.nn_models import SequenceIndentityPooler
 from ..ml_algo.torch_based.nn_models import SequenceMaxPooler
 from ..ml_algo.torch_based.nn_models import SequenceSumPooler
+from .dp_utils import CustomDataParallel
 from .utils import _dtypes_mapping
 from .utils import collate_dict
 from .utils import parse_devices

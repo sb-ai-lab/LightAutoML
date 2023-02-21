@@ -96,15 +96,26 @@ class CatLinear(nn.Module):
             x = x + self.cat_params[categories + self.embed_idx].sum(dim=1)
 
         return x
-    
+
     def predict(
         self,
         numbers: Optional[torch.Tensor] = None,
         categories: Optional[torch.Tensor] = None,
     ):
+        """Inference phase.
+
+        Args:
+            numbers: Numeric data.
+            categories: Categorical data.
+
+        Returns:
+            Predicted logits/targets for cls/other tasks.
+
+        """
         x = self.forward(numbers, categories)
         x = self.final_act(x)
         return x
+
 
 class CatLogisticRegression(CatLinear):
     """Realisation of torch-based logistic regression."""
@@ -113,26 +124,6 @@ class CatLogisticRegression(CatLinear):
         super().__init__(numeric_size, embed_sizes=embed_sizes, output_size=output_size)
         self.final_act = nn.Sigmoid()
 
-    def forward(
-        self,
-        numbers: Optional[torch.Tensor] = None,
-        categories: Optional[torch.Tensor] = None,
-    ):
-        """Forward-pass. Sigmoid func at the end of linear layer.
-
-        Args:
-            numbers: Input numeric features.
-            categories: Input categorical features.
-
-        Returns:
-            Probabilitics.
-
-        """
-        x = super().forward(numbers, categories)
-        # x = torch.clamp(x, -50, 50)
-        # x = self.sigmoid(x)
-
-        return x
 
 class CatRegression(CatLinear):
     """Realisation of torch-based linear regreession."""
@@ -148,26 +139,6 @@ class CatMulticlass(CatLinear):
         super().__init__(numeric_size, embed_sizes=embed_sizes, output_size=output_size)
         self.final_act = nn.Softmax(dim=1)
 
-    def forward(
-        self,
-        numbers: Optional[torch.Tensor] = None,
-        categories: Optional[torch.Tensor] = None,
-    ):
-        """Forward-pass.
-
-        Args:
-            numbers: Input numeric features.
-            categories: Input categorical features.
-
-        Returns:
-            Linear prediction.
-
-        """
-        x = super().forward(numbers, categories)
-        # x = torch.clamp(x, -50, 50)
-        # x = self.softmax(x)
-
-        return x
 
 class TorchBasedLinearEstimator:
     """Linear model based on torch L-BFGS solver.

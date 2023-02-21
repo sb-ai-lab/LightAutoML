@@ -241,7 +241,6 @@ class OptunaTuner(ParamsTuner):
         return optuna.visualization.plot_optimization_history(self.study)
 
 
-
 class DLOptunaTuner(ParamsTuner):
     """Wrapper for optuna tuner.
 
@@ -301,7 +300,7 @@ class DLOptunaTuner(ParamsTuner):
         """
         assert not ml_algo.is_fitted, "Fitted algo cannot be tuned."
         self._params_scores = []
-        
+
         # optuna.logging.set_verbosity(get_stdout_level())
         # upd timeout according to ml_algo timer
         estimated_tuning_time = ml_algo.timer.estimate_tuner_time(len(train_valid_iterator))
@@ -359,7 +358,7 @@ class DLOptunaTuner(ParamsTuner):
                 self._best_params = max(self._params_scores, key=lambda x: x[1])[0]
             else:
                 self._best_params = min(self._params_scores, key=lambda x: x[1])[0]
-            
+
             ml_algo.params = self._best_params
             del self._params_scores
 
@@ -367,13 +366,13 @@ class DLOptunaTuner(ParamsTuner):
             logger.info2(
                 f"The set of hyperparameters \x1b[1m{self._best_params}\x1b[0m\n achieve {self.study.best_value:.4f} {metric_name}"
             )
-            
+
             if flg_new_iterator:
                 # if tuner was fitted on holdout set we dont need to save train results
                 return None, None
 
             preds_ds = ml_algo.fit_predict(train_valid_iterator)
-            
+
             return ml_algo, preds_ds
         except optuna.exceptions.OptunaError:
             del self._params_scores
@@ -405,20 +404,20 @@ class DLOptunaTuner(ParamsTuner):
             optimization_search_space = _ml_algo.optimization_search_space
             if not optimization_search_space:
                 optimization_search_space = _ml_algo._default_sample
-            
+
             if callable(optimization_search_space):
-                sampled_params = optimization_search_space(	
-                    trial=trial,	
-                    estimated_n_trials=estimated_n_trials,	
-                    suggested_params=_ml_algo.init_params_on_input(train_valid_iterator),	
-                )	
-            else:	
-                sampled_params = self._sample(	
-                    trial=trial,	
-                    optimization_search_space=optimization_search_space,	
-                    suggested_params=_ml_algo.init_params_on_input(train_valid_iterator),	
+                sampled_params = optimization_search_space(
+                    trial=trial,
+                    estimated_n_trials=estimated_n_trials,
+                    suggested_params=_ml_algo.init_params_on_input(train_valid_iterator),
                 )
-            
+            else:
+                sampled_params = self._sample(
+                    trial=trial,
+                    optimization_search_space=optimization_search_space,
+                    suggested_params=_ml_algo.init_params_on_input(train_valid_iterator),
+                )
+
             _ml_algo.params = sampled_params
             output_dataset = _ml_algo.fit_predict(train_valid_iterator=train_valid_iterator)
             score = _ml_algo.score(output_dataset)
@@ -426,7 +425,7 @@ class DLOptunaTuner(ParamsTuner):
             return score
 
         return objective
-    
+
     def _sample(
         self,
         optimization_search_space,
@@ -450,4 +449,3 @@ class DLOptunaTuner(ParamsTuner):
     def plot(self):
         """Plot optimization history of all trials in a study."""
         return optuna.visualization.plot_optimization_history(self.study)
-

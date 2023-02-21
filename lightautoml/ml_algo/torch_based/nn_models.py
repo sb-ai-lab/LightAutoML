@@ -1,51 +1,84 @@
 from collections import OrderedDict
-from cv2 import drawContours
+from typing import List
+from typing import Optional
+from typing import Union
 
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-import torch.utils.checkpoint as cp
-
 
 
 class GaussianNoise(nn.Module):
-    def __init__(self, stddev, device):
+    """Adds gaussian noise."""
+
+    def __init__(self, stddev: float, device: torch.device):
+        """
+
+        Args:
+            stddev: Std of noise.
+            device: Device to compute on.
+
+        """
         super().__init__()
         self.stddev = stddev
         self.device = device
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         if self.training:
             return x + torch.randn(x.size(), device=self.device) * self.stddev
         return x
 
 
 class UniformNoise(nn.Module):
-    def __init__(self, stddev, device):
+    """Add uniform noise."""
+
+    def __init__(self, stddev: float, device: torch.Tensor):
+        """
+
+        Args:
+            stddev: Std of noise.
+            device: Device to compute on.
+
+        """
         super().__init__()
         self.stddev = stddev
         self.device = device
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         if self.training:
             return x + (torch.rand(x.size(), device=self.device) - 0.5) * self.stddev
         return x
 
 
 class DenseLightBlock(nn.Module):
+    """Realisation of `'denselight'` model block."""
+
     def __init__(
         self,
-        n_in,
-        n_out,
-        drop_rate=0.1,
-        noise_std=0.05,
-        act_fun=nn.ReLU,
-        use_bn=True,
-        use_noise=False,
-        device=torch.device("cuda:0"),
+        n_in: int,
+        n_out: int,
+        drop_rate: float = 0.1,
+        noise_std: float = 0.05,
+        act_fun: nn.Module = nn.ReLU,
+        use_bn: bool = True,
+        use_noise: bool = False,
+        device: torch.device = torch.device("cuda:0"),
         **kwargs,
     ):
+        """
+
+        Args:
+            n_in: Input dim.
+            n_out: Output dim.
+            drop_rate: Dropout rate.
+            noise_std: Std of noise.
+            act_fun: Activation function.
+            use_bn: Use BatchNorm.
+            use_noise: Use noise.
+            device: Device to compute on.
+
+        """
+
         super(DenseLightBlock, self).__init__()
         self.features = nn.Sequential(OrderedDict([]))
 
@@ -59,39 +92,55 @@ class DenseLightBlock(nn.Module):
         self.features.add_module("dense", nn.Linear(n_in, n_out))
         self.features.add_module("act", act_fun())
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         for name, layer in self.features.named_children():
             x = layer(x)
         return x
 
 
 class DenseLightModel(nn.Module):
+    """Realisation of `'denselight'` model."""
+
     def __init__(
         self,
-        n_in,
-        n_out=1,
-        hidden_size=[
+        n_in: int,
+        n_out: int = 1,
+        hidden_size: List[int] = [
             512,
             750,
         ],
-        drop_rate=0.1,
-        act_fun=nn.ReLU,
-        noise_std=0.05,
-        num_init_features=None,
-        use_bn=True,
-        use_noise=False,
-        concat_input=True,
-        device=torch.device("cuda:0"),
+        drop_rate: Union[float, List[float]] = 0.1,
+        act_fun: nn.Module = nn.ReLU,
+        noise_std: float = 0.05,
+        num_init_features: Optional[int] = None,
+        use_bn: bool = True,
+        use_noise: bool = False,
+        concat_input: bool = True,
+        device: torch.device = torch.device("cuda:0"),
         **kwargs,
     ):
+        """
+
+        Args:
+            n_in: Input dim.
+            n_out: Output dim.
+            hidden_size: List of hidden dims.
+            drop_rate: Dropout rate for each layer separately or altogether.
+            act_fun: Activation function.
+            noise_std: Std of noise.
+            num_init_features: If not none add fc layer before model with certain dim.
+            use_bn: Use BatchNorm.
+            use_noise: Use noise.
+            concat_input: Concatenate input to all hidden layers.
+            device: Device to compute on.
+
+        """
         super(DenseLightModel, self).__init__()
-        
+
         if isinstance(drop_rate, float):
             drop_rate = [drop_rate] * len(hidden_size)
-            
-        assert len(hidden_size) == len(
-            drop_rate
-        ), "Wrong number hidden_sizes/drop_rates. Must be equal."
+
+        assert len(hidden_size) == len(drop_rate), "Wrong number hidden_sizes/drop_rates. Must be equal."
 
         self.concat_input = concat_input
         num_features = n_in if num_init_features is None else num_init_features
@@ -121,7 +170,7 @@ class DenseLightModel(nn.Module):
         num_features = hidden_size[-1]
         self.fc = nn.Linear(num_features, n_out)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         input = x.detach().clone()
         for name, layer in self.features.named_children():
             if name != "denseblock1" and name != "dense0" and self.concat_input:
@@ -132,15 +181,44 @@ class DenseLightModel(nn.Module):
 
 
 class MLP(DenseLightModel):
-    def __init__(self, *args, **kwargs):
-        super(MLP, self).__init__(*args, **{**kwargs, **{"concat_input": False}})
+    """Realisation of `'mlp'` model."""
 
-    def forward(self, x):
-        return super(MLP, self).forward(x)
+    def __init__(self, *args, **kwargs):
+        """
+
+        Args:
+            n_in: Input dim.
+            n_out: Output dim.
+            hidden_size: List of hidden dims.
+            drop_rate: Dropout rate for each layer separately or altogether.
+            act_fun: Activation function.
+            noise_std: Std of noise.
+            num_init_features: If not none add fc layer before model with certain dim.
+            use_bn: Use BatchNorm.
+            use_noise: Use noise.
+            device: Device to compute on.
+
+        """
+
+        super(MLP, self).__init__(*args, **{**kwargs, **{"concat_input": False}})
 
 
 class _LinearLayer(DenseLightBlock):
+    """Realisation of `'_linear_layer'` model."""
+
     def __init__(self, *args, **kwargs):
+        """
+
+        Args:
+            n_in: Input dim.
+            n_out: Output dim.
+            hidden_size: List of hidden dims.
+            noise_std: Std of noise.
+            num_init_features: If not none add fc layer before model with certain dim.
+            device: Device to compute on.
+
+        """
+
         super(_LinearLayer, self).__init__(
             *args,
             **{
@@ -151,15 +229,26 @@ class _LinearLayer(DenseLightBlock):
                     "drop_rate": 0.0,
                     "act_fun": nn.Identity,
                 },
-            }
+            },
         )
-
-    def forward(self, x):
-        return super(_LinearLayer, self).forward(x)
 
 
 class LinearLayer(DenseLightBlock):
+    """Realisation of `'linear_layer'` model."""
+
     def __init__(self, *args, **kwargs):
+        """
+
+        Args:
+            n_in: Input dim.
+            n_out: Output dim.
+            hidden_size: List of hidden dims.
+            noise_std: Std of noise.
+            num_init_features: If not none add fc layer before model with certain dim.
+            device: Device to compute on.
+
+        """
+
         super(LinearLayer, self).__init__(
             *args,
             **{
@@ -170,33 +259,35 @@ class LinearLayer(DenseLightBlock):
                     "drop_rate": 0.0,
                     "act_fun": nn.Identity,
                 },
-            }
+            },
         )
-
-    def forward(self, x):
-        return super(LinearLayer, self).forward(x)
-
-
-def bn_function_factory(features):
-    def bn_function(*inputs):
-        concated_features = torch.cat(inputs, 1)
-        bottleneck_output = features(concated_features)
-        return bottleneck_output
-
-    return bn_function
 
 
 class DenseLayer(nn.Module):
+    """Realisation of `'dense'` model layer."""
+
     def __init__(
         self,
-        n_in,
-        growth_size=256,
-        bn_factor=2,
-        drop_rate=0.1,
-        act_fun=nn.ReLU,
-        use_bn=True,
+        n_in: int,
+        growth_size: int = 256,
+        bn_factor: float = 2,
+        drop_rate: float = 0.1,
+        act_fun: nn.Module = nn.ReLU,
+        use_bn: bool = True,
         **kwargs,
     ):
+        """
+
+        Args:
+            n_in: Input dim.
+            growth_size: Output dim.
+            bn_factor: Dim of intermediate fc is increased times `bn_factor` in DenseModel layer.
+            drop_rate: Dropout rate.
+            act_fun: Activation function.
+            use_bn: Use BatchNorm.
+
+        """
+
         super(DenseLayer, self).__init__()
 
         self.features1 = nn.Sequential(OrderedDict([]))
@@ -207,27 +298,37 @@ class DenseLayer(nn.Module):
 
         self.features1.add_module("dense1", nn.Linear(n_in, int(bn_factor * n_in)))
         self.features1.add_module("act1", act_fun())
-        
+
         if use_bn:
             self.features2.add_module("norm2", nn.BatchNorm1d(int(bn_factor * n_in)))
 
-        self.features2.add_module(
-            "dense2", nn.Linear(int(bn_factor * n_in), growth_size)
-        )
+        self.features2.add_module("dense2", nn.Linear(int(bn_factor * n_in), growth_size))
         self.features2.add_module("act2", act_fun())
-        
+
         if drop_rate:
             self.features2.add_module("dropout", nn.Dropout(drop_rate))
 
-    def forward(self, *prev_features):
-        bn_function = bn_function_factory(self.features1)
-        bottleneck_output = bn_function(*prev_features)
-        x = self.features2(bottleneck_output)
+    def forward(self, prev_features):
+        x = self.features1(torch.cat(prev_features, 1))
+        x = self.features2(x)
         return x
 
 
 class Transition(nn.Sequential):
-    def __init__(self, n_in, n_out, act_fun, use_bn=True, **kwargs):
+    """Compress input to lower dim."""
+
+    def __init__(self, n_in: int, n_out: int, act_fun: nn.Module, use_bn: bool = True):
+        """
+
+        Args:
+            n_in: Input dim.
+            n_out: Output dim.
+            growth_size: Output dim of every layer.
+            act_fun: Activation function.
+            use_bn: Use BatchNorm.
+
+        """
+
         super(Transition, self).__init__()
         if use_bn:
             self.add_module("norm", nn.BatchNorm1d(n_in))
@@ -237,17 +338,31 @@ class Transition(nn.Sequential):
 
 
 class DenseBlock(nn.Module):
+    """Realisation of `'dense'` model block."""
+
     def __init__(
         self,
-        num_layers,
-        n_in,
-        bn_factor,
-        growth_size,
-        drop_rate=0.1,
-        act_fun=nn.ReLU,
-        use_bn=True,
+        num_layers: int,
+        n_in: int,
+        bn_factor: float,
+        growth_size: int,
+        drop_rate: float = 0.1,
+        act_fun: nn.Module = nn.ReLU,
+        use_bn: bool = True,
         **kwargs,
     ):
+        """
+
+        Args:
+            n_in: Input dim.
+            num_layers: Number of layers.
+            bn_factor: Dim of intermediate fc is increased times `bn_factor` in DenseModel layer.
+            growth_size: Output dim of every layer.
+            drop_rate: Dropout rate.
+            act_fun: Activation function.
+            use_bn: Use BatchNorm.
+        """
+
         super(DenseBlock, self).__init__()
         for i in range(num_layers):
             layer = DenseLayer(
@@ -263,36 +378,50 @@ class DenseBlock(nn.Module):
     def forward(self, init_features):
         features = [init_features]
         for name, layer in self.named_children():
-            new_features = layer(*features)
+            new_features = layer(features)
             features.append(new_features)
         return torch.cat(features, 1)
 
 
 class DenseModel(nn.Module):
+    """Realisation of `'dense'` model."""
+
     def __init__(
         self,
-        n_in,
-        n_out=1,
-        block_config=[2, 2],
-        drop_rate=0.1,
-        num_init_features=None,
-        compression=0.5,
-        growth_size=256,
-        bn_factor=2,
-        act_fun=nn.ReLU,
-        use_bn=True,
+        n_in: int,
+        n_out: int = 1,
+        block_config: List[int] = [2, 2],
+        drop_rate: Union[float, List[float]] = 0.1,
+        num_init_features: Optional[int] = None,
+        compression: float = 0.5,
+        growth_size: int = 256,
+        bn_factor: float = 2,
+        act_fun: nn.Module = nn.ReLU,
+        use_bn: bool = True,
         **kwargs,
     ):
+        """
+
+        Args:
+            n_in: Input dim.
+            n_out: Output dim.
+            block_config: List of number of layers within each block
+            drop_rate: Dropout rate for each layer separately or altogether.
+            num_init_features: If not none add fc layer before model with certain dim.
+            compression: portion of neuron to drop after block.
+            growth_size: Output dim of every layer.
+            bn_factor: Dim of intermediate fc is increased times `bn_factor` in DenseModel layer.
+            act_fun: Activation function.
+            use_bn: Use BatchNorm.
+        """
 
         super(DenseModel, self).__init__()
         assert 0 < compression <= 1, "compression of densenet should be between 0 and 1"
-        
+
         if isinstance(drop_rate, float):
             drop_rate = [drop_rate] * len(block_config)
-            
-        assert len(block_config) == len(
-            drop_rate
-        ), "Wrong number hidden_sizes/drop_rates. Must be equal."
+
+        assert len(block_config) == len(drop_rate), "Wrong number hidden_sizes/drop_rates. Must be equal."
 
         num_features = n_in if num_init_features is None else num_init_features
         self.features = nn.Sequential(OrderedDict([]))
@@ -326,7 +455,7 @@ class DenseModel(nn.Module):
 
         self.fc = nn.Linear(num_features, n_out)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.features(x)
         x = torch.flatten(x, 1)
         x = self.fc(x)
@@ -335,19 +464,35 @@ class DenseModel(nn.Module):
 
 
 class ResNetBlock(nn.Module):
+    """Realisation of `'resnet'` model block."""
+
     def __init__(
         self,
-        n_in,
-        hid_factor,
-        n_out,
-        drop_rate=[0.1, 0.1],
-        noise_std=0.05,
-        act_fun=nn.ReLU,
-        use_bn=True,
-        use_noise=False,
-        device=torch.device("cuda:0"),
+        n_in: int,
+        hid_factor: float,
+        n_out: int,
+        drop_rate: List[float] = [0.1, 0.1],
+        noise_std: float = 0.05,
+        act_fun: nn.Module = nn.ReLU,
+        use_bn: bool = True,
+        use_noise: bool = False,
+        device: torch.device = torch.device("cuda:0"),
         **kwargs,
     ):
+        """
+
+        Args:
+            n_in: Input dim.
+            n_out: Output dim.
+            hid_factor: Dim of intermediate fc is increased times this factor in ResnetModel layer.
+            drop_rate: Dropout rates.
+            noise_std: Std of noise.
+            act_fun: Activation function.
+            use_bn: Use BatchNorm.
+            use_noise: Use noise.
+            device: Device to compute on.
+        """
+
         super(ResNetBlock, self).__init__()
         self.features = nn.Sequential(OrderedDict([]))
 
@@ -367,44 +512,57 @@ class ResNetBlock(nn.Module):
         if drop_rate[1]:
             self.features.add_module("drop2", nn.Dropout(p=drop_rate[1]))
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.features(x)
         return x
 
 
 class ResNetModel(nn.Module):
     """The ResNet model from
-    https://github.com/yandex-research/rtdl/blob/main/rtdl/modules.py#L410
+    https://github.com/Yura52/rtdl
     """
 
     def __init__(
         self,
-        n_in,
-        n_out=1,
-        hid_factor=[2, 2],
-        drop_rate=0.1,
-        noise_std=0.05,
-        act_fun=nn.ReLU,
-        num_init_features=None,
-        use_bn=True,
-        use_noise=False,
-        device=torch.device("cuda:0"),
+        n_in: int,
+        n_out: int = 1,
+        hid_factor: List[float] = [2, 2],
+        drop_rate: Union[float, List[float], List[List[float]]] = 0.1,
+        noise_std: float = 0.05,
+        act_fun: nn.Module = nn.ReLU,
+        num_init_features: Optional[int] = None,
+        use_bn: bool = True,
+        use_noise: bool = False,
+        device: torch.device = torch.device("cuda:0"),
         **kwargs,
     ):
+        """
+
+        Args:
+            n_in: Input dim.
+            n_out: Output dim.
+            hid_factor: Dim of intermediate fc is increased times this factor in ResnetModel layer.
+            drop_rate: Dropout rate for each layer separately or altogether.
+            noise_std: Std of noise.
+            act_fun: Activation function.
+            num_init_features: If not none add fc layer before model with certain dim.
+            use_bn: Use BatchNorm.
+            use_noise: Use noise.
+            device: Device to compute on.
+        """
+
         super(ResNetModel, self).__init__()
         if isinstance(drop_rate, float):
             drop_rate = [[drop_rate, drop_rate]] * len(hid_factor)
-        elif (isinstance(drop_rate, tuple) or isinstance(drop_rate, list)) and isinstance(drop_rate[0], float) and isinstance(drop_rate[1], float):
+        elif isinstance(drop_rate, list) and len(drop_rate) == 2:
             drop_rate = [drop_rate] * len(hid_factor)
         else:
-            assert len(drop_rate) == len(hid_factor), "Wrong number hidden_sizes/drop_rates. Must be equal."
-        
+            assert (
+                len(drop_rate) == len(hid_factor) and len(drop_rate[0]) == 2
+            ), "Wrong number hidden_sizes/drop_rates. Must be equal."
+
         num_features = n_in if num_init_features is None else num_init_features
-        self.dense0 = (
-            nn.Linear(n_in, num_features)
-            if num_init_features is not None
-            else nn.Identity()
-        )
+        self.dense0 = nn.Linear(n_in, num_features) if num_init_features is not None else nn.Identity()
         self.features1 = nn.Sequential(OrderedDict([]))
 
         for i, hd_factor in enumerate(hid_factor):
@@ -428,7 +586,7 @@ class ResNetModel(nn.Module):
         self.features2.add_module("act", act_fun())
         self.fc = nn.Linear(num_features, n_out)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.dense0(x)
         identity = x
         for name, layer in self.features1.named_children():
@@ -443,24 +601,36 @@ class ResNetModel(nn.Module):
 
 
 class SNN(nn.Module):
+    """Realisation of `'snn'` model."""
+
     def __init__(
         self,
-        n_in,
-        n_out,
-        hidden_size=[512, 512, 512],
-        num_init_features=None,
-        drop_rate=0.1,
+        n_in: int,
+        n_out: int,
+        hidden_size: List[int] = [512, 512, 512],
+        num_init_features: Optional[int] = None,
+        drop_rate: Union[float, List[float]] = 0.1,
         **kwargs,
     ):
         super().__init__()
+        """
+
+        Args:
+            n_in: Input dim.
+            n_out: Output dim.
+            hidden_size: List of hidden dims.
+            drop_rate: Dropout rate for each layer separately or altogether.
+            num_init_features: If not none add fc layer before model with certain dim.
+        """
+
         if isinstance(drop_rate, float):
             drop_rate = [drop_rate] * len(hidden_size)
-        
+
         num_features = n_in if num_init_features is None else num_init_features
         layers = OrderedDict([])
         if num_init_features is not None:
             layers["dense-1"] = nn.Linear(n_in, num_features, bias=False)
-        
+
         for i in range(len(hidden_size) - 1):
             layers[f"dense{i}"] = nn.Linear(num_features, hidden_size[i], bias=False)
             layers[f"selu_{i}"] = nn.SELU()
@@ -468,12 +638,12 @@ class SNN(nn.Module):
             if drop_rate[i]:
                 layers[f"dropout_{i}"] = nn.AlphaDropout(p=drop_rate[i])
             num_features = hidden_size[i]
-        
+
         layers[f"dense_{i}"] = nn.Linear(hidden_size[i], n_out, bias=True)
         self.network = nn.Sequential(layers)
         self.reset_parameters()
-    
-    def forward(self, x):
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.network(x)
         x = x.view(x.shape[0], -1)
         return x
@@ -490,6 +660,7 @@ class SNN(nn.Module):
 
 
 """Different Pooling strategies for sequence data."""
+
 
 class SequenceAbstractPooler(nn.Module):
     """Abstract pooling class."""
@@ -560,4 +731,3 @@ class SequenceIndentityPooler(SequenceAbstractPooler):
 
     def forward(self, x: torch.Tensor, x_mask: torch.Tensor) -> torch.Tensor:
         return x
-
