@@ -536,7 +536,7 @@ class Trainer:
                             vl=np.mean(val_loss),
                         )
                     )
-            if logging_level <= logging.INFO and self.verbose:
+            if logging_level <= logging.DEBUG and self.verbose and self.verbose_inside:
                 loader.set_description("train (loss=%g)" % (running_loss / c))
 
         return loss_log
