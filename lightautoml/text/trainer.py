@@ -18,6 +18,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
+from ..utils.logging import get_stdout_level
 from .dp_utils import CustomDataParallel
 
 
@@ -481,8 +482,9 @@ class Trainer:
         self.model.train()
         running_loss = 0
         c = 0
-        logging_level = logger.getEffectiveLevel()
-        if logging_level <= logging.INFO and self.verbose:
+
+        logging_level = get_stdout_level()
+        if logging_level <= logging.DEBUG and self.verbose:
             loader = tqdm(dataloaders["train"], desc="train", disable=False)
         else:
             loader = dataloaders["train"]
@@ -506,7 +508,7 @@ class Trainer:
             running_loss += loss
 
             c += 1
-            if self.verbose_inside and logging_level <= logging.INFO:
+            if self.verbose and self.verbose_inside and logging_level <= logging.DEBUG:
                 if c % self.verbose_inside == 0:
                     val_loss, val_data = self.test(dataloader=dataloaders["val"])
                     if self.stop_by_metric:
@@ -546,8 +548,8 @@ class Trainer:
         self.model.eval()
         pred = []
         target = []
-        logging_level = logger.getEffectiveLevel()
-        if logging_level <= logging.INFO and self.verbose:
+        logging_level = get_stdout_level()
+        if logging_level <= logging.DEBUG and self.verbose:
             loader = tqdm(dataloader, desc=stage, disable=False)
         else:
             loader = dataloader
