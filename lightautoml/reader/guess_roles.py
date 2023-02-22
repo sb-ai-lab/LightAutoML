@@ -298,7 +298,7 @@ def get_numeric_roles_stat(
         train.folds = set_sklearn_folds(train.task, train.target, cv=5, random_state=42, group=train.group)
 
     if subsample is not None:
-        idx = np.random.RandomState(random_state).permutation(train.shape[0])[:subsample]
+        idx = np.random.RandomState(random_state + 1).permutation(train.shape[0])[:subsample]
         train = train[idx]
 
     data, target = train.data, train.target
@@ -513,7 +513,7 @@ def get_category_roles_stat(
         train.folds = set_sklearn_folds(train.task, train.target.values, cv=5, random_state=42, group=train.group)
 
     if subsample is not None:
-        idx = np.random.RandomState(random_state).permutation(train.shape[0])[:subsample]
+        idx = np.random.RandomState(random_state + 1).permutation(train.shape[0])[:subsample]
         train = train[idx]
 
     # check task specific
@@ -626,7 +626,7 @@ def get_null_scores(
         train = train[:, feats].to_pandas()
 
     if subsample is not None:
-        idx = np.random.RandomState(random_state).permutation(train.shape[0])[:subsample]
+        idx = np.random.RandomState(random_state + 1).permutation(train.shape[0])[:subsample]
         train = train[idx]
 
     # check task specific

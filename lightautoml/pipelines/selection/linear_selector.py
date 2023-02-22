@@ -55,7 +55,7 @@ class HighCorrRemoval(SelectionPipeline):
             else:
                 subsample = int(self.subsample)
 
-            idx = np.random.RandomState(self.random_state).permutation(train.shape[0])[:subsample]
+            idx = np.random.RandomState(self.random_state + 1).permutation(train.shape[0])[:subsample]
             train, target = train[idx], target[idx]
 
         # correlation or cosine
