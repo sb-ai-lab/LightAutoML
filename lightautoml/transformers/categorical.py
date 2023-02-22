@@ -11,6 +11,7 @@ import numpy as np
 
 from pandas import DataFrame
 from pandas import Series
+from pandas import concat
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.utils.murmurhash import murmurhash3_32
 
@@ -1026,7 +1027,7 @@ class OrdinalEncoder(LabelEncoder):
                 cnts = subs[i].value_counts(dropna=True)
                 cnts = cnts[cnts > co].reset_index()
                 cnts = Series(cnts["index"].astype(str).rank().values, index=cnts["index"].values)
-                cnts = cnts.append(Series([cnts.shape[0] + 1], index=[np.nan]))
+                cnts = concat([cnts, Series([cnts.shape[0] + 1], index=[np.nan])])
                 self.dicts[i] = cnts
 
         return self
