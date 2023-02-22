@@ -91,3 +91,16 @@ Text Feature Pipelines
     TextAutoFeatures
     NLPTFiDFFeatures
     TextBertFeatures
+
+
+Feature Pipelines for Neural Networks Models
+------------------------------
+
+.. currentmodule:: lightautoml.pipelines.features.torch_pipeline
+
+.. autosummary::
+    :toctree: ./generated
+    :nosignatures:
+    :template: classtemplate.rst
+
+    TorchSimpleFeatures

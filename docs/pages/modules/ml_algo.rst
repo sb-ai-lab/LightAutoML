@@ -47,6 +47,24 @@ Boosted Trees
     ~boost_lgbm.BoostLGBM
     ~boost_cb.BoostCB
 
+
+Neural Networks
+-------------------------
+
+.. currentmodule:: lightautoml.ml_algo.torch_based
+
+.. autosummary::
+    :toctree: ./generated
+    :nosignatures:
+    :template: classtemplate.rst
+
+    ~nn_models.MLP
+    ~nn_models.DenseLightModel
+    ~nn_models.DenseModel
+    ~nn_models.ResNetModel
+    ~nn_models.SNN
+
+
 WhiteBox
 -------------------------
 
