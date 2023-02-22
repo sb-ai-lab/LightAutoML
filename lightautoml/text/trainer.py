@@ -427,9 +427,9 @@ class Trainer:
             train_loss = self.train(dataloaders=dataloaders)
             train_log.extend(train_loss)
             # test
-            val_loss, val_data = self.test(dataloader=dataloaders["val"])
+            val_loss, val_data, weights = self.test(dataloader=dataloaders["val"])
             if self.stop_by_metric:
-                cond = -1 * self.metric(*val_data)
+                cond = -1 * self.metric(*val_data, weights)
             else:
                 cond = np.mean(val_loss)
             self.se.update(self.model, cond)
@@ -440,7 +440,7 @@ class Trainer:
             if (self.verbose is not None) and ((epoch + 1) % self.verbose == 0):
                 logger.info3(
                     "Epoch: {e}, train loss: {tl}, val loss: {vl}, val metric: {me}".format(
-                        me=self.metric(*val_data),
+                        me=self.metric(*val_data, weights),
                         e=self.epoch,
                         tl=np.mean(train_loss),
                         vl=np.mean(val_loss),
@@ -452,15 +452,17 @@ class Trainer:
         self.se.set_best_params(self.model)
 
         if self.is_snap:
-            val_loss, val_data = self.test(dataloader=dataloaders["val"], snap=True, stage="val")
+            val_loss, val_data, weights = self.test(dataloader=dataloaders["val"], snap=True, stage="val")
             logger.info3(
-                "Result SE, val loss: {vl}, val metric: {me}".format(me=self.metric(*val_data), vl=np.mean(val_loss))
+                "Result SE, val loss: {vl}, val metric: {me}".format(
+                    me=self.metric(*val_data, weights), vl=np.mean(val_loss)
+                )
             )
-        elif self.se.early_stop:
-            val_loss, val_data = self.test(dataloader=dataloaders["val"])
+        elif self.se.swa:
+            val_loss, val_data, weights = self.test(dataloader=dataloaders["val"])
             logger.info3(
                 "Early stopping: val loss: {vl}, val metric: {me}".format(
-                    me=self.metric(*val_data), vl=np.mean(val_loss)
+                    me=self.metric(*val_data, weights), vl=np.mean(val_loss)
                 )
             )
 
@@ -510,21 +512,21 @@ class Trainer:
             c += 1
             if self.verbose and self.verbose_inside and logging_level <= logging.DEBUG:
                 if c % self.verbose_inside == 0:
-                    val_loss, val_data = self.test(dataloader=dataloaders["val"])
+                    val_loss, val_data, weights = self.test(dataloader=dataloaders["val"])
                     if self.stop_by_metric:
-                        cond = -1 * self.metric(*val_data)
+                        cond = -1 * self.metric(*val_data, weights)
                     else:
                         cond = np.mean(val_loss)
                     self.se.update(self.model, cond)
-                    if self.verbose is not None:
-                        logger.info3(
-                            "Epoch: {e}, iter: {c}, val loss: {vl}, val metric: {me}".format(
-                                me=self.metric(*val_data),
-                                e=self.epoch,
-                                c=c,
-                                vl=np.mean(val_loss),
-                            )
+
+                    logger.info3(
+                        "Epoch: {e}, iter: {c}, val loss: {vl}, val metric: {me}".format(
+                            me=self.metric(*val_data, weights),
+                            e=self.epoch,
+                            c=c,
+                            vl=np.mean(val_loss),
                         )
+                    )
             if logging_level <= logging.INFO and self.verbose:
                 loader.set_description("train (loss=%g)" % (running_loss / c))
 
@@ -545,6 +547,7 @@ class Trainer:
 
         """
         loss_log = []
+        weights_log = []
         self.model.eval()
         pred = []
         target = []
@@ -563,27 +566,35 @@ class Trainer:
 
                 if snap:
                     output = self.se.predict(data)
-                    loss = self.se.forward(data)
+                    loss = self.se.forward(data) if stage != "test" else None
                 else:
                     output = self.model.predict(data)
-                    loss = self.model(data)
+                    loss = self.model(data) if stage != "test" else None
 
-                loss = loss.mean().data.cpu().numpy()
+                if stage != "test":
+                    loss = loss.mean().data.cpu().numpy()
+
                 loss_log.append(loss)
 
-                if self.model.n_out == 1:
-                    output = output.view(-1).data.cpu().numpy()
-                else:
-                    output = output.view(-1, self.model.n_out).data.cpu().numpy()
+                output = output.data.cpu().numpy()
+                target_data = data["label"].data.cpu().numpy()
+                weights = data.get("weight", None)
+                if weights is not None:
+                    weights = weights.data.cpu().numpy()
 
                 pred.append(output)
-                target.append(data["label"].view(-1).data.cpu().numpy())
+                target.append(target_data)
+                weights_log.extend(weights)
 
         self.model.train()
 
-        return loss_log, (
-            np.vstack(target) if len(target[0].shape) == 2 else np.hstack(target),
-            np.vstack(pred) if len(pred[0].shape) == 2 else np.hstack(pred),
+        return (
+            loss_log,
+            (
+                np.vstack(target) if len(target[0].shape) == 2 else np.hstack(target),
+                np.vstack(pred) if len(pred[0].shape) == 2 else np.hstack(pred),
+            ),
+            np.array(weights_log),
         )
 
     def predict(self, dataloader: DataLoader, stage: str) -> np.ndarray:
@@ -597,5 +608,5 @@ class Trainer:
             Prediction.
 
         """
-        loss, (target, pred) = self.test(stage=stage, snap=self.is_snap, dataloader=dataloader)
+        loss, (target, pred), _ = self.test(stage=stage, snap=self.is_snap, dataloader=dataloader)
         return pred
