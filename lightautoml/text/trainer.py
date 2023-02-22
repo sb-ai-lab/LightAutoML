@@ -285,6 +285,9 @@ class Trainer:
         apex: bool = False,
         pretrained_path: Optional[str] = None,
         stop_by_metric: bool = False,
+        clip_grad: bool = False,
+        clip_grad_params: Optional[Dict] = None,
+        **kwargs
     ):
         self.net = net
         self.net_params = net_params
@@ -296,13 +299,15 @@ class Trainer:
         self.is_snap = is_snap
         self.snap_params = snap_params
         self.sch = sch
-        self.scheduler_params = scheduler_params
+        self.scheduler_params = scheduler_params if scheduler_params is not None else {}
         self.verbose = verbose
         self.metric = metric
         self.verbose_inside = verbose_inside
         self.apex = apex
         self.pretrained_path = pretrained_path
         self.stop_by_metric = stop_by_metric
+        self.clip_grad = clip_grad
+        self.clip_grad_params = clip_grad_params if clip_grad_params is not None else {}
 
         self.dataloader = None
         self.model = None
@@ -497,14 +502,18 @@ class Trainer:
                 for i in sample.keys()
             }
 
+            self.optimizer.zero_grad()
             loss = self.model(data).mean()
             if self.apex:
                 with self.amp.scale_loss(loss, self.optimizer) as scaled_loss:
                     scaled_loss.backward()
             else:
                 loss.backward()
+
+            if self.clip_grad:
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), **self.clip_grad_params)
             self.optimizer.step()
-            self.optimizer.zero_grad()
+
             loss = loss.data.cpu().numpy()
             loss_log.append(loss)
             running_loss += loss
