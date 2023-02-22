@@ -14,3 +14,4 @@ Tutorials
     tutorials/Tutorial_6_custom_pipeline.nblink
     tutorials/Tutorial_7_ICE_and_PDP_interpretation.nblink
     tutorials/Tutorial_8_CV_preset.nblink
+    tutorials/Tutorial_9_neural_networks.nblink
