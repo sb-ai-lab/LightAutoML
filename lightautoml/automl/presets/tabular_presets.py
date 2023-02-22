@@ -85,6 +85,7 @@ class TabularAutoML(AutoMLPreset):
         memory_limit: Memory limit that are passed to each automl.
         cpu_limit: CPU limit that that are passed to each automl.
         gpu_ids: GPU IDs that are passed to each automl.
+        debug: To catch running model exceptions or not.
         timing_params: Timing param dict. Optional.
         config_path: Path to config file.
         general_params: General param dict.
@@ -117,6 +118,7 @@ class TabularAutoML(AutoMLPreset):
         memory_limit: int = 16,
         cpu_limit: int = 4,
         gpu_ids: Optional[str] = "all",
+        debug: bool = False,
         timing_params: Optional[dict] = None,
         config_path: Optional[str] = None,
         general_params: Optional[dict] = None,
@@ -132,7 +134,7 @@ class TabularAutoML(AutoMLPreset):
         gbm_pipeline_params: Optional[dict] = None,
         linear_pipeline_params: Optional[dict] = None,
     ):
-        super().__init__(task, timeout, memory_limit, cpu_limit, gpu_ids, timing_params, config_path)
+        super().__init__(task, timeout, memory_limit, cpu_limit, gpu_ids, debug, timing_params, config_path)
 
         # upd manual params
         for name, param in zip(
@@ -466,6 +468,7 @@ class TabularAutoML(AutoMLPreset):
             blender=blender,
             return_all_predictions=self.general_params["return_all_predictions"],
             timer=self.timer,
+            debug=self.debug,
         )
 
     def _get_read_csv_params(self):
