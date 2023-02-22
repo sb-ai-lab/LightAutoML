@@ -10,3 +10,4 @@ Kaggle Kernels
 * `Tabular Playground Series February 2021 competition solution <https://www.kaggle.com/alexryzhkov/lightautoml-tabulardata-love>`_
 * `Interpretable WhiteBox solution <https://www.kaggle.com/simakov/lama-whitebox-preset-example>`_
 * `Custom ML pipeline elements inside existing ones <https://www.kaggle.com/simakov/lama-custom-automl-pipeline-example>`_
+* `Tabular Playground Series November 2022 competition solution with Neural Networks <https://www.kaggle.com/code/mikhailkuz/lightautoml-nn-happiness>`_
