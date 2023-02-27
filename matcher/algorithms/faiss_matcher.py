@@ -15,7 +15,9 @@ class FaissMatcher:
                  data,
                  outcomes,
                  treatment,
-                 features=None, sigma=1.96):
+                 features=None,
+                 group_col = False,
+                 sigma=1.96):
         self.df = df
         self.data = data
         self.outcomes = outcomes
@@ -28,8 +30,11 @@ class FaissMatcher:
             self.feature_list = features['Feature'].tolist()
         self.dict_outcome_untreated = {}
         self.dict_outcome_treated = {}
+        self.group_col = group_col
         self.treated_index = None
         self.untreated_index = None
+        self.orig_treated_index = None
+        self.orig_untreated_index = None
         self.results = {}
         self.ATE = None
         self.n_features = None
@@ -68,8 +73,16 @@ class FaissMatcher:
         self.dict_outcome_untreated = {}
         self.dict_outcome_treated = {}
         for outcome in [self.outcomes]:
-            y_untreated = self.df[self.df[self.treatment] == 0][outcome]
-            y_treated = self.df[self.df[self.treatment] == 1][outcome]
+            if self.group_col is None:
+                y_untreated = self.df[self.df[self.treatment] == 0][outcome]
+                y_treated = self.df[self.df[self.treatment] == 1][outcome]
+                x_treated = std_treated
+                x_untreated = std_untreated
+            else:
+                y_untreated = self.df.iloc[self.orig_untreated_index][outcome]
+                y_treated = self.df.iloc[self.orig_treated_index][outcome]
+                x_treated = std_treated.iloc[self.orig_untreated_index]
+                x_untreated = std_untreated.iloc[self.orig_treated_index]
 
             y_match_untreated = y_untreated.iloc[self.treated_index]
             y_match_treated = y_treated.iloc[self.untreated_index]
@@ -77,10 +90,10 @@ class FaissMatcher:
             ols0 = LinearRegression().fit(std_untreated, y_untreated)
             ols1 = LinearRegression().fit(std_treated, y_treated)
 
-            bias0 = ols0.predict(std_treated) - ols0.predict(std_untreated.iloc[self.treated_index])
+            bias0 = ols0.predict(x_treated) - ols0.predict(x_untreated.iloc[self.treated_index])
             y_match_untreated_bias = y_match_untreated - bias0
 
-            bias1 = ols1.predict(std_untreated) - ols1.predict(std_treated.iloc[self.untreated_index])
+            bias1 = ols1.predict(x_untreated) - ols1.predict(x_treated.iloc[self.untreated_index])
             y_match_treated_bias = y_match_treated - bias1
 
             self.dict_outcome_untreated[outcome] = y_untreated.values
@@ -251,6 +264,45 @@ class FaissMatcher:
                 self.n_features = n_features
                 self.ATE = ate_dict
                 self.df_matched = df_matched
+
+    def group_match(self):
+        groups = self.df[[self.group_col]].unique()
+        all_treated_matches = {}
+        all_untreated_matches = {}
+        all_treated_outcome = {}
+        all_untreated_outcome = {}
+        for group in groups:
+            df = self.df[self.df[self.group_col] == group]
+            treated_index = {}
+            untreated_index = {}
+            temp = df[self.feature_list + [self.treatment] + [self.outcomes]]
+            temp = temp.loc[:, (temp != 0).any(axis=0)]
+            treated, untreated, std_treated, std_untreated = self._get_split_scalar_data(temp)
+            for i, ind in enumerate(treated.index):
+                treated_index.update({i: ind})
+            for i, ind in enumerate(untreated.index):
+                untreated_index.update({i: ind})
+            std_treated_np = self._transform_to_np(std_treated)
+            std_untreated_np = self._transform_to_np(std_untreated)
+
+            matches_c = self._get_index(std_treated_np, std_untreated_np)
+            matches_t = self._get_index(std_untreated_np, std_treated_np)
+
+            all_treated_matches.update({group: matches_t})
+            all_untreated_matches.update({group: matches_c})
+            all_treated_outcome.update({group: list(treated_index.values())})
+            all_untreated_outcome.update({group: list(untreated_index.values())})
+        matches_c = [item for sublist in [i.tolist() for i in list(all_untreated_matches.values())] for item in sublist]
+        matches_t = [item for sublist in [i.tolist() for i in list(all_treated_matches.values())] for item in sublist]
+        index_c = [item for sublist in [i for i in list(all_untreated_outcome.values())] for item in sublist]
+        index_t = [item for sublist in [i for i in list(all_treated_outcome.values())] for item in sublist]
+        self.untreated_index = matches_c
+        self.treated_index = matches_t
+        self.orig_treated_undex = index_t
+        self.orig_untreated_index = index_c
+        df_matched = self._create_matched_df()
+        self._check_best(df_matched, 10)
+        return self.df_matched, self.ATE
 
     def match(self):
         for i in range(4, 10):
