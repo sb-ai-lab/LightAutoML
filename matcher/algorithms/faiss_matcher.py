@@ -3,6 +3,7 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LinearRegression
 import faiss
+from scipy.stats import norm
 
 POSTFIX = "_matched"
 POSTFIX_BIAS = "_matched_bias"
@@ -14,7 +15,7 @@ class FaissMatcher:
                  data,
                  outcomes,
                  treatment,
-                 features=None):
+                 features=None, sigma=1.96):
         self.df = df
         self.data = data
         self.outcomes = outcomes
@@ -33,6 +34,7 @@ class FaissMatcher:
         self.ATE = None
         self.n_features = None
         self.df_matched = None
+        self.sigma = sigma
 
     def _get_split_scalar_data(self, df):
         std_scaler = StandardScaler().fit(df.drop([self.outcomes, self.treatment], 1))
@@ -125,15 +127,112 @@ class FaissMatcher:
             (2 * df[self.treatment] - 1) * (df[outcome] - df[outcome + POSTFIX_BIAS]))
         return ate
 
+    def calc_atc(self, df, outcome):
+        '''
+        Рассчет АТС - эффект на контрольной группе, если бы на неё было оказано воздействие
+        '''
+        df = df[df[self.treatment] == 0]
+        N_c = len(df)
+        index_c = list(range(N_c))
+        ITT_c = df[outcome + POSTFIX_BIAS] - df[outcome]
+        scaled_counts_c = self.scaled_counts(N_c, self.treated_index, index_c)
+        vars_c = np.repeat(ITT_c.var(), N_c)  # conservative
+        atc = np.mean(ITT_c)
+        return atc, scaled_counts_c, vars_c
+
+    def calc_att(self, df, outcome):
+        '''Рассчет АТТ - эффект от пилота'''
+        df = df[df[self.treatment] == 1]
+        N_t = len(df)
+        index_t = list(range(N_t))
+        ITT_t = df[outcome] - df[outcome + POSTFIX_BIAS]
+        scaled_counts_t = self.scaled_counts(N_t, self.untreated_index, index_t)
+        vars_t = np.repeat(ITT_t.var(), N_t)  # conservative
+        att = np.mean(ITT_t)
+        return att, scaled_counts_t, vars_t
+
+
+    def scaled_counts(self, N, matches, index):
+
+        # Counts the number of times each subject has appeared as a match. In
+        # the case of multiple matches, each subject only gets partial credit.
+
+        s_counts = np.zeros(N)
+        index_dict = dict(zip(index, list(range(N))))
+        for matches_i in matches:
+            scale = 1 / len(matches_i)
+            for match in matches_i:
+                s_counts[index_dict[match]] += scale
+
+        return s_counts
+
+
+    def calc_atx_var(self, vars_c, vars_t, weights_c, weights_t):
+        # ATE дисперсия
+        N_c, N_t = len(vars_c), len(vars_t)
+        summands_c = weights_c**2 * vars_c
+        summands_t = weights_t**2 * vars_t
+
+        return summands_t.sum()/N_t**2 + summands_c.sum()/N_c**2
+
+
+    def calc_atc_se(self, vars_c, vars_t, scaled_counts_t):
+        # ATС стандартная ошибка
+        N_c, N_t = len(vars_c), len(vars_t)
+        weights_c = np.ones(N_c)
+        weights_t = (N_t/N_c) * scaled_counts_t
+
+        var = self.calc_atx_var(vars_c, vars_t, weights_c, weights_t)
+
+        return np.sqrt(var)
+
+
+    def calc_att_se(self, vars_c, vars_t, scaled_counts_c):
+        # ATT стандартная ошибка
+        N_c, N_t = len(vars_c), len(vars_t)
+        weights_c = (N_c/N_t) * scaled_counts_c
+        weights_t = np.ones(N_t)
+
+        var = self.calc_atx_var(vars_c, vars_t, weights_c, weights_t)
+
+        return np.sqrt(var)
+
+    def calc_ate_se(self, vars_c, vars_t, scaled_counts_c, scaled_counts_t):
+        # ATE стандартная ошибка
+        N_c, N_t = len(vars_c), len(vars_t)
+        N = N_c + N_t
+        weights_c = (N_c/N)*(1+scaled_counts_c)
+        weights_t = (N_t/N)*(1+scaled_counts_t)
+
+        var = self.calc_atx_var(vars_c, vars_t, weights_c, weights_t)
+
+        return np.sqrt(var)
+
+    def pval_calc(self, z):
+        # P-value
+        return round(2*(1 - norm.cdf(abs(z))), 2)
+
     def _calculate_ate_all_target(self, df):
+        att_dict = {}
+        atc_dict = {}
         ate_dict = {}
         for outcome in [self.outcomes]:
             ate = self.calc_ate(df, outcome)
-            ate_dict[outcome] = ate
-        return ate_dict
+            att, scaled_counts_t, vars_t = self.calc_att(df, outcome)
+            atc, scaled_counts_c, vars_c = self.calc_atc(df, outcome)
+            att_se = self.calc_att_se(vars_c, vars_t, scaled_counts_c)
+            atc_se = self.calc_atc_se(vars_c, vars_t, scaled_counts_t)
+            ate_se = self.calc_ate_se(vars_c, vars_t, scaled_counts_c, scaled_counts_t)
+            ate_dict[outcome] = [ate, ate_se, self.pval_calc(ate / ate_se), ate - self.sigma * ate_se,
+                                 ate + self.sigma * ate_se]
+            atc_dict[outcome] = [atc, atc_se, self.pval_calc(atc / atc_se), atc - self.sigma * atc_se,
+                                 atc + self.sigma * atc_se]
+            att_dict[outcome] = [att, att_se, self.pval_calc(att / att_se), att - self.sigma * att_se,
+                                 att + self.sigma * att_se]
+        return ate_dict, atc_dict, att_dict
 
     def _check_best(self, df_matched, n_features):
-        ate_dict = self._calculate_ate_all_target(df_matched)
+        ate_dict, atc_dict, att_dict = self._calculate_ate_all_target(df_matched)
         if self.n_features is None:
             self.n_features = n_features
             self.ATE = ate_dict
