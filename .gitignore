@@ -6,6 +6,9 @@ __pycache__/
 # C extensions
 *.so
 
+# DS_store
+.DS_Store
+
 # Distribution / packaging
 .Python
 build/
@@ -25,6 +28,7 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+tabularAutoML_model_report/
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -94,22 +98,7 @@ ipython_config.py
 #   install all needed dependencies.
 #Pipfile.lock
 
-# poetry
-#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
-#   This is especially recommended for binary packages to ensure reproducibility, and is more
-#   commonly ignored for libraries.
-#   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
-#poetry.lock
-
-# pdm
-#   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
-#pdm.lock
-#   pdm stores project-wide configurations in .pdm.toml, but it is recommended to not include it
-#   in version control.
-#   https://pdm.fming.dev/#use-with-ide
-.pdm.toml
-
-# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
+# PEP 582; used by e.g. github.com/David-OConnor/pyflow
 __pypackages__/
 
 # Celery stuff
@@ -135,6 +124,9 @@ venv.bak/
 # Rope project settings
 .ropeproject
 
+# VSCode
+.vscode
+
 # mkdocs documentation
 /site
 
@@ -152,17 +144,13 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
-# PyCharm
-#  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
-#  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
-#  and can be added to the global gitignore or merged into this file.  For a more nuclear
-#  option (not recommended) you can uncomment the following to ignore the entire idea folder.
+# VSCode
+.vscode/
+
 .idea/
+lama_venv/
+*.db
 
+temp/
 
-# Locally used directory
-data/
-notebooks/
-report_feature_selector/
-
-
+poetry.lock

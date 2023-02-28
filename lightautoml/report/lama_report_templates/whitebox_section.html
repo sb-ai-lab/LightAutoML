@@ -1,0 +1,263 @@
+<li>
+    <h2 class="caret caret-down" id="section_whitebox">Whitebox report</h2>
+    <ul class="nested active">
+        <li>
+            <h3 class="caret" id="section_whitebox_1">Model structure</h3>
+            <ul class="nested">
+                <li>
+                    <h4 class="caret" id="section_whitebox_1_1">Regression coefficients</h4>
+                    <ul class="nested">
+                        <p>Coefficients of regression model:</p>
+
+                        {{ model_coef }}
+
+                        <p><img src="Model_weights.png" alt="Model weights"></p>
+                    </ul>
+                </li>
+                <li>
+                    <h4 class="caret" id="section_whitebox_1_2">Distribution of feature values by bins and WoE inside them</h4>
+                    <ul class="nested">
+                        <p></p>
+                        {% for img in features_woe %}
+                        <p><img src={{img}} alt="{{img}}}" /></p>
+                        {% endfor %}
+                    </ul>
+                </li>
+            </ul>
+        </li>
+        <li>
+            <h3 class="caret" id="section_whitebox_2">Validation tests</h3>
+            <ul class="nested">
+                <li>
+                    <h4 class="caret" id="section_whitebox_2_1">P-value on model coefficients</h4>
+                    <ul class="nested">
+                        {% if p_vals is not none %}
+                        <h4>For training sample</h4>
+                        {{ p_vals }}
+                        <h4>For test sample {{ n_test_sample }}</h4>
+                        {{ p_vals_test }}
+                        {% else %}
+                        <p>You have to train model with parameter <strong>regularized_refit=False</strong></p>
+                        {% endif %}
+                    </ul>
+                </li>
+                <li>
+                    <h4 class="caret" id="section_whitebox_2_2">One-dimensional analysis</h4>
+                    <ul class="nested">
+                        <p>Gini for training sample</p>
+                        <p><img src="train_enc_ginis.png" alt="Train_enc ginis"></p>
+                        <p>Gini for test sample {{ n_test_sample }}</p>
+                        <p><img src="test_enc_ginis.png" alt="Test_enc ginis"></p>
+                    </ul>
+                </li>
+                <li>
+                    <h4 class="caret" id="section_whitebox_2_3">Monotony check</h4>
+                    <ul class="nested">
+                        <p></p>
+                        {% for img in woe_bars %}
+                        <p><img src={{img}} alt="{{img}}}" /></p>
+                        {% endfor %}
+                    </ul>
+                </li>
+                <li>
+                    <h4 class="caret" id="section_whitebox_2_4">Luft check</h4>
+                    <ul class="nested">
+                        <p></p>
+                        {% for img in backlash_plots %}
+                        <p><img src={{img}} alt="{{img}}}" /></p>
+                        {% endfor %}
+                    </ul>
+                </li>
+                <li>
+                    <h4 class="caret" id="section_whitebox_2_5">VIF check</h4>
+                    <ul class="nested">
+                        {% if train_vif|length > 0 %}
+                        {{ train_vif }}
+                        {% else %}
+                        <p>To calculate VIF you need more then one feature</p>
+                        {% endif %}
+                    </ul>
+                </li>
+                <li>
+                    <h4 class="caret" id="section_whitebox_2_6">PSI</h4>
+                    <ul class="nested">
+                        {% if psi_total is not none %}
+                        <p>Total PSI</p>
+                        {{ psi_total }}
+                        <p>PSI for off-target events</p>
+                        {{ psi_zeros }}
+                        <p>PSI for target events</p>
+                        {{ psi_ones }}
+                        <p>Grouping by predictions on train sample (total)</p>
+                        <p><img src="binned_train_total.png" alt="binned_train_total"></p>
+                        <p>Grouping by predictions target and off-target events on train sample</p>
+                        <p><img src="binned_train_posneg.png" alt="binned_train_posneg"></p>
+                        <p>Grouping by predictions on test sample {{ n_test_sample }} (total)</p>
+                        <p><img src="binned_test_total.png" alt="binned_test_total"></p>
+                        <p>Grouping by predictions target and off-target events on test sample {{ n_test_sample }}</p>
+                        <p><img src="binned_test_posneg.png" alt="binned_test_posneg"></p>
+                        <p>PSI on grouped model predictions</p>
+                        <table>
+                            <tr>
+                                <td><strong>Total PSI</strong></td>
+                                <td>{{ psi_binned_total }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>PSI for off-target events</strong></td>
+                                <td>{{ psi_binned_zeros }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>PSI for target events</strong></td>
+                                <td>{{ psi_binned_ones }}</td>
+                            </tr>
+                        </table>
+                        {% else %}
+                        <p>To calculate PSI you need to call fit() and predict_proba() beforehand</p>
+                        {% endif %}
+                    </ul>
+                </li>
+            </ul>
+        </li>
+        <li>
+            <h3 class="caret" id="section_whitebox_3">Additional reports</h3>
+            <ul class="nested">
+
+                <li>
+                    <h4 class="caret" id="section_whitebox_3_1">Statistics for predictions by bins</h4>
+                    <ul class="nested">
+                        <h4>Mean target value on training sample and test sample {{ n_test_sample }}</h4>
+                        <p><img src="binned_stats_target.png" alt="binned_stats_target"></p>
+                        <h4>Prediction statistics on training set</h4>
+                        <p><img src="binned_stats_train.png" alt="binned_stats_train"></p>
+                        {% if binned_p_stats_train is not none %}
+                        <table>
+                            <tr>
+                                <td><strong>ScoreBin</strong></td>
+                                <td><strong>count</strong></td>
+                                <td><strong>mean</strong></td>
+                                <td><strong>std</strong></td>
+                                <td><strong>min</strong></td>
+                                <td><strong>25%</strong></td>
+                                <td><strong>50%</strong></td>
+                                <td><strong>75%</strong></td>
+                                <td><strong>max</strong></td>
+                            </tr>
+                            {% for val in binned_p_stats_train %}
+                            <tr>
+                                <td><strong>{{ val[0] }}</strong></td>
+                                <td>{{ val[1] }}</td>
+                                <td>{{ val[2] }}</td>
+                                <td>{{ val[3] }}</td>
+                                <td>{{ val[4] }}</td>
+                                <td>{{ val[5] }}</td>
+                                <td>{{ val[6] }}</td>
+                                <td>{{ val[7] }}</td>
+                                <td>{{ val[8] }}</td>
+                            </tr>
+                            {% endfor %}
+                        </table>
+                        {% endif %}
+                    </ul>
+                </li>
+
+                <li>
+                    <h4 class="caret" id="section_whitebox_3_2">Correlations for model factors</h4>
+                    <ul class="nested">
+                        <p><img src="corr_heatmap.png" alt="corr_heatmap"></p>
+                    </ul>
+                </li>
+
+                <li>
+                    <h4 class="caret" id="section_whitebox_3_3">Scoring card</h4>
+                    <ul class="nested">
+                        <table>
+                            <tr>
+                                <td><strong>Variable</strong></td>
+                                <td><strong>Value</strong></td>
+                                <td><strong>WOE</strong></td>
+                                <td><strong>COEF</strong></td>
+                                <td><strong>POINTS</strong></td>
+                            </tr>
+                            {% for val in scorecard %}
+                            <tr>
+                                <td>{{ val[0] }}</td>
+                                <td>{{ val[1] }}</td>
+                                <td>{{ val[2] }}</td>
+                                <td>{{ val[3] }}</td>
+                                <td>{{ val[4] }}</td>
+                            </tr>
+                            {% endfor %}
+                        </table>
+                        <br/>
+                        <span>Decoding of NaN processing:</span>
+                        <ul>
+                            <li><strong>__NaN__</strong> - separate group with WoE estimation</li>
+                            <li><strong>__NaN_0__</strong> - separate group with WoE = 0</li>
+                            <li><strong>__NaN_maxfreq__</strong> - added to the most common group without WoE estimation</li>
+                            <li><strong>__NaN_maxp__</strong> - added to the group with maximum probability without WoE estimation</li>
+                            <li><strong>__NaN_minp__</strong> - added to the group with minimum probability without WoE estimation</li>
+                        </ul>
+                        <br/>
+                        <span>Decoding of rare/unknown categories processing:</span>
+                        <ul>
+                            <li><strong>__Small__</strong> - separate group with WoE estimation</li>
+                            <li><strong>__Small_nan__</strong> - to NaN group</li>
+                            <li><strong>__Small_0__</strong> - separate group with WoE = 0</li>
+                            <li><strong>__Small_maxfreq__</strong> - added to the most common group without WoE estimation</li>
+                            <li><strong>__Small_maxp__</strong> - added to the group with maximum probability without WoE estimation</li>
+                            <li><strong>__Small_minp__</strong> - added to the group with minimum probability without WoE estimation</li>
+                        </ul>
+                    </ul>
+                </li>
+
+                <li>
+                    <h4 class="caret" id="section_whitebox_3_4">History of feature selection</h4>
+                    <ul class="nested">
+                        <table>
+                            <tr>
+                                <td><strong>Feature</strong></td>
+                                <td><strong></strong></td>
+                            </tr>
+                            {% for val in feature_history %}
+                            <tr>
+                                <td>{{ val[0] }}</td>
+                                <td>{{ val[1] }}</td>
+                            </tr>
+                            {% endfor %}
+                        </table>
+                    </ul>
+                </li>
+                <!--
+                <li>
+                    <h4 class="caret" id="section_whitebox_3_5">Impact of every feature to model</h4>
+                    <ul class="nested">
+                        {% if feature_contribution is not none %}
+
+                        {% if feature_contribution|length > 0 %}
+                        <table>
+                            <tr>
+                                <td><strong>Feature</strong></td>
+                                <td><strong>Impact to ROC AUC</strong></td>
+                            </tr>
+                            {% for val in feature_contribution %}
+                            <tr>
+                                <td>{{ val[0] }}</td>
+                                <td>{{ val[1] }}</td>
+                            </tr>
+                            {% endfor %}
+                        </table>
+                        {% else %}
+                        <p>For calculation you need at least 2 features in final model</p>
+                        {% endif %}
+
+                        {% else %}
+                        <p>You need to train model with parameter <strong>regularized_refit=False</strong></p>
+                        {% endif %}
+                    </ul>
+                </li>
+                -->
+            </ul>
+        </li>
+
+    </ul>
+</li>

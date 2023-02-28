@@ -1,0 +1,12 @@
+<li>
+    <h2 class="caret" id="section2">PDP interpretation</h2>
+    <ul class="nested">
+        {% if interpretation_top is not none %}
+            {% for section in interpretation_top %}
+                {{ section }}
+            {% endfor %}
+        {% else %}
+            <p>Pass <b>valid_data</b> to build PDP interpretation section.</p>
+        {% endif %}
+    </ul>
+</li>
