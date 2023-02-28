@@ -1,9 +1,9 @@
 import pandas as pd
 
-from algorithms.faiss_matcher import FaissMatcher
-from selectors.lama_feature_selector import LamaFeatureSelector
-from selectors.outliers_filter import OutliersFilter
-from selectors.spearman_filter import SpearmanFilter
+from .algorithms.faiss_matcher import FaissMatcher
+from .selectors.lama_feature_selector import LamaFeatureSelector
+from .selectors.outliers_filter import OutliersFilter
+from .selectors.spearman_filter import SpearmanFilter
 
 REPORT_FEAT_SELECT_DIR = 'report_feature_selector'
 REPORT_PROP_SCORE_DIR = 'report_prop_score_estimator'
@@ -48,7 +48,7 @@ class Matcher:
             interquartile_coeff=OUT_INTER_COEFF,
             mode_percentile=OUT_MODE_PERCENT,
             min_percentile=OUT_MIN_PERCENT,
-            max_percentile=OUT_MAX_PERCENT, group_col=False
+            max_percentile=OUT_MAX_PERCENT, group_col=None
     ):
         if use_algos is None:
             use_algos = USE_ALGOS
@@ -120,7 +120,8 @@ class Matcher:
         self.features = features
 
     def _matching(self):
-        matcher = FaissMatcher(self.df, self.data, self.outcome, self.treatment, self.features, group_col = self.group_col)
+        matcher = FaissMatcher(self.df, self.data, self.outcome, self.treatment, self.features,
+                               group_col=self.group_col)
         if self.group_col is None:
             df_matched, ate = matcher.match()
         else:
