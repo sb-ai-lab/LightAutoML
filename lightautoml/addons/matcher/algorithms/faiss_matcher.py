@@ -16,7 +16,7 @@ class FaissMatcher:
                  outcomes,
                  treatment,
                  features=None,
-                 group_col = False,
+                 group_col=False,
                  sigma=1.96):
         self.df = df
         self.data = data
@@ -164,7 +164,6 @@ class FaissMatcher:
         att = np.mean(ITT_t)
         return att, scaled_counts_t, vars_t
 
-
     def scaled_counts(self, N, matches, index):
 
         # Counts the number of times each subject has appeared as a match. In
@@ -179,31 +178,28 @@ class FaissMatcher:
 
         return s_counts
 
-
     def calc_atx_var(self, vars_c, vars_t, weights_c, weights_t):
         # ATE дисперсия
         N_c, N_t = len(vars_c), len(vars_t)
-        summands_c = weights_c**2 * vars_c
-        summands_t = weights_t**2 * vars_t
+        summands_c = weights_c ** 2 * vars_c
+        summands_t = weights_t ** 2 * vars_t
 
-        return summands_t.sum()/N_t**2 + summands_c.sum()/N_c**2
-
+        return summands_t.sum() / N_t ** 2 + summands_c.sum() / N_c ** 2
 
     def calc_atc_se(self, vars_c, vars_t, scaled_counts_t):
         # ATС стандартная ошибка
         N_c, N_t = len(vars_c), len(vars_t)
         weights_c = np.ones(N_c)
-        weights_t = (N_t/N_c) * scaled_counts_t
+        weights_t = (N_t / N_c) * scaled_counts_t
 
         var = self.calc_atx_var(vars_c, vars_t, weights_c, weights_t)
 
         return np.sqrt(var)
 
-
     def calc_att_se(self, vars_c, vars_t, scaled_counts_c):
         # ATT стандартная ошибка
         N_c, N_t = len(vars_c), len(vars_t)
-        weights_c = (N_c/N_t) * scaled_counts_c
+        weights_c = (N_c / N_t) * scaled_counts_c
         weights_t = np.ones(N_t)
 
         var = self.calc_atx_var(vars_c, vars_t, weights_c, weights_t)
@@ -214,8 +210,8 @@ class FaissMatcher:
         # ATE стандартная ошибка
         N_c, N_t = len(vars_c), len(vars_t)
         N = N_c + N_t
-        weights_c = (N_c/N)*(1+scaled_counts_c)
-        weights_t = (N_t/N)*(1+scaled_counts_t)
+        weights_c = (N_c / N) * (1 + scaled_counts_c)
+        weights_t = (N_t / N) * (1 + scaled_counts_t)
 
         var = self.calc_atx_var(vars_c, vars_t, weights_c, weights_t)
 
@@ -223,7 +219,7 @@ class FaissMatcher:
 
     def pval_calc(self, z):
         # P-value
-        return round(2*(1 - norm.cdf(abs(z))), 2)
+        return round(2 * (1 - norm.cdf(abs(z))), 2)
 
     def _calculate_ate_all_target(self, df):
         att_dict = {}
