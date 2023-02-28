@@ -286,6 +286,7 @@ class OptunaTuner(ParamsTuner):
         """Plot optimization history of all trials in a study."""
         return optuna.visualization.plot_optimization_history(self.study)
 
+
 class DLOptunaTuner(ParamsTuner):
     """Wrapper for optuna tuner.
 
@@ -471,25 +472,25 @@ class DLOptunaTuner(ParamsTuner):
 
         return objective
 
-    def _sample(	
-        self,	
-        optimization_search_space,	
-        trial: optuna.trial.Trial,	
-        suggested_params: dict,	
-    ) -> dict:	
-        # logger.info3(f'Suggested parameters: {suggested_params}')	
-        trial_values = copy(suggested_params)	
-        for parameter_name, search_space in optimization_search_space.items():	
-            not_supported = True	
-            for key_class in OPTUNA_DISTRIBUTIONS_MAP:	
-                if isinstance(search_space, key_class):	
-                    wrapped_search_space = OPTUNA_DISTRIBUTIONS_MAP[key_class](search_space)	
-                    trial_values[parameter_name] = wrapped_search_space(	
-                        name=parameter_name,	
-                        trial=trial,	
-                    )	
-                    not_supported = False	
-            if not_supported:	
+    def _sample(
+        self,
+        optimization_search_space,
+        trial: optuna.trial.Trial,
+        suggested_params: dict,
+    ) -> dict:
+        # logger.info3(f'Suggested parameters: {suggested_params}')
+        trial_values = copy(suggested_params)
+        for parameter_name, search_space in optimization_search_space.items():
+            not_supported = True
+            for key_class in OPTUNA_DISTRIBUTIONS_MAP:
+                if isinstance(search_space, key_class):
+                    wrapped_search_space = OPTUNA_DISTRIBUTIONS_MAP[key_class](search_space)
+                    trial_values[parameter_name] = wrapped_search_space(
+                        name=parameter_name,
+                        trial=trial,
+                    )
+                    not_supported = False
+            if not_supported:
                 raise ValueError(f"Optuna does not support distribution {search_space}")
 
     def plot(self):

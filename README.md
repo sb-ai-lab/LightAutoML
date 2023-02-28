@@ -123,6 +123,8 @@ LighAutoML framework has a lot of ready-to-use parts and extensive customization
 - [Tabular Playground Series February 2021 competition solution](https://www.kaggle.com/alexryzhkov/lightautoml-tabulardata-love)
 - [Interpretable WhiteBox solution](https://www.kaggle.com/simakov/lama-whitebox-preset-example)
 - [Custom ML pipeline elements inside existing ones](https://www.kaggle.com/simakov/lama-custom-automl-pipeline-example)
+- [Custom ML pipeline elements inside existing ones](https://www.kaggle.com/simakov/lama-custom-automl-pipeline-example)
+- [Tabular Playground Series November 2022 competition solution with Neural Networks](https://www.kaggle.com/code/mikhailkuz/lightautoml-nn-happiness)
 
 ### Google Colab tutorials and [other examples](examples/):
 

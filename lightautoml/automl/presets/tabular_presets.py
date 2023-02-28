@@ -116,7 +116,17 @@ class TabularAutoML(AutoMLPreset):
     _default_config_path = "tabular_config.yml"
 
     # set initial runtime rate guess for first level models
-    _time_scores = {"lgb": 1, "lgb_tuned": 3, "linear_l2": 0.7, "cb": 2, "cb_tuned": 6, "rf": 5, "rf_tuned": 10, "nn": 10, "nn_tuned": 20}
+    _time_scores = {
+        "lgb": 1,
+        "lgb_tuned": 3,
+        "linear_l2": 0.7,
+        "cb": 2,
+        "cb_tuned": 6,
+        "rf": 5,
+        "rf_tuned": 10,
+        "nn": 10,
+        "nn_tuned": 20,
+    }
 
     def __init__(
         self,

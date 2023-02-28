@@ -94,7 +94,7 @@ Text Feature Pipelines
 
 
 Feature Pipelines for Neural Networks Models
-------------------------------
+------------------------------------------------------
 
 .. currentmodule:: lightautoml.pipelines.features.torch_pipeline
 

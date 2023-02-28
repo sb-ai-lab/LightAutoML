@@ -1,3 +1,5 @@
+"""Pipeline for neural network models."""
+
 from typing import Optional
 from typing import Union
 
@@ -66,6 +68,7 @@ class TorchSimpleFeatures(FeaturesPipeline, TabularDataFeatures):
             auto_unique_co: Switch to target encoding if high cardinality.
             output_categories: Output encoded categories or embed idxs.
             multiclass_te_co: Cutoff if use target encoding in cat handling on multiclass task if number of classes is high.
+            kwargs: Other params.
         """
         super().__init__(
             multiclass_te=False,

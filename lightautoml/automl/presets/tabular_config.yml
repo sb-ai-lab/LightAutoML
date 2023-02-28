@@ -126,7 +126,7 @@ linear_l2_params:
 # params for NN model
 nn_params:
   # Look for NN train params here.
-  # str in ['mlp', 'dense', 'denselight', 'resnet', 'snn'] or custom torch model
+  # str in ['nn', 'mlp', 'dense', 'denselight', 'resnet', 'snn'] or custom torch model
   model: dense
   # use model with custom embeddings
   model_with_emb: false
