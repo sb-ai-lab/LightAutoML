@@ -34,6 +34,7 @@ __validate_extra_deps("nlp")
 
 try:
     from transformers import AutoTokenizer
+    from ..pipelines.features.text_pipeline import _model_name_by_lang
 except:
     import warnings
 
@@ -41,7 +42,6 @@ except:
 
 from ..ml_algo.base import TabularDataset
 from ..ml_algo.base import TabularMLAlgo
-from ..pipelines.features.text_pipeline import _model_name_by_lang
 from ..pipelines.utils import get_columns_by_role
 from ..text.nn_model import CatEmbedder
 from ..text.nn_model import ContEmbedder
