@@ -1,0 +1,18 @@
+<li>
+    <h3 class="caret" id="section3">{{ title }}</h3>
+    <ul class="nested">
+        <li>
+            <h4 class="caret" id="section3_1">Metrics for separate classes</h4>
+            <ul class="nested">
+                {{classification_report}}
+            </ul>
+        </li>
+        <li>
+            <h4 class="caret" id="section3_2">Confusion matrix</h4>
+            <ul class="nested">
+                Confusion matrix is normalized over the true (rows) conditions.
+                <p><img src={{confusion_matrix}} alt="confusion_matrix"></p>
+            </ul>
+        </li>
+    </ul>
+</li>

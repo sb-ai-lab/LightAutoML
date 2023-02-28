@@ -1,0 +1,29 @@
+<li>
+    <h3 class="caret" id="section3">{{ title }}</h3>
+    <ul class="nested">
+        <li>
+            <h4 class="caret" id="uplift_1">Test sample summary</h4>
+            <ul class="nested">
+                {{ test_data_overview }}
+            </ul>
+        </li>
+        <li>
+            <h4 class="caret" id="uplift_1">Uplift curves</h4>
+            <ul class="nested">
+                <p><img src={{uplift_curve}} alt="Uplift curve"></p>
+            </ul>
+        </li>
+        <li>
+            <h4 class="caret" id="uplift_2">Uplift distribution KDE</h4>
+            <ul class="nested">
+                <p><img src={{uplift_distribution}} alt="preds_distribution_by_bins"></p>
+            </ul>
+        </li>
+        <li>
+            <h4 class="caret" id="uplift_3">Uplift distribution by bins</h4>
+            <ul class="nested">
+                {{ uplift_bins_table }}
+            </ul>
+        </li>
+    </ul>
+</li>
