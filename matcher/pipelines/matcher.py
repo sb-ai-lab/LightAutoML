@@ -48,7 +48,7 @@ class Matching:
             interquartile_coeff=OUT_INTER_COEFF,
             mode_percentile=OUT_MODE_PERCENT,
             min_percentile=OUT_MIN_PERCENT,
-            max_percentile=OUT_MAX_PERCENT,
+            max_percentile=OUT_MAX_PERCENT, group_col=False
     ):
         if use_algos is None:
             use_algos = USE_ALGOS
@@ -56,6 +56,7 @@ class Matching:
         self.data = self.df.copy().drop([outcome], axis=1)
         self.outcome = outcome
         self.treatment = treatment
+        self.group_col = group_col
         self.outcome_type = outcome_type
         self.is_spearman_filter = is_spearman_filter
         self.is_outliers_filter = is_outliers_filter
@@ -119,8 +120,11 @@ class Matching:
         self.features = features
 
     def _matching(self):
-        matcher = FaissMatcher(self.df, self.data, self.outcome, self.treatment, self.features)
-        df_matched, ate = matcher.match()
+        matcher = FaissMatcher(self.df, self.data, self.outcome, self.treatment, self.features, group_col = self.group_col)
+        if self.group_col is None:
+            df_matched, ate = matcher.match()
+        else:
+            df_matched, ate = matcher.group_match()
         return df_matched, ate
 
     def estimate(self):
