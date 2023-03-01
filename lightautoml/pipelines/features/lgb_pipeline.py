@@ -172,10 +172,14 @@ class LGBSeqSimpleFeatures(FeaturesPipeline, TabularDataFeatures):
         time_transformers_list.append(UnionTransformer(time_features_transformers_list))
         time_transformers_list += time_preprocessing_transformers_list
 
-        if self.transformers_params["lag_time_features"]:
-            time_transformers_list.append(SeqLagTransformer(lags=self.transformers_params["lag_time_features"]))
-
         time_transforms = SequentialTransformer(time_transformers_list)
+
+        if self.transformers_params["lag_time_features"]:
+            seq = ColumnsSelector(keys=[])  # SequentialTransformer([EmptyTransformer(), ColumnsSelector(keys=[])])
+            time_transforms = SequentialTransformer([
+                UnionTransformer([time_transforms, seq]),
+                SeqLagTransformer(lags=self.transformers_params["lag_time_features"])
+            ])
 
         # process other features
         other_transformers_list = []
@@ -216,31 +220,35 @@ class LGBSeqSimpleFeatures(FeaturesPipeline, TabularDataFeatures):
         lags = self.transformers_params["lag_features"]
         diffs = self.transformers_params["diff_features"]
 
-        seq_features = []
-        if lags:
-            seq_features.append(SeqLagTransformer(lags=lags))
-
-        if diffs:
-            # if we have lag with number 0, we shouldn't have diff with number 0
-            if lags:
-                flag_del_0_diff = not (
-                        not isinstance(diffs, int) and 0 not in diffs or not isinstance(lags, int) and 0 not in lags
-                )
-            else:
-                flag_del_0_diff = False
-            seq_features.append(SeqDiffTransformer(diffs=diffs, flag_del_0_diff=flag_del_0_diff))
-
-        other_transformers_list.append(UnionTransformer(seq_features))
         other_transforms = SequentialTransformer(other_transformers_list)
 
-        seq = ColumnsSelector(keys=[])  # SequentialTransformer([EmptyTransformer(), ColumnsSelector(keys=[])])
-        all_features_transforms = UnionTransformer(time_transforms, other_transforms)
+        if lags or diffs:
+            seq = ColumnsSelector(keys=[])  # SequentialTransformer([EmptyTransformer(), ColumnsSelector(keys=[])])
+            seq_features = []
+
+            if lags:
+                seq_features.append(SeqLagTransformer(lags=lags))
+
+            if diffs:
+                # if we have lag with number 0, we shouldn't have diff with number 0
+                if lags:
+                    flag_del_0_diff = not (
+                            not isinstance(diffs, int) and 0 not in diffs or not isinstance(lags, int) and 0 not in lags
+                    )
+                else:
+                    flag_del_0_diff = False
+                seq_features.append(SeqDiffTransformer(diffs=diffs, flag_del_0_diff=flag_del_0_diff))
+
+            other_transforms = SequentialTransformer([
+                UnionTransformer([other_transforms, seq]),
+                UnionTransformer(seq_features)
+            ])
 
         all_feats = SequentialTransformer(
             [
                 GetSeqTransformer(name=train.name),
                 SetAttribute("date", datetimes[0]),
-                UnionTransformer(seq, all_features_transforms)
+                UnionTransformer([time_transforms, other_transforms])
             ]
         )
 
