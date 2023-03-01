@@ -162,7 +162,7 @@ class AutoTS:
 
     default_transformers_params = {  # True (then set default value), False, int, list or np.array
         "lag_features": True,
-        # "lag_time_features": True,
+        "lag_time_features": True,
         "diff_features": False,
     }
 
@@ -226,8 +226,8 @@ class AutoTS:
         # default params if they have been stated as boolean True
         if isinstance(self.transformers_params["lag_features"], bool) and self.transformers_params["lag_features"]:
             self.transformers_params["lag_features"] = 30
-        # if isinstance(self.transformers_params["lag_time_features"], bool) and self.transformers_params["lag_time_features"]:
-        #     self.transformers_params["lag_time_features"] = 7
+        if isinstance(self.transformers_params["lag_time_features"], bool) and self.transformers_params["lag_time_features"]:
+            self.transformers_params["lag_time_features"] = 7
         if isinstance(self.transformers_params["diff_features"], bool) and self.transformers_params["diff_features"]:
             self.transformers_params["diff_features"] = 7
 
