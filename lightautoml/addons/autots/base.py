@@ -226,7 +226,10 @@ class AutoTS:
         # default params if they have been stated as boolean True
         if isinstance(self.transformers_params["lag_features"], bool) and self.transformers_params["lag_features"]:
             self.transformers_params["lag_features"] = 30
-        if isinstance(self.transformers_params["lag_time_features"], bool) and self.transformers_params["lag_time_features"]:
+        if (
+            isinstance(self.transformers_params["lag_time_features"], bool)
+            and self.transformers_params["lag_time_features"]
+        ):
             self.transformers_params["lag_time_features"] = 7
         if isinstance(self.transformers_params["diff_features"], bool) and self.transformers_params["diff_features"]:
             self.transformers_params["diff_features"] = 7
