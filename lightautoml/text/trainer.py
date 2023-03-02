@@ -260,6 +260,8 @@ class Trainer:
         verbose: Verbose every N epochs.
         verbose_inside: Number of steps between verbose
             inside epoch or None.
+        verbose_bar: Show progress bar for each epoch 
+            during batchwise training.
         apex: Use apex (lead to GPU memory leak among folds).
         pretrained_path: Path to the pretrained model weights.
         stop_by_metric: es and scheduler will stop by metric.
@@ -282,6 +284,7 @@ class Trainer:
         scheduler_params: Optional[Dict] = None,
         verbose: int = 1,
         verbose_inside: Optional[int] = None,
+        verbose_bar: bool = False,
         apex: bool = False,
         pretrained_path: Optional[str] = None,
         stop_by_metric: bool = False,
@@ -303,6 +306,7 @@ class Trainer:
         self.verbose = verbose
         self.metric = metric
         self.verbose_inside = verbose_inside
+        self.verbose_bar = verbose_bar
         self.apex = apex
         self.pretrained_path = pretrained_path
         self.stop_by_metric = stop_by_metric
@@ -491,7 +495,7 @@ class Trainer:
         c = 0
 
         logging_level = get_stdout_level()
-        if logging_level <= logging.DEBUG and self.verbose:
+        if logging_level < logging.INFO and self.verbose and self.verbose_bar:
             loader = tqdm(dataloaders["train"], desc="train", disable=False)
         else:
             loader = dataloaders["train"]
@@ -519,8 +523,8 @@ class Trainer:
             running_loss += loss
 
             c += 1
-            if self.verbose and self.verbose_inside and logging_level <= logging.DEBUG:
-                if c % self.verbose_inside == 0:
+            if self.verbose and self.verbose_bar and logging_level < logging.INFO:
+                if self.verbose_inside and c % self.verbose_inside == 0:
                     val_loss, val_data, weights = self.test(dataloader=dataloaders["val"])
                     if self.stop_by_metric:
                         cond = -1 * self.metric(*val_data, weights)
@@ -536,7 +540,6 @@ class Trainer:
                             vl=np.mean(val_loss),
                         )
                     )
-            if logging_level <= logging.DEBUG and self.verbose and self.verbose_inside:
                 loader.set_description("train (loss=%g)" % (running_loss / c))
 
         return loss_log
@@ -561,7 +564,7 @@ class Trainer:
         pred = []
         target = []
         logging_level = get_stdout_level()
-        if logging_level <= logging.DEBUG and self.verbose:
+        if logging_level < logging.INFO and self.verbose and self.verbose_bar:
             loader = tqdm(dataloader, desc=stage, disable=False)
         else:
             loader = dataloader

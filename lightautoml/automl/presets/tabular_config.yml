@@ -197,6 +197,8 @@ nn_params:
   verbose_inside: null
   # verbose every k epochs
   verbose: 1
+  # show progress bar for each epoch during batchwise training
+  verbose_bar: false
   n_epochs: 50
   input_bn: False
   emb_dropout: 0.1

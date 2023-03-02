@@ -191,6 +191,7 @@ class TorchModel(TabularMLAlgo):
         "dataset": UniversalDataset,
         "tuned": False,
         "optimization_search_space": None,
+        "verbose_bar": False,
         **_default_models_params,
     }
 
