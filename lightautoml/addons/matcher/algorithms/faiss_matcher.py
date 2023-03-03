@@ -42,10 +42,10 @@ class FaissMatcher:
         self.sigma = sigma
 
     def _get_split_scalar_data(self, df):
-        std_scaler = StandardScaler().fit(df.drop([self.outcomes, self.treatment], 1))
+        std_scaler = StandardScaler().fit(df.drop([self.outcomes, self.treatment], axis=1))
 
-        treated = df[df[self.treatment] == 1].drop([self.outcomes, self.treatment], 1)
-        untreated = df[df[self.treatment] == 0].drop([self.outcomes, self.treatment], 1)
+        treated = df[df[self.treatment] == 1].drop([self.outcomes, self.treatment], axis=1)
+        untreated = df[df[self.treatment] == 0].drop([self.outcomes, self.treatment], axis=1)
 
         std_treated = pd.DataFrame(std_scaler.transform(treated))
         std_untreated = pd.DataFrame(std_scaler.transform(untreated))
@@ -66,7 +66,7 @@ class FaissMatcher:
         print("Adding index")
         index.add(base)
         print("Finding index")
-        indexes = index.search(new, 1)[1].ravel()
+        indexes = index.search(new, 1)[1]
         return indexes
 
     def _predict_outcome(self, std_treated, std_untreated):
@@ -84,16 +84,16 @@ class FaissMatcher:
                 x_treated = std_treated.iloc[self.orig_untreated_index]
                 x_untreated = std_untreated.iloc[self.orig_treated_index]
 
-            y_match_untreated = y_untreated.iloc[self.treated_index]
-            y_match_treated = y_treated.iloc[self.untreated_index]
+            y_match_untreated = y_untreated.iloc[self.treated_index.ravel()]
+            y_match_treated = y_treated.iloc[self.untreated_index.ravel()]
 
             ols0 = LinearRegression().fit(std_untreated, y_untreated)
             ols1 = LinearRegression().fit(std_treated, y_treated)
 
-            bias0 = ols0.predict(x_treated) - ols0.predict(x_untreated.iloc[self.treated_index])
+            bias0 = ols0.predict(x_treated) - ols0.predict(x_untreated.iloc[self.treated_index.ravel()])
             y_match_untreated_bias = y_match_untreated - bias0
 
-            bias1 = ols1.predict(x_untreated) - ols1.predict(x_treated.iloc[self.untreated_index])
+            bias1 = ols1.predict(x_untreated) - ols1.predict(x_treated.iloc[self.untreated_index.ravel()])
             y_match_treated_bias = y_match_treated - bias1
 
             self.dict_outcome_untreated[outcome] = y_untreated.values
@@ -117,7 +117,7 @@ class FaissMatcher:
         x2 = self.data[self.data[self.treatment] == int(is_treated)].reset_index()
         x1.columns = [col + POSTFIX for col in x2.columns]
 
-        x = pd.concat([x2, x1], 1).drop([self.treatment, self.treatment + POSTFIX], axis=1)
+        x = pd.concat([x2, x1], axis=1).drop([self.treatment, self.treatment + POSTFIX], axis=1)
         return x
 
     def _create_matched_df(self):
@@ -127,12 +127,12 @@ class FaissMatcher:
 
         df_matched = pd.concat([df_pred0, df_pred1])
 
-        x_ = self._create_features_matched_df(self.treated_index, True)
-        x = self._create_features_matched_df(self.untreated_index, False)
+        x_ = self._create_features_matched_df(self.treated_index.ravel(), True)
+        x = self._create_features_matched_df(self.untreated_index.ravel(), False)
 
         x = pd.concat([x_, x])
 
-        df_matched = pd.concat([x.reset_index(drop=True), df_matched.reset_index(drop=True)], 1)
+        df_matched = pd.concat([x.reset_index(drop=True), df_matched.reset_index(drop=True)], axis=1)
         return df_matched
 
     def calc_ate(self, df, outcome):
