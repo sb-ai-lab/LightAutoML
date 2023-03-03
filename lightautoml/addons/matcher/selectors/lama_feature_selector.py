@@ -1,6 +1,6 @@
-from lightautoml.automl.presets.tabular_presets import TabularAutoML
-from lightautoml.report import ReportDeco
-from lightautoml.tasks import Task
+from ....automl.presets.tabular_presets import TabularAutoML
+from ....report import ReportDeco
+from ....tasks import Task
 
 
 class LamaFeatureSelector:
