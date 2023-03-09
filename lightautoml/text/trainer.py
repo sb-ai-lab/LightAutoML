@@ -260,7 +260,7 @@ class Trainer:
         verbose: Verbose every N epochs.
         verbose_inside: Number of steps between verbose
             inside epoch or None.
-        verbose_bar: Show progress bar for each epoch 
+        verbose_bar: Show progress bar for each epoch
             during batchwise training.
         apex: Use apex (lead to GPU memory leak among folds).
         pretrained_path: Path to the pretrained model weights.
