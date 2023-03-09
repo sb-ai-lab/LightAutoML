@@ -127,7 +127,7 @@ linear_l2_params:
 nn_params:
   # Look for NN train params here.
   # str in ['nn', 'mlp', 'dense', 'denselight', 'resnet', 'snn'] or custom torch model
-  model: dense
+  model: denselight
   # use model with custom embeddings
   model_with_emb: false
   # tune custom network
@@ -178,7 +178,7 @@ nn_params:
   # scheduler
   sch: ReduceLROnPlateau
   # params of ReduceLROnPlateau scheduler
-  scheduler_params: { 'patience': 10, 'factor': 0.01, 'min_lr': 0.00001 }
+  scheduler_params: { 'patience': 5, 'factor': 0.5, 'min_lr': 0.00001 }
   # using snapshot ensembles
   # https://arxiv.org/abs/1704.00109
   is_snap: false
@@ -189,7 +189,7 @@ nn_params:
   # swa - stochastic weight average - averaging of snapshots weights and replace base model
   # https://pytorch.org/blog/stochastic-weight-averaging-in-pytorch/ for idea details (different implementation)
   # use swa with disabled is_snap
-  snap_params: { 'k': 3, 'early_stopping': True, 'patience': 16, 'swa': True }
+  snap_params: { 'k': 3, 'early_stopping': True, 'patience': 10, 'swa': True }
   # init last linear layer:
   # zeros for weights, mean value for bias in regression, inverse sigmoid mean for binary, argmax for multiclass
   init_bias: true
@@ -257,7 +257,7 @@ linear_pipeline_params:
 
 nn_pipeline_params:
   # use quantile transformer for numerical columns
-  use_qnt: true
+  use_qnt: false
   # number of quantiles to be computed
   n_quantiles: null
   # maximum number of samples used to estimate the quantiles for computational efficiency

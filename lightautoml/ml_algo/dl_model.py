@@ -34,6 +34,7 @@ __validate_extra_deps("nlp")
 
 try:
     from transformers import AutoTokenizer
+
     from ..pipelines.features.text_pipeline import _model_name_by_lang
 except:
     import warnings
@@ -389,7 +390,29 @@ class TorchModel(TabularMLAlgo):
             Parameters of model.
 
         """
-        return {}
+        rows_num = len(train_valid_iterator.train) + len(train_valid_iterator.get_validation_data())
+        suggested_params = copy(self.params)
+
+        if self.freeze_defaults:
+            # if user change defaults manually - keep it
+            return suggested_params
+
+        bs = 256
+
+        if rows_num > 50_000:
+            bs = 512
+        if rows_num > 100_000:
+            bs = 1024
+        if rows_num > 1_000_000:
+            bs = 2048
+
+        suggested_params["bs"] = bs
+        suggested_params["snap_params"] = (
+            {"k": 1, "early_stopping": True, "patience": 16, "swa": False}
+            if suggested_params["model"] == "snn"
+            else suggested_params["snap_params"]
+        )
+        return suggested_params
 
     def get_dataloaders_from_dicts(self, data_dict: Dict):
         """Construct dataloaders depending on stage.
