@@ -7,7 +7,6 @@ from scipy.stats import norm
 from ..utils.metrics import *
 from ..utils.psi_pandas import *
 
-
 POSTFIX = "_matched"
 POSTFIX_BIAS = "_matched_bias"
 
@@ -31,7 +30,8 @@ class FaissMatcher:
             self.feature_list.remove(self.outcomes)
         else:
             self.feature_list = features['Feature'].tolist()
-        self.features_quality = self.df.drop(columns=[self.treatment, self.outcomes]).select_dtypes(include=['int16', 'int32', 'int64', 'float16', 'float32', 'float64']).columns
+        self.features_quality = self.df.drop(columns=[self.treatment, self.outcomes]).select_dtypes(
+            include=['int16', 'int32', 'int64', 'float16', 'float32', 'float64']).columns
         self.dict_outcome_untreated = {}
         self.dict_outcome_treated = {}
         self.group_col = group_col
@@ -44,6 +44,7 @@ class FaissMatcher:
         self.n_features = None
         self.df_matched = None
         self.sigma = sigma
+        self.quality_dict = {}
 
     def _get_split_scalar_data(self, df):
         std_scaler = StandardScaler().fit(df.drop([self.outcomes, self.treatment], axis=1))
@@ -89,13 +90,16 @@ class FaissMatcher:
             else:
                 y_untreated = self.df.loc[self.orig_untreated_index.ravel()][outcome]
                 y_treated = self.df.loc[self.orig_treated_index.ravel()][outcome]
-                x_treated = self.df.loc[self.orig_treated_index.ravel()].drop(columns=[self.treatment, outcome, self.group_col])
-                x_untreated = self.df.loc[self.orig_untreated_index.ravel()].drop(columns=[self.treatment, outcome, self.group_col])
+                x_treated = self.df.loc[self.orig_treated_index.ravel()].drop(
+                    columns=[self.treatment, outcome, self.group_col])
+                x_untreated = self.df.loc[self.orig_untreated_index.ravel()].drop(
+                    columns=[self.treatment, outcome, self.group_col])
                 y_match_treated = self.df.loc[self.untreated_index.ravel()][outcome]
                 y_match_untreated = self.df.loc[self.treated_index.ravel()][outcome]
-                x_match_treated = self.df.loc[self.treated_index.ravel()].drop(columns=[self.treatment, outcome, self.group_col])
-                x_match_untreated = self.df.loc[self.untreated_index.ravel()].drop(columns=[self.treatment, outcome, self.group_col])
-
+                x_match_treated = self.df.loc[self.treated_index.ravel()].drop(
+                    columns=[self.treatment, outcome, self.group_col])
+                x_match_untreated = self.df.loc[self.untreated_index.ravel()].drop(
+                    columns=[self.treatment, outcome, self.group_col])
 
             ols0 = LinearRegression().fit(x_untreated, y_untreated)
             ols1 = LinearRegression().fit(x_treated, y_treated)
@@ -274,8 +278,6 @@ class FaissMatcher:
             self.df_matched = df_matched
             return
 
-
-
         diffkeys = sum([1 if ate_dict[k] > self.ATE[k] else -1 for k in ate_dict])
 
         if diffkeys > 0:
@@ -299,9 +301,9 @@ class FaissMatcher:
         psi_columns = self.data.drop(columns=[self.treatment]).columns
         psi_data, ks_data, smd_data = matching_quality(self.df_matched, self.treatment, self.features_quality,
                                                        psi_columns)
-        quality_dict = {'psi': psi_data, 'ks_test': ks_data, 'smd': smd_data}
-        return quality_dict
-
+        self.quality_dict = {'psi': psi_data, 'ks_test': ks_data, 'smd': smd_data}
+        print("kek", self.quality_dict)
+        return self.quality_dict
 
     def group_match(self):
         self.df = self.df.sort_values(self.group_col)
@@ -347,7 +349,6 @@ class FaissMatcher:
         self._check_best(df_matched, 10)
 
         return self.df_matched, (self.ATE, self.ATC, self.ATT)
-
 
     def match(self):
         for i in range(4, 10):
