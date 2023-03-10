@@ -1,5 +1,5 @@
 import pandas as pd
-
+import numpy as np
 from .algorithms.faiss_matcher import FaissMatcher
 from .selectors.lama_feature_selector import LamaFeatureSelector
 from .selectors.outliers_filter import OutliersFilter
@@ -48,7 +48,7 @@ class Matcher:
             interquartile_coeff=OUT_INTER_COEFF,
             mode_percentile=OUT_MODE_PERCENT,
             min_percentile=OUT_MIN_PERCENT,
-            max_percentile=OUT_MAX_PERCENT, group_col=None
+            max_percentile=OUT_MAX_PERCENT, group_col=None, quality_check=False
     ):
         if use_algos is None:
             use_algos = USE_ALGOS
@@ -77,9 +77,15 @@ class Matcher:
         self.max_percentile = max_percentile
         self.features = None
         self._preprocessing_data()
+        self.quality_check = quality_check
 
     def _preprocessing_data(self):
-        self.df = pd.get_dummies(self.df, drop_first=True)
+        if self.group_col is None:
+            self.df = pd.get_dummies(self.df, drop_first=True)
+        else:
+            group_col = self.df[[self.group_col]]
+            self.df = pd.get_dummies(self.df.drop(columns=self.group_col), drop_first=True)
+            self.df = pd.concat([self.df, group_col], axis=1)
 
     def _spearman_filter(self):
         same_filter = SpearmanFilter(
@@ -115,8 +121,10 @@ class Matcher:
             report_dir=self.report_feat_select_dir,
             use_algos=self.use_algos
         )
-
-        features = feat_select.perform_selection(df=self.df)
+        if self.group_col is None:
+            features = feat_select.perform_selection(df=self.df)
+        else:
+            features = feat_select.perform_selection(df=self.df.drop(columns=self.group_col))
         self.features = features
 
     def _matching(self):
@@ -126,7 +134,12 @@ class Matcher:
             df_matched, ate = matcher.match()
         else:
             df_matched, ate = matcher.group_match()
+
+        if self.quality_check:
+            self.quality_result = matcher.matching_quality()
+
         return df_matched, ate
+
 
     def estimate(self):
         if self.is_spearman_filter:
