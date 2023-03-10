@@ -265,6 +265,7 @@ class FaissMatcher:
 
     def _check_best(self, df_matched, n_features):
         ate_dict, atc_dict, att_dict = self._calculate_ate_all_target(df_matched)
+
         if self.n_features is None:
             self.n_features = n_features
             self.ATE = ate_dict
@@ -272,6 +273,8 @@ class FaissMatcher:
             self.ATT = att_dict
             self.df_matched = df_matched
             return
+
+
 
         diffkeys = sum([1 if ate_dict[k] > self.ATE[k] else -1 for k in ate_dict])
 
@@ -287,41 +290,17 @@ class FaissMatcher:
                 self.df_matched = df_matched
 
     def matching_quality(self):
-        '''Метод оценки качества баланса ковариат'''
-        orig_treated = self.df_matched[self.df_matched[self.treatment] == 1][self.features_quality]
-        orig_untreated = self.df_matched[self.df_matched[self.treatment] == 0][self.features_quality]
-        matched_treated = self.df_matched[self.df_matched[self.treatment] == 1][[f + POSTFIX for f in self.features_quality]]
-        matched_treated.columns = orig_treated.columns
-        matched_untreated = self.df_matched[self.df_matched[self.treatment] == 0][[f + POSTFIX for f in self.features_quality]]
-        matched_untreated.columns = orig_treated.columns
-        treated_smd_data = smd(orig_treated, matched_treated)
-        untreated_smd_data = smd(orig_untreated, matched_untreated)
-        smd_data = pd.concat([treated_smd_data, untreated_smd_data], axis=1)
-        smd_data.columns = ['match_control_to_treat', 'match_treat_to_control']
-        treated_ks = ks(orig_treated, matched_treated)
-        untreated_ks = ks(orig_untreated, matched_untreated)
-        ks_dict = {k: [treated_ks[k], untreated_ks[k]] for k in treated_ks.keys()}
-        ks_df = pd.DataFrame(data=ks_dict, index=range(2)).T
+        '''
+        Method for estimate the quality of covariates balance.
+        Estimates population stability index, Standartizied mean difference
+        and Kolmogorov-Smirnov test for numeric values. Returns dict of reports.
+         '''
+
         psi_columns = self.data.drop(columns=[self.treatment]).columns
-        psi_treated = self.df_matched[self.df_matched[self.treatment] == 1][psi_columns]
-        psi_treated_matched = self.df_matched[self.df_matched[self.treatment] == 1][[f + POSTFIX for f in psi_columns]]
-        psi_treated_matched.columns = psi_columns
-        psi_untreated = self.df_matched[self.df_matched[self.treatment] == 0][psi_columns]
-        psi_untreated_matched = self.df_matched[self.df_matched[self.treatment] == 0][[f + POSTFIX for f in psi_columns]]
-        psi_untreated_matched.columns = psi_columns
-        report_psi_treated = report(psi_treated, psi_treated_matched)[['column', 'anomaly_score', 'check_result']]
-        report_psi_untreated = report(psi_untreated, psi_untreated_matched)[['column', 'anomaly_score', 'check_result']]
-        ks_df.columns = ['match_control_to_treat', 'match_treat_to_control']
-        print('Standartizied mean difference matching quality report')
-        print(smd_data)
-        print('Kolmogorov-Smirnov test matching quality report')
-        print(ks_df)
-        print('Population stability index for control to treat')
-        print(report_psi_treated)
-        print('Population stability index for treat to control')
-        print(report_psi_untreated)
-
-
+        psi_data, ks_data, smd_data = matching_quality(self.df_matched, self.treatment, self.features_quality,
+                                                       psi_columns)
+        quality_dict = {'psi': psi_data, 'ks_test': ks_data, 'smd': smd_data}
+        return quality_dict
 
 
     def group_match(self):
@@ -366,7 +345,9 @@ class FaissMatcher:
         self._predict_outcome(treated, untreated)
         df_matched = self._create_matched_df()
         self._check_best(df_matched, 10)
+
         return self.df_matched, (self.ATE, self.ATC, self.ATT)
+
 
     def match(self):
         for i in range(4, 10):

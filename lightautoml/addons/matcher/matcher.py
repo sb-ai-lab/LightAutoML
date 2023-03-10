@@ -1,5 +1,5 @@
 import pandas as pd
-
+import numpy as np
 from .algorithms.faiss_matcher import FaissMatcher
 from .selectors.lama_feature_selector import LamaFeatureSelector
 from .selectors.outliers_filter import OutliersFilter
@@ -79,7 +79,6 @@ class Matcher:
         self._preprocessing_data()
         self.quality_check = quality_check
 
-
     def _preprocessing_data(self):
         if self.group_col is None:
             self.df = pd.get_dummies(self.df, drop_first=True)
@@ -137,9 +136,10 @@ class Matcher:
             df_matched, ate = matcher.group_match()
 
         if self.quality_check:
-            matcher.matching_quality()
+            self.quality_result = matcher.matching_quality()
 
         return df_matched, ate
+
 
     def estimate(self):
         if self.is_spearman_filter:
