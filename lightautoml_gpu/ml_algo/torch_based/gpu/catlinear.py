@@ -48,6 +48,7 @@ class CatLinear(nn.Module):
                 torch.LongTensor(embed_sizes).cumsum(dim=0)
                 - torch.LongTensor(embed_sizes),
             )
+        self.final_act = nn.Identity()
 
     def forward(
         self,
@@ -71,6 +72,26 @@ class CatLinear(nn.Module):
 
         return x
 
+    def predict(
+        self,
+        numbers: Optional[torch.Tensor] = None,
+        categories: Optional[torch.Tensor] = None,
+    ):
+        """Inference phase.
+
+        Args:
+            numbers: Numeric data.
+            categories: Categorical data.
+
+        Returns:
+            Predicted logits/targets for cls/other tasks.
+
+        """
+        x = self.forward(numbers, categories)
+        x = self.final_act(x)
+
+        return x
+
 
 class CatLogisticRegression(CatLinear):
     """Realisation of torch-based logistic regression (GPU version)."""
@@ -79,25 +100,7 @@ class CatLogisticRegression(CatLinear):
         self, numeric_size: int, embed_sizes: Sequence[int] = (), output_size: int = 1
     ):
         super().__init__(numeric_size, embed_sizes=embed_sizes, output_size=output_size)
-        self.sigmoid = nn.Sigmoid()
-
-    def forward(
-        self,
-        numbers: Optional[torch.Tensor] = None,
-        categories: Optional[torch.Tensor] = None,
-    ):
-        """Forward-pass. Sigmoid func at the end of linear layer.
-
-        Args:
-            numbers: Input numeric features.
-            categories: Input categorical features.
-
-        """
-        x = super().forward(numbers, categories)
-        x = torch.clamp(x, -50, 50)
-        x = self.sigmoid(x)
-
-        return x
+        self.final_act = nn.Sigmoid()
 
 
 class CatRegression(CatLinear):
@@ -116,15 +119,4 @@ class CatMulticlass(CatLinear):
         self, numeric_size: int, embed_sizes: Sequence[int] = (), output_size: int = 1
     ):
         super().__init__(numeric_size, embed_sizes=embed_sizes, output_size=output_size)
-        self.softmax = nn.Softmax(dim=1)
-
-    def forward(
-        self,
-        numbers: Optional[torch.Tensor] = None,
-        categories: Optional[torch.Tensor] = None,
-    ):
-        x = super().forward(numbers, categories)
-        x = torch.clamp(x, -50, 50)
-        x = self.softmax(x)
-
-        return x
+        self.final_act = nn.Softmax(dim=1)

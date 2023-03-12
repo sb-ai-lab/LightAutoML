@@ -46,7 +46,7 @@ class TorchBasedLinearEstimator:
         """
         with torch.set_grad_enabled(False):
             model.eval()
-            preds = model(data, data_cat)
+            preds = model.predict(data, data_cat)
             preds = cp.asarray(preds)
             if preds.ndim > 1 and preds.shape[1] == 1:
                 preds = cp.squeeze(preds)

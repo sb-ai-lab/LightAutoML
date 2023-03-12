@@ -74,7 +74,7 @@ if __name__ == '__main__':
         tr, ts = joblib.load(os.path.join(args.path, data_info['split']))
         train, test = data.iloc[tr], data.iloc[ts]
     else:
-        train, test = train_test_split(data, test_size=0.1, random_state=args.seed)
+        train, test = train_test_split(data, test_size=0.2, random_state=args.seed)
     data = None
     task_type = 'multi:reg' if data_info['task_type'] == 'multitask' else data_info['task_type']
     loss = 'mse'

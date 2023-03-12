@@ -70,6 +70,7 @@ class CatLinear(nn.Module):
         if len(embed_sizes) > 0:
             self.cat_params = nn.Parameter(torch.zeros(sum(embed_sizes), output_size))
             self.embed_idx = torch.LongTensor(embed_sizes).cumsum(dim=0) - torch.LongTensor(embed_sizes)
+        self.final_act = nn.Identity()
 
     def forward(
         self,
@@ -96,34 +97,33 @@ class CatLinear(nn.Module):
 
         return x
 
+    def predict(
+        self,
+        numbers: Optional[torch.Tensor] = None,
+        categories: Optional[torch.Tensor] = None,
+    ):
+        """Inference phase.
+
+        Args:
+            numbers: Numeric data.
+            categories: Categorical data.
+
+        Returns:
+            Predicted logits/targets for cls/other tasks.
+
+        """
+        x = self.forward(numbers, categories)
+        x = self.final_act(x)
+
+        return x
+
 
 class CatLogisticRegression(CatLinear):
     """Realisation of torch-based logistic regression."""
 
     def __init__(self, numeric_size: int, embed_sizes: Sequence[int] = (), output_size: int = 1):
         super().__init__(numeric_size, embed_sizes=embed_sizes, output_size=output_size)
-        self.sigmoid = nn.Sigmoid()
-
-    def forward(
-        self,
-        numbers: Optional[torch.Tensor] = None,
-        categories: Optional[torch.Tensor] = None,
-    ):
-        """Forward-pass. Sigmoid func at the end of linear layer.
-
-        Args:
-            numbers: Input numeric features.
-            categories: Input categorical features.
-
-        Returns:
-            Probabilitics.
-
-        """
-        x = super().forward(numbers, categories)
-        x = torch.clamp(x, -50, 50)
-        x = self.sigmoid(x)
-
-        return x
+        self.final_act = nn.Sigmoid()
 
 
 class CatRegression(CatLinear):
@@ -138,28 +138,7 @@ class CatMulticlass(CatLinear):
 
     def __init__(self, numeric_size: int, embed_sizes: Sequence[int] = (), output_size: int = 1):
         super().__init__(numeric_size, embed_sizes=embed_sizes, output_size=output_size)
-        self.softmax = nn.Softmax(dim=1)
-
-    def forward(
-        self,
-        numbers: Optional[torch.Tensor] = None,
-        categories: Optional[torch.Tensor] = None,
-    ):
-        """Forward-pass.
-
-        Args:
-            numbers: Input numeric features.
-            categories: Input categorical features.
-
-        Returns:
-            Linear prediction.
-
-        """
-        x = super().forward(numbers, categories)
-        x = torch.clamp(x, -50, 50)
-        x = self.softmax(x)
-
-        return x
+        self.final_act = nn.Softmax(dim=1)
 
 
 class TorchBasedLinearEstimator:
@@ -432,7 +411,7 @@ class TorchBasedLinearEstimator:
         """
         with torch.set_grad_enabled(False):
             self.model.eval()
-            preds = self.model(data, data_cat).numpy()
+            preds = self.model.predict(data, data_cat).numpy()
 
         return preds
 
