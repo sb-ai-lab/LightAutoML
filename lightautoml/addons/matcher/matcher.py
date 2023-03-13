@@ -79,7 +79,11 @@ class Matcher:
         self._preprocessing_data()
         self.quality_check = quality_check
         self.matcher = FaissMatcher(self.df, self.data, self.outcome, self.treatment, self.features,
-                                    group_col=self.group_col)
+                                    group_col=self.group_col, validation=None)
+        self.val_dict = {k: [] for k in [self.outcome]}
+        self.pval_dict = None
+        self.new_treatment = None
+        self.validate = None
 
     def _preprocessing_data(self):
         if self.group_col is None:
@@ -139,6 +143,31 @@ class Matcher:
             self.quality_result = self.matcher.matching_quality()
 
         return df_matched, ate
+
+    def validate_result(self, n_sim=10):
+        '''Validates estimated effect by replacing real treatment with random placebo treatment.
+        Estimated effect must be droped to zero'''
+        for i in range(n_sim):
+            prop1 = self.df[self.treatment].sum() / self.df.shape[0]
+            prop0 = 1 - prop1
+            self.new_treatment = np.random.choice([0, 1], size=self.df.shape[0], p=[prop0, prop1])
+            self.validate = 1
+            self.df = self.df.drop(columns=self.treatment)
+            self.df[self.treatment] = self.new_treatment
+            self.data = self.data.drop(columns=self.treatment)
+            self.data[self.treatment] = self.new_treatment
+            matcher = FaissMatcher(self.df, self.data, self.outcome, self.treatment, self.features,
+                                   group_col=self.group_col, validation=self.validate)
+            if self.group_col is None:
+                sim = matcher.match()
+            else:
+                sim = matcher.group_match()
+            for key in self.val_dict.keys():
+                self.val_dict[key].append(sim[key][0])
+        self.pval_dict = dict()
+        for outcome in [self.outcome]:
+            self.pval_dict.update({outcome: np.mean(self.val_dict[outcome])})
+        return self.pval_dict
 
     def estimate(self):
         if self.is_spearman_filter:

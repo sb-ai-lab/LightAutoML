@@ -19,7 +19,8 @@ class FaissMatcher:
                  treatment,
                  features=None,
                  group_col=False,
-                 sigma=1.96):
+                 sigma=1.96,
+                 validation=None):
         self.df = df
         self.data = data
         self.outcomes = outcomes
@@ -45,6 +46,7 @@ class FaissMatcher:
         self.df_matched = None
         self.sigma = sigma
         self.quality_dict = {}
+        self.validation = validation
 
     def _get_split_scalar_data(self, df):
         std_scaler = StandardScaler().fit(df.drop([self.outcomes, self.treatment], axis=1))
@@ -270,6 +272,10 @@ class FaissMatcher:
     def _check_best(self, df_matched, n_features):
         ate_dict, atc_dict, att_dict = self._calculate_ate_all_target(df_matched)
 
+        if self.validation is not None:
+            self.val_dict = ate_dict
+            return
+
         if self.n_features is None:
             self.n_features = n_features
             self.ATE = ate_dict
@@ -348,6 +354,9 @@ class FaissMatcher:
         df_matched = self._create_matched_df()
         self._check_best(df_matched, 10)
 
+        if self.validation:
+            return self.val_dict
+
         return self.df_matched, (self.ATE, self.ATC, self.ATT)
 
     def match(self):
@@ -368,5 +377,8 @@ class FaissMatcher:
 
             df_matched = self._create_matched_df()
             self._check_best(df_matched, i)
+
+        if self.validation:
+            return self.val_dict
 
         return self.df_matched, (self.ATE, self.ATC, self.ATT)
