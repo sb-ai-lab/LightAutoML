@@ -1,5 +1,5 @@
 import pandas as pd
-
+import numpy as np
 from .algorithms.faiss_matcher import FaissMatcher
 from .selectors.lama_feature_selector import LamaFeatureSelector
 from .selectors.outliers_filter import OutliersFilter
@@ -48,7 +48,7 @@ class Matcher:
             interquartile_coeff=OUT_INTER_COEFF,
             mode_percentile=OUT_MODE_PERCENT,
             min_percentile=OUT_MIN_PERCENT,
-            max_percentile=OUT_MAX_PERCENT, group_col=None
+            max_percentile=OUT_MAX_PERCENT, group_col=None, quality_check=False
     ):
         if use_algos is None:
             use_algos = USE_ALGOS
@@ -77,9 +77,16 @@ class Matcher:
         self.max_percentile = max_percentile
         self.features = None
         self._preprocessing_data()
+        self.quality_check = quality_check
+        self.val_dict = {k: [] for k in [self.outcome]}
 
     def _preprocessing_data(self):
-        self.df = pd.get_dummies(self.df, drop_first=True)
+        if self.group_col is None:
+            self.df = pd.get_dummies(self.df, drop_first=True)
+        else:
+            group_col = self.df[[self.group_col]]
+            self.df = pd.get_dummies(self.df.drop(columns=self.group_col), drop_first=True)
+            self.df = pd.concat([self.df, group_col], axis=1)
 
     def _spearman_filter(self):
         same_filter = SpearmanFilter(
@@ -115,18 +122,51 @@ class Matcher:
             report_dir=self.report_feat_select_dir,
             use_algos=self.use_algos
         )
-
-        features = feat_select.perform_selection(df=self.df)
+        if self.group_col is None:
+            features = feat_select.perform_selection(df=self.df)
+        else:
+            features = feat_select.perform_selection(df=self.df.drop(columns=self.group_col))
         self.features = features
 
     def _matching(self):
         matcher = FaissMatcher(self.df, self.data, self.outcome, self.treatment, self.features,
-                               group_col=self.group_col)
+                               group_col=self.group_col, validation=None)
         if self.group_col is None:
             df_matched, ate = matcher.match()
         else:
             df_matched, ate = matcher.group_match()
+
+        if self.quality_check:
+            self.quality_result = matcher.matching_quality()
+
         return df_matched, ate
+
+
+    def validate_result(self, n_sim = 10):
+        '''Validates estimated effect by replacing real treatment with random placebo treatment.
+        Estimated effect must be droped to zero'''
+        for i in range(n_sim):
+            prop1 = self.df[self.treatment].sum() / self.df.shape[0]
+            prop0 = 1 - prop1
+            self.new_treatment = np.random.choice([0, 1], size=self.df.shape[0], p=[prop0, prop1])
+            self.validate = 1
+            self.df = self.df.drop(columns=self.treatment)
+            self.df[self.treatment] = self.new_treatment
+            self.data = self.data.drop(columns=self.treatment)
+            self.data[self.treatment] = self.new_treatment
+            matcher = FaissMatcher(self.df, self.data, self.outcome, self.treatment, self.features,
+                                   group_col=self.group_col, validation=self.validate)
+            if self.group_col is None:
+                sim = matcher.match()
+            else:
+                sim = matcher.group_match()
+            for key in self.val_dict.keys():
+                self.val_dict[key].append(sim[key][0])
+        self.pval_dict = dict()
+        for outcome in [self.outcome]:
+            self.pval_dict.update({outcome: np.mean(self.val_dict[outcome])})
+        return self.pval_dict
+
 
     def estimate(self):
         if self.is_spearman_filter:
