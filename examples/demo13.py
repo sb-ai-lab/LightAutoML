@@ -26,7 +26,11 @@ seq_params = {
 
 # True (then set default values) / False; int, list or np.array
 # default: lag_features=30, diff_features=7
-transformers_params = {"lag_features": [0, 1, 2, 3, 5, 10], "diff_features": [0, 1, 3, 4]}
+transformers_params = {
+    "lag_features": [0, 1, 2, 3, 5, 10],
+    "lag_time_features": [0, 1, 2],
+    "diff_features": [0, 1, 3, 4],
+}
 
 task = Task("multi:reg", greater_is_better=False, metric="mae", loss="mae")
 

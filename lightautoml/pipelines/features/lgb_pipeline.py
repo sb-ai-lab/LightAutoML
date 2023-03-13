@@ -148,17 +148,47 @@ class LGBSeqSimpleFeatures(FeaturesPipeline, TabularDataFeatures):
             Composite datetime, categorical, numeric transformer.
 
         """
-        transformers_list = []
-
         # process datetimes
+        time_transformers_list = []
+
+        # datetimes features generating
+        time_features_transformers_list = []
         datetimes = get_columns_by_role(train, "Datetime")
         if len(datetimes) > 0:
             dt_processing = SequentialTransformer([ColumnsSelector(keys=datetimes), TimeToNum()])
-            transformers_list.append(dt_processing)
-            transformers_list.append(self.get_datetime_diffs(train))
-            transformers_list.append(self.get_datetime_seasons(train, NumericRole(np.float32)))
+            time_features_transformers_list.append(dt_processing)
+            time_features_transformers_list.append(self.get_datetime_diffs(train))
+            time_features_transformers_list.append(self.get_datetime_seasons(train, NumericRole(np.float32)))
+
+        # datetime features preprocessing
+        time_preprocessing_transformers_list = []
+        if self.fill_na:
+            time_preprocessing_transformers_list.append(
+                UnionTransformer([SequentialTransformer([FillInf(), FillnaMedian()]), NaNFlags()])
+            )
+
+            if self.scaler:
+                time_preprocessing_transformers_list.append(StandardScaler())
+
+        time_transformers_list.append(UnionTransformer(time_features_transformers_list))
+        time_transformers_list += time_preprocessing_transformers_list
+
+        time_transforms = SequentialTransformer(time_transformers_list)
+
+        if self.transformers_params["lag_time_features"]:
+            seq = ColumnsSelector(keys=[])  # SequentialTransformer([EmptyTransformer(), ColumnsSelector(keys=[])])
+            time_transforms = SequentialTransformer(
+                [
+                    UnionTransformer([time_transforms, seq]),
+                    SeqLagTransformer(lags=self.transformers_params["lag_time_features"]),
+                ]
+            )
+
+        # process other features
+        other_transformers_list = []
 
         # process categories
+        other_features_transformers_list = []
         categories = get_columns_by_role(train, "Category")
         if len(categories) > 0:
             cat_processing = SequentialTransformer(
@@ -168,53 +198,60 @@ class LGBSeqSimpleFeatures(FeaturesPipeline, TabularDataFeatures):
                     ChangeRoles(NumericRole(np.float32)),
                 ]
             )
-            transformers_list.append(cat_processing)
+            other_features_transformers_list.append(cat_processing)
 
+        # process numeric
         numerics = get_columns_by_role(train, "Numeric")
         if len(numerics) > 0:
             num_processing = SequentialTransformer(
                 [ColumnsSelector(keys=numerics), ConvertDataset(dataset_type=NumpyDataset)]
             )
-            transformers_list.append(num_processing)
+            other_features_transformers_list.append(num_processing)
 
-        simple_seq_transforms = UnionTransformer(transformers_list)
-
+        # other features preprocessing
+        other_preprocessing_transformers_list = []
         if self.fill_na:
-            filler = UnionTransformer([SequentialTransformer([FillInf(), FillnaMedian()]), NaNFlags()])
+            other_preprocessing_transformers_list.append(
+                UnionTransformer([SequentialTransformer([FillInf(), FillnaMedian()]), NaNFlags()])
+            )
 
             if self.scaler:
-                filler = SequentialTransformer([filler, StandardScaler()])
+                other_preprocessing_transformers_list.append(StandardScaler())
 
-            simple_seq_transforms = SequentialTransformer([simple_seq_transforms, filler])
+        other_transformers_list.append(UnionTransformer(other_features_transformers_list))
+        other_transformers_list += other_preprocessing_transformers_list
 
-        # to seq dataset
-        seq = ColumnsSelector(keys=[])  # SequentialTransformer([EmptyTransformer(), ColumnsSelector(keys=[])])
-        simple_seq_transforms = UnionTransformer([seq, simple_seq_transforms])
-
-        # get seq features
         lags = self.transformers_params["lag_features"]
         diffs = self.transformers_params["diff_features"]
 
-        seq_features = []
-        if lags:
-            seq_features.append(SeqLagTransformer(lags=lags))
+        other_transforms = SequentialTransformer(other_transformers_list)
 
-        if diffs:
-            # if we have lag with number 0, we shouldn't have diff with number 0
+        if lags or diffs:
+            seq = ColumnsSelector(keys=[])  # SequentialTransformer([EmptyTransformer(), ColumnsSelector(keys=[])])
+            seq_features = []
+
             if lags:
-                flag_del_0_diff = not (
-                    not isinstance(diffs, int) and 0 not in diffs or not isinstance(lags, int) and 0 not in lags
-                )
-            else:
-                flag_del_0_diff = False
-            seq_features.append(SeqDiffTransformer(diffs=diffs, flag_del_0_diff=flag_del_0_diff))
+                seq_features.append(SeqLagTransformer(lags=lags))
+
+            if diffs:
+                # if we have lag with number 0, we shouldn't have diff with number 0
+                if lags:
+                    flag_del_0_diff = not (
+                        not isinstance(diffs, int) and 0 not in diffs or not isinstance(lags, int) and 0 not in lags
+                    )
+                else:
+                    flag_del_0_diff = False
+                seq_features.append(SeqDiffTransformer(diffs=diffs, flag_del_0_diff=flag_del_0_diff))
+
+            other_transforms = SequentialTransformer(
+                [UnionTransformer([other_transforms, seq]), UnionTransformer(seq_features)]
+            )
 
         all_feats = SequentialTransformer(
             [
                 GetSeqTransformer(name=train.name),
                 SetAttribute("date", datetimes[0]),
-                simple_seq_transforms,  # preprocessing
-                UnionTransformer(seq_features),
+                UnionTransformer([time_transforms, other_transforms]),
             ]
         )
 
