@@ -97,6 +97,114 @@ linear_l2_params:
   default_params: { }
   freeze_defaults: False
 
+# params for NN model
+nn_params:
+  # Look for NN train params here.
+  # str in ['nn', 'mlp', 'dense', 'denselight', 'resnet', 'snn'] or custom torch model
+  model: denselight
+  # use model with custom embeddings
+  model_with_emb: false
+  # tune custom network
+  tuned: false
+  # fewf
+  optimization_search_space: null
+  # str in torch.nn loss functions or nn.Module or func with (y_pred, y_true) args
+  loss: null
+  loss_params: {}
+  # calculate loss on logits or on predictions of model for classification tasks
+  loss_on_logits: true
+  # clip gradient before loss backprop
+  clip_grad: false
+  clip_grad_params: {}
+  drop_rate: 0.1
+  # add fc layer before model with certain dim
+  num_init_features: null
+  # activation function (str in torch.nn activation functions or custom nn.Module)
+  act_fun: ReLU
+  # add noise after dropout layer for more regularization
+  use_noise: false
+  # noise parameter
+  noise_std: 0.05
+  # use BatchNorm
+  use_bn: true
+  # define hidden layer dimensions for models in ['mlp', 'denselight', 'snn']
+  hidden_size: [512, 512, 512]
+  # dim of intermediate fc is increased times this factor in ResnetModel layer
+  hid_factor: [2, 2]
+  # list of number of layers within each DenseModel block
+  block_config: [2, 2]
+  # portion of neuron to drop after DenseBlock
+  compression: 0.5
+  # output dim of every DenseLayer
+  growth_size: 256
+  # dim of intermediate fc is increased times this factor in DenseModel layer
+  bn_factor: 2
+  # early stopping and scheduler use metric
+  stop_by_metric: false
+  random_state: 42
+  # path to save model state
+  # if None: stay in memory (CPU)
+  path_to_save: null
+  # optimizer
+  opt: Adam
+  # params of optimizer
+  opt_params: { 'lr': 0.0003, 'weight_decay': 0 }
+  # scheduler
+  sch: ReduceLROnPlateau
+  # params of ReduceLROnPlateau scheduler
+  scheduler_params: { 'patience': 5, 'factor': 0.5, 'min_lr': 0.00001 }
+  # using snapshot ensembles
+  # https://arxiv.org/abs/1704.00109
+  is_snap: false
+  # params of snapshots:
+  # k - number of best snapshots (in terms of loss)
+  # early_stopping - use early stopping
+  # patience - early_stopping patience
+  # swa - stochastic weight average - averaging of snapshots weights and replace base model
+  # https://pytorch.org/blog/stochastic-weight-averaging-in-pytorch/ for idea details (different implementation)
+  # use swa with disabled is_snap
+  snap_params: { 'k': 3, 'early_stopping': True, 'patience': 10, 'swa': True }
+  # init last linear layer:
+  # zeros for weights, mean value for bias in regression, inverse sigmoid mean for binary, argmax for multiclass
+  init_bias: true
+  # verbose and create snapshots inside one training epoch every k steps
+  verbose_inside: null
+  # verbose every k epochs
+  verbose: 1
+  # show progress bar for each epoch during batchwise training
+  verbose_bar: false
+  n_epochs: 50
+  input_bn: False
+  emb_dropout: 0.1
+  emb_ratio: 3
+  max_emb_size: 256
+  use_cont: true
+  use_cat: true
+  use_text: false
+  #set cudnn backend
+  deterministic: true
+  # use DP for model training
+  # currently, must be set to FALSE value
+  multigpu: false
+  # device
+  device: cuda:0
+  # use defualt dataset config or custom torch dataset
+  dataset: UniversalDataset
+  pin_memory: false
+  # training and inference batch size
+  bs: 512
+  num_workers: 0
+
+  tuning_params:
+    # pretrain tuner on holdout set. True - fast/ False - accurate
+    # Ex. if you have 5-fold cv, validate tuner only on 1 fold
+    fit_on_holdout: True
+    # max tuning iter for lightgbm. Auto - depends on dataset
+    # smaller dataset gets more iters (int or 'auto')
+    max_tuning_iter: 25
+    # max tuning time. Tuning time might be set lower during train by automl's timer, but cannot be higher
+    max_tuning_time: 3600
+
 gbm_pipeline_params:
   top_intersections: 0
   max_intersection_depth: 3
@@ -110,6 +218,37 @@ linear_pipeline_params:
   max_intersection_depth: 3
   subsample: 100000
   auto_unique_co: 50
+  multiclass_te_co: 3
+
+nn_pipeline_params:
+  # use quantile transformer for numerical columns
+  use_qnt: false
+  # number of quantiles to be computed
+  n_quantiles: null
+  # maximum number of samples used to estimate the quantiles for computational efficiency
+  subsample: 1000000000
+  # marginal distribution for the transformed data. The choices are 'uniform' or 'normal'
+  output_distribution: normal
+  # add noise with certain std to dataset before quantile transformation to make data more smooth
+  noise: 0.001
+  # if number of quantiles is none then it equals dataset size / factor
+  qnt_factor: 30
+  # use target encoding for categorical columns
+  use_te: false
+  # max number of categories to generate intersections
+  top_intersections: 5
+  max_bin_count: 10
+  # max depth of cat intersection
+  max_intersection_depth: 3
+  # subsample to calc data statistics
+  te_subsample: null
+  # should we output sparse if ohe encoding was used during cat handling
+  sparse_ohe: auto
+  # switch to target encoding if high cardinality
+  auto_unique_co: 50
+  # output encoded categories or embed idxs
+  output_categories: true
+  # cutoff if use target encoding in cat handling on multiclass task if number of classes is high
   multiclass_te_co: 3
 
 timing_params:
