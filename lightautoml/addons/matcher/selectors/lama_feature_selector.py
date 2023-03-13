@@ -29,6 +29,18 @@ class LamaFeatureSelector:
         self.report_dir = report_dir
 
     def perform_selection(self, df):
+        """Realize model and returns feature scores
+
+        Defines metrics, applies the model, creates report
+        and gives feature scores
+
+        Args:
+            df: pd.DataFrame
+
+        Returns:
+            feature scores of model
+
+        """
 
         roles = {
             'target': self.outcome,

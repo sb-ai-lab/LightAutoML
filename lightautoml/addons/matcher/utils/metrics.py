@@ -5,7 +5,17 @@ from scipy.stats import ks_2samp
 
 
 def smd(orig, matched, treatment):
-    '''Standardized mean difference для проверки качества мэтчинга'''
+    """Standardized mean difference to check matching quality
+
+    Args:
+        orig: pd.Dataframe or Any
+        matched: pd.Dataframe or Any
+        treatment: pd.Series or Any
+
+    Returns:
+        Tuple of smd df and figure
+
+    """
     treated = orig[treatment == 1]
     untreated = orig[treatment == 0]
     treated_matched = matched[treatment == 1]
@@ -21,7 +31,17 @@ def smd(orig, matched, treatment):
 
 
 def ks(orig, matched, treatment):
-    '''Тест Колмогорова-Смирнова для поколоночной проверки качества мэтчинга'''
+    """Kolmogorov-Smirnov test to check matching quality by columns
+
+    Args:
+        orig: pd.Dataframe or Any
+        matched: pd.Dataframe or Any
+        treatment: pd.Series or Any
+
+    Returns:
+        Checked dataframe
+
+    """
     ks_dict = dict()
     matched.columns = orig.columns
     for col in orig.columns:
