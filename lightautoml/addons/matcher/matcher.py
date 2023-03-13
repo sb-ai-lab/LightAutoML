@@ -78,6 +78,8 @@ class Matcher:
         self.features = None
         self._preprocessing_data()
         self.quality_check = quality_check
+        self.matcher = FaissMatcher(self.df, self.data, self.outcome, self.treatment, self.features,
+                                    group_col=self.group_col)
 
     def _preprocessing_data(self):
         if self.group_col is None:
@@ -128,18 +130,15 @@ class Matcher:
         self.features = features
 
     def _matching(self):
-        matcher = FaissMatcher(self.df, self.data, self.outcome, self.treatment, self.features,
-                               group_col=self.group_col)
         if self.group_col is None:
-            df_matched, ate = matcher.match()
+            df_matched, ate = self.matcher.match()
         else:
-            df_matched, ate = matcher.group_match()
+            df_matched, ate = self.matcher.group_match()
 
         if self.quality_check:
-            self.quality_result = matcher.matching_quality()
+            self.quality_result = self.matcher.matching_quality()
 
         return df_matched, ate
-
 
     def estimate(self):
         if self.is_spearman_filter:

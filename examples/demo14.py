@@ -12,8 +12,9 @@ target = "created_variable"
 treatment = "is_tb_pilot"
 
 
-matcher = Matcher(df, target, treatment, is_feature_select=False)
+matcher = Matcher(df, target, treatment, is_feature_select=False, quality_check=True)
 
-df_matched, ate = matcher.estimate()
+matcher.estimate()
 
-print(ate)
+print(matcher.matcher.ATE)
+print(matcher.matcher.quality_dict)
