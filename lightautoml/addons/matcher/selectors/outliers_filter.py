@@ -12,6 +12,20 @@ class OutliersFilter:
         self.max_percentile = max_percentile
 
     def perform_filter(self, df):
+        """Drops outlayers
+
+        Creates set of rows to be deleted,
+        that contains values less than min_percentile
+        and larger than max_percentile if mode_percentile is true
+        or 25 percentile and larger than 75 percentile if not
+
+        Args:
+            df: pd.DataFrame
+
+        Returns:
+            rows_for_del: set
+
+        """
         columns_names = df.select_dtypes(include='number').columns
         rows_for_del = []
         for column in columns_names:

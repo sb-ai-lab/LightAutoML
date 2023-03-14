@@ -4,14 +4,35 @@ import matplotlib.pyplot as plt
 from scipy.stats import ks_2samp
 from ..utils.psi_pandas import *
 
-def smd(orig, matched):
-    '''Standardized mean difference для проверки качества мэтчинга'''
+
+def smd(orig, matched, treatment):
+    """Standardized mean difference to check matching quality
+
+    Args:
+        orig: pd.Dataframe or Any
+        matched: pd.Dataframe or Any
+        treatment: pd.Series or Any
+
+    Returns:
+        Tuple of smd df and figure
+
+    """
     smd_data = abs(orig.mean(0) - matched.mean(0)) / orig.std(0)
     return smd_data
 
 
+
 def ks(orig, matched):
-    '''Тест Колмогорова-Смирнова для поколоночной проверки качества мэтчинга'''
+    """Kolmogorov-Smirnov test to check matching quality by columns
+
+    Args:
+        orig: pd.Dataframe or Any
+        matched: pd.Dataframe or Any
+
+    Returns:
+        Checked dataframe
+
+    """
     ks_dict = dict()
     matched.columns = orig.columns
     for col in orig.columns:

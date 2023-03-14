@@ -4,21 +4,30 @@ import matplotlib.pyplot as plt
 
 
 class psi:
-    '''Вычисляет population stability index для бакетов. Для чсиленныхданных - числовые бакеты (за исключением, 
-    когда числовая колонка содержит только NULL). Для категориальных данных: для n < 20 - бакет равен доле каждой категории,
-    в случае 20 < n  100 бакет равен группе категорий, для n > 100 - вычисляет unique_index основанный на метрике Жакара, 
-    но в случае нарушения баланса null-good data возвращает PSI.
-        arguments:
-        expected - ожидаемые значения, spark dataframe,
-        actual -  актуальные значения, spark dataframe,
-        column_name - имя колонки, str,
-        plot - график распределения, if True. By default - False.
-        returns: 
-        psi_value - PSI для колонки, float,
-        psi_dict - вклад в PSI для каждого бакета, dict, 
-        new_cats - новые категории (для некатегориальных полей не применим. Возвращает пустой список), list,
-        abs_cats - категории, которые отсутствуют в актуальном столбце (для некатегориальных полей не применим. 
-    Возвращает пустой список), list'''
+    """
+
+    Calculates population stability index for buckets. For numeric data - numeric
+    buckets (except when numeric column includes only NULL). For categorical data:
+    for n<20 bucket equals proportion of each category,
+    for n>20 bucket equals to a group of categories,
+    for n>100 it calculates unique_index based on Jaccard similarity,
+    but in case of disbalance null-good data returns PSI
+
+    Args:
+        expected - expected values: spark dataframe
+        actual - actual values: spark dataframe
+        column_name: str
+        plot - distribution plot if True. Default=False
+
+    Returns:
+        psi_value - PSI for column: float
+        psi_dict - input in PSI for each bucket: dict
+        new_cats - new categories
+        (for not categorical data inapplicable - returns empty list): list
+        abs_cats - categories that absents in actual column
+        (for not categorical data inapplicable - returns empty list): list
+
+    """
     
     def __init__(self, expected, actual, column_name, axis=1, plot=False):
         self.expected = expected[column_name].values
@@ -37,12 +46,31 @@ class psi:
             self.actual_uniqs = actual[column_name].unique()
     
     def jac(self):
+        """Calculates Jaccard similarity
+
+        Jaccard similarity measures the intersection between two sequences
+        versus the union of tho sequences
+
+        Returns:
+            Jaccard similarity: float
+
+        """
         x = set(self.expected_uniqs)
         y = set(self.expected_uniqs)
         return len(x.intersection(y)) / len(x.union(y))
     
     
     def plots(self, nulls, expected_percents, actual_percents, breakpoints, intervals):
+        """Plots expected and actual percents
+
+        Args:
+            nulls: ???
+            expected_percents: float
+            actual_percents: float
+            breakpoints: {__iter__}
+            intervals: {__len__}
+
+        """
         points = [i for i in breakpoints] 
         plt.figure(figsize=(15,7))
         plt.bar(np.arange(len(intervals))-0.15, expected_percents, label='expected', alpha=0.7, width=.3)
@@ -69,14 +97,22 @@ class psi:
     
 
     def psi_num(self):
-        '''Calculate the PSI for a single variable
-        Args:
-           expected_array: numpy array of original values
-           actual_array: numpy array of new values, same size as expected
-           buckets: number of percentile ranges to bucket the values into
-        Returns:
-           psi_value: calculated PSI value
-        '''
+        """Calculate the PSI for a single variable
+
+              Args:
+                 expected_array - numpy array of original values: array
+                 actual_array - numpy array of new values, same size as expected: array
+                 buckets - number of percentile ranges to bucket the values into: int
+
+              Returns:
+                  psi_value - PSI for column: float
+                  psi_dict - input in PSI for each bucket: dict
+                  new_cats - new categories
+                  (for not categorical data inapplicable - returns empty list): list
+                  abs_cats - categories that absents in actual column
+                  (for not categorical data inapplicable - returns empty list): list
+
+              """
         buckets = 10
         breakpoints = np.arange(0, (buckets)/10, 0.1)
         
@@ -126,8 +162,17 @@ class psi:
          
         
     def uniq_psi(self):
-        '''Counts psi for catrgorical  unique counts > 100
-        '''
+        """Counts psi for catrgorical  unique counts > 100
+
+        Returns:
+            psi_value - PSI for column: float
+            psi_dict - input in PSI for each bucket: dict
+            new_cats - new categories
+            (for not categorical data inapplicable - returns empty list): list
+            abs_cats - categories that absents in actual column
+            (for not categorical data inapplicable - returns empty list): list
+
+        """
         actual_nulls = self.actual_nulls / self.actual_len
         expected_nulls = self.expected_nulls / self.expected_len
         actual_not_nulls_arr = self.actual[~np.isnan(self.actual)]
@@ -161,8 +206,17 @@ class psi:
 
     
     def psi_categ(self):
-        '''Counts psi for catrgorical data exclude unique counts > 100
-        '''
+        """Counts psi for categorical data exclude unique counts > 100
+
+        Returns:
+            psi_value - PSI for column: float
+            psi_dict - input in PSI for each bucket: dict
+            new_cats - new categories
+            (for not categorical data inapplicable - returns empty list): list
+            abs_cats - categories that absents in actual column
+            (for not categorical data inapplicable - returns empty list): list
+
+        """
         expected_uniq_count = len(self.expected_uniqs)
         actual_uniq_count = len(self.actual_uniqs)
         #правило для категориальных > 100
@@ -255,7 +309,17 @@ class psi:
         return psi_value, psi_dict, new_cats, abs_cats
     
     def psi_result(self):
-        
+        """Counts psi
+
+        Returns:
+            psi_value - PSI for column: float
+            psi_dict - input in PSI for each bucket: dict
+            new_cats - new categories
+            (for not categorical data inapplicable - returns empty list): list
+            abs_cats - categories that absents in actual column
+            (for not categorical data inapplicable - returns empty list): list
+
+        """
         if len(self.expected_shape) == 1:
             psi_values = np.empty(len(self.expected_shape))
         else:
@@ -270,14 +334,17 @@ class psi:
     
     
 def report(expected, actual, plot=False):
-    '''Обертка над классом для формирования отчета по таблице.
-    Arguments:
-        expected - ожидаеммый spark dataframe,
-        actual - актуальный spark dataframe,
-        plot - по умолчанию False
+    """Func over class to create report according to the table
+
+    Args:
+        expected: spark dataframe
+        actual: spark dataframe
+        plot - default=False
+
     Returns:
-        df - отчет в виде Pandas Dataframe.
-    '''
+        df - report in dataframe format: pd.DataFrame
+
+    """
     assert len(expected.columns) == len(actual.columns)
     data_cols = expected.columns
     score_dict = {}

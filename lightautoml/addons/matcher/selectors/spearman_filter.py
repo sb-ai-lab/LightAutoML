@@ -4,6 +4,19 @@ PVALUE = .05
 
 
 class SpearmanFilter:
+    """Class for filter columns by value of Spearman correlation coefficient
+
+    Example:
+        filter = SpearmanFilter(
+            outcome = df[['outcome']],
+            treatment = df[['treatment']],
+            threshold = df[['threshold']]
+        )
+
+        df = filter.perform_filter(df)
+
+    """
+
     def __init__(
             self,
             outcome,
@@ -15,7 +28,18 @@ class SpearmanFilter:
         self.threshold = threshold
 
     def perform_filter(self, df):
+        """Filter columns by correlation with outcome column.
 
+        Correlation tests by Spearman coefficient,
+        that should be less than threshold, and p-value=0.5
+
+        Args:
+            df: pd.DataFrame
+
+        Returns:
+            pd.DataFrame with columns, non-correlated with outcome column
+
+        """
         selected = []
         columns = df.drop([self.treatment, self.outcome], 1).columns
         for column in columns:

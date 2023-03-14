@@ -1,3 +1,5 @@
+"""Base Matcher class."""
+
 import pandas as pd
 import numpy as np
 from .algorithms.faiss_matcher import FaissMatcher
@@ -86,6 +88,8 @@ class Matcher:
         self.validate = None
 
     def _preprocessing_data(self):
+        """Turns categorical features into dummy.
+        """
         if self.group_col is None:
             self.df = pd.get_dummies(self.df, drop_first=True)
         else:
@@ -94,6 +98,8 @@ class Matcher:
             self.df = pd.concat([self.df, group_col], axis=1)
 
     def _spearman_filter(self):
+        """Applies filter by columns by correlation with outcome column
+        """
         same_filter = SpearmanFilter(
             outcome=self.outcome,
             treatment=self.treatment,
@@ -103,6 +109,13 @@ class Matcher:
         self.df = same_filter.perform_filter(self.df)
 
     def _outliers_filter(self):
+        """Deletes outliers
+
+        If mode_percentile is true, leaves values between min and max
+        percentiles;
+        If not, leaves only values between 25 and 75 percentile
+
+        """
         out_filter = OutliersFilter(
             interquartile_coeff=self.interquartile_coeff,
             mode_percentile=self.mode_percentile,
@@ -115,6 +128,8 @@ class Matcher:
         self.data = self.data.drop(rows_for_del, axis=0)
 
     def _feature_select(self):
+        """Select features with significant feature importance
+        """
         feat_select = LamaFeatureSelector(
             outcome=self.outcome,
             outcome_type=self.outcome_type,
@@ -134,6 +149,16 @@ class Matcher:
         self.features = features
 
     def _matching(self):
+        """Realize matching
+
+        Take in count presence of groups
+
+        Returns:
+            Tuple of matched df and ATE
+
+        """
+        matcher = FaissMatcher(self.df, self.data, self.outcome, self.treatment, self.features,
+                               group_col=self.group_col)
         if self.group_col is None:
             df_matched, ate = self.matcher.match()
         else:
@@ -170,6 +195,12 @@ class Matcher:
         return self.pval_dict
 
     def estimate(self):
+        """Applies filters and outliers, than matches
+
+        Returns:
+            Tuple of matched df and ATE
+
+        """
         if self.is_spearman_filter:
             self._spearman_filter()
         if self.is_outliers_filter:
