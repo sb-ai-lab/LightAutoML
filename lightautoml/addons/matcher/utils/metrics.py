@@ -51,5 +51,3 @@ def ks(orig, matched, treatment):
     ks_df = pd.DataFrame(data=ks_dict, index=range(2)).T
     ks_df.columns = ['match_control_to_treat', 'match_treat_to_control']
     return ks_df
-
-
