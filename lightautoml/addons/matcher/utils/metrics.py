@@ -11,7 +11,6 @@ def smd(orig, matched):
     Args:
         orig: pd.Dataframe or Any
         matched: pd.Dataframe or Any
-        treatment: pd.Series or Any
 
     Returns:
         Tuple of smd df and figure
