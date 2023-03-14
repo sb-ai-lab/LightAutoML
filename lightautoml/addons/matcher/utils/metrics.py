@@ -5,7 +5,7 @@ from scipy.stats import ks_2samp
 from ..utils.psi_pandas import *
 
 
-def smd(orig, matched, treatment):
+def smd(orig, matched):
     """Standardized mean difference to check matching quality
 
     Args:
