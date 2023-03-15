@@ -121,6 +121,8 @@ class AutoML:
             return_all_predictions: True if we should return all predictions from last
                 level models.
             debug: To catch running model exceptions or not.
+                - ``True`` :  show exceptions during model training.
+                - ``False``:  catch and hide exceptions.
 
         """
         assert len(levels) > 0, "At least 1 level should be defined"
