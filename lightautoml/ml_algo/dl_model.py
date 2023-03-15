@@ -384,6 +384,26 @@ class TorchModel(TabularMLAlgo):
 
         """
         suggested_params = copy(self.params)
+        if self.freeze_defaults:
+            # if user change defaults manually - keep it
+            return suggested_params
+
+        rows_num = len(train_valid_iterator.train) + len(train_valid_iterator.get_validation_data())
+        bs = 256
+
+        if rows_num > 50_000:
+            bs = 512
+        if rows_num > 100_000:
+            bs = 1024
+        if rows_num > 1_000_000:
+            bs = 2048
+
+        suggested_params["bs"] = bs
+        suggested_params["snap_params"] = (
+            {"k": 1, "early_stopping": True, "patience": 16, "swa": False}
+            if self.params["model"] == "snn"
+            else self.params["snap_params"]
+        )
         return suggested_params
 
     def get_dataloaders_from_dicts(self, data_dict: Dict):
@@ -448,6 +468,8 @@ class TorchModel(TabularMLAlgo):
             Dataset with predicted values.
 
         """
+        if self._params is None:
+            self.params = self.init_params_on_input(train_valid_iterator)
         self.params = self._init_params_on_input(train_valid_iterator)
         return super().fit_predict(train_valid_iterator)
 
