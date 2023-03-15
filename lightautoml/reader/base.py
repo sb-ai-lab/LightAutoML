@@ -448,7 +448,7 @@ class PandasToPandasReader(Reader):
             assert srtd.shape[0] > 1, "Less than 2 unique values in target"
             if (self.task.name == "binary") or (self.task.name == "multilabel"):
                 assert srtd.shape[0] == 2, "Binary task and more than 2 values in target"
-                return target, None
+            return target, None
 
         # case - create mapping
         class_mapping = {n: x for (x, n) in enumerate(unqiues)}
