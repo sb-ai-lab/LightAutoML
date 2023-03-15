@@ -14,7 +14,6 @@ import uuid
 
 from copy import copy
 from typing import Dict
-from typing import Optional
 
 import numpy as np
 import optuna
@@ -56,7 +55,6 @@ from ..text.utils import inv_softmax
 from ..text.utils import is_shuffle
 from ..text.utils import parse_devices
 from ..text.utils import seed_everything
-from ..utils.timer import TaskTimer
 from .torch_based.nn_models import MLP
 from .torch_based.nn_models import SNN
 from .torch_based.nn_models import DenseLightModel
