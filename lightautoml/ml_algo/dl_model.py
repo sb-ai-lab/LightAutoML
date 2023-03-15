@@ -24,10 +24,10 @@ import torch.nn as nn
 
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
-from lightautoml.dataset.np_pd_dataset import NumpyDataset
-from lightautoml.tasks.losses.torch import TorchLossWrapper
-from lightautoml.utils.installation import __validate_extra_deps
-from lightautoml.validation.base import TrainValidIterator
+from ..dataset.np_pd_dataset import NumpyDataset
+from ..tasks.losses.torch import TorchLossWrapper
+from ..utils.installation import __validate_extra_deps
+from ..validation.base import TrainValidIterator
 
 
 __validate_extra_deps("nlp")
@@ -193,16 +193,9 @@ class TorchModel(TabularMLAlgo):
         "tuned": False,
         "optimization_search_space": None,
         "verbose_bar": False,
+        "freeze_defaults": False,
         **_default_models_params,
     }
-
-    def __init__(
-        self,
-        default_params: Optional[dict] = None,
-        timer: Optional[TaskTimer] = None,
-        optimization_search_space: Optional[dict] = {},
-    ):
-        super().__init__(default_params, False, timer, optimization_search_space)
 
     def _infer_params(self):
         if self.params["path_to_save"] is not None:

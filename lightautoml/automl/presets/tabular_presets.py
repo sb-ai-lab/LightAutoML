@@ -383,6 +383,7 @@ class TabularAutoML(AutoMLPreset):
             nn_model = TorchModel(
                 timer=nn_timer,
                 default_params=model_params,
+                freeze_defaults=model_params["freeze_defaults"],
                 optimization_search_space=model_params.get("optimization_search_space", None),
             )
             nn_model._name = _name
@@ -540,15 +541,14 @@ class TabularAutoML(AutoMLPreset):
 
             available_nn_models = ["nn", "mlp", "dense", "denselight", "resnet", "snn", "linear_layer", "_linear_layer"]
             available_nn_models = available_nn_models + [x + "_tuned" for x in available_nn_models]
-            nn_models = [
-                x for x in names if x in available_nn_models or (not isinstance(x, str) and issubclass(x, nn.Module))
-            ]
+            nn_models = [x for x in names if x in available_nn_models or issubclass(x, nn.Module)]
 
             if len(nn_models) > 0:
                 selector = None
                 lvl.append(self.get_nn(nn_models, n + 1, selector))
 
-            levels.append(lvl)
+            if len(lvl) != 0:
+                levels.append(lvl)
 
         # blend everything
         blender = WeightedBlender(max_nonzero_coef=self.general_params["weighted_blender_max_nonzero_coef"])

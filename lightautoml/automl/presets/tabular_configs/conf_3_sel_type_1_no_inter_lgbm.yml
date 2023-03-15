@@ -204,6 +204,7 @@ nn_params:
     max_tuning_iter: 25
     # max tuning time. Tuning time might be set lower during train by automl's timer, but cannot be higher
     max_tuning_time: 3600
+  freeze_defaults: False
 
 gbm_pipeline_params:
   top_intersections: 0
