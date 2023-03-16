@@ -1,11 +1,13 @@
 """Neural Net modules for differen data types."""
 
+import logging
 
 from typing import Any
 from typing import Callable
 from typing import Dict
 from typing import Optional
 from typing import Sequence
+from typing import Union
 
 import numpy as np
 import torch
@@ -21,6 +23,9 @@ except:
 
 from ..tasks.base import Task
 from .dl_transformers import pooling_by_name
+
+
+logger = logging.getLogger(__name__)
 
 
 class UniversalDataset:
@@ -182,7 +187,7 @@ class CatEmbedder(nn.Module):
         assert self.no_of_embs != 0, "The input is empty."
         # Embedding layers
         self.emb_layers = nn.ModuleList([nn.Embedding(x, y) for x, y in emb_dims])
-        self.emb_dropout_layer = nn.Dropout(emb_dropout)
+        self.emb_dropout_layer = nn.Dropout(emb_dropout) if emb_dropout else nn.Identity()
 
     def get_out_shape(self) -> int:
         """Output shape.
@@ -217,7 +222,7 @@ class ContEmbedder(nn.Module):
     def __init__(self, num_dims: int, input_bn: bool = True):
         super(ContEmbedder, self).__init__()
         self.n_out = num_dims
-        self.bn = None
+        self.bn = nn.Identity()
         if input_bn:
             self.bn = nn.BatchNorm1d(num_dims)
         assert num_dims != 0, "The input is empty."
@@ -234,8 +239,7 @@ class ContEmbedder(nn.Module):
     def forward(self, inp: Dict[str, torch.Tensor]) -> torch.Tensor:
         """Forward-pass."""
         output = inp["cont"]
-        if self.bn is not None:
-            output = self.bn(output)
+        output = self.bn(output)
         return output
 
 
@@ -247,6 +251,7 @@ class TorchUniversalModel(nn.Module):
     Args:
         loss: Callable torch loss with order of arguments (y_true, y_pred).
         task: Task object.
+        torch_model: Torch model.
         n_out: Number of output dimensions.
         cont_embedder: Torch module for numeric data.
         cont_params: Dict with numeric model params.
@@ -254,6 +259,7 @@ class TorchUniversalModel(nn.Module):
         cat_params: Dict with category model params.
         text_embedder: Torch module for text data.
         text_params: Dict with text model params.
+        loss_on_logits: Calculate loss on logits or on predictions of model for classification tasks.
         bias: Array with last hidden linear layer bias.
 
     """
@@ -262,6 +268,7 @@ class TorchUniversalModel(nn.Module):
         self,
         loss: Callable,
         task: Task,
+        torch_model: nn.Module,
         n_out: int = 1,
         cont_embedder: Optional[Any] = None,
         cont_params: Optional[Dict] = None,
@@ -269,12 +276,15 @@ class TorchUniversalModel(nn.Module):
         cat_params: Optional[Dict] = None,
         text_embedder: Optional[Any] = None,
         text_params: Optional[Dict] = None,
-        bias: Optional[Sequence] = None,
+        loss_on_logits: bool = True,
+        bias: Union[np.array, torch.Tensor] = None,
+        **kwargs,
     ):
         super(TorchUniversalModel, self).__init__()
         self.n_out = n_out
         self.loss = loss
         self.task = task
+        self.loss_on_logits = loss_on_logits
 
         self.cont_embedder = None
         self.cat_embedder = None
@@ -291,27 +301,42 @@ class TorchUniversalModel(nn.Module):
             self.text_embedder = text_embedder(**text_params)
             n_in += self.text_embedder.get_out_shape()
 
-        self.bn = nn.BatchNorm1d(n_in)
-        self.fc = torch.nn.Linear(n_in, self.n_out)
+        self.torch_model = (
+            torch_model(
+                **{
+                    **kwargs,
+                    **{"n_in": n_in, "n_out": n_out, "loss": loss, "task": task},
+                }
+            )
+            if torch_model is not None
+            else nn.Sequential(nn.Linear(n_in, n_out))
+        )
 
         if bias is not None:
-            bias = torch.Tensor(bias)
-            self.fc.bias.data = nn.Parameter(bias)
-            self.fc.weight.data = nn.Parameter(torch.zeros(self.n_out, n_in))
+            try:
+                last_layer = list(
+                    filter(
+                        lambda x: isinstance(x, nn.Linear) or isinstance(x, nn.Sequential),
+                        list(self.torch_model.children()),
+                    )
+                )[-1]
+                while isinstance(last_layer, nn.Sequential):
+                    last_layer = list(
+                        filter(lambda x: isinstance(x, nn.Linear) or isinstance(x, nn.Sequential), last_layer)
+                    )[-1]
+                bias = torch.Tensor(bias)
+                last_layer.bias.data = bias
+                shape = last_layer.weight.data.shape
+                last_layer.weight.data = torch.zeros(shape[0], shape[1], requires_grad=True)
+            except:
+                logger.info3("Last linear layer not founded, so init_bias=False")
 
-        if (self.task.name == "binary") or (self.task.name == "multilabel"):
-            self.fc = nn.Sequential(self.fc, Clump(), nn.Sigmoid())
-        elif self.task.name == "multiclass":
-            self.fc = nn.Sequential(self.fc, Clump(), nn.Softmax(dim=1))
+        self.сlump = Clump()
+        self.sig = nn.Sigmoid()
+        self.softmax = nn.Softmax(dim=1)
 
-    def forward(self, inp: Dict[str, torch.Tensor]) -> torch.Tensor:
-        """Forward-pass."""
-        x = self.predict(inp)
-        loss = self.loss(inp["label"].view(inp["label"].shape[0], -1), x, inp.get("weight", None))
-        return loss
-
-    def predict(self, inp: Dict[str, torch.Tensor]) -> torch.Tensor:
-        """Prediction."""
+    def get_logits(self, inp: Dict[str, torch.Tensor]) -> torch.Tensor:
+        """Forward-pass of model with embeddings."""
         outputs = []
         if self.cont_embedder is not None:
             outputs.append(self.cont_embedder(inp))
@@ -326,5 +351,33 @@ class TorchUniversalModel(nn.Module):
             output = torch.cat(outputs, dim=1)
         else:
             output = outputs[0]
-        logits = self.fc(output)
-        return logits.view(logits.shape[0], -1)
+
+        logits = self.torch_model(output)
+        return logits
+
+    def get_preds_from_logits(self, logits: torch.Tensor) -> torch.Tensor:
+        """Prediction from logits."""
+        if self.task.name in ["binary", "multilabel"]:
+            out = self.sig(self.сlump(logits))
+        elif self.task.name == "multiclass":
+            # cant find self.clump when predicting
+            out = self.softmax(torch.clamp(logits, -50, 50))
+        else:
+            out = logits
+
+        return out
+
+    def forward(self, inp: Dict[str, torch.Tensor]) -> torch.Tensor:
+        """Forward-pass with output loss."""
+        x = self.get_logits(inp)
+        if not self.loss_on_logits:
+            x = self.get_preds_from_logits(x)
+
+        loss = self.loss(inp["label"].view(inp["label"].shape[0], -1), x, inp.get("weight", None))
+        return loss
+
+    def predict(self, inp: Dict[str, torch.Tensor]) -> torch.Tensor:
+        """Prediction."""
+        x = self.get_logits(inp)
+        x = self.get_preds_from_logits(x)
+        return x

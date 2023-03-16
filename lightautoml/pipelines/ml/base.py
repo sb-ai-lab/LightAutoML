@@ -125,6 +125,7 @@ class MLPipeline:
         predictions = []
 
         for ml_algo, param_tuner, force_calc in zip(self._ml_algos, self.params_tuners, self.force_calc):
+            ml_algo.debug = getattr(self, "debug", False)
             ml_algo, preds = tune_and_fit_predict(ml_algo, param_tuner, train_valid, force_calc)
             if ml_algo is not None:
                 self.ml_algos.append(ml_algo)

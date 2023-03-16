@@ -14,6 +14,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import RandomForestRegressor
 
 from ..pipelines.selection.base import ImportanceEstimator
+from ..utils.logging import get_stdout_level
 from ..validation.base import TrainValidIterator
 from .base import TabularDataset
 from .base import TabularMLAlgo
@@ -67,8 +68,7 @@ class RandomForestSklearn(TabularMLAlgo, ImportanceEstimator):
 
         # Logging
         if "verbose" not in params:
-            root_logger = logging.getLogger()
-            level = root_logger.getEffectiveLevel()
+            level = get_stdout_level()
             if level in (logging.CRITICAL, logging.ERROR, logging.WARNING):
                 params["verbose"] = 0
             else:
