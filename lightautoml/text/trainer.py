@@ -506,7 +506,6 @@ class Trainer:
                 for i in sample.keys()
             }
 
-            self.optimizer.zero_grad()
             loss = self.model(data).mean()
             if self.apex:
                 with self.amp.scale_loss(loss, self.optimizer) as scaled_loss:
@@ -517,6 +516,7 @@ class Trainer:
             if self.clip_grad:
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), **self.clip_grad_params)
             self.optimizer.step()
+            self.optimizer.zero_grad()
 
             loss = loss.data.cpu().numpy()
             loss_log.append(loss)
