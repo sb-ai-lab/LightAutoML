@@ -18,7 +18,7 @@ class TestTabularAutoML:
             debug=True,
             task=binary_task,
             general_params={"use_algos": [["mlp"]]},
-            nn_params={"n_epochs": 10, "bs": 128, "num_workers": 0, "path_to_save": None},
+            nn_params={"n_epochs": 10, "bs": 128, "num_workers": 0, "path_to_save": None, "freeze_defaults": True},
         )
         oof_predictions = automl.fit_predict(train, roles=sampled_app_roles, verbose=10)
         ho_predictions = automl.predict(test)
