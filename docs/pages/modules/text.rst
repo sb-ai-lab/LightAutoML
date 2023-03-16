@@ -53,24 +53,6 @@ Tokenizers
     ~tokenizer.SimpleEnTokenizer
 
 
-Pooling Strategies
-------------------------------
-
-.. currentmodule:: lightautoml.text
-
-.. autosummary::
-    :toctree: ./generated
-    :nosignatures:
-    :template: classtemplate.rst
-
-    ~sentence_pooling.SequenceAbstractPooler
-    ~sentence_pooling.SequenceClsPooler
-    ~sentence_pooling.SequenceMaxPooler
-    ~sentence_pooling.SequenceSumPooler
-    ~sentence_pooling.SequenceAvgPooler
-    ~sentence_pooling.SequenceIndentityPooler
-
-
 Utils
 ------------------------------
 

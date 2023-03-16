@@ -39,10 +39,12 @@ Numeric
 
     NaNFlags
     FillnaMedian
+    FillnaMean
     FillInf
     LogOdds
     StandardScaler
     QuantileBinning
+    QuantileTransformer
 
 
 Categorical
