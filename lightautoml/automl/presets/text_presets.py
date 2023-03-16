@@ -421,7 +421,7 @@ class TabularNLPAutoML(TabularAutoML):
             available_nn_models = ["nn", "mlp", "dense", "denselight", "resnet", "snn", "linear_layer", "_linear_layer"]
             available_nn_models = available_nn_models + [x + "_tuned" for x in available_nn_models]
             nn_models = [
-                x for x in names if x in available_nn_models or (isinstance(x, type) and issubclass(x, nn.Module))
+                x for x in names if x in available_nn_models or (not isinstance(x, str)  and issubclass(x, nn.Module))
             ]
 
             if len(nn_models) > 0:
