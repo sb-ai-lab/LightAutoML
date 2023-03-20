@@ -1,5 +1,3 @@
-import pandas as pd
-import numpy as np
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LinearRegression
 import faiss
@@ -49,7 +47,7 @@ class FaissMatcher:
         self.validation = validation
 
     def _get_split_scalar_data(self, df):
-        """Creates splitted data by treatment column
+        """Creates split data by treatment column
 
         Separate treatment column with 1 (treated) an 0 (untreated),
         scales and transforms treatment column
