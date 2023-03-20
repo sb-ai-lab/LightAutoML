@@ -7,6 +7,8 @@ import pytest
 
 from sklearn.model_selection import train_test_split
 
+from lightautoml.dataset.np_pd_dataset import NumpyDataset
+
 # from lightautoml.dataset.np_pd_dataset import *
 from lightautoml.dataset.roles import CategoryRole
 from lightautoml.dataset.roles import DatetimeRole
@@ -14,7 +16,6 @@ from lightautoml.dataset.roles import FoldsRole
 from lightautoml.dataset.roles import NumericRole
 from lightautoml.dataset.roles import TargetRole
 from lightautoml.tasks import Task
-from lightautoml.dataset.np_pd_dataset import NumpyDataset
 
 
 RANDOM_STATE = 42
@@ -96,22 +97,17 @@ def multiclass_task():
 def regression_task():
     return Task("reg")
 
+
 @pytest.fixture()
 def lamldataset_with_na():
     return NumpyDataset(
-        data=np.array(
-            [
-                [1, 2, np.nan],
-                [4, np.nan, np.nan],
-                [7, 8, np.nan]
-            ]
-        ),
-        features=['column0', 'column1' , 'column2'],
+        data=np.array([[1, 2, np.nan], [4, np.nan, np.nan], [7, 8, np.nan]]),
+        features=["column0", "column1", "column2"],
         roles={
-            'column0': NumericRole(np.float32),
-            'column1': NumericRole(np.float32), 
-            'column2': NumericRole(np.float32)
+            "column0": NumericRole(np.float32),
+            "column1": NumericRole(np.float32),
+            "column2": NumericRole(np.float32)
             # 'target': TargetRole()
-            },
+        },
         task=Task("binary"),
     )
