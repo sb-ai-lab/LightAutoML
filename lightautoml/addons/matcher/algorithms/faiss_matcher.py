@@ -472,7 +472,7 @@ class FaissMatcher:
 
     def matching_quality(self):
         '''
-        Method for estimate the quality of covariates balance.
+        Method for estimate the quality of covariates balance and repeat fraction.
         Estimates population stability index, Standartizied mean difference
         and Kolmogorov-Smirnov test for numeric values. Returns dict of reports.
          '''
@@ -480,7 +480,10 @@ class FaissMatcher:
         psi_columns = self.data.drop(columns=[self.treatment]).columns
         psi_data, ks_data, smd_data = matching_quality(self.df_matched, self.treatment, self.features_quality,
                                                        psi_columns)
-        self.quality_dict = {'psi': psi_data, 'ks_test': ks_data, 'smd': smd_data}
+        rep_dict = {'match_control_to_treat': check_repeats(self.treated_index.ravel()),
+                    'match_treat_to_control': check_repeats(self.untreated_index.ravel())}
+        self.quality_dict = {'psi': psi_data, 'ks_test': ks_data, 'smd': smd_data, 'repeats': rep_dict}
+
         print("kek", self.quality_dict)
         return self.quality_dict
 
