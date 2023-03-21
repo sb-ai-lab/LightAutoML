@@ -41,11 +41,13 @@ def ks(orig, matched):
 
 
 def matching_quality(data, treatment, features, features_psi):
-    ''' Функция обертка для оценки качества после получения мэтчинг с выводом результата в таблицу
-        На вход принимает датасет, полученный после мэтчинга.
+    ''' Wrapping function for matching quality estimation.
+    Args:
         data - df_matched, pd.DataFrame df_matched
         treatment -  treatment
-        features - список фичей, kstest и smd принимает только числовые поля
+        features - feature list, kstest and  smd accept only numeric values.
+    Returns:
+        Dictionaries with estimated metrics for matched treated to control and control to treated.
         '''
 
     orig_treated = data[data[treatment] == 1][features]
@@ -79,3 +81,16 @@ def matching_quality(data, treatment, features, features_psi):
     report_psi_untreated = report(psi_untreated, psi_untreated_matched)[['column', 'anomaly_score', 'check_result']]
     report_psi = pd.concat([report_psi_treated.reset_index(drop=True),report_psi_untreated.reset_index(drop=True)], axis=1)
     return report_psi, ks_df, smd_data
+
+def check_repeats(index):
+    '''The function checks fraction of duplicated indexes.
+
+     Args:
+        index: numpy array.
+
+    Returns:
+        Fraction of dupicated index, float.
+    '''
+    unique, counts = np.unique(index, return_counts=True)
+    rep_frac = len(unique) / len(index) if len(unique) > 0 else 0
+    return round(rep_frac, 2)
