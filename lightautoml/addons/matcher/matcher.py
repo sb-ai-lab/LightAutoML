@@ -80,8 +80,7 @@ class Matcher:
         self.features = None
         self._preprocessing_data()
         self.quality_check = quality_check
-        self.matcher = FaissMatcher(self.df, self.data, self.outcome, self.treatment, self.features,
-                                    group_col=self.group_col, validation=None)
+        self.matcher = None
         self.val_dict = {k: [] for k in [self.outcome]}
         self.pval_dict = None
         self.new_treatment = None
@@ -157,8 +156,8 @@ class Matcher:
             Tuple of matched df and ATE
 
         """
-        matcher = FaissMatcher(self.df, self.data, self.outcome, self.treatment, self.features,
-                               group_col=self.group_col)
+        self.matcher = FaissMatcher(self.df, self.data, self.outcome, self.treatment, self.features,
+                                    group_col=self.group_col)
         if self.group_col is None:
             df_matched, ate = self.matcher.match()
         else:
@@ -170,10 +169,15 @@ class Matcher:
         return df_matched, ate
 
     def validate_result(self, n_sim=10):
+<<<<<<< HEAD
 
         '''Validates estimated effect by replacing real treatment with random placebo treatment.
         Estimated effect must be droped to zero.'''
 
+=======
+        """Validates estimated effect by replacing real treatment with random placebo treatment.
+        Estimated effect must be dropped to zero"""
+>>>>>>> bae643c875dd06824dd2f7ece0fe7544076c62d1
         for i in range(n_sim):
             prop1 = self.df[self.treatment].sum() / self.df.shape[0]
             prop0 = 1 - prop1
@@ -183,12 +187,12 @@ class Matcher:
             self.df[self.treatment] = self.new_treatment
             self.data = self.data.drop(columns=self.treatment)
             self.data[self.treatment] = self.new_treatment
-            matcher = FaissMatcher(self.df, self.data, self.outcome, self.treatment, self.features,
-                                   group_col=self.group_col, validation=self.validate)
+            self.matcher = FaissMatcher(self.df, self.data, self.outcome, self.treatment, self.features,
+                                        group_col=self.group_col, validation=self.validate)
             if self.group_col is None:
-                sim = matcher.match()
+                sim = self.matcher.match()
             else:
-                sim = matcher.group_match()
+                sim = self.matcher.group_match()
             for key in self.val_dict.keys():
                 self.val_dict[key].append(sim[key][0])
         self.pval_dict = dict()
