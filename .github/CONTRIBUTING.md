@@ -77,9 +77,20 @@ to work with environments.
     ```
 
 4. Install LightAutoML (**warning**: it may take a long time, check the ```script/poetry_fix.py``` to shorten the installation time.):
-
+    
+    To install only necessary dependencies, without extras:
     ```bash
     poetry install
+    ```
+    
+    To install all dependencies:
+    ```bash
+    poetry install --all-extras
+    ```
+
+    To install only specific dependency groups:
+    ```
+    poetry install -E cv -E report
     ```
 
 After that, there is virtual environment, where you can test and implement your own code.
