@@ -125,11 +125,17 @@ Before making a pull request (despite changing only the documentation or writing
 poetry run pytest tests
 ```
 
-To run tests with different Python versions, run tox
+To run tests with different Python versions, run tox:
 
 ```bash
 poetry run tox
 ```
+
+To run tests for specific Python versions (for example python 3.6):
+```bash
+poetry run tox -e py36
+```
+
 
 Also if you develop new functionality, please add your own tests.
 
