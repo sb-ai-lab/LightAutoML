@@ -169,15 +169,11 @@ class Matcher:
         return df_matched, ate
 
     def validate_result(self, n_sim=10):
-<<<<<<< HEAD
-
         '''Validates estimated effect by replacing real treatment with random placebo treatment.
         Estimated effect must be droped to zero.'''
 
-=======
         """Validates estimated effect by replacing real treatment with random placebo treatment.
         Estimated effect must be dropped to zero"""
->>>>>>> bae643c875dd06824dd2f7ece0fe7544076c62d1
         for i in range(n_sim):
             prop1 = self.df[self.treatment].sum() / self.df.shape[0]
             prop0 = 1 - prop1
