@@ -2,6 +2,7 @@
 
 import pandas as pd
 import numpy as np
+import logging
 from .algorithms.faiss_matcher import FaissMatcher
 from .selectors.lama_feature_selector import LamaFeatureSelector
 from .selectors.outliers_filter import OutliersFilter
@@ -26,6 +27,14 @@ OUT_MODE_PERCENT = True
 OUT_MIN_PERCENT = .02
 OUT_MAX_PERCENT = .98
 
+logger = logging.getLogger('matcher')
+console_out = logging.StreamHandler()
+logging.basicConfig(
+    handlers=(console_out,),
+    format='[%(actime)s | %(name)s | %(levelname)s]: | %(message)s',
+    datefmt='%d.%m.%Y %H:%M:%S',
+    level=logging.INFO
+)
 
 class Matcher:
     def __init__(
@@ -91,14 +100,17 @@ class Matcher:
         """
         if self.group_col is None:
             self.df = pd.get_dummies(self.df, drop_first=True)
+            logging.info('Categorical features turned into dummy')
         else:
             group_col = self.df[[self.group_col]]
             self.df = pd.get_dummies(self.df.drop(columns=self.group_col), drop_first=True)
             self.df = pd.concat([self.df, group_col], axis=1)
+            logging.info('Categorical grouped features turned into dummy')
 
     def _spearman_filter(self):
         """Applies filter by columns by correlation with outcome column
         """
+        logging.info(f'Applying filter by spearman test - drop columns correlated with outcome')
         same_filter = SpearmanFilter(
             outcome=self.outcome,
             treatment=self.treatment,
@@ -106,6 +118,7 @@ class Matcher:
         )
 
         self.df = same_filter.perform_filter(self.df)
+
 
     def _outliers_filter(self):
         """Deletes outliers
@@ -115,6 +128,7 @@ class Matcher:
         If not, leaves only values between 25 and 75 percentile
 
         """
+        logging.info(f'Applying filter of outliers')
         out_filter = OutliersFilter(
             interquartile_coeff=self.interquartile_coeff,
             mode_percentile=self.mode_percentile,
@@ -127,8 +141,9 @@ class Matcher:
         self.data = self.data.drop(rows_for_del, axis=0)
 
     def _feature_select(self):
-        """Select features with significant feature importance
+        """Counts feature importance
         """
+        logging.info(f'Counting feature importance')
         feat_select = LamaFeatureSelector(
             outcome=self.outcome,
             outcome_type=self.outcome_type,
@@ -144,6 +159,7 @@ class Matcher:
         if self.group_col is None:
             features = feat_select.perform_selection(df=self.df)
         else:
+            logging.info(f'Feature importance counted without group columns')
             features = feat_select.perform_selection(df=self.df.drop(columns=self.group_col))
         self.features = features
 
@@ -159,21 +175,34 @@ class Matcher:
         self.matcher = FaissMatcher(self.df, self.data, self.outcome, self.treatment, self.features,
                                     group_col=self.group_col)
         if self.group_col is None:
+            logging.info(f'Applying matching')
             df_matched, ate = self.matcher.match()
         else:
+            logging.info(f'Applying group matching')
             df_matched, ate = self.matcher.group_match()
 
         if self.quality_check:
+            logger.info('Checking quality')
             self.quality_result = self.matcher.matching_quality()
 
+        logging.info(f'Data matched with ate: {ate}')
         return df_matched, ate
 
     def validate_result(self, n_sim=10):
-        '''Validates estimated effect by replacing real treatment with random placebo treatment.
-        Estimated effect must be droped to zero.'''
+        """Validates estimated effect
 
-        """Validates estimated effect by replacing real treatment with random placebo treatment.
-        Estimated effect must be dropped to zero"""
+        Validates estimated effect by replacing real treatment with random
+        placebo treatment.
+        Estimated effect must be droped to zero
+
+        Args:
+            n_sim - number of simulations: int
+
+        Returns:
+            self.pval_dict - dict of p-values: dict
+
+        """
+        logging.info(f'Applying validation of result')
         for i in range(n_sim):
             prop1 = self.df[self.treatment].sum() / self.df.shape[0]
             prop0 = 1 - prop1
@@ -197,7 +226,7 @@ class Matcher:
         return self.pval_dict
 
     def estimate(self):
-        """Applies filters and outliers, than matches
+        """Applies filters and outliers, then matches
 
         Returns:
             Tuple of matched df and ATE

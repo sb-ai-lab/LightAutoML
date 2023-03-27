@@ -3,10 +3,19 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from scipy.stats import ks_2samp
 from ..utils.psi_pandas import *
+import logging
 
+logger = logging.getLogger('metrics')
+console_out = logging.StreamHandler()
+logging.basicConfig(
+    handlers=(console_out,),
+    format='%(asctime)s - %(name)s - %(levelname)s: %(message)s',
+    datefmt='%d.%m.%Y %H:%M:%S',
+    level=logging.DEBUG
+)
 
 def smd(orig, matched):
-    """Standardized mean difference to check matching quality
+    """Standardised mean difference to check matching quality
 
     Args:
         orig: pd.Dataframe or Any
@@ -17,6 +26,7 @@ def smd(orig, matched):
 
     """
     smd_data = abs(orig.mean(0) - matched.mean(0)) / orig.std(0)
+    logger.info(f'Standardised mean difference: {round(smd_data, 4)}')
     return smd_data
 
 
@@ -25,13 +35,14 @@ def ks(orig, matched):
     """Kolmogorov-Smirnov test to check matching quality by columns
 
     Args:
-        orig: pd.Dataframe or Any
-        matched: pd.Dataframe or Any
+        orig: pd.Dataframe
+        matched: pd.Dataframe
 
     Returns:
-        Checked dataframe
+        ks_dict - dict of p-values: dict
 
     """
+    logger.info('Applying Kolmogorov-Smirnov test to check matching quality')
     ks_dict = dict()
     matched.columns = orig.columns
     for col in orig.columns:
@@ -41,15 +52,18 @@ def ks(orig, matched):
 
 
 def matching_quality(data, treatment, features, features_psi):
-    ''' Wrapping function for matching quality estimation.
-    Args:
-        data - df_matched, pd.DataFrame df_matched
-        treatment -  treatment
-        features - feature list, kstest and  smd accept only numeric values.
-    Returns:
-        Dictionaries with estimated metrics for matched treated to control and control to treated.
-        '''
+    """Wrapping function for matching quality estimation.
 
+    Args:
+        data - df_matched: pd.DataFram
+        treatment -  treatment
+        features - feature list, kstest and  smd accept only numeric values
+
+    Returns:
+        report_psi, ks_df, smd_data - dictionaries with estimated metrics
+        for matched treated to control and control to treated: tuple of dicts
+
+    """
     orig_treated = data[data[treatment] == 1][features]
     orig_untreated = data[data[treatment] == 0][features]
     matched_treated = data[data[treatment] == 1][
@@ -83,14 +97,15 @@ def matching_quality(data, treatment, features, features_psi):
     return report_psi, ks_df, smd_data
 
 def check_repeats(index):
-    '''The function checks fraction of duplicated indexes.
+    """The function checks fraction of duplicated indexes.
 
      Args:
         index: numpy array.
 
     Returns:
         Fraction of dupicated index, float.
-    '''
+    """
     unique, counts = np.unique(index, return_counts=True)
     rep_frac = len(unique) / len(index) if len(unique) > 0 else 0
+    logger.info(f'Fraction of duplicated indexes: {round(rep_frac, 2)}')
     return round(rep_frac, 2)

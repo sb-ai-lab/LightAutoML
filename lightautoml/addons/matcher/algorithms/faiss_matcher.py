@@ -59,6 +59,7 @@ class FaissMatcher:
             Tuple of dfs treated, untreated; scaled std_treated and std_untreated
 
         """
+        logger.info('Creating split data by treatment column')
         std_scaler = StandardScaler().fit(df.drop([self.outcomes, self.treatment], axis=1))
 
         treated = df[df[self.treatment] == 1].drop([self.outcomes, self.treatment], axis=1)
@@ -79,6 +80,7 @@ class FaissMatcher:
             Downsized data: array
 
         """
+        logger.info('Applying PCA analysis')
         x = df.to_numpy().copy(order='C').astype("float32")
         whiten = faiss.PCAMatrix(x.shape[1], x.shape[1])
         whiten.train(x)
@@ -119,6 +121,7 @@ class FaissMatcher:
             std_untreated: pd.DataFrame
 
         """
+        logger.info('Predicting target by Linear Regression')
         self.dict_outcome_untreated = {}
         self.dict_outcome_treated = {}
         for outcome in [self.outcomes]:
@@ -237,6 +240,7 @@ class FaissMatcher:
             ATE: int
 
         """
+        logger.info(f'Calculating ATE')
         ate = np.mean(
             (2 * df[self.treatment] - 1) * (df[outcome] - df[outcome + POSTFIX_BIAS]))
         return ate
@@ -254,6 +258,7 @@ class FaissMatcher:
             ATC, scaled counts and variances
 
         """
+        logger.info(f'Calculating ATC')
         df = df[df[self.treatment] == 0]
         N_c = len(df)
         index_c = list(range(N_c))
@@ -277,7 +282,7 @@ class FaissMatcher:
             ATT, scaled counts and variances: tuple[ndarray,ndarray,ndarray]
 
         """
-
+        logger.info(f'Calculating ATT')
         df = df[df[self.treatment] == 1]
         N_t = len(df)
         index_t = list(range(N_t))
@@ -304,7 +309,7 @@ class FaissMatcher:
             Number of times each subject has appeared as a match: int
 
         """
-
+        logger.info(f'Calculating the number of times each subject has appeared as a match')
         s_counts = np.zeros(N)
         index_dict = dict(zip(index, list(range(N))))
         for matches_i in matches:
@@ -327,6 +332,7 @@ class FaissMatcher:
             ATE variance: int
 
         """
+        logger.info(f'Calculating ATT variance')
         N_c, N_t = len(vars_c), len(vars_t)
         summands_c = weights_c ** 2 * vars_c
         summands_t = weights_t ** 2 * vars_t
@@ -334,7 +340,7 @@ class FaissMatcher:
         return summands_t.sum() / N_t ** 2 + summands_c.sum() / N_c ** 2
 
     def calc_atc_se(self, vars_c, vars_t, scaled_counts_t):
-        """Calculates Average Treatment Effect for the control group (ATC) standart error
+        """Calculates Average Treatment Effect for the control group (ATC) standard error
 
         Args:
             vars_c: {__len__}
@@ -345,6 +351,7 @@ class FaissMatcher:
             ATC standart error
 
         """
+        logger.info(f'Calculating ATC standard error')
         N_c, N_t = len(vars_c), len(vars_t)
         weights_c = np.ones(N_c)
         weights_t = (N_t / N_c) * scaled_counts_t
@@ -354,7 +361,7 @@ class FaissMatcher:
         return np.sqrt(var)
 
     def calc_att_se(self, vars_c, vars_t, scaled_counts_c):
-        """Calculates Average Treatment Effect for the treated (ATT) standart error
+        """Calculates Average Treatment Effect for the treated (ATT) standard error
 
         Args:
             vars_c: {__len__}
@@ -365,6 +372,7 @@ class FaissMatcher:
             ATT standart error
 
         """
+        logger.info(f'Calculating ATT standard error')
         N_c, N_t = len(vars_c), len(vars_t)
         weights_c = (N_c / N_t) * scaled_counts_c
         weights_t = np.ones(N_t)
@@ -392,7 +400,7 @@ class FaissMatcher:
         weights_t = (N_t / N) * (1 + scaled_counts_t)
 
         var = self.calc_atx_var(vars_c, vars_t, weights_c, weights_t)
-
+        logger.info(f'Calculating ATE standard error')
         return np.sqrt(var)
 
     def pval_calc(self, z):
@@ -417,6 +425,7 @@ class FaissMatcher:
             Tuple of dicts with ATE, ATC and ATT
 
         """
+        logger.info(f'Creating dicts of all effects: ATE, ATC, ATT')
         att_dict = {}
         atc_dict = {}
         ate_dict = {}
@@ -443,6 +452,7 @@ class FaissMatcher:
             n_features: int
 
         """
+        logger.info(f'Checking best effects')
         ate_dict, atc_dict, att_dict = self._calculate_ate_all_target(df_matched)
 
         if self.validation is not None:
@@ -471,12 +481,16 @@ class FaissMatcher:
                 self.df_matched = df_matched
 
     def matching_quality(self):
-        '''
-        Method for estimate the quality of covariates balance and repeat fraction.
+        """Estimated the quality of covariates balance and repeat fraction
+
         Estimates population stability index, Standartizied mean difference
         and Kolmogorov-Smirnov test for numeric values. Returns dict of reports.
-         '''
 
+        Returns:
+            dict of reports
+
+        """
+        logger.info(f'Estimating quality of matching')
         psi_columns = self.data.drop(columns=[self.treatment]).columns
         psi_data, ks_data, smd_data = matching_quality(self.df_matched, self.treatment, self.features_quality,
                                                        psi_columns)
@@ -488,7 +502,7 @@ class FaissMatcher:
         return self.quality_dict
 
     def group_match(self):
-        """Matches dfs if it devided by groups
+        """Matches dfs if it divided by groups
 
         Returns:
             Tuple of matched df and ATE
@@ -545,9 +559,10 @@ class FaissMatcher:
         """Matches df
 
         Returns:
-            Tuple of matched df and ATE
+            Tuple of matched df and metrics ATE, ATC, ATT
 
         """
+
         for i in range(4, 10):
             df = self.df[self.feature_list[:i] + [self.treatment] + [self.outcomes]]
             treated, untreated, std_treated, std_untreated = self._get_split_scalar_data(df)

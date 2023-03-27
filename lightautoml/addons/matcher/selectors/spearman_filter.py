@@ -1,7 +1,16 @@
 from scipy.stats import spearmanr
+import logging
 
 PVALUE = .05
 
+logger = logging.getLogger('spearman_filter')
+console_out = logging.StreamHandler()
+logging.basicConfig(
+    handlers=(console_out,),
+    format='[%(actime)s | %(name)s | %(levelname)s]: | %(message)s',
+    datefmt='%d.%m.%Y %H:%M:%S',
+    level=logging.INFO
+)
 
 class SpearmanFilter:
     """Class for filter columns by value of Spearman correlation coefficient
@@ -50,6 +59,7 @@ class SpearmanFilter:
             if (abs(result[0] < self.threshold)) & (result[1] < PVALUE):
                 selected.append(column)
 
+        logging.info(f'Drop {len(columns) - len(selected)} columns')
         columns = selected + [self.treatment, self.outcome]
         df = df[columns]
 
