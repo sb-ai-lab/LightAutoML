@@ -13,6 +13,7 @@ logging.basicConfig(
     level=logging.DEBUG
 )
 
+
 class LamaFeatureSelector:
     def __init__(
             self,
@@ -51,7 +52,7 @@ class LamaFeatureSelector:
             feature scores of model
 
         """
-        logging.info('Getting feature scores')
+        logger.info('Getting feature scores')
         roles = {
             'target': self.outcome,
             'drop': [self.treatment],

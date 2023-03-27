@@ -9,6 +9,7 @@ logging.basicConfig(
     level=logging.DEBUG
 )
 
+
 class OutliersFilter:
     def __init__(
             self,
@@ -51,6 +52,6 @@ class OutliersFilter:
             rows_for_del_column = df.index[rows_for_del_column].tolist()
             rows_for_del.extend(rows_for_del_column)
         rows_for_del = set(rows_for_del)
-        logging.info(f'Drop {len(rows_for_del)} columns')
+        logger.info(f'Drop {len(rows_for_del)} columns')
 
         return rows_for_del

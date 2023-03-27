@@ -100,17 +100,17 @@ class Matcher:
         """
         if self.group_col is None:
             self.df = pd.get_dummies(self.df, drop_first=True)
-            logging.info('Categorical features turned into dummy')
+            logger.info('Categorical features turned into dummy')
         else:
             group_col = self.df[[self.group_col]]
             self.df = pd.get_dummies(self.df.drop(columns=self.group_col), drop_first=True)
             self.df = pd.concat([self.df, group_col], axis=1)
-            logging.info('Categorical grouped features turned into dummy')
+            logger.info('Categorical grouped features turned into dummy')
 
     def _spearman_filter(self):
         """Applies filter by columns by correlation with outcome column
         """
-        logging.info(f'Applying filter by spearman test - drop columns correlated with outcome')
+        logger.info(f'Applying filter by spearman test - drop columns correlated with outcome')
         same_filter = SpearmanFilter(
             outcome=self.outcome,
             treatment=self.treatment,
@@ -128,7 +128,7 @@ class Matcher:
         If not, leaves only values between 25 and 75 percentile
 
         """
-        logging.info(f'Applying filter of outliers')
+        logger.info(f'Applying filter of outliers')
         out_filter = OutliersFilter(
             interquartile_coeff=self.interquartile_coeff,
             mode_percentile=self.mode_percentile,
@@ -143,7 +143,7 @@ class Matcher:
     def _feature_select(self):
         """Counts feature importance
         """
-        logging.info(f'Counting feature importance')
+        logger.info(f'Counting feature importance')
         feat_select = LamaFeatureSelector(
             outcome=self.outcome,
             outcome_type=self.outcome_type,
@@ -159,7 +159,7 @@ class Matcher:
         if self.group_col is None:
             features = feat_select.perform_selection(df=self.df)
         else:
-            logging.info(f'Feature importance counted without group columns')
+            logger.info(f'Feature importance counted without group columns')
             features = feat_select.perform_selection(df=self.df.drop(columns=self.group_col))
         self.features = features
 
@@ -175,17 +175,17 @@ class Matcher:
         self.matcher = FaissMatcher(self.df, self.data, self.outcome, self.treatment, self.features,
                                     group_col=self.group_col)
         if self.group_col is None:
-            logging.info(f'Applying matching')
+            logger.info(f'Applying matching')
             df_matched, ate = self.matcher.match()
         else:
-            logging.info(f'Applying group matching')
+            logger.info(f'Applying group matching')
             df_matched, ate = self.matcher.group_match()
 
         if self.quality_check:
             logger.info('Checking quality')
             self.quality_result = self.matcher.matching_quality()
 
-        logging.info(f'Data matched with ate: {ate}')
+        logger.info(f'Data matched with ate: {ate}')
         return df_matched, ate
 
     def validate_result(self, n_sim=10):
@@ -202,7 +202,7 @@ class Matcher:
             self.pval_dict - dict of p-values: dict
 
         """
-        logging.info(f'Applying validation of result')
+        logger.info(f'Applying validation of result')
         for i in range(n_sim):
             prop1 = self.df[self.treatment].sum() / self.df.shape[0]
             prop0 = 1 - prop1
