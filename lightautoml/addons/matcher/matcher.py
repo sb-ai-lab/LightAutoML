@@ -37,6 +37,9 @@ class Matcher:
             is_spearman_filter=False,
             is_outliers_filter=False,
             is_feature_select=True,
+            group_col=None,
+            quality_check=False,
+            info_col=None,
             generate_report=GENERATE_REPORT,
             report_feat_select_dir=REPORT_FEAT_SELECT_DIR,
             report_prop_score_dir=REPORT_PROP_SCORE_DIR,
@@ -50,12 +53,15 @@ class Matcher:
             interquartile_coeff=OUT_INTER_COEFF,
             mode_percentile=OUT_MODE_PERCENT,
             min_percentile=OUT_MIN_PERCENT,
-            max_percentile=OUT_MAX_PERCENT, group_col=None, quality_check=False
+            max_percentile=OUT_MAX_PERCENT
     ):
         if use_algos is None:
             use_algos = USE_ALGOS
         self.df = df
-        self.data = self.df.copy().drop([outcome], axis=1)
+        self.data = self.df.copy().drop(columns=[outcome], axis=1)
+        if info_col is not None:
+            self.info_col = info_col
+            self.data = self.data.drop(columns=[self.info_col], axis=1)
         self.outcome = outcome
         self.treatment = treatment
         self.group_col = group_col
