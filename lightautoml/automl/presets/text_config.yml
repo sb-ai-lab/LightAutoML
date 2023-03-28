@@ -187,11 +187,15 @@ gbm_pipeline_params:
   # n_classes to use target encoding for multiclass task
   multiclass_te_co: 3
   # use groupby features
-  use_group_by: False
+  use_groupby: False
+  # groupby types used in feature engeneering
+  groupby_types: [ 'delta_median', 'delta_mean', 'min', 'max', 'std', 'mode', 'is_mode' ]
+  # top features are choosen by cardinality or feature importance
+  groupby_top_based_on: 'cardinality'
   # top categorical features to use in groupby transformer
-  top_group_by_categorical: 3
+  groupby_top_categorical: 3
   # top numerical features to use in groupby transformer
-  top_group_by_numerical: 3
+  groupby_top_numerical: 3
   # text_features in gbm feature pipeline. embed or tfidf
   text_features: "embed"
 
@@ -206,11 +210,15 @@ linear_pipeline_params:
   # n_classes to use target encoding for multiclass task
   multiclass_te_co: 3
   # use groupby features
-  use_group_by: False
+  use_groupby: False
+  # groupby types used in feature engeneering
+  groupby_types: [ 'delta_median', 'delta_mean', 'min', 'max', 'std', 'mode', 'is_mode' ]
+  # top features are choosen by cardinality or feature importance
+  groupby_top_based_on: 'cardinality'
   # top categorical features to use in groupby transformer
-  top_group_by_categorical: 3
+  groupby_top_categorical: 3
   # top numerical features to use in groupby transformer
-  top_group_by_numerical: 3
+  groupby_top_numerical: 3
   # text_features in linear feature pipeline. embed or tfidf
   text_features: "tfidf"
 

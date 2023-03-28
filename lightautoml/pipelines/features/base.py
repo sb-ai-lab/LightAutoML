@@ -17,6 +17,7 @@ from pandas import Series
 from ...dataset.base import LAMLDataset
 from ...dataset.np_pd_dataset import NumpyDataset
 from ...dataset.np_pd_dataset import PandasDataset
+from ...dataset.roles import CategoryRole
 from ...dataset.roles import ColumnRole
 from ...dataset.roles import NumericRole
 from ...transformers.base import ChangeRoles
@@ -32,9 +33,9 @@ from ...transformers.categorical import MultiClassTargetEncoder
 from ...transformers.categorical import MultioutputTargetEncoder
 from ...transformers.categorical import OrdinalEncoder
 from ...transformers.categorical import TargetEncoder
-from ...transformers.composite import GroupByTransformer
 from ...transformers.datetime import BaseDiff
 from ...transformers.datetime import DateSeasons
+from ...transformers.groupby import GroupByTransformer
 from ...transformers.numeric import FillInf
 from ...transformers.numeric import FillnaMedian
 from ...transformers.numeric import QuantileBinning
@@ -217,8 +218,12 @@ class TabularDataFeatures:
         self.max_bin_count = 10
         self.sparse_ohe = "auto"
 
-        self.top_group_by_categorical = 5
-        self.top_group_by_numerical = 5
+        self.pre_selector = None
+        self.groupby_types = ["delta_median", "delta_mean", "min", "max", "std", "mode", "is_mode"]
+        self.groupby_triplets = None
+        self.groupby_top_based_on = "cardinality"
+        self.groupby_top_categorical = 3
+        self.groupby_top_numerical = 3
 
         for k in kwargs:
             self.__dict__[k] = kwargs[k]
@@ -491,7 +496,7 @@ class TabularDataFeatures:
             if self.max_intersection_depth <= 1 or self.top_intersections <= 1:
                 return
             elif len(categories) > self.top_intersections:
-                feats_to_select = self.get_top_categories(train, self.top_intersections)
+                feats_to_select = self.get_top_categories(train, mode="cat_intersections", top_n=self.top_intersections)
 
         elif len(feats_to_select) <= 1:
             return
@@ -534,7 +539,7 @@ class TabularDataFeatures:
 
         return Series(uns, index=feats, dtype="int")
 
-    def get_top_categories(self, train: NumpyOrPandas, top_n: int = 5) -> List[str]:
+    def get_top_categories(self, train: NumpyOrPandas, mode: str, top_n: int = 5) -> List[str]:
         """Get top categories by importance.
 
         If feature importance is not defined,
@@ -544,36 +549,37 @@ class TabularDataFeatures:
 
         Args:
             train: Dataset with train data.
+            mode: What feature generation mode is used. Can be "cat_intersections" or "groupby".
             top_n: Number of top categories.
 
         Returns:
             List.
 
         """
+        assert mode in ["cat_intersections", "groupby"]
         cats = get_columns_by_role(train, "Category")
-        if len(cats) == 0:
+        if len(cats) == 0 or top_n == 0:
             return []
-
+        elif len(cats) <= top_n:
+            return cats
         df = DataFrame({"importance": 0, "cardinality": 0}, index=cats)
         # importance if defined
         if self.feats_imp is not None:
-            feats_imp = Series(self.feats_imp.get_features_score()).sort_values(ascending=False)
+            feats_imp = Series(self.feats_imp).sort_values(ascending=False)
             df["importance"] = feats_imp[feats_imp.index.isin(cats)]
             df["importance"].fillna(-np.inf)
-
         # check for cardinality
         df["cardinality"] = self.get_uniques_cnt(train, cats)
         # sort
-        df = df.sort_values(
-            by=["importance", "cardinality"],
-            ascending=[False, self.ascending_by_cardinality],
-        )
+        if mode == "groupby" and self.groupby_top_based_on == "cardinality" or self.feats_imp is None:
+            df = df.sort_values(by="cardinality", ascending=self.ascending_by_cardinality)
+        else:
+            df = df.sort_values(by="importance", ascending=False)
         # get top n
         top = list(df.index[:top_n])
-
         return top
 
-    def get_top_numeric(self, train: NumpyOrPandas, top_n=5) -> List[str]:
+    def get_top_numeric(self, train: NumpyOrPandas, top_n: int = 5) -> List[str]:
         """Get top numeric features by importance.
 
         If feature importance is not defined,
@@ -589,100 +595,97 @@ class TabularDataFeatures:
             List.
         """
         nums = get_columns_by_role(train, "Numeric")
-        if len(nums) == 0:
+        if len(nums) == 0 or top_n == 0:
             return []
-
+        elif len(nums) <= top_n:
+            return nums
         df = DataFrame({"importance": 0, "cardinality": 0}, index=nums)
         # importance if defined
         if self.feats_imp is not None:
-            feats_imp = Series(self.feats_imp.get_features_score()).sort_values(ascending=False)
+            feats_imp = Series(self.feats_imp).sort_values(ascending=False)
             df["importance"] = feats_imp[feats_imp.index.isin(nums)]
             df["importance"].fillna(-np.inf)
-
         # check for cardinality
         df["cardinality"] = -self.get_uniques_cnt(train, nums)
         # sort
-        df = df.sort_values(
-            by=["importance", "cardinality"],
-            ascending=[False, self.ascending_by_cardinality],
-        )
+        if self.groupby_top_based_on == "cardinality" or self.feats_imp is None:
+            df = df.sort_values(by="cardinality", ascending=True)
+        else:
+            df = df.sort_values(by="importance", ascending=False)
         # get top n
         top = list(df.index[:top_n])
-
         return top
 
-    def get_group_by(
-        self,
-        train: NumpyOrPandas,
-        feats_to_select_categorical: Optional[List[str]] = None,
-        feats_to_select_numerical: Optional[List[str]] = None,
-    ) -> Optional[LAMLTransformer]:
+    def get_groupby(self, train: NumpyOrPandas) -> Optional[LAMLTransformer]:
         """Get transformer that calculates group by features.
 
-        Note:
-            Amount of features is limited to ``self.top_group_by_categorical`` and ``self.top_group_by_numerical`` fields
+        Amount of features is limited to ``self.top_group_by_categorical`` and ``self.top_group_by_numerical`` fields.
 
         Args:
             train: Dataset with train data.
-            feats_to_select_categorical: features to handle. If ``None`` - default filter.
-            feats_to_select_numerical: features to handle. If ``None`` - default filter.
 
         Returns:
             Transformer.
         """
-        cat_feats_to_select = []
-        if feats_to_select_categorical is None:
-            categories = get_columns_by_role(train, "Category")
-            if len(categories) > self.top_group_by_categorical:
-                cat_feats_to_select = self.get_top_categories(train, self.top_group_by_categorical)
-            else:
-                cat_feats_to_select = categories
+        categorical_names = get_columns_by_role(train, "Category")
+        numerical_names = get_columns_by_role(train, "Numeric")
+        if self.feats_imp is None:
+            self.feats_imp = self.pre_selector.get_features_score()
+
+        groupby_transformations = []
+        if self.groupby_triplets:
+            for group_col, feat_name, trans in self.groupby_triplets:
+                categorical_cols = [] if feat_name in numerical_names else [feat_name]
+                numeric_cols = [] if feat_name in categorical_names else [feat_name]
+                if len(categorical_cols) + len(numeric_cols) == 0:
+                    continue
+                new_transformation = {
+                    "group_col": group_col,
+                    "categorical_cols": categorical_cols,
+                    "numeric_cols": numeric_cols,
+                    "used_transforms": [trans],
+                }
+                groupby_transformations.append(new_transformation)
         else:
-            cat_feats_to_select = feats_to_select_categorical
+            cat_feats_to_select = self.get_top_categories(train, "groupby", self.groupby_top_categorical)
+            num_feats_to_select = self.get_top_numeric(train, self.groupby_top_numerical)
+            # At least two categoricals or one categorical and one numeric
+            if len(cat_feats_to_select) < 1:
+                return
+            if len(cat_feats_to_select) == 1 and len(num_feats_to_select) < 1:
+                return
+            # collect groupby_transformations
+            for i, group_col in enumerate(cat_feats_to_select):
+                new_transformation = {
+                    "group_col": group_col,
+                    "categorical_cols": cat_feats_to_select[:i] + cat_feats_to_select[i + 1 :],
+                    "numeric_cols": num_feats_to_select,
+                    "used_transforms": self.groupby_types,
+                }
+                groupby_transformations.append(new_transformation)
 
-        assert len(cat_feats_to_select) > 0
-
-        num_feats_to_select = []
-        if feats_to_select_numerical is None:
-            numerics = get_columns_by_role(train, "Numeric")
-            if len(numerics) > self.top_group_by_numerical:
-                num_feats_to_select = self.get_top_numeric(train, self.top_group_by_numerical)
-            else:
-                num_feats_to_select = numerics
-        else:
-            num_feats_to_select = feats_to_select_numerical
-
-        assert len(num_feats_to_select) > 0
-
-        groupby_processing = SequentialTransformer(
-            [
-                UnionTransformer(
-                    [
-                        SequentialTransformer(
-                            [
-                                ColumnsSelector(keys=cat_feats_to_select),
-                                LabelEncoder(subs=None, random_state=42),
-                            ]
-                        ),
-                        SequentialTransformer(
-                            [
-                                ColumnsSelector(keys=num_feats_to_select),
-                                UnionTransformer(
-                                    [
-                                        SequentialTransformer(
-                                            [
-                                                FillInf(),
-                                                FillnaMedian(),
-                                            ]
-                                        ),
-                                    ]
-                                ),
-                            ]
-                        ),
-                    ]
-                ),
-                GroupByTransformer(),
-            ]
-        )
+        groupby_processing = [
+            SequentialTransformer(
+                [
+                    UnionTransformer(
+                        [
+                            SequentialTransformer(
+                                [
+                                    ColumnsSelector(keys=[trans["group_col"]] + trans["categorical_cols"]),
+                                    LabelEncoder(subs=None, random_state=42),
+                                    ChangeRoles(CategoryRole(int)),
+                                ]
+                            ),
+                            SequentialTransformer(
+                                [ColumnsSelector(keys=trans["numeric_cols"]), FillInf(), FillnaMedian()]
+                            ),
+                        ]
+                    ),
+                    GroupByTransformer(**trans),
+                ]
+            )
+            for trans in groupby_transformations
+        ]
+        groupby_processing = UnionTransformer(groupby_processing)
 
         return groupby_processing

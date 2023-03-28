@@ -292,7 +292,7 @@ class TabularNLPAutoML(TabularAutoML):
     ):
 
         text_gbm_feats = self.get_nlp_pipe(self.gbm_pipeline_params["text_features"])
-        gbm_feats = LGBAdvancedPipeline(output_categories=False, **self.gbm_pipeline_params)
+        gbm_feats = LGBAdvancedPipeline(pre_selector=pre_selector, output_categories=False, **self.gbm_pipeline_params)
         if text_gbm_feats is not None:
             gbm_feats.append(text_gbm_feats)
 

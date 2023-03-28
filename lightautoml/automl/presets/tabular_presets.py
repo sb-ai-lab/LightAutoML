@@ -343,7 +343,7 @@ class TabularAutoML(AutoMLPreset):
         pre_selector: Optional[SelectionPipeline] = None,
     ):
 
-        gbm_feats = LGBAdvancedPipeline(**self.gbm_pipeline_params)
+        gbm_feats = LGBAdvancedPipeline(**self.gbm_pipeline_params, pre_selector=pre_selector)
 
         ml_algos = []
         force_calc = []
@@ -378,7 +378,7 @@ class TabularAutoML(AutoMLPreset):
 
     def get_rfs(self, keys: Sequence[str], n_level: int = 1, pre_selector: Optional[SelectionPipeline] = None):
 
-        rf_feats = LGBAdvancedPipeline(**self.gbm_pipeline_params, fill_na=True)
+        rf_feats = LGBAdvancedPipeline(**self.gbm_pipeline_params, pre_selector=pre_selector, fill_na=True)
 
         ml_algos = []
         force_calc = []

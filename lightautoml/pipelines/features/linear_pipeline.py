@@ -1,5 +1,6 @@
 """Linear models features."""
 
+from typing import List
 from typing import Optional
 from typing import Union
 
@@ -22,6 +23,7 @@ from ...transformers.numeric import LogOdds
 from ...transformers.numeric import NaNFlags
 from ...transformers.numeric import StandardScaler
 from ..selection.base import ImportanceEstimator
+from ..selection.base import SelectionPipeline
 from ..utils import get_columns_by_role
 from .base import FeaturesPipeline
 from .base import TabularDataFeatures
@@ -71,9 +73,13 @@ class LinearFeatures(FeaturesPipeline, TabularDataFeatures):
         auto_unique_co: int = 50,
         output_categories: bool = True,
         multiclass_te_co: int = 3,
-        use_group_by: bool = False,
-        top_group_by_categorical: int = 3,
-        top_group_by_numerical: int = 3,
+        use_groupby: bool = False,
+        pre_selector: Optional[SelectionPipeline] = None,
+        groupby_types: List[str] = None,
+        groupby_triplets: list = None,
+        groupby_top_based_on: str = "cardinality",
+        groupby_top_categorical: int = 3,
+        groupby_top_numerical: int = 3,
         **kwargs
     ):
         assert max_bin_count is None or max_bin_count > 1, "Max bin count should be >= 2 or None"
@@ -90,10 +96,14 @@ class LinearFeatures(FeaturesPipeline, TabularDataFeatures):
             max_bin_count=max_bin_count,
             sparse_ohe=sparse_ohe,
             multiclass_te_co=multiclass_te_co,
-            use_group_by=use_group_by,
-            top_group_by_categorical=top_group_by_categorical,
-            top_group_by_numerical=top_group_by_numerical,
+            pre_selector=pre_selector,
+            groupby_types=groupby_types,
+            groupby_triplets=groupby_triplets,
+            groupby_top_based_on=groupby_top_based_on,
+            groupby_top_categorical=groupby_top_categorical,
+            groupby_top_numerical=groupby_top_numerical,
         )
+        self.use_groupby = use_groupby
 
     def create_pipeline(self, train: NumpyOrPandas) -> LAMLTransformer:
         """Create linear pipeline.
@@ -173,8 +183,8 @@ class LinearFeatures(FeaturesPipeline, TabularDataFeatures):
         # add difference with base date
         dense_list.append(self.get_datetime_diffs(train))
 
-        if self.use_group_by:
-            dense_list.append(self.get_group_by(train))
+        if self.use_groupby:
+            dense_list.append(self.get_groupby(train))
 
         # combine it all together
         # handle probs if exists
