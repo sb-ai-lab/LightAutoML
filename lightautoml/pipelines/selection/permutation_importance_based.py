@@ -75,7 +75,7 @@ class NpPermutationImportanceEstimator(ImportanceEstimator):
         valid_data = train_valid.get_validation_data()
         valid_data = valid_data.to_numpy()
 
-        permutation = np.random.RandomState(seed=self.random_state).permutation(valid_data.shape[0])
+        permutation = np.random.RandomState(seed=self.random_state + 1).permutation(valid_data.shape[0])
         permutation_importance = {}
 
         for it, col in enumerate(valid_data.features):

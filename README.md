@@ -123,6 +123,8 @@ LighAutoML framework has a lot of ready-to-use parts and extensive customization
 - [Tabular Playground Series February 2021 competition solution](https://www.kaggle.com/alexryzhkov/lightautoml-tabulardata-love)
 - [Interpretable WhiteBox solution](https://www.kaggle.com/simakov/lama-whitebox-preset-example)
 - [Custom ML pipeline elements inside existing ones](https://www.kaggle.com/simakov/lama-custom-automl-pipeline-example)
+- [Custom ML pipeline elements inside existing ones](https://www.kaggle.com/simakov/lama-custom-automl-pipeline-example)
+- [Tabular Playground Series November 2022 competition solution with Neural Networks](https://www.kaggle.com/code/mikhailkuz/lightautoml-nn-happiness)
 
 ### Google Colab tutorials and [other examples](examples/):
 
@@ -134,6 +136,7 @@ LighAutoML framework has a lot of ready-to-use parts and extensive customization
 - [`Tutorial_6_custom_pipeline.ipynb`](https://colab.research.google.com/github/AILab-MLTools/LightAutoML/blob/master/examples/tutorials/Tutorial_6_custom_pipeline.ipynb) - shows how to create your own pipeline from specified blocks: pipelines for feature generation and feature selection, ML algorithms, hyperparameter optimization etc.
 - [`Tutorial_7_ICE_and_PDP_interpretation.ipynb`](https://colab.research.google.com/github/AILab-MLTools/LightAutoML/blob/master/examples/tutorials/Tutorial_7_ICE_and_PDP_interpretation.ipynb) - shows how to obtain local and global interpretation of model results using ICE and PDP approaches.
 - [`Tutorial_8_CV_preset.ipynb`](https://colab.research.google.com/github/AILab-MLTools/LightAutoML/blob/master/examples/tutorials/Tutorial_8_CV_preset.ipynb) - example of using TabularCVAutoML preset in CV multi-class classification task.
+- [`Tutorial_9_neural_networks.ipynb`](https://colab.research.google.com/github/AILab-MLTools/LightAutoML/blob/master/examples/tutorials/Tutorial_9_neural_networks.ipynb) - example of using Tabular preset with neural networks.
 
 
 **Note 1**: for production you have no need to use profiler (which increase work time and memory consomption), so please do not turn it on - it is in off state by default

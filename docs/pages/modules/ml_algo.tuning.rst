@@ -31,3 +31,4 @@ Tuning with Optuna
     :template: classtemplate.rst
 
     OptunaTuner
+    DLOptunaTuner

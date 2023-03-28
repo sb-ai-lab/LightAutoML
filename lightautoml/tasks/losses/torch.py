@@ -199,6 +199,7 @@ def torch_f1(
         metric value.
 
     """
+    y_pred = torch.sigmoid(y_pred)
     y_true = y_true[:, 0].type(torch.int64)
     y_true_ohe = torch.zeros_like(y_pred)
 
@@ -255,8 +256,8 @@ def torch_mape(
 _torch_loss_dict = {
     "mse": (nn.MSELoss, False, False),
     "mae": (nn.L1Loss, False, False),
-    "logloss": (nn.BCELoss, False, False),
-    "crossentropy": (nn.CrossEntropyLoss, True, True),
+    "logloss": (nn.BCEWithLogitsLoss, False, False),
+    "crossentropy": (nn.CrossEntropyLoss, True, False),
     "rmsle": (torch_rmsle, False, False),
     "mape": (torch_mape, False, False),
     "quantile": (torch_quantile, False, False),
