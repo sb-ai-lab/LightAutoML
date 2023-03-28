@@ -12,7 +12,7 @@ def test_default_tabular(sampled_app_train_test, sampled_app_roles, binary_task)
 
     # run automl
     automl = TabularAutoML(task=binary_task)
-    oof_predictions = automl.fit_predict(train, roles=sampled_app_roles, verbose=2)
+    oof_predictions = automl.fit_predict(train, roles=sampled_app_roles, verbose=10)
     te_pred = automl.predict(test)
 
     # calculate scores

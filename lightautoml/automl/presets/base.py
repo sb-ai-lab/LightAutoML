@@ -90,6 +90,7 @@ class AutoMLPreset(AutoML):
         memory_limit: int = 16,
         cpu_limit: int = 4,
         gpu_ids: Optional[str] = "all",
+        debug: bool = False,
         timing_params: Optional[dict] = None,
         config_path: Optional[str] = None,
         **kwargs: Any,
@@ -101,6 +102,7 @@ class AutoMLPreset(AutoML):
                 param = {}
             self.__dict__[name] = {**self.__dict__[name], **param}
 
+        self.debug = debug
         self.timer = PipelineTimer(timeout, **getattr(self, "timing_params"))
         self.memory_limit = memory_limit
         if cpu_limit == -1:

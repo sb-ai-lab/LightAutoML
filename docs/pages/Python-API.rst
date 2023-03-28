@@ -12,6 +12,7 @@ Python-API
     modules/image
     modules/ml_algo
     modules/ml_algo.tuning
+    modules/ml_algo.torch_based
     modules/pipelines
     modules/pipelines.selection
     modules/pipelines.features

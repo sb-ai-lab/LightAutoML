@@ -160,6 +160,7 @@ nn_params:
   max_emb_size: 50
   # null to use default bert for this language
   bert_name: null
+  model: _linear_layer
   # pooling: cls, mean, max, sum
   pooling: 'cls'
   use_cont: True

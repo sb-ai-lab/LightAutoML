@@ -29,6 +29,23 @@ def jobs_train_test(nrows=None):
 
 
 @pytest.fixture()
+def avito1k_train_test(nrows=None):
+    data = pd.read_csv("./data/avito1k_train.csv")
+    train_data, test_data = train_test_split(data, test_size=500, random_state=42)
+
+    return train_data, test_data
+
+
+@pytest.fixture()
+def avito1k_roles():
+    return {
+        "target": "deal_probability",
+        "group": ["user_id"],
+        "text": ["description", "title", "param_1", "param_2", "param_3"],
+    }
+
+
+@pytest.fixture()
 def sampled_app_train_test(nrows=None):
     data = pd.read_csv(
         "./examples/data/sampled_app_train.csv",
@@ -71,3 +88,13 @@ def sampled_app_roles():
 @pytest.fixture()
 def binary_task():
     return Task("binary")
+
+
+@pytest.fixture()
+def multiclass_task():
+    return Task("multiclass")
+
+
+@pytest.fixture()
+def regression_task():
+    return Task("reg")
