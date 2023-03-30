@@ -37,9 +37,10 @@ class Matcher:
             is_spearman_filter=False,
             is_outliers_filter=False,
             is_feature_select=True,
-            group_col=None,
             quality_check=False,
+            group_col=None,
             info_col=None,
+            required_col=None,
             generate_report=GENERATE_REPORT,
             report_feat_select_dir=REPORT_FEAT_SELECT_DIR,
             report_prop_score_dir=REPORT_PROP_SCORE_DIR,
@@ -58,13 +59,10 @@ class Matcher:
         if use_algos is None:
             use_algos = USE_ALGOS
         self.df = df
-        self.data = self.df.copy().drop(columns=[outcome], axis=1)
-        if info_col is not None:
-            self.info_col = info_col
-            self.data = self.data.drop(columns=[self.info_col], axis=1)
         self.outcome = outcome
         self.treatment = treatment
         self.group_col = group_col
+        self.required_col = required_col
         self.outcome_type = outcome_type
         self.is_spearman_filter = is_spearman_filter
         self.is_outliers_filter = is_outliers_filter
@@ -83,6 +81,7 @@ class Matcher:
         self.mode_percentile = mode_percentile
         self.min_percentile = min_percentile
         self.max_percentile = max_percentile
+        self.info_col = info_col
         self.features = None
         self._preprocessing_data()
         self.quality_check = quality_check
@@ -130,7 +129,6 @@ class Matcher:
 
         rows_for_del = out_filter.perform_filter(self.df)
         self.df = self.df.drop(rows_for_del, axis=0)
-        self.data = self.data.drop(rows_for_del, axis=0)
 
     def _feature_select(self):
         """Select features with significant feature importance
@@ -162,7 +160,7 @@ class Matcher:
             Tuple of matched df and ATE
 
         """
-        self.matcher = FaissMatcher(self.df, self.data, self.outcome, self.treatment, self.features,
+        self.matcher = FaissMatcher(self.df, self.outcome, self.treatment, self.info_col, features=self.features,
                                     group_col=self.group_col)
         if self.group_col is None:
             df_matched, ate = self.matcher.match()
@@ -187,9 +185,7 @@ class Matcher:
             self.validate = 1
             self.df = self.df.drop(columns=self.treatment)
             self.df[self.treatment] = self.new_treatment
-            self.data = self.data.drop(columns=self.treatment)
-            self.data[self.treatment] = self.new_treatment
-            self.matcher = FaissMatcher(self.df, self.data, self.outcome, self.treatment, self.features,
+            self.matcher = FaissMatcher(self.df, self.outcome, self.treatment, self.features,
                                         group_col=self.group_col, validation=self.validate)
             if self.group_col is None:
                 sim = self.matcher.match()

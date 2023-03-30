@@ -12,24 +12,27 @@ POSTFIX_BIAS = "_matched_bias"
 class FaissMatcher:
     def __init__(self,
                  df,
-                 data,
                  outcomes,
                  treatment,
+                 info_col,
                  features=None,
                  group_col=False,
                  sigma=1.96,
                  validation=None):
         self.df = df
-        self.data = data
+        self.info_col = info_col
+        self.columns_del = [outcomes]
+        if self.info_col is not None:
+            self.columns_del.append(*[x for x in self.info_col if x in self.df.columns])
         self.outcomes = outcomes
         self.treatment = treatment
         if features is None:
-            self.feature_list = list(self.df.columns)
-            self.feature_list.remove(self.treatment)
-            self.feature_list.remove(self.outcomes)
+            self.columns_match = list(self.df.columns)
+            self.columns_match.remove(*info_col)
         else:
-            self.feature_list = features['Feature'].tolist()
-        self.features_quality = self.df.drop(columns=[self.treatment, self.outcomes]).select_dtypes(
+            self.columns_match = features['Feature'].tolist()
+
+        self.features_quality = self.df.drop(columns=[self.treatment, self.outcomes, *info_col]).select_dtypes(
             include=['int16', 'int32', 'int64', 'float16', 'float32', 'float64']).columns
         self.dict_outcome_untreated = {}
         self.dict_outcome_treated = {}
@@ -40,7 +43,6 @@ class FaissMatcher:
         self.orig_untreated_index = None
         self.results = {}
         self.ATE = None
-        self.n_features = None
         self.df_matched = None
         self.sigma = sigma
         self.quality_dict = {}
@@ -121,10 +123,12 @@ class FaissMatcher:
         """
         self.dict_outcome_untreated = {}
         self.dict_outcome_treated = {}
+        df = self.df.drop(columns=self.info_col)
+
         for outcome in [self.outcomes]:
             if self.group_col is None:
-                y_untreated = self.df[self.df[self.treatment] == 0][outcome]
-                y_treated = self.df[self.df[self.treatment] == 1][outcome]
+                y_untreated = df[df[self.treatment] == 0][outcome]
+                y_treated = df[df[self.treatment] == 1][outcome]
                 x_treated = std_treated
                 x_untreated = std_untreated
                 y_match_untreated = y_untreated.iloc[self.treated_index.ravel()]
@@ -132,17 +136,17 @@ class FaissMatcher:
                 x_match_treated = x_untreated.iloc[self.treated_index.ravel()]
                 x_match_untreated = x_treated.iloc[self.untreated_index.ravel()]
             else:
-                y_untreated = self.df.loc[self.orig_untreated_index.ravel()][outcome]
-                y_treated = self.df.loc[self.orig_treated_index.ravel()][outcome]
-                x_treated = self.df.loc[self.orig_treated_index.ravel()].drop(
+                y_untreated = df.loc[self.orig_untreated_index.ravel()][outcome]
+                y_treated = df.loc[self.orig_treated_index.ravel()][outcome]
+                x_treated = df.loc[self.orig_treated_index.ravel()].drop(
                     columns=[self.treatment, outcome, self.group_col])
-                x_untreated = self.df.loc[self.orig_untreated_index.ravel()].drop(
+                x_untreated = df.loc[self.orig_untreated_index.ravel()].drop(
                     columns=[self.treatment, outcome, self.group_col])
-                y_match_treated = self.df.loc[self.untreated_index.ravel()][outcome]
-                y_match_untreated = self.df.loc[self.treated_index.ravel()][outcome]
-                x_match_treated = self.df.loc[self.treated_index.ravel()].drop(
+                y_match_treated = df.loc[self.untreated_index.ravel()][outcome]
+                y_match_untreated = df.loc[self.treated_index.ravel()][outcome]
+                x_match_treated = df.loc[self.treated_index.ravel()].drop(
                     columns=[self.treatment, outcome, self.group_col])
-                x_match_untreated = self.df.loc[self.untreated_index.ravel()].drop(
+                x_match_untreated = df.loc[self.untreated_index.ravel()].drop(
                     columns=[self.treatment, outcome, self.group_col])
 
             ols0 = LinearRegression().fit(x_untreated, y_untreated)
@@ -191,16 +195,18 @@ class FaissMatcher:
             Matched dataframe of features
 
         """
+        df = self.df.drop(columns=self.columns_del, axis=1)
+
         if self.group_col is None:
-            x1 = self.data[self.data[self.treatment] == int(not is_treated)].iloc[index].reset_index()
-            x2 = self.data[self.data[self.treatment] == int(is_treated)].reset_index()
+            x1 = df[df[self.treatment] == int(not is_treated)].iloc[index].reset_index()
+            x2 = df[df[self.treatment] == int(is_treated)].reset_index()
         else:
-            self.data = self.data.sort_values(self.group_col)
-            x1 = self.data.loc[index].reset_index()
+            df = df.sort_values(self.group_col)
+            x1 = df.loc[index].reset_index()
             if is_treated:
-                x2 = self.data.loc[self.orig_treated_index].reset_index()
+                x2 = df.loc[self.orig_treated_index].reset_index()
             else:
-                x2 = self.data.loc[self.orig_untreated_index].reset_index()
+                x2 = df.loc[self.orig_untreated_index].reset_index()
         x1.columns = [col + POSTFIX for col in x2.columns]
 
         x = pd.concat([x2, x1], axis=1).drop([self.treatment, self.treatment + POSTFIX], axis=1)
@@ -224,7 +230,7 @@ class FaissMatcher:
 
         x = pd.concat([x_, x])
         df_matched = pd.concat([x.reset_index(drop=True), df_matched.reset_index(drop=True)], axis=1)
-        return df_matched
+        self.df_matched = df_matched
 
     def calc_ate(self, df, outcome):
         """Calculate ATE - average treatment effect
@@ -433,9 +439,12 @@ class FaissMatcher:
                                  atc + self.sigma * atc_se]
             att_dict[outcome] = [att, att_se, self.pval_calc(att / att_se), att - self.sigma * att_se,
                                  att + self.sigma * att_se]
-        return ate_dict, atc_dict, att_dict
 
-    def _check_best(self, df_matched, n_features):
+        self.ATE, self.ATC, self.ATT = ate_dict, atc_dict, att_dict
+        self.val_dict = ate_dict
+        return
+
+    def _check_best(self, df_matched):
         """Checks best effects
 
         Args:
@@ -449,26 +458,11 @@ class FaissMatcher:
             self.val_dict = ate_dict
             return
 
-        if self.n_features is None:
-            self.n_features = n_features
-            self.ATE = ate_dict
-            self.ATC = atc_dict
-            self.ATT = att_dict
-            self.df_matched = df_matched
-            return
-
-        diffkeys = sum([1 if ate_dict[k] > self.ATE[k] else -1 for k in ate_dict])
-
-        if diffkeys > 0:
-            self.n_features = n_features
-            self.ATE = ate_dict
-            self.df_matched = df_matched
-
-        if diffkeys == 0:
-            if np.array(list(ate_dict.values())).mean() > np.array(list(self.ATE.values())).mean():
-                self.n_features = n_features
-                self.ATE = ate_dict
-                self.df_matched = df_matched
+        self.ATE = ate_dict
+        self.ATC = atc_dict
+        self.ATT = att_dict
+        self.df_matched = df_matched
+        return
 
     def matching_quality(self):
         '''
@@ -476,8 +470,7 @@ class FaissMatcher:
         Estimates population stability index, Standartizied mean difference
         and Kolmogorov-Smirnov test for numeric values. Returns dict of reports.
          '''
-
-        psi_columns = self.data.drop(columns=[self.treatment]).columns
+        psi_columns = self.df.drop(columns=(self.columns_del + [self.treatment]), axis=1).columns
         psi_data, ks_data, smd_data = matching_quality(self.df_matched, self.treatment, self.features_quality,
                                                        psi_columns)
         rep_dict = {'match_control_to_treat': check_repeats(self.treated_index.ravel()),
@@ -494,17 +487,18 @@ class FaissMatcher:
             Tuple of matched df and ATE
 
         """
-        self.df = self.df.sort_values(self.group_col)
-        groups = sorted(self.df[self.group_col].unique())
+        df = self.df.drop(columns=self.info_col)
+        df = df.sort_values(self.group_col)
+        groups = sorted(df[self.group_col].unique())
         all_treated_matches = {}
         all_untreated_matches = {}
         all_treated_outcome = {}
         all_untreated_outcome = {}
         for group in groups:
-            df = self.df[self.df[self.group_col] == group]
+            df_group = df[df[self.group_col] == group]
             treated_index = {}
             untreated_index = {}
-            temp = df[self.feature_list + [self.treatment] + [self.outcomes] + [self.group_col]]
+            temp = df_group[self.columns_match + [self.group_col]]
             temp = temp.loc[:, (temp != 0).any(axis=0)].drop(columns=self.group_col)
             treated, untreated, std_treated, std_untreated = self._get_split_scalar_data(temp)
             for i, ind in enumerate(temp[temp[self.treatment] == 1].index):
@@ -530,11 +524,11 @@ class FaissMatcher:
         self.treated_index = np.array(matches_t)
         self.orig_treated_index = np.array(index_t)
         self.orig_untreated_index = np.array(index_c)
-        df = self.df[self.feature_list + [self.treatment] + [self.outcomes]]
-        treated, untreated, std_treated, std_untreated = self._get_split_scalar_data(df)
+        df_group = df[self.columns_match]
+        treated, untreated, std_treated, std_untreated = self._get_split_scalar_data(df_group)
         self._predict_outcome(treated, untreated)
-        df_matched = self._create_matched_df()
-        self._check_best(df_matched, 10)
+        self._create_matched_df()
+        self._calculate_ate_all_target(self.df_matched)
 
         if self.validation:
             return self.val_dict
@@ -548,23 +542,22 @@ class FaissMatcher:
             Tuple of matched df and ATE
 
         """
-        for i in range(4, 10):
-            df = self.df[self.feature_list[:i] + [self.treatment] + [self.outcomes]]
-            treated, untreated, std_treated, std_untreated = self._get_split_scalar_data(df)
+        df = self.df[self.columns_match]
+        treated, untreated, std_treated, std_untreated = self._get_split_scalar_data(df)
 
-            std_treated_np = self._transform_to_np(std_treated)
-            std_untreated_np = self._transform_to_np(std_untreated)
+        std_treated_np = self._transform_to_np(std_treated)
+        std_untreated_np = self._transform_to_np(std_untreated)
 
-            untreated_index = self._get_index(std_treated_np, std_untreated_np)
-            treated_index = self._get_index(std_untreated_np, std_treated_np)
+        untreated_index = self._get_index(std_treated_np, std_untreated_np)
+        treated_index = self._get_index(std_untreated_np, std_treated_np)
 
-            self.untreated_index = untreated_index
-            self.treated_index = treated_index
+        self.untreated_index = untreated_index
+        self.treated_index = treated_index
 
-            self._predict_outcome(treated, untreated)
+        self._predict_outcome(treated, untreated)
 
-            df_matched = self._create_matched_df()
-            self._check_best(df_matched, i)
+        self._create_matched_df()
+        self._calculate_ate_all_target(self.df_matched)
 
         if self.validation:
             return self.val_dict
