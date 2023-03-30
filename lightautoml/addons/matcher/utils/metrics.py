@@ -20,7 +20,6 @@ def smd(orig, matched):
     return smd_data
 
 
-
 def ks(orig, matched):
     """Kolmogorov-Smirnov test to check matching quality by columns
 
@@ -53,10 +52,10 @@ def matching_quality(data, treatment, features, features_psi):
     orig_treated = data[data[treatment] == 1][features]
     orig_untreated = data[data[treatment] == 0][features]
     matched_treated = data[data[treatment] == 1][
-            [f + '_matched' for f in features]]
+        [f + '_matched' for f in features]]
     matched_treated.columns = orig_treated.columns
     matched_untreated = data[data[treatment] == 0][
-            [f + '_matched' for f in features]]
+        [f + '_matched' for f in features]]
     matched_untreated.columns = orig_treated.columns
 
     psi_treated = data[data[treatment] == 1][features_psi]
@@ -65,7 +64,7 @@ def matching_quality(data, treatment, features, features_psi):
     psi_treated.columns = [f + '_treated' for f in features_psi]
     psi_untreated = data[data[treatment] == 0][features_psi]
     psi_untreated_matched = data[data[treatment] == 0][
-            [f + '_matched' for f in features_psi]]
+        [f + '_matched' for f in features_psi]]
     psi_untreated.columns = [f + '_untreated' for f in features_psi]
     psi_untreated_matched.columns = [f + '_untreated' for f in features_psi]
     treated_smd_data = smd(orig_treated, matched_treated)
@@ -79,8 +78,10 @@ def matching_quality(data, treatment, features, features_psi):
     ks_df.columns = ['match_control_to_treat', 'match_treat_to_control']
     report_psi_treated = report(psi_treated, psi_treated_matched)[['column', 'anomaly_score', 'check_result']]
     report_psi_untreated = report(psi_untreated, psi_untreated_matched)[['column', 'anomaly_score', 'check_result']]
-    report_psi = pd.concat([report_psi_treated.reset_index(drop=True),report_psi_untreated.reset_index(drop=True)], axis=1)
+    report_psi = pd.concat([report_psi_treated.reset_index(drop=True), report_psi_untreated.reset_index(drop=True)],
+                           axis=1)
     return report_psi, ks_df, smd_data
+
 
 def check_repeats(index):
     '''The function checks fraction of duplicated indexes.
