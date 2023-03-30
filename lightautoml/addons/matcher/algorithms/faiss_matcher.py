@@ -70,44 +70,6 @@ class FaissMatcher:
 
         return treated, untreated, std_treated, std_untreated
 
-    def _transform_to_np(self, df):
-        """Transforms df to numpy applying PCA analysis
-
-        Args:
-            df: pd. DataFrame
-
-        Returns:
-            Downsized data: array
-
-        """
-        x = df.to_numpy().copy(order='C').astype("float32")
-        whiten = faiss.PCAMatrix(x.shape[1], x.shape[1])
-        whiten.train(x)
-        faiss.vector_to_array(whiten.eigenvalues)
-        xt = whiten.apply_py(x)
-        return xt
-
-    def _get_index(self, base, new):
-        """Getting array of indexes that match new array
-
-        Creating indexes, add them to base array, search them in new array
-
-        Args:
-            base: {shape}
-            new: array or Any
-
-        Returns:
-            Array of indexes
-
-        """
-        print("Creating index")
-        index = faiss.IndexFlatL2(base.shape[1])
-        print("Adding index")
-        index.add(base)
-        print("Finding index")
-        indexes = index.search(new, 1)[1]
-        return indexes
-
     def _predict_outcome(self, std_treated, std_untreated):
         """Func to predict target
 
@@ -261,12 +223,10 @@ class FaissMatcher:
         """
         df = df[df[self.treatment] == 0]
         N_c = len(df)
-        index_c = list(range(N_c))
+        index_c = list(range(N_c)) if self.group_col is None else self.orig_untreated_index
         ITT_c = df[outcome + POSTFIX_BIAS] - df[outcome]
-        if self.group_col is None:
-            scaled_counts_c = self.scaled_counts(N_c, self.treated_index, index_c)
-        else:
-            scaled_counts_c = self.scaled_counts(N_c, self.treated_index, self.orig_untreated_index)
+        scaled_counts_c = scaled_counts(N_c, self.treated_index, index_c)
+
         vars_c = np.repeat(ITT_c.var(), N_c)  # conservative
         atc = np.mean(ITT_c)
         return atc, scaled_counts_c, vars_c
@@ -285,132 +245,13 @@ class FaissMatcher:
 
         df = df[df[self.treatment] == 1]
         N_t = len(df)
-        index_t = list(range(N_t))
+        index_t = list(range(N_t)) if self.group_col is None else self.orig_treated_index
         ITT_t = df[outcome] - df[outcome + POSTFIX_BIAS]
-        if self.group_col is None:
-            scaled_counts_t = self.scaled_counts(N_t, self.untreated_index, index_t)
-        else:
-            scaled_counts_t = self.scaled_counts(N_t, self.untreated_index, self.orig_treated_index)
+        scaled_counts_t = scaled_counts(N_t, self.untreated_index, index_t)
+
         vars_t = np.repeat(ITT_t.var(), N_t)  # conservative
         att = np.mean(ITT_t)
         return att, scaled_counts_t, vars_t
-
-    def scaled_counts(self, N, matches, index):
-        """Counts the number of times each subject has appeared as a match
-
-        In the case of multiple matches, each subject only gets partial credit.
-
-        Args:
-            N: int or Any
-            matches: Series or {__iter__}
-            index: list or Any
-
-        Returns:
-            Number of times each subject has appeared as a match: int
-
-        """
-
-        s_counts = np.zeros(N)
-        index_dict = dict(zip(index, list(range(N))))
-        for matches_i in matches:
-            scale = 1 / len(matches_i)
-            for match in matches_i:
-                s_counts[index_dict[match]] += scale
-
-        return s_counts
-
-    def calc_atx_var(self, vars_c, vars_t, weights_c, weights_t):
-        """Calculates Average Treatment Effect for the treated (ATT) variance
-
-        Args:
-            vars_c: {__len__}
-            vars_t: {__len__}
-            weights_c: {__pow__}
-            weights_t: {__pow__}
-
-        Returns:
-            ATE variance: int
-
-        """
-        N_c, N_t = len(vars_c), len(vars_t)
-        summands_c = weights_c ** 2 * vars_c
-        summands_t = weights_t ** 2 * vars_t
-
-        return summands_t.sum() / N_t ** 2 + summands_c.sum() / N_c ** 2
-
-    def calc_atc_se(self, vars_c, vars_t, scaled_counts_t):
-        """Calculates Average Treatment Effect for the control group (ATC) standart error
-
-        Args:
-            vars_c: {__len__}
-            vars_t: {__len__}
-            scaled_counts_t: Any
-
-        Returns:
-            ATC standart error
-
-        """
-        N_c, N_t = len(vars_c), len(vars_t)
-        weights_c = np.ones(N_c)
-        weights_t = (N_t / N_c) * scaled_counts_t
-
-        var = self.calc_atx_var(vars_c, vars_t, weights_c, weights_t)
-
-        return np.sqrt(var)
-
-    def calc_att_se(self, vars_c, vars_t, scaled_counts_c):
-        """Calculates Average Treatment Effect for the treated (ATT) standart error
-
-        Args:
-            vars_c: {__len__}
-            vars_t: {__len__}
-            scaled_counts_c: Any
-
-        Returns:
-            ATT standart error
-
-        """
-        N_c, N_t = len(vars_c), len(vars_t)
-        weights_c = (N_c / N_t) * scaled_counts_c
-        weights_t = np.ones(N_t)
-
-        var = self.calc_atx_var(vars_c, vars_t, weights_c, weights_t)
-
-        return np.sqrt(var)
-
-    def calc_ate_se(self, vars_c, vars_t, scaled_counts_c, scaled_counts_t):
-        """Calculates Average Treatment Effect (ATE) standart error
-
-        Args:
-            vars_c: {__len__}
-            vars_t: {__len__}
-            scaled_counts_c: Any
-            scaled_counts_t: Any
-
-        Returns:
-            ATE standart error
-
-        """
-        N_c, N_t = len(vars_c), len(vars_t)
-        N = N_c + N_t
-        weights_c = (N_c / N) * (1 + scaled_counts_c)
-        weights_t = (N_t / N) * (1 + scaled_counts_t)
-
-        var = self.calc_atx_var(vars_c, vars_t, weights_c, weights_t)
-
-        return np.sqrt(var)
-
-    def pval_calc(self, z):
-        """Calculates p-value of norm cdf based on z
-
-        Args:
-            z: float
-
-        Returns:
-            P-value
-
-        """
-        return round(2 * (1 - norm.cdf(abs(z))), 2)
 
     def _calculate_ate_all_target(self, df):
         """Creates dicts of all effects
@@ -429,47 +270,29 @@ class FaissMatcher:
             ate = self.calc_ate(df, outcome)
             att, scaled_counts_t, vars_t = self.calc_att(df, outcome)
             atc, scaled_counts_c, vars_c = self.calc_atc(df, outcome)
-            att_se = self.calc_att_se(vars_c, vars_t, scaled_counts_c)
-            atc_se = self.calc_atc_se(vars_c, vars_t, scaled_counts_t)
-            ate_se = self.calc_ate_se(vars_c, vars_t, scaled_counts_c, scaled_counts_t)
-            ate_dict[outcome] = [ate, ate_se, self.pval_calc(ate / ate_se), ate - self.sigma * ate_se,
+            att_se = calc_att_se(vars_c, vars_t, scaled_counts_c)
+            atc_se = calc_atc_se(vars_c, vars_t, scaled_counts_t)
+            ate_se = calc_ate_se(vars_c, vars_t, scaled_counts_c, scaled_counts_t)
+            ate_dict[outcome] = [ate, ate_se, pval_calc(ate / ate_se), ate - self.sigma * ate_se,
                                  ate + self.sigma * ate_se]
-            atc_dict[outcome] = [atc, atc_se, self.pval_calc(atc / atc_se), atc - self.sigma * atc_se,
+            atc_dict[outcome] = [atc, atc_se, pval_calc(atc / atc_se), atc - self.sigma * atc_se,
                                  atc + self.sigma * atc_se]
-            att_dict[outcome] = [att, att_se, self.pval_calc(att / att_se), att - self.sigma * att_se,
+            att_dict[outcome] = [att, att_se, pval_calc(att / att_se), att - self.sigma * att_se,
                                  att + self.sigma * att_se]
 
         self.ATE, self.ATC, self.ATT = ate_dict, atc_dict, att_dict
         self.val_dict = ate_dict
         return
 
-    def _check_best(self, df_matched):
-        """Checks best effects
-
-        Args:
-            df_matched: pd.DataFrame
-            n_features: int
-
-        """
-        ate_dict, atc_dict, att_dict = self._calculate_ate_all_target(df_matched)
-
-        if self.validation is not None:
-            self.val_dict = ate_dict
-            return
-
-        self.ATE = ate_dict
-        self.ATC = atc_dict
-        self.ATT = att_dict
-        self.df_matched = df_matched
-        return
-
     def matching_quality(self):
-        '''
+        """
         Method for estimate the quality of covariates balance and repeat fraction.
         Estimates population stability index, Standartizied mean difference
         and Kolmogorov-Smirnov test for numeric values. Returns dict of reports.
-         '''
+         """
+
         psi_columns = self.columns_match
+        psi_columns.remove(self.treatment)
         psi_data, ks_data, smd_data = matching_quality(self.df_matched, self.treatment, self.features_quality,
                                                        psi_columns)
         rep_dict = {'match_control_to_treat': check_repeats(self.treated_index.ravel()),
@@ -504,10 +327,10 @@ class FaissMatcher:
             for i, ind in enumerate(temp[temp[self.treatment] == 0].index):
                 untreated_index.update({i: ind})
 
-            std_treated_np = self._transform_to_np(std_treated)
-            std_untreated_np = self._transform_to_np(std_untreated)
-            matches_c = self._get_index(std_treated_np, std_untreated_np)
-            matches_t = self._get_index(std_untreated_np, std_treated_np)
+            std_treated_np = _transform_to_np(std_treated)
+            std_untreated_np = _transform_to_np(std_untreated)
+            matches_c = _get_index(std_treated_np, std_untreated_np)
+            matches_t = _get_index(std_untreated_np, std_treated_np)
             matches_c = np.array([list(map(lambda x: treated_index[x], l)) for l in matches_c])
             matches_t = np.array([list(map(lambda x: untreated_index[x], l)) for l in matches_t])
             all_treated_matches.update({group: matches_t})
@@ -531,7 +354,7 @@ class FaissMatcher:
         if self.validation:
             return self.val_dict
 
-        return self.df_matched, self.report_view()
+        return self.report_view()
 
     def match(self):
         """Matches df
@@ -540,14 +363,17 @@ class FaissMatcher:
             Tuple of matched df and ATE
 
         """
+        if self.group_col is not None:
+            return self.group_match()
+
         df = self.df[self.columns_match]
         treated, untreated, std_treated, std_untreated = self._get_split_scalar_data(df)
 
-        std_treated_np = self._transform_to_np(std_treated)
-        std_untreated_np = self._transform_to_np(std_untreated)
+        std_treated_np = _transform_to_np(std_treated)
+        std_untreated_np = _transform_to_np(std_untreated)
 
-        untreated_index = self._get_index(std_treated_np, std_untreated_np)
-        treated_index = self._get_index(std_untreated_np, std_treated_np)
+        untreated_index = _get_index(std_treated_np, std_untreated_np)
+        treated_index = _get_index(std_untreated_np, std_treated_np)
 
         self.untreated_index = untreated_index
         self.treated_index = treated_index
@@ -560,10 +386,171 @@ class FaissMatcher:
         if self.validation:
             return self.val_dict
 
-        return self.df_matched, self.report_view()
+        return self.report_view()
 
     def report_view(self):
         result = (self.ATE, self.ATC, self.ATE)
         return pd.DataFrame([list(x.values())[0] for x in result],
                             columns=['effect_size', 'std_err', 'p-val', 'ci_lower', 'ci_upper'],
                             index=['ATE', 'ATC', 'ATT'])
+
+
+def _get_index(base, new):
+    """Getting array of indexes that match new array
+
+    Creating indexes, add them to base array, search them in new array
+
+    Args:
+        base: {shape}
+        new: array or Any
+
+    Returns:
+        Array of indexes
+
+    """
+    index = faiss.IndexFlatL2(base.shape[1])
+    index.add(base)
+    print("Finding index")
+    indexes = index.search(new, 1)[1]
+    return indexes
+
+
+def _transform_to_np(df):
+    """Transforms df to numpy applying PCA analysis
+
+    Args:
+        df: pd. DataFrame
+
+    Returns:
+        Downsized data: array
+
+    """
+    x = df.to_numpy().copy(order='C').astype("float32")
+    whiten = faiss.PCAMatrix(x.shape[1], x.shape[1])
+    whiten.train(x)
+    faiss.vector_to_array(whiten.eigenvalues)
+    xt = whiten.apply_py(x)
+    return xt
+
+
+def calc_atx_var(vars_c, vars_t, weights_c, weights_t):
+    """Calculates Average Treatment Effect for the treated (ATT) variance
+
+    Args:
+        vars_c: {__len__}
+        vars_t: {__len__}
+        weights_c: {__pow__}
+        weights_t: {__pow__}
+
+    Returns:
+        ATE variance: int
+
+    """
+    N_c, N_t = len(vars_c), len(vars_t)
+    summands_c = weights_c ** 2 * vars_c
+    summands_t = weights_t ** 2 * vars_t
+
+    return summands_t.sum() / N_t ** 2 + summands_c.sum() / N_c ** 2
+
+
+def calc_atc_se(vars_c, vars_t, scaled_counts_t):
+    """Calculates Average Treatment Effect for the control group (ATC) standart error
+
+    Args:
+        vars_c: {__len__}
+        vars_t: {__len__}
+        scaled_counts_t: Any
+
+    Returns:
+        ATC standart error
+
+    """
+    N_c, N_t = len(vars_c), len(vars_t)
+    weights_c = np.ones(N_c)
+    weights_t = (N_t / N_c) * scaled_counts_t
+
+    var = calc_atx_var(vars_c, vars_t, weights_c, weights_t)
+
+    return np.sqrt(var)
+
+
+def calc_att_se(vars_c, vars_t, scaled_counts_c):
+    """Calculates Average Treatment Effect for the treated (ATT) standart error
+
+    Args:
+        vars_c: {__len__}
+        vars_t: {__len__}
+        scaled_counts_c: Any
+
+    Returns:
+        ATT standart error
+
+    """
+    N_c, N_t = len(vars_c), len(vars_t)
+    weights_c = (N_c / N_t) * scaled_counts_c
+    weights_t = np.ones(N_t)
+
+    var = calc_atx_var(vars_c, vars_t, weights_c, weights_t)
+
+    return np.sqrt(var)
+
+
+def calc_ate_se(vars_c, vars_t, scaled_counts_c, scaled_counts_t):
+    """Calculates Average Treatment Effect (ATE) standart error
+
+    Args:
+        vars_c: {__len__}
+        vars_t: {__len__}
+        scaled_counts_c: Any
+        scaled_counts_t: Any
+
+    Returns:
+        ATE standart error
+
+    """
+    N_c, N_t = len(vars_c), len(vars_t)
+    N = N_c + N_t
+    weights_c = (N_c / N) * (1 + scaled_counts_c)
+    weights_t = (N_t / N) * (1 + scaled_counts_t)
+
+    var = calc_atx_var(vars_c, vars_t, weights_c, weights_t)
+
+    return np.sqrt(var)
+
+
+def pval_calc(z):
+    """Calculates p-value of norm cdf based on z
+
+    Args:
+        z: float
+
+    Returns:
+        P-value
+
+    """
+    return round(2 * (1 - norm.cdf(abs(z))), 2)
+
+
+def scaled_counts(N, matches, index):
+    """Counts the number of times each subject has appeared as a match
+
+    In the case of multiple matches, each subject only gets partial credit.
+
+    Args:
+        N: int or Any
+        matches: Series or {__iter__}
+        index: list or Any
+
+    Returns:
+        Number of times each subject has appeared as a match: int
+
+    """
+    s_counts = np.zeros(N)
+    index_dict = dict(zip(index, list(range(N))))
+    for matches_i in matches:
+        scale = 1 / len(matches_i)
+        for match in matches_i:
+            s_counts[index_dict[match]] += scale
+
+    return s_counts
+
