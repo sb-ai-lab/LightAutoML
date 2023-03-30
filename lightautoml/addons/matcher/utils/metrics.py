@@ -9,9 +9,9 @@ logger = logging.getLogger('metrics')
 console_out = logging.StreamHandler()
 logging.basicConfig(
     handlers=(console_out,),
-    format='%(asctime)s - %(name)s - %(levelname)s: %(message)s',
+    format='[%(asctime)s | %(name)s | %(levelname)s]: %(message)s',
     datefmt='%d.%m.%Y %H:%M:%S',
-    level=logging.DEBUG
+    level=logging.INFO
 )
 
 def smd(orig, matched):
@@ -43,6 +43,7 @@ def ks(orig, matched):
 
     """
     logger.info('Applying Kolmogorov-Smirnov test to check matching quality')
+    #ABC
     ks_dict = dict()
     matched.columns = orig.columns
     for col in orig.columns:
@@ -60,8 +61,8 @@ def matching_quality(data, treatment, features, features_psi):
         features - feature list, kstest and  smd accept only numeric values
 
     Returns:
-        report_psi, ks_df, smd_data - dictionaries with estimated metrics
-        for matched treated to control and control to treated: tuple of dicts
+        report_psi, ks_df, smd_data - dataframes with estimated metrics
+        for matched treated to control and control to treated: tuple of pd.DataFrames
 
     """
     orig_treated = data[data[treatment] == 1][features]
@@ -93,7 +94,7 @@ def matching_quality(data, treatment, features, features_psi):
     ks_df.columns = ['match_control_to_treat', 'match_treat_to_control']
     report_psi_treated = report(psi_treated, psi_treated_matched)[['column', 'anomaly_score', 'check_result']]
     report_psi_untreated = report(psi_untreated, psi_untreated_matched)[['column', 'anomaly_score', 'check_result']]
-    report_psi = pd.concat([report_psi_treated.reset_index(drop=True),report_psi_untreated.reset_index(drop=True)], axis=1)
+    report_psi = pd.concat([report_psi_treated,report_psi_untreated], axis=1)
     return report_psi, ks_df, smd_data
 
 def check_repeats(index):

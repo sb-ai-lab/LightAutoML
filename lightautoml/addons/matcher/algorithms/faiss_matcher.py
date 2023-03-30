@@ -1,3 +1,5 @@
+from datetime import datetime
+import logging
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LinearRegression
 import faiss
@@ -8,6 +10,14 @@ from ..utils.psi_pandas import *
 POSTFIX = "_matched"
 POSTFIX_BIAS = "_matched_bias"
 
+logger = logging.getLogger('Faiss matcher')
+console_out = logging.StreamHandler()
+logging.basicConfig(
+    handlers=(console_out,),
+    format='[%(asctime)s | %(name)s | %(levelname)s]: %(message)s',
+    datefmt='%d.%m.%Y %H:%M:%S',
+    level=logging.INFO
+)
 
 class FaissMatcher:
     def __init__(self,
@@ -101,12 +111,16 @@ class FaissMatcher:
             Array of indexes
 
         """
-        print("Creating index")
+        #ABC
+        start_time = datetime.now()
+        logger.info(f'start time --')
+
         index = faiss.IndexFlatL2(base.shape[1])
-        print("Adding index")
         index.add(base)
-        print("Finding index")
         indexes = index.search(new, 1)[1]
+
+        end_time = datetime.now()
+        logger.info(f'end time -- [{end_time - start_time}]')
         return indexes
 
     def _predict_outcome(self, std_treated, std_untreated):
@@ -494,9 +508,17 @@ class FaissMatcher:
         psi_columns = self.data.drop(columns=[self.treatment]).columns
         psi_data, ks_data, smd_data = matching_quality(self.df_matched, self.treatment, self.features_quality,
                                                        psi_columns)
-        rep_dict = {'match_control_to_treat': check_repeats(self.treated_index.ravel()),
-                    'match_treat_to_control': check_repeats(self.untreated_index.ravel())}
-        self.quality_dict = {'psi': psi_data, 'ks_test': ks_data, 'smd': smd_data, 'repeats': rep_dict}
+        rep_dict = {
+            'match_control_to_treat': check_repeats(self.treated_index.ravel()),
+            'match_treat_to_control': check_repeats(self.untreated_index.ravel())
+        }
+
+        self.quality_dict = {
+            'psi': psi_data, #df
+            'ks_test': ks_data, #df 2 cols
+            'smd': smd_data, #df 2 cols
+            'repeats': rep_dict #dict
+        }
 
         print("kek", self.quality_dict)
         return self.quality_dict

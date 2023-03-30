@@ -31,7 +31,7 @@ logger = logging.getLogger('matcher')
 console_out = logging.StreamHandler()
 logging.basicConfig(
     handlers=(console_out,),
-    format='[%(actime)s | %(name)s | %(levelname)s]: | %(message)s',
+    format='[%(asctime)s | %(name)s | %(levelname)s]: %(message)s',
     datefmt='%d.%m.%Y %H:%M:%S',
     level=logging.INFO
 )
@@ -100,12 +100,12 @@ class Matcher:
         """
         if self.group_col is None:
             self.df = pd.get_dummies(self.df, drop_first=True)
-            logger.info('Categorical features turned into dummy')
+            logger.debug('Categorical features turned into dummy')
         else:
             group_col = self.df[[self.group_col]]
             self.df = pd.get_dummies(self.df.drop(columns=self.group_col), drop_first=True)
             self.df = pd.concat([self.df, group_col], axis=1)
-            logger.info('Categorical grouped features turned into dummy')
+            logger.debug('Categorical grouped features turned into dummy')
 
     def _spearman_filter(self):
         """Applies filter by columns by correlation with outcome column
@@ -185,7 +185,6 @@ class Matcher:
             logger.info('Checking quality')
             self.quality_result = self.matcher.matching_quality()
 
-        logger.info(f'Data matched with ate: {ate}')
         return df_matched, ate
 
     def validate_result(self, n_sim=10):

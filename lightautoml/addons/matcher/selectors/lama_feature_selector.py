@@ -8,9 +8,9 @@ logger = logging.getLogger('lama_feature_selector')
 console_out = logging.StreamHandler()
 logging.basicConfig(
     handlers=(console_out,),
-    format='%(asctime)s - %(name)s - %(levelname)s: %(message)s',
+    format='[%(asctime)s | %(name)s | %(levelname)s]: %(message)s',
     datefmt='%d.%m.%Y %H:%M:%S',
-    level=logging.DEBUG
+    level=logging.INFO
 )
 
 

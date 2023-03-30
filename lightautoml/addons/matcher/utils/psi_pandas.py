@@ -7,9 +7,9 @@ logger = logging.getLogger('psi_pandas')
 console_out = logging.StreamHandler()
 logging.basicConfig(
     handlers=(console_out,),
-    format='%(asctime)s - %(name)s - %(levelname)s: %(message)s',
+    format='[%(asctime)s | %(name)s | %(levelname)s]: %(message)s',
     datefmt='%d.%m.%Y %H:%M:%S',
-    level=logging.DEBUG
+    level=logging.INFO
 )
 
 
@@ -378,6 +378,7 @@ def report(expected, actual, plot=False):
             score, psi_dict, new_cats, abs_cats = psi_res.psi_result()
         except:
             print(col)
+            logger.error('')
             continue
         if len(new_cats) > 0:
             new_cat_dict.update({col:new_cats})

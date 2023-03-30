@@ -7,7 +7,7 @@ logger = logging.getLogger('spearman_filter')
 console_out = logging.StreamHandler()
 logging.basicConfig(
     handlers=(console_out,),
-    format='[%(actime)s | %(name)s | %(levelname)s]: | %(message)s',
+    format='[%(asctime)s | %(name)s | %(levelname)s]: %(message)s',
     datefmt='%d.%m.%Y %H:%M:%S',
     level=logging.INFO
 )
@@ -60,7 +60,7 @@ class SpearmanFilter:
             if (abs(result[0] < self.threshold)) & (result[1] < PVALUE):
                 selected.append(column)
 
-        logger.info(f'Drop {len(columns) - len(selected)} columns')
+        logger.info(f'Drop columns {list(set(columns) - set(selected))}')
         columns = selected + [self.treatment, self.outcome]
         df = df[columns]
 
