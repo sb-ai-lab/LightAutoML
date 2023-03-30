@@ -39,7 +39,7 @@ class Matcher:
             is_feature_select=True,
             quality_check=False,
             group_col=None,
-            info_col=None,
+            info_col=[],
             required_col=None,
             generate_report=GENERATE_REPORT,
             report_feat_select_dir=REPORT_FEAT_SELECT_DIR,
@@ -130,7 +130,7 @@ class Matcher:
         rows_for_del = out_filter.perform_filter(self.df)
         self.df = self.df.drop(rows_for_del, axis=0)
 
-    def _feature_select(self):
+    def lama_feature_select(self):
         """Select features with significant feature importance
         """
         feat_select = LamaFeatureSelector(
@@ -150,6 +150,7 @@ class Matcher:
         else:
             features = feat_select.perform_selection(df=self.df.drop(columns=self.group_col))
         self.features = features
+        return self.features
 
     def _matching(self):
         """Realize matching
@@ -160,7 +161,8 @@ class Matcher:
             Tuple of matched df and ATE
 
         """
-        self.matcher = FaissMatcher(self.df, self.outcome, self.treatment, self.info_col, features=self.features,
+        self.matcher = FaissMatcher(self.df, self.outcome, self.treatment, info_col=self.info_col,
+                                    features=self.features,
                                     group_col=self.group_col)
         if self.group_col is None:
             df_matched, ate = self.matcher.match()
@@ -185,7 +187,8 @@ class Matcher:
             self.validate = 1
             self.df = self.df.drop(columns=self.treatment)
             self.df[self.treatment] = self.new_treatment
-            self.matcher = FaissMatcher(self.df, self.outcome, self.treatment, self.features,
+            self.matcher = FaissMatcher(self.df, self.outcome, self.treatment, info_col=self.info_col,
+                                        features=self.features,
                                         group_col=self.group_col, validation=self.validate)
             if self.group_col is None:
                 sim = self.matcher.match()
@@ -198,18 +201,13 @@ class Matcher:
             self.pval_dict.update({outcome: np.mean(self.val_dict[outcome])})
         return self.pval_dict
 
-    def estimate(self):
+    def estimate(self, features=None):
         """Applies filters and outliers, than matches
 
         Returns:
             Tuple of matched df and ATE
 
         """
-        if self.is_spearman_filter:
-            self._spearman_filter()
-        if self.is_outliers_filter:
-            self._outliers_filter()
-        if self.is_feature_select:
-            self._feature_select()
-
+        if features is not None:
+            self.features = features
         return self._matching()

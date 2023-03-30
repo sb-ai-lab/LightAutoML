@@ -23,16 +23,15 @@ class FaissMatcher:
         self.info_col = info_col
         self.columns_del = [outcomes]
         if self.info_col is not None:
-            self.columns_del.append(*[x for x in self.info_col if x in self.df.columns])
+            self.columns_del = self.columns_del + [x for x in self.info_col if x in self.df.columns]
         self.outcomes = outcomes
         self.treatment = treatment
         if features is None:
-            self.columns_match = list(self.df.columns)
-            self.columns_match.remove(*info_col)
+            self.columns_match = [x for x in list(self.df.columns) if x not in self.info_col]
         else:
             self.columns_match = features['Feature'].tolist()
 
-        self.features_quality = self.df.drop(columns=[self.treatment, self.outcomes, *info_col]).select_dtypes(
+        self.features_quality = self.df.drop(columns=[self.treatment, self.outcomes] + self.info_col).select_dtypes(
             include=['int16', 'int32', 'int64', 'float16', 'float32', 'float64']).columns
         self.dict_outcome_untreated = {}
         self.dict_outcome_treated = {}
@@ -470,14 +469,13 @@ class FaissMatcher:
         Estimates population stability index, Standartizied mean difference
         and Kolmogorov-Smirnov test for numeric values. Returns dict of reports.
          '''
-        psi_columns = self.df.drop(columns=(self.columns_del + [self.treatment]), axis=1).columns
+        psi_columns = self.columns_match
         psi_data, ks_data, smd_data = matching_quality(self.df_matched, self.treatment, self.features_quality,
                                                        psi_columns)
         rep_dict = {'match_control_to_treat': check_repeats(self.treated_index.ravel()),
                     'match_treat_to_control': check_repeats(self.untreated_index.ravel())}
         self.quality_dict = {'psi': psi_data, 'ks_test': ks_data, 'smd': smd_data, 'repeats': rep_dict}
 
-        print("kek", self.quality_dict)
         return self.quality_dict
 
     def group_match(self):
@@ -533,7 +531,7 @@ class FaissMatcher:
         if self.validation:
             return self.val_dict
 
-        return self.df_matched, (self.ATE, self.ATC, self.ATT)
+        return self.df_matched, self.report_view()
 
     def match(self):
         """Matches df
@@ -562,4 +560,10 @@ class FaissMatcher:
         if self.validation:
             return self.val_dict
 
-        return self.df_matched, (self.ATE, self.ATC, self.ATT)
+        return self.df_matched, self.report_view()
+
+    def report_view(self):
+        result = (self.ATE, self.ATC, self.ATE)
+        return pd.DataFrame([list(x.values())[0] for x in result],
+                            columns=['effect_size', 'std_err', 'p-val', 'ci_lower', 'ci_upper'],
+                            index=['ATE', 'ATC', 'ATT'])
