@@ -164,15 +164,12 @@ class Matcher:
         self.matcher = FaissMatcher(self.df, self.outcome, self.treatment, info_col=self.info_col,
                                     features=self.features,
                                     group_col=self.group_col)
-        if self.group_col is None:
-            df_matched, ate = self.matcher.match()
-        else:
-            df_matched, ate = self.matcher.group_match()
 
-        if self.quality_check:
-            self.quality_result = self.matcher.matching_quality()
+        self.results = self.matcher.match()
 
-        return df_matched, ate
+        self.quality_result = self.matcher.matching_quality()
+
+        return self.results, self.quality_result
 
     def validate_result(self, n_sim=10):
         '''Validates estimated effect by replacing real treatment with random placebo treatment.
@@ -190,10 +187,9 @@ class Matcher:
             self.matcher = FaissMatcher(self.df, self.outcome, self.treatment, info_col=self.info_col,
                                         features=self.features,
                                         group_col=self.group_col, validation=self.validate)
-            if self.group_col is None:
-                sim = self.matcher.match()
-            else:
-                sim = self.matcher.group_match()
+
+            sim = self.matcher.match()
+
             for key in self.val_dict.keys():
                 self.val_dict[key].append(sim[key][0])
         self.pval_dict = dict()
