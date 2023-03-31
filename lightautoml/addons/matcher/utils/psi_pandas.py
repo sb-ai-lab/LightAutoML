@@ -377,8 +377,7 @@ def report(expected, actual, plot=False):
         try:
             score, psi_dict, new_cats, abs_cats = psi_res.psi_result()
         except:
-            print(col)
-            logger.error('')
+            logger.error(f'Can not count PSIs, see column {col}')
             continue
         if len(new_cats) > 0:
             new_cat_dict.update({col:new_cats})
@@ -394,8 +393,15 @@ def report(expected, actual, plot=False):
                 failed_buckets = None
         else:
             metric_name = 'stability_index'
-        df_tmp = pd.DataFrame({"column": col, "anomaly_score":score, 'metric_name': metric_name, 'check_result': check_result,
-                                "failed_bucket":f"{failed_buckets}", 'new_category':f"{new_cats}", 'disapeared_category':f"{abs_cats}"}, index=[1])
+        df_tmp = pd.DataFrame({
+            'column': col,
+            'anomaly_score':score,
+            'metric_name': metric_name,
+            'check_result': check_result,
+            'failed_bucket':f'{failed_buckets}',
+            'new_category':f'{new_cats}',
+            'disapeared_category':f'{abs_cats}'
+        }, index=[1])
         df = pd.concat([df, df_tmp])  
     df = df.reset_index(drop=True)
     return df
