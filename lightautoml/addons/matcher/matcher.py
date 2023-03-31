@@ -34,10 +34,6 @@ class Matcher:
             outcome,
             treatment,
             outcome_type='numeric',
-            is_spearman_filter=False,
-            is_outliers_filter=False,
-            is_feature_select=True,
-            quality_check=False,
             group_col=None,
             info_col=[],
             required_col=None,
@@ -64,9 +60,6 @@ class Matcher:
         self.group_col = group_col
         self.required_col = required_col
         self.outcome_type = outcome_type
-        self.is_spearman_filter = is_spearman_filter
-        self.is_outliers_filter = is_outliers_filter
-        self.is_feature_select = is_feature_select
         self.generate_report = generate_report
         self.report_feat_select_dir = report_feat_select_dir
         self.report_prop_score_dir = report_prop_score_dir
@@ -82,9 +75,8 @@ class Matcher:
         self.min_percentile = min_percentile
         self.max_percentile = max_percentile
         self.info_col = info_col
-        self.features = None
+        self.features_importance = None
         self._preprocessing_data()
-        self.quality_check = quality_check
         self.matcher = None
         self.val_dict = {k: [] for k in [self.outcome]}
         self.pval_dict = None
@@ -145,12 +137,12 @@ class Matcher:
             report_dir=self.report_feat_select_dir,
             use_algos=self.use_algos
         )
-        if self.group_col is None:
-            features = feat_select.perform_selection(df=self.df)
-        else:
-            features = feat_select.perform_selection(df=self.df.drop(columns=self.group_col))
-        self.features = features
-        return self.features
+        df = self.df if self.group_col is None else self.df.drop(columns=self.group_col)
+        if self.info_col is not None:
+            df = df.drop(columns=self.info_col)
+        features = feat_select.perform_selection(df=df)
+        self.features_importance = features
+        return self.features_importance
 
     def _matching(self):
         """Realize matching
@@ -162,7 +154,7 @@ class Matcher:
 
         """
         self.matcher = FaissMatcher(self.df, self.outcome, self.treatment, info_col=self.info_col,
-                                    features=self.features,
+                                    features=self.features_importance,
                                     group_col=self.group_col)
 
         self.results = self.matcher.match()
@@ -185,7 +177,7 @@ class Matcher:
             self.df = self.df.drop(columns=self.treatment)
             self.df[self.treatment] = self.new_treatment
             self.matcher = FaissMatcher(self.df, self.outcome, self.treatment, info_col=self.info_col,
-                                        features=self.features,
+                                        features=self.features_importance,
                                         group_col=self.group_col, validation=self.validate)
 
             sim = self.matcher.match()
@@ -205,5 +197,5 @@ class Matcher:
 
         """
         if features is not None:
-            self.features = features
+            self.features_importance = features
         return self._matching()
