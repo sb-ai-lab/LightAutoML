@@ -84,6 +84,5 @@ class LamaFeatureSelector:
             automl = report(automl)
 
         _ = automl.fit_predict(df, roles=roles)
-        print(automl.model.get_feature_scores())
 
         return automl.model.get_feature_scores()
