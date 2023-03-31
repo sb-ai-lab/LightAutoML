@@ -27,9 +27,13 @@ class FaissMatcher:
         self.outcomes = outcomes
         self.treatment = treatment
         if features is None:
-            self.columns_match = [x for x in list(self.df.columns) if x not in self.info_col]
+            self.columns_match = list(
+                set([x for x in list(self.df.columns) if x not in self.info_col] + [self.treatment, self.outcomes]))
         else:
-            self.columns_match = features['Feature'].tolist()
+            try:
+                self.columns_match = features['Feature'].tolist() + [self.treatment, self.outcomes]
+            except TypeError:
+                self.columns_match = features + [self.treatment, self.outcomes]
 
         self.features_quality = self.df.drop(columns=[self.treatment, self.outcomes] + self.info_col).select_dtypes(
             include=['int16', 'int32', 'int64', 'float16', 'float32', 'float64']).columns
@@ -156,7 +160,7 @@ class FaissMatcher:
             Matched dataframe of features
 
         """
-        df = self.df.drop(columns=self.columns_del, axis=1)
+        df = self.df.drop(columns=[self.outcomes])
 
         if self.group_col is None:
             x1 = df[df[self.treatment] == int(not is_treated)].iloc[index].reset_index()
@@ -389,10 +393,11 @@ class FaissMatcher:
         return self.report_view()
 
     def report_view(self):
-        result = (self.ATE, self.ATC, self.ATE)
-        return pd.DataFrame([list(x.values())[0] for x in result],
+        result = (self.ATE, self.ATC, self.ATT)
+        self.results = pd.DataFrame([list(x.values())[0] for x in result],
                             columns=['effect_size', 'std_err', 'p-val', 'ci_lower', 'ci_upper'],
                             index=['ATE', 'ATC', 'ATT'])
+        return self.results
 
 
 def _get_index(base, new):
@@ -553,4 +558,3 @@ def scaled_counts(N, matches, index):
             s_counts[index_dict[match]] += scale
 
     return s_counts
-
