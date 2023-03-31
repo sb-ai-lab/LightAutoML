@@ -110,7 +110,7 @@ class Matcher:
     def _spearman_filter(self):
         """Applies filter by columns by correlation with outcome column
         """
-        logger.info(f'Applying filter by spearman test - drop columns correlated with outcome')
+        logger.info('Applying filter by spearman test - drop columns correlated with outcome')
         same_filter = SpearmanFilter(
             outcome=self.outcome,
             treatment=self.treatment,
@@ -128,7 +128,7 @@ class Matcher:
         If not, leaves only values between 25 and 75 percentile
 
         """
-        logger.info(f'Applying filter of outliers')
+        logger.info('Applying filter of outliers')
         out_filter = OutliersFilter(
             interquartile_coeff=self.interquartile_coeff,
             mode_percentile=self.mode_percentile,
@@ -143,7 +143,7 @@ class Matcher:
     def _feature_select(self):
         """Counts feature importance
         """
-        logger.info(f'Counting feature importance')
+        logger.info('Counting feature importance')
         feat_select = LamaFeatureSelector(
             outcome=self.outcome,
             outcome_type=self.outcome_type,
@@ -159,7 +159,7 @@ class Matcher:
         if self.group_col is None:
             features = feat_select.perform_selection(df=self.df)
         else:
-            logger.info(f'Feature importance counted without group columns')
+            logger.info('Feature importance counted without group columns')
             features = feat_select.perform_selection(df=self.df.drop(columns=self.group_col))
         self.features = features
 
@@ -175,10 +175,10 @@ class Matcher:
         self.matcher = FaissMatcher(self.df, self.data, self.outcome, self.treatment, self.features,
                                     group_col=self.group_col)
         if self.group_col is None:
-            logger.info(f'Applying matching')
+            logger.info('Applying matching')
             df_matched, ate = self.matcher.match()
         else:
-            logger.info(f'Applying group matching')
+            logger.info('Applying group matching')
             df_matched, ate = self.matcher.group_match()
 
         if self.quality_check:
@@ -201,7 +201,7 @@ class Matcher:
             self.pval_dict - dict of p-values: dict
 
         """
-        logger.info(f'Applying validation of result')
+        logger.info('Applying validation of result')
         for i in range(n_sim):
             prop1 = self.df[self.treatment].sum() / self.df.shape[0]
             prop0 = 1 - prop1

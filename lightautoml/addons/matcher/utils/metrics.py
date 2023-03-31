@@ -44,13 +44,16 @@ def ks(orig, matched):
         ks_dict - dict of p-values: dict
 
     """
-    logger.info('Applying Kolmogorov-Smirnov test to check matching quality')
-    #ABC
+
     ks_dict = dict()
     matched.columns = orig.columns
     for col in orig.columns:
         ks_pval_1 = ks_2samp(orig[col].values, matched[col].values)[1]
         ks_dict.update({col: ks_pval_1})
+
+    filter_list = list(ks_dict.keys())[:3] + list(ks_dict.keys())[-3:]
+    dict_to_show = {key: val for key, val in ks_dict.items() if key in filter_list}
+    logger.info(f'Kolmogorov-Smirnov test to check matching quality: \n{dict_to_show}')
 
     return ks_dict
 

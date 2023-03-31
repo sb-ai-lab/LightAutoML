@@ -117,7 +117,7 @@ class FaissMatcher:
 
         """
         start_time = dt.datetime.now()
-        logger.info(f'start matching --')
+        logger.info('start matching --')
 
         index = faiss.IndexFlatL2(base.shape[1])
         index.add(base)
@@ -268,7 +268,7 @@ class FaissMatcher:
             ATE: int or numpy array
 
         """
-        logger.debug(f'Calculating ATE')
+        logger.debug('Calculating ATE')
 
         ate = np.mean(
             (2 * df[self.treatment] - 1) * (df[outcome] - df[outcome + POSTFIX_BIAS]))
@@ -288,7 +288,7 @@ class FaissMatcher:
             ATC, scaled counts and variances: tuple of numpy arrays
 
         """
-        logger.debug(f'Calculating ATC')
+        logger.debug('Calculating ATC')
 
         df = df[df[self.treatment] == 0]
         N_c = len(df)
@@ -314,7 +314,7 @@ class FaissMatcher:
             ATT, scaled counts and variances: tuple of numpy arrays
 
         """
-        logger.debug(f'Calculating ATT')
+        logger.debug('Calculating ATT')
 
         df = df[df[self.treatment] == 1]
         N_t = len(df)
@@ -367,7 +367,6 @@ class FaissMatcher:
             ATE variance: int
 
         """
-        logger.debug(f'Calculating ATX variance')
 
         N_c, N_t = len(vars_c), len(vars_t)
         summands_c = weights_c ** 2 * vars_c
@@ -469,7 +468,8 @@ class FaissMatcher:
             Tuple of dicts with ATE, ATC and ATT
 
         """
-        logger.debug(f'Creating dicts of all effects: ATE, ATC, ATT')
+        logger.debug('Creating dicts of all effects: ATE, ATC, ATT')
+
         att_dict = {}
         atc_dict = {}
         ate_dict = {}
@@ -496,7 +496,7 @@ class FaissMatcher:
             n_features: int
 
         """
-        logger.debug(f'Checking best effects')
+        logger.debug('Checking best effects')
         ate_dict, atc_dict, att_dict = self._calculate_ate_all_target(df_matched)
 
         if self.validation is not None:
