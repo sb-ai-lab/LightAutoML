@@ -1,5 +1,4 @@
 import datetime as dt
-import logging
 
 import faiss
 from scipy.stats import norm
@@ -350,7 +349,7 @@ class FaissMatcher:
             'repeats': rep_dict
         }
 
-        rep_df = pd.DataFrame.from_dict(rep_dict, orient='index').rename(columns={0:'value'})
+        rep_df = pd.DataFrame.from_dict(rep_dict, orient='index').rename(columns={0: 'value'})
         self.quality_dict = rep_df
         logger.info(f'PSI info: \n {psi_data.head(10)} \nshape:{psi_data.shape}')
         logger.info(f'Kolmogorov-Smirnov test info: \n {ks_data.head(10)} \nshape:{ks_data.shape}')
@@ -449,8 +448,8 @@ class FaissMatcher:
     def report_view(self):
         result = (self.ATE, self.ATC, self.ATT)
         self.results = pd.DataFrame([list(x.values())[0] for x in result],
-                            columns=['effect_size', 'std_err', 'p-val', 'ci_lower', 'ci_upper'],
-                            index=['ATE', 'ATC', 'ATT'])
+                                    columns=['effect_size', 'std_err', 'p-val', 'ci_lower', 'ci_upper'],
+                                    index=['ATE', 'ATC', 'ATT'])
         return self.results
 
 

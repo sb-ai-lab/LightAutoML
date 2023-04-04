@@ -36,6 +36,7 @@ logging.basicConfig(
     level=logging.INFO
 )
 
+
 class Matcher:
     def __init__(
             self,
@@ -116,7 +117,6 @@ class Matcher:
 
         self.df = same_filter.perform_filter(self.df)
 
-
     def _outliers_filter(self):
         """Deletes outliers
 
@@ -136,7 +136,7 @@ class Matcher:
         rows_for_del = out_filter.perform_filter(self.df)
         self.df = self.df.drop(rows_for_del, axis=0)
 
-    def _feature_select(self):
+    def lama_feature_select(self):
         """Counts feature importance
         """
         logger.info('Counting feature importance')
@@ -152,12 +152,6 @@ class Matcher:
             report_dir=self.report_feat_select_dir,
             use_algos=self.use_algos
         )
-        if self.group_col is None:
-            features = feat_select.perform_selection(df=self.df)
-        else:
-            logger.info('Feature importance counted without group columns')
-            features = feat_select.perform_selection(df=self.df.drop(columns=self.group_col))
-        self.features = features
         df = self.df if self.group_col is None else self.df.drop(columns=self.group_col)
         if self.info_col is not None:
             df = df.drop(columns=self.info_col)
