@@ -1,3 +1,15 @@
+import logging
+
+logger = logging.getLogger('outliers_filter')
+console_out = logging.StreamHandler()
+logging.basicConfig(
+    handlers=(console_out,),
+    format='[%(asctime)s | %(name)s | %(levelname)s]: %(message)s',
+    datefmt='%d.%m.%Y %H:%M:%S',
+    level=logging.INFO
+)
+
+
 class OutliersFilter:
     def __init__(
             self,
@@ -40,5 +52,6 @@ class OutliersFilter:
             rows_for_del_column = df.index[rows_for_del_column].tolist()
             rows_for_del.extend(rows_for_del_column)
         rows_for_del = set(rows_for_del)
+        logger.info(f'Drop {len(rows_for_del)} rows')
 
         return rows_for_del

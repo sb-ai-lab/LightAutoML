@@ -1,13 +1,23 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import logging
+
+logger = logging.getLogger('psi_pandas')
+console_out = logging.StreamHandler()
+logging.basicConfig(
+    handlers=(console_out,),
+    format='[%(asctime)s | %(name)s | %(levelname)s]: %(message)s',
+    datefmt='%d.%m.%Y %H:%M:%S',
+    level=logging.INFO
+)
 
 
 class psi:
-    """
+    """Calculates population stability index for buckets
 
-    Calculates population stability index for buckets. For numeric data - numeric
-    buckets (except when numeric column includes only NULL). For categorical data:
+    For numeric data - numeric buckets (except when numeric column
+    includes only NULL). For categorical data:
     for n<20 bucket equals proportion of each category,
     for n>20 bucket equals to a group of categories,
     for n>100 it calculates unique_index based on Jaccard similarity,
@@ -46,17 +56,18 @@ class psi:
             self.actual_uniqs = actual[column_name].unique()
     
     def jac(self):
-        """Calculates Jaccard similarity
+        """Calculates Jacquard similarity
 
-        Jaccard similarity measures the intersection between two sequences
+        Jacquard similarity measures the intersection between two sequences
         versus the union of tho sequences
 
         Returns:
-            Jaccard similarity: float
+            Jacquard similarity: float
 
         """
         x = set(self.expected_uniqs)
         y = set(self.expected_uniqs)
+        logger.info(f'Jacquard similarity is {round(len(x.intersection(y)) / len(x.union(y)), 6)}')
         return len(x.intersection(y)) / len(x.union(y))
     
     
@@ -93,26 +104,27 @@ class psi:
             e_perc = 0.0001
         
         value = (e_perc - a_perc) * np.log(e_perc / a_perc)
+        logger.info(f'sub_psi value is {round(value, 6)}')
         return value
     
 
     def psi_num(self):
         """Calculate the PSI for a single variable
 
-              Args:
-                 expected_array - numpy array of original values: array
-                 actual_array - numpy array of new values, same size as expected: array
-                 buckets - number of percentile ranges to bucket the values into: int
+        Args:
+            expected_array - numpy array of original values: array
+            actual_array - numpy array of new values, same size as expected: array
+            buckets - number of percentile ranges to bucket the values into: int
 
-              Returns:
-                  psi_value - PSI for column: float
-                  psi_dict - input in PSI for each bucket: dict
-                  new_cats - new categories
-                  (for not categorical data inapplicable - returns empty list): list
-                  abs_cats - categories that absents in actual column
-                  (for not categorical data inapplicable - returns empty list): list
+        Returns:
+            psi_value - PSI for column: float
+            psi_dict - input in PSI for each bucket: dict
+            new_cats - new categories
+            (for not categorical data inapplicable - returns empty list): list
+            abs_cats - categories that absents in actual column
+            (for not categorical data inapplicable - returns empty list): list
 
-              """
+        """
         buckets = 10
         breakpoints = np.arange(0, (buckets)/10, 0.1)
         
@@ -158,11 +170,12 @@ class psi:
         psi_dict = {k:v for k,v in sorted(psi_dict.items(), key=lambda x: x[1], reverse=True)}
         new_cats = []
         abs_cats = []
+
         return psi_value, psi_dict, new_cats, abs_cats
          
         
     def uniq_psi(self):
-        """Counts psi for catrgorical  unique counts > 100
+        """Counts psi for categorical unique counts > 100
 
         Returns:
             psi_value - PSI for column: float
@@ -202,6 +215,7 @@ class psi:
         else:
             psi_value = 1 - jac_metric
             psi_dict.update({"metric": "unique_index"})
+        logger.info(f'PSI for categorical unique >100 is {round(psi_value, 6)}')
         return psi_value, psi_dict, new_cats, abs_cats
 
     
@@ -222,6 +236,7 @@ class psi:
         #правило для категориальных > 100
         if expected_uniq_count > 100 or actual_uniq_count > 100:
             psi_value, psi_dict, new_cats, abs_cats = self.uniq_psi()
+            logger.info(f'PSI is {round(psi_value, 6)}')
             return psi_value, psi_dict, new_cats, abs_cats
 
         expected_dict = pd.DataFrame(self.expected, columns=[self.column_name]).groupby(self.column_name) \
@@ -306,6 +321,7 @@ class psi:
                 psi_dict.update({breakpoints[i]: psi_val})
         psi_value = np.sum(list(psi_dict.values()))
         psi_dict = {k:v for k,v in sorted(psi_dict.items(), key=lambda x: x[1], reverse=True)}
+
         return psi_value, psi_dict, new_cats, abs_cats
     
     def psi_result(self):
@@ -330,6 +346,8 @@ class psi:
                 psi_values, psi_dict, new_cats, abs_cats = self.psi_categ()
             else:
                 psi_values, psi_dict, new_cats, abs_cats = self.psi_num()
+
+        logger.info(f'PSI values: {round(psi_values,2)}')
         return round(psi_values,2), psi_dict, new_cats, abs_cats
     
     
@@ -345,6 +363,7 @@ def report(expected, actual, plot=False):
         df - report in dataframe format: pd.DataFrame
 
     """
+    logger.info('Creating report')
     assert len(expected.columns) == len(actual.columns)
     data_cols = expected.columns
     score_dict = {}
@@ -358,7 +377,7 @@ def report(expected, actual, plot=False):
         try:
             score, psi_dict, new_cats, abs_cats = psi_res.psi_result()
         except:
-            print(col)
+            logger.error(f'Can not count PSIs, see column {col}')
             continue
         if len(new_cats) > 0:
             new_cat_dict.update({col:new_cats})
@@ -374,8 +393,15 @@ def report(expected, actual, plot=False):
                 failed_buckets = None
         else:
             metric_name = 'stability_index'
-        df_tmp = pd.DataFrame({"column": col, "anomaly_score":score, 'metric_name': metric_name, 'check_result': check_result,
-                                "failed_bucket":f"{failed_buckets}", 'new_category':f"{new_cats}", 'disapeared_category':f"{abs_cats}"}, index=[1])
+        df_tmp = pd.DataFrame({
+            'column': col,
+            'anomaly_score':score,
+            'metric_name': metric_name,
+            'check_result': check_result,
+            'failed_bucket':f'{failed_buckets}',
+            'new_category':f'{new_cats}',
+            'disapeared_category':f'{abs_cats}'
+        }, index=[1])
         df = pd.concat([df, df_tmp])  
     df = df.reset_index(drop=True)
     return df

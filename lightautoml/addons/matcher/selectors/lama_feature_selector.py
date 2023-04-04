@@ -2,6 +2,17 @@ from ....automl.presets.tabular_presets import TabularAutoML
 from ....report import ReportDeco
 from ....tasks import Task
 
+import logging
+
+logger = logging.getLogger('lama_feature_selector')
+console_out = logging.StreamHandler()
+logging.basicConfig(
+    handlers=(console_out,),
+    format='[%(asctime)s | %(name)s | %(levelname)s]: %(message)s',
+    datefmt='%d.%m.%Y %H:%M:%S',
+    level=logging.INFO
+)
+
 
 class LamaFeatureSelector:
     def __init__(
@@ -41,7 +52,7 @@ class LamaFeatureSelector:
             feature scores of model
 
         """
-
+        logger.info('Getting feature scores')
         roles = {
             'target': self.outcome,
             'drop': [self.treatment],

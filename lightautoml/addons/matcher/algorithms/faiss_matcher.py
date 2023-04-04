@@ -1,12 +1,25 @@
-from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import LinearRegression
+import datetime as dt
+import logging
+
 import faiss
 from scipy.stats import norm
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import StandardScaler
+
 from ..utils.metrics import *
 from ..utils.psi_pandas import *
 
 POSTFIX = "_matched"
 POSTFIX_BIAS = "_matched_bias"
+
+logger = logging.getLogger('Faiss matcher')
+console_out = logging.StreamHandler()
+logging.basicConfig(
+    handlers=(console_out,),
+    format='[%(asctime)s | %(name)s | %(levelname)s]: %(message)s',
+    datefmt='%d.%m.%Y %H:%M:%S',
+    level=logging.INFO
+)
 
 
 class FaissMatcher:
@@ -64,6 +77,8 @@ class FaissMatcher:
             Tuple of dfs treated, untreated; scaled std_treated and std_untreated
 
         """
+        logger.debug('Creating split data by treatment column')
+
         std_scaler = StandardScaler().fit(df.drop([self.outcomes, self.treatment], axis=1))
 
         treated = df[df[self.treatment] == 1].drop([self.outcomes, self.treatment], axis=1)
@@ -86,6 +101,11 @@ class FaissMatcher:
             std_untreated: pd.DataFrame
 
         """
+        logger.debug('Predicting target by Linear Regression')
+
+        start_time = dt.datetime.now()
+        logger.debug('start --')
+
         self.dict_outcome_untreated = {}
         self.dict_outcome_treated = {}
         df = self.df.drop(columns=self.info_col)
@@ -131,6 +151,10 @@ class FaissMatcher:
             self.dict_outcome_treated[outcome + POSTFIX] = y_match_untreated.values
             self.dict_outcome_treated[outcome + POSTFIX_BIAS] = y_match_untreated_bias.values
 
+        end_time = dt.datetime.now()
+        total = dt.datetime.strptime(str(end_time - start_time), '%H:%M:%S.%f').strftime('%H:%M:%S')
+        logger.debug(f'end -- [work time{total}]')
+
         return
 
     def _create_outcome_matched_df(self, dict_outcome, is_treated: bool) -> pd.DataFrame:
@@ -157,7 +181,7 @@ class FaissMatcher:
             is_treated: bool
 
         Returns:
-            Matched dataframe of features
+            Matched dataframe of features: pd.DataFrame
 
         """
         df = self.df.drop(columns=[self.outcomes])
@@ -205,11 +229,14 @@ class FaissMatcher:
             outcome: pd.Series or {__iter__}
 
         Returns:
-            ATE: int
+            ATE: int or numpy array
 
         """
+        logger.debug('Calculating ATE')
+
         ate = np.mean(
             (2 * df[self.treatment] - 1) * (df[outcome] - df[outcome + POSTFIX_BIAS]))
+
         return ate
 
     def calc_atc(self, df, outcome):
@@ -222,9 +249,11 @@ class FaissMatcher:
             outcome: pd.Series or {__iter__}
 
         Returns:
-            ATC, scaled counts and variances
+            ATC, scaled counts and variances: tuple of numpy arrays
 
         """
+        logger.debug('Calculating ATC')
+
         df = df[df[self.treatment] == 0]
         N_c = len(df)
         index_c = list(range(N_c)) if self.group_col is None else self.orig_untreated_index
@@ -233,6 +262,7 @@ class FaissMatcher:
 
         vars_c = np.repeat(ITT_c.var(), N_c)  # conservative
         atc = np.mean(ITT_c)
+
         return atc, scaled_counts_c, vars_c
 
     def calc_att(self, df, outcome):
@@ -243,9 +273,10 @@ class FaissMatcher:
             outcome: pd.Series or {__iter__}
 
         Returns:
-            ATT, scaled counts and variances: tuple[ndarray,ndarray,ndarray]
+            ATT, scaled counts and variances: tuple of numpy arrays
 
         """
+        logger.debug('Calculating ATT')
 
         df = df[df[self.treatment] == 1]
         N_t = len(df)
@@ -255,6 +286,7 @@ class FaissMatcher:
 
         vars_t = np.repeat(ITT_t.var(), N_t)  # conservative
         att = np.mean(ITT_t)
+
         return att, scaled_counts_t, vars_t
 
     def _calculate_ate_all_target(self, df):
@@ -267,6 +299,8 @@ class FaissMatcher:
             Tuple of dicts with ATE, ATC and ATT
 
         """
+        logger.debug('Creating dicts of all effects: ATE, ATC, ATT')
+
         att_dict = {}
         atc_dict = {}
         ate_dict = {}
@@ -289,24 +323,44 @@ class FaissMatcher:
         return
 
     def matching_quality(self):
-        """
-        Method for estimate the quality of covariates balance and repeat fraction.
+        """Estimated the quality of covariates balance and repeat fraction
+
         Estimates population stability index, Standartizied mean difference
         and Kolmogorov-Smirnov test for numeric values. Returns dict of reports.
-         """
+
+        Returns:
+            dict of reports
+
+        """
+        logger.info(f'Estimating quality of matching')
 
         psi_columns = self.columns_match
         psi_columns.remove(self.treatment)
         psi_data, ks_data, smd_data = matching_quality(self.df_matched, self.treatment, self.features_quality,
                                                        psi_columns)
-        rep_dict = {'match_control_to_treat': check_repeats(self.treated_index.ravel()),
-                    'match_treat_to_control': check_repeats(self.untreated_index.ravel())}
-        self.quality_dict = {'psi': psi_data, 'ks_test': ks_data, 'smd': smd_data, 'repeats': rep_dict}
+        rep_dict = {
+            'match_control_to_treat': check_repeats(self.treated_index.ravel()),
+            'match_treat_to_control': check_repeats(self.untreated_index.ravel())
+        }
+
+        self.quality_dict = {
+            'psi': psi_data,
+            'ks_test': ks_data,
+            'smd': smd_data,
+            'repeats': rep_dict
+        }
+
+        rep_df = pd.DataFrame.from_dict(rep_dict, orient='index').rename(columns={0:'value'})
+        self.quality_dict = rep_df
+        logger.info(f'PSI info: \n {psi_data.head(10)} \nshape:{psi_data.shape}')
+        logger.info(f'Kolmogorov-Smirnov test info: \n {ks_data.head(10)} \nshape:{ks_data.shape}')
+        logger.info(f'Standardised mean difference info: \n {smd_data.head(10)} \nshape:{smd_data.shape}')
+        logger.info(f'Repeats info: \n {rep_df.head(10)}')
 
         return self.quality_dict
 
     def group_match(self):
-        """Matches dfs if it devided by groups
+        """Matches dfs if it divided by groups
 
         Returns:
             Tuple of matched df and ATE
@@ -364,7 +418,7 @@ class FaissMatcher:
         """Matches df
 
         Returns:
-            Tuple of matched df and ATE
+            Tuple of matched df and metrics ATE, ATC, ATT
 
         """
         if self.group_col is not None:
@@ -539,22 +593,22 @@ def pval_calc(z):
 def scaled_counts(N, matches, index):
     """Counts the number of times each subject has appeared as a match
 
-    In the case of multiple matches, each subject only gets partial credit.
+        In the case of multiple matches, each subject only gets partial credit.
 
-    Args:
-        N: int or Any
-        matches: Series or {__iter__}
-        index: list or Any
+        Args:
+            N: int or Any
+            matches: Series or {__iter__}
+            index: list or Any
 
-    Returns:
-        Number of times each subject has appeared as a match: int
+        Returns:
+            Number of times each subject has appeared as a match: int
 
-    """
+        """
     s_counts = np.zeros(N)
     index_dict = dict(zip(index, list(range(N))))
     for matches_i in matches:
         scale = 1 / len(matches_i)
         for match in matches_i:
             s_counts[index_dict[match]] += scale
-
+    logger.info(f'Calculated the number of times each subject has appeared as a match: {s_counts}')
     return s_counts
