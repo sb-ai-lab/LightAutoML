@@ -70,6 +70,7 @@ class FaissMatcher:
         self.df_matched = None
         self.sigma = sigma
         self.quality_dict = {}
+        self.rep_dict = None
         self.validation = validation
 
     def _get_split_scalar_data(self, df: pd.DataFrame) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame):
@@ -360,7 +361,6 @@ class FaissMatcher:
 
         self.ATE, self.ATC, self.ATT = ate_dict, atc_dict, att_dict
         self.val_dict = ate_dict
-
         # return
 
     def matching_quality(self) -> Optional[DataFrame]:
@@ -397,7 +397,7 @@ class FaissMatcher:
         }
 
         rep_df = pd.DataFrame.from_dict(rep_dict, orient='index').rename(columns={0: 'value'})
-        self.quality_dict = rep_df
+        self.rep_dict = rep_df
 
         logger.info(f'PSI info: \n {psi_data.head(10)} \nshape:{psi_data.shape}')
         logger.info(f'Kolmogorov-Smirnov test info: \n {ks_data.head(10)} \nshape:{ks_data.shape}')
