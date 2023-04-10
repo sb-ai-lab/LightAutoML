@@ -12,7 +12,7 @@ logging.basicConfig(
 )
 
 
-def smd(orig, matched):
+def smd(orig: pd.DataFrame, matched: pd.DataFrame) -> pd.DataFrame:
     """Standardised mean difference to check matching quality
 
     Args:
@@ -30,7 +30,7 @@ def smd(orig, matched):
     return smd_data
 
 
-def ks(orig, matched):
+def ks(orig: pd.DataFrame, matched: pd.DataFrame) -> dict:
     """Kolmogorov-Smirnov test to check matching quality by columns
 
     Args:
@@ -55,11 +55,16 @@ def ks(orig, matched):
     return ks_dict
 
 
-def matching_quality(data, treatment, features, features_psi):
+def matching_quality(
+        data: pd.DataFrame,
+        treatment,
+        features: list,
+        features_psi
+):
     """Wrapping function for matching quality estimation.
 
     Args:
-        data - df_matched: pd.DataFram
+        data - df_matched: pd.DataFrame
         treatment -  treatment
         features - feature list, kstest and  smd accept only numeric values
 
@@ -117,7 +122,7 @@ def matching_quality(data, treatment, features, features_psi):
     return report_psi, ks_df, smd_data
 
 
-def check_repeats(index):
+def check_repeats(index) -> float:
     """The function checks fraction of duplicated indexes
 
      Args:
