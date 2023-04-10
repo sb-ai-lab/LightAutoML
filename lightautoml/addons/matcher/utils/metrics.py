@@ -1,6 +1,3 @@
-import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
 from scipy.stats import ks_2samp
 from ..utils.psi_pandas import *
 import logging
@@ -15,7 +12,7 @@ logging.basicConfig(
 )
 
 
-def smd(orig, matched):
+def smd(orig: pd.DataFrame, matched: pd.DataFrame) -> pd.DataFrame:
     """Standardised mean difference to check matching quality
 
     Args:
@@ -33,7 +30,7 @@ def smd(orig, matched):
     return smd_data
 
 
-def ks(orig, matched):
+def ks(orig: pd.DataFrame, matched: pd.DataFrame) -> dict:
     """Kolmogorov-Smirnov test to check matching quality by columns
 
     Args:
@@ -58,11 +55,16 @@ def ks(orig, matched):
     return ks_dict
 
 
-def matching_quality(data, treatment, features, features_psi):
+def matching_quality(
+        data: pd.DataFrame,
+        treatment,
+        features: list,
+        features_psi
+):
     """Wrapping function for matching quality estimation.
 
     Args:
-        data - df_matched: pd.DataFram
+        data - df_matched: pd.DataFrame
         treatment -  treatment
         features - feature list, kstest and  smd accept only numeric values
 
@@ -73,40 +75,54 @@ def matching_quality(data, treatment, features, features_psi):
     """
     orig_treated = data[data[treatment] == 1][features]
     orig_untreated = data[data[treatment] == 0][features]
-    matched_treated = data[data[treatment] == 1][
-        [f + '_matched' for f in features]]
+
+    matched_treated = data[data[treatment] == 1][[f + '_matched' for f in features]]
     matched_treated.columns = orig_treated.columns
-    matched_untreated = data[data[treatment] == 0][
-        [f + '_matched' for f in features]]
+
+    matched_untreated = data[data[treatment] == 0][[f + '_matched' for f in features]]
     matched_untreated.columns = orig_treated.columns
 
     psi_treated = data[data[treatment] == 1][features_psi]
     psi_treated_matched = data[data[treatment] == 1][[f + '_matched' for f in features_psi]]
     psi_treated_matched.columns = [f + '_treated' for f in features_psi]
     psi_treated.columns = [f + '_treated' for f in features_psi]
+
     psi_untreated = data[data[treatment] == 0][features_psi]
-    psi_untreated_matched = data[data[treatment] == 0][
-        [f + '_matched' for f in features_psi]]
+    psi_untreated_matched = data[data[treatment] == 0][[f + '_matched' for f in features_psi]]
     psi_untreated.columns = [f + '_untreated' for f in features_psi]
     psi_untreated_matched.columns = [f + '_untreated' for f in features_psi]
+
     treated_smd_data = smd(orig_treated, matched_treated)
     untreated_smd_data = smd(orig_untreated, matched_untreated)
     smd_data = pd.concat([treated_smd_data, untreated_smd_data], axis=1)
     smd_data.columns = ['match_control_to_treat', 'match_treat_to_control']
+
     treated_ks = ks(orig_treated, matched_treated)
     untreated_ks = ks(orig_untreated, matched_untreated)
     ks_dict = {k: [treated_ks[k], untreated_ks[k]] for k in treated_ks.keys()}
     ks_df = pd.DataFrame(data=ks_dict, index=range(2)).T
     ks_df.columns = ['match_control_to_treat', 'match_treat_to_control']
-    report_psi_treated = report(psi_treated, psi_treated_matched)[['column', 'anomaly_score', 'check_result']]
-    report_psi_untreated = report(psi_untreated, psi_untreated_matched)[['column', 'anomaly_score', 'check_result']]
-    report_psi = pd.concat([report_psi_treated.reset_index(drop=True), report_psi_untreated.reset_index(drop=True)],
-                           axis=1)
+
+    report_cols = [
+        'column',
+        'anomaly_score',
+        'check_result'
+    ]
+    report_psi_treated = report(psi_treated, psi_treated_matched)[report_cols]
+    report_psi_untreated = report(psi_untreated, psi_untreated_matched)[report_cols]
+    report_psi = pd.concat(
+        [
+            report_psi_treated,
+            report_psi_untreated
+        ],
+        ignore_index=True,
+        axis=1
+    )
 
     return report_psi, ks_df, smd_data
 
 
-def check_repeats(index):
+def check_repeats(index) -> float:
     """The function checks fraction of duplicated indexes
 
      Args:
@@ -114,6 +130,7 @@ def check_repeats(index):
 
     Returns:
         rep_frac - fraction of duplicated index: float
+
     """
     unique, counts = np.unique(index, return_counts=True)
     rep_frac = len(unique) / len(index) if len(unique) > 0 else 0

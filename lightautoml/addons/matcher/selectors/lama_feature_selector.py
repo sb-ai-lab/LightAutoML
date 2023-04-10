@@ -1,3 +1,5 @@
+import pandas as pd
+
 from ....automl.presets.tabular_presets import TabularAutoML
 from ....report import ReportDeco
 from ....tasks import Task
@@ -39,7 +41,7 @@ class LamaFeatureSelector:
         self.generate_report = generate_report
         self.report_dir = report_dir
 
-    def perform_selection(self, df):
+    def perform_selection(self, df: pd.DataFrame) -> pd.DataFrame:
         """Realize model and returns feature scores
 
         Defines metrics, applies the model, creates report
@@ -49,7 +51,7 @@ class LamaFeatureSelector:
             df: pd.DataFrame
 
         Returns:
-            feature scores of model
+            feature scores of model: pd.DataFrame
 
         """
         logger.info('Getting feature scores')
