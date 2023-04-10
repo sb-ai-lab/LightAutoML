@@ -47,7 +47,7 @@ class SpearmanFilter:
             df: pd.DataFrame
 
         Returns:
-            pd.DataFrame with columns, non-correlated with outcome column
+            df with columns, non-correlated with outcome column: pd.DataFrame
 
         """
         selected = []
