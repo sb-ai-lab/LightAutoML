@@ -101,7 +101,10 @@ class Matcher:
             logger.debug('Categorical features turned into dummy')
         else:
             group_col = self.df[[self.group_col]]
-            self.df = pd.get_dummies(self.df.drop(columns=self.group_col), drop_first=True)
+            self.df = pd.get_dummies(
+                self.df.drop(columns=self.group_col),
+                drop_first=True
+            )
             self.df = pd.concat([self.df, group_col], axis=1)
             logger.debug('Categorical grouped features turned into dummy')
 
@@ -153,8 +156,10 @@ class Matcher:
             use_algos=self.use_algos
         )
         df = self.df if self.group_col is None else self.df.drop(columns=self.group_col)
+
         if self.info_col is not None:
             df = df.drop(columns=self.info_col)
+
         features = feat_select.perform_selection(df=df)
         self.features_importance = features
         return self.features_importance
@@ -168,9 +173,14 @@ class Matcher:
             Tuple of matched df and ATE
 
         """
-        self.matcher = FaissMatcher(self.df, self.outcome, self.treatment, info_col=self.info_col,
-                                    features=self.features_importance,
-                                    group_col=self.group_col)
+        self.matcher = FaissMatcher(
+            self.df,
+            self.outcome,
+            self.treatment,
+            info_col=self.info_col,
+            features=self.features_importance,
+            group_col=self.group_col
+        )
         logger.info('Applying matching')
         self.results = self.matcher.match()
 
@@ -193,24 +203,37 @@ class Matcher:
 
         """
         logger.info('Applying validation of result')
+
         for i in range(n_sim):
             prop1 = self.df[self.treatment].sum() / self.df.shape[0]
             prop0 = 1 - prop1
-            self.new_treatment = np.random.choice([0, 1], size=self.df.shape[0], p=[prop0, prop1])
+            self.new_treatment = np.random.choice(
+                [0, 1],
+                size=self.df.shape[0],
+                p=[prop0, prop1]
+            )
             self.validate = 1
             self.df = self.df.drop(columns=self.treatment)
             self.df[self.treatment] = self.new_treatment
-            self.matcher = FaissMatcher(self.df, self.outcome, self.treatment, info_col=self.info_col,
-                                        features=self.features_importance,
-                                        group_col=self.group_col, validation=self.validate)
+            self.matcher = FaissMatcher(
+                self.df, self.outcome,
+                self.treatment,
+                info_col=self.info_col,
+                features=self.features_importance,
+                group_col=self.group_col,
+                validation=self.validate
+            )
 
             sim = self.matcher.match()
 
             for key in self.val_dict.keys():
                 self.val_dict[key].append(sim[key][0])
+
         self.pval_dict = dict()
+
         for outcome in [self.outcome]:
             self.pval_dict.update({outcome: np.mean(self.val_dict[outcome])})
+
         return self.pval_dict
 
     def estimate(self, features=None):
