@@ -170,7 +170,7 @@ class Matcher:
         Take in count presence of groups
 
         Returns:
-            Tuple of matched df and ATE
+            Results of matching and metrics
 
         """
         self.matcher = FaissMatcher(
@@ -188,7 +188,7 @@ class Matcher:
 
         return self.results, self.quality_result
 
-    def validate_result(self, n_sim=10):
+    def validate_result(self, n_sim=10) -> dict:
         """Validates estimated effect
 
         Validates estimated effect by replacing real treatment with random
