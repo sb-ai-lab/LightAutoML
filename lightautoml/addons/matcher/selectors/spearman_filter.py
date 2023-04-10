@@ -61,6 +61,7 @@ class SpearmanFilter:
                 selected.append(column)
 
         logger.info(f'Drop columns {list(set(columns) - set(selected))}')
+
         columns = selected + [self.treatment, self.outcome]
         df = df[columns]
 
