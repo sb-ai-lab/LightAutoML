@@ -39,7 +39,7 @@ class psi:
 
     """
 
-    def __init__(self, expected, actual, column_name, axis=1, plot=False):
+    def __init__(self, expected, actual, column_name, plot=False):
         self.expected = expected[column_name].values
         self.actual = actual[column_name].values
         self.actual_len = len(self.actual)
@@ -55,7 +55,7 @@ class psi:
             self.expected_uniqs = expected[column_name].unique()
             self.actual_uniqs = actual[column_name].unique()
 
-    def jac(self):
+    def jac(self) -> float:
         """Calculates Jacquard similarity
 
         Jacquard similarity measures the intersection between two sequences
@@ -72,7 +72,7 @@ class psi:
 
         return len(x.intersection(y)) / len(x.union(y))
 
-    def plots(self, nulls, expected_percents, actual_percents, breakpoints, intervals):
+    def plots(self, expected_percents, actual_percents, breakpoints, intervals):
         """Plots expected and actual percents
 
         Args:
@@ -110,7 +110,7 @@ class psi:
         # plt.savefig(f"C:\\Users\\Glazova2-YA\\Documents\\data\\bip\\summary_psi_plots\\{self.column_name}.png")
         plt.show()
 
-    def sub_psi(self, e_perc, a_perc):
+    def sub_psi(self, e_perc: float, a_perc: float) -> float:
         if a_perc == 0:
             a_perc = 0.0001
         if e_perc == 0:
@@ -392,13 +392,17 @@ class psi:
         return round(psi_values, 2), psi_dict, new_cats, abs_cats
 
 
-def report(expected, actual, plot=False):
+def report(
+        expected: pd.DataFrame,
+        actual: pd.DataFrame,
+        plot=False
+) -> pd.DataFrame:
     """Func over class to create report according to the table
 
     Args:
+        plot: bool
         expected: spark dataframe
         actual: spark dataframe
-        plot - default=False
 
     Returns:
         df - report in dataframe format: pd.DataFrame
