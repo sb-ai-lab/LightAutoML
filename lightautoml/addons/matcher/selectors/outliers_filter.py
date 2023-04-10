@@ -1,5 +1,7 @@
 import logging
 
+import pandas as pd
+
 logger = logging.getLogger('outliers_filter')
 console_out = logging.StreamHandler()
 logging.basicConfig(
@@ -23,7 +25,7 @@ class OutliersFilter:
         self.min_percentile = min_percentile
         self.max_percentile = max_percentile
 
-    def perform_filter(self, df):
+    def perform_filter(self, df: pd.DataFrame) -> set:
         """Drops outlayers
 
         Creates set of rows to be deleted,
