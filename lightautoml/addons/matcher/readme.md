@@ -5,7 +5,8 @@
 <a name="installation"></a>
 # Installation
 To install LAMA framework with Matcher on your machine, execute following commands:  
-1. Download last version of wheel from repository. [Alpha](https://df-bitbucket.sbrf.ru/projects/MATCHER/repos/lama-matcher/browse) [Sigma](https://stash.delta.sbrf.ru/projects/MATCHER/repos/lama-matcher/browse) 
+
+Download last version of wheel from repository. [Alpha](https://df-bitbucket.sbrf.ru/projects/MATCHER/repos/lama-matcher/browse) [Sigma](https://stash.delta.sbrf.ru/projects/MATCHER/repos/lama-matcher/browse) 
 ```bash
 
 # Install base functionality:
@@ -13,7 +14,7 @@ To install LAMA framework with Matcher on your machine, execute following comman
 pip install -U lightautoml-<vesion>.whl
 
 
-# Or you can use build last version using poetry
+# Or you can build last version using poetry
 
 # Sigma
 git clone https://stash.delta.sbrf.ru/scm/finds/matcher.git mathcer
