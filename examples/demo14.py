@@ -27,7 +27,7 @@ from lightautoml.tasks import Task
 # - group_by transformer
 ################################
 
-N_FOLDS = 3  # folds cnt for AutoML
+N_FOLDS = 3  # number of folds for cross-validation inside AutoML
 RANDOM_STATE = 42  # fixed random state for various reasons
 N_THREADS = 4  # threads cnt for lgbm and linear models
 TIMEOUT = 100
