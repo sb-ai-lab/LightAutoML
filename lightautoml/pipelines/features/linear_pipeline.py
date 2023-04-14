@@ -64,7 +64,7 @@ class LinearFeatures(FeaturesPipeline, TabularDataFeatures):
 
     def __init__(
         self,
-        feats_imp: Optional[ImportanceEstimator] = None,
+        feats_imp: Optional[Union[ImportanceEstimator, SelectionPipeline]] = None,
         top_intersections: int = 5,
         max_bin_count: int = 10,
         max_intersection_depth: int = 3,
@@ -74,9 +74,8 @@ class LinearFeatures(FeaturesPipeline, TabularDataFeatures):
         output_categories: bool = True,
         multiclass_te_co: int = 3,
         use_groupby: bool = False,
-        pre_selector: Optional[SelectionPipeline] = None,
-        groupby_types: List[str] = None,
-        groupby_triplets: list = None,
+        groupby_types: List[str] = ["delta_median", "delta_mean", "min", "max", "std", "mode", "is_mode"],
+        groupby_triplets: list = [],
         groupby_top_based_on: str = "cardinality",
         groupby_top_categorical: int = 3,
         groupby_top_numerical: int = 3,
@@ -96,7 +95,6 @@ class LinearFeatures(FeaturesPipeline, TabularDataFeatures):
             max_bin_count=max_bin_count,
             sparse_ohe=sparse_ohe,
             multiclass_te_co=multiclass_te_co,
-            pre_selector=pre_selector,
             groupby_types=groupby_types,
             groupby_triplets=groupby_triplets,
             groupby_top_based_on=groupby_top_based_on,

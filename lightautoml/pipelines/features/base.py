@@ -1,5 +1,7 @@
 """Basic classes for features generation."""
 
+import logging
+
 from copy import copy
 from copy import deepcopy
 from typing import Any
@@ -45,6 +47,7 @@ from ..utils import map_pipeline_names
 
 NumpyOrPandas = Union[PandasDataset, NumpyDataset]
 
+logger = logging.getLogger(__name__)
 
 class FeaturesPipeline:
     """Abstract class.
@@ -218,9 +221,8 @@ class TabularDataFeatures:
         self.max_bin_count = 10
         self.sparse_ohe = "auto"
 
-        self.pre_selector = None
         self.groupby_types = ["delta_median", "delta_mean", "min", "max", "std", "mode", "is_mode"]
-        self.groupby_triplets = None
+        self.groupby_triplets = []
         self.groupby_top_based_on = "cardinality"
         self.groupby_top_categorical = 3
         self.groupby_top_numerical = 3
@@ -565,7 +567,7 @@ class TabularDataFeatures:
         df = DataFrame({"importance": 0, "cardinality": 0}, index=cats)
         # importance if defined
         if self.feats_imp is not None:
-            feats_imp = Series(self.feats_imp).sort_values(ascending=False)
+            feats_imp = Series(self.feats_imp.get_features_score()).sort_values(ascending=False)
             df["importance"] = feats_imp[feats_imp.index.isin(cats)]
             df["importance"].fillna(-np.inf)
         # check for cardinality
@@ -602,14 +604,14 @@ class TabularDataFeatures:
         df = DataFrame({"importance": 0, "cardinality": 0}, index=nums)
         # importance if defined
         if self.feats_imp is not None:
-            feats_imp = Series(self.feats_imp).sort_values(ascending=False)
+            feats_imp = Series(self.feats_imp.get_features_score()).sort_values(ascending=False)
             df["importance"] = feats_imp[feats_imp.index.isin(nums)]
             df["importance"].fillna(-np.inf)
         # check for cardinality
         df["cardinality"] = -self.get_uniques_cnt(train, nums)
         # sort
         if self.groupby_top_based_on == "cardinality" or self.feats_imp is None:
-            df = df.sort_values(by="cardinality", ascending=True)
+            df = df.sort_values(by="cardinality", ascending=self.ascending_by_cardinality)
         else:
             df = df.sort_values(by="importance", ascending=False)
         # get top n
@@ -629,15 +631,17 @@ class TabularDataFeatures:
         """
         categorical_names = get_columns_by_role(train, "Category")
         numerical_names = get_columns_by_role(train, "Numeric")
-        if self.feats_imp is None:
-            self.feats_imp = self.pre_selector.get_features_score()
 
         groupby_transformations = []
-        if self.groupby_triplets:
+        if len(self.groupby_triplets) > 0:
             for group_col, feat_name, trans in self.groupby_triplets:
                 categorical_cols = [] if feat_name in numerical_names else [feat_name]
                 numeric_cols = [] if feat_name in categorical_names else [feat_name]
                 if len(categorical_cols) + len(numeric_cols) == 0:
+                    logging.info2("Feature is incorrect or dropped by preselector: {}".format(feat_name))
+                    continue
+                if group_col not in categorical_names:
+                    logging.info2("Groupby column is incorrect or dropped by preselector: {}".format(group_col))
                     continue
                 new_transformation = {
                     "group_col": group_col,

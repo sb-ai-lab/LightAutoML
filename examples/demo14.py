@@ -37,12 +37,9 @@ TARGET = "TARGET"
 # load data
 data = pd.read_csv("./data/sampled_app_train.csv")
 data = data[USED_COLS]
-
 train, test = train_test_split(data, test_size=2000, random_state=42)
 
-
 # Using TabularAutoML preset
-
 task = Task("binary")
 roles = {
     "target": TARGET,
@@ -67,22 +64,17 @@ automl = TabularAutoML(
     general_params={"use_algos": [["lgb"]]},
     gbm_pipeline_params={"use_groupby": True, "groupby_triplets": groupby_triplets},
 )
-_ = automl.fit_predict(train, roles=roles)
+automl.fit_predict(train, roles=roles)
 
 feature_scores = automl.levels[0][0].ml_algos[0].get_features_score()
 
 print(f"Feature importances of BoostLGBM model. Pay attention to groupby features:\n{feature_scores}")
 
-
 # Custom pipeline with groupby features defined by importance
-
 print("\nTry custom pipeline with groupby features defined by importance:\n")
 
-
 task = Task("binary")
-
 reader = PandasToPandasReader(task, cv=N_FOLDS, random_state=RANDOM_STATE)
-
 model0 = BoostLGBM(default_params={"learning_rate": 0.1, "num_leaves": 64, "seed": 42, "num_threads": N_THREADS})
 pie = ModelBasedImportanceEstimator()
 selector = ImportanceCutoffSelector(LGBSimpleFeatures(), model0, pie, cutoff=-9999)

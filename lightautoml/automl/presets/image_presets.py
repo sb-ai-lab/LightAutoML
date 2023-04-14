@@ -231,7 +231,7 @@ class TabularCVAutoML(TabularAutoML):
     ):
         """Get gbm pipeline."""
         cv_gbm_feats = self.get_cv_pipe(self.gbm_pipeline_params["cv_features"])
-        gbm_feats = LGBAdvancedPipeline(pre_selector=pre_selector, output_categories=False, **self.gbm_pipeline_params)
+        gbm_feats = LGBAdvancedPipeline(feats_imp=pre_selector, output_categories=False, **self.gbm_pipeline_params)
         if cv_gbm_feats is not None:
             gbm_feats.append(cv_gbm_feats)
 

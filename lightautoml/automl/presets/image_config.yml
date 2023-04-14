@@ -138,6 +138,9 @@ gbm_pipeline_params:
   groupby_top_categorical: 3
   # top numerical features to use in groupby transformer
   groupby_top_numerical: 3
+  # list of groupby triplets ("group_col", "feat", "groupby_type") for manual setting
+  # disables groupby_types, groupby_top_based_on and other groupby parameters if defined
+  groupby_triplets: [ ]
   # text_features in gbm feature pipeline. embed or simple
   cv_features: 'simple'
 
@@ -161,6 +164,9 @@ linear_pipeline_params:
   groupby_top_categorical: 3
   # top numerical features to use in groupby transformer
   groupby_top_numerical: 3
+  # list of groupby triplets ("group_col", "feat", "groupby_type") for manual setting
+  # disables groupby_types, groupby_top_based_on and other groupby parameters if defined
+  groupby_triplets: [ ]
   # text_features in linear feature pipeline. embed or simple
   cv_features: 'embed'
 
