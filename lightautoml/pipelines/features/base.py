@@ -49,6 +49,7 @@ NumpyOrPandas = Union[PandasDataset, NumpyDataset]
 
 logger = logging.getLogger(__name__)
 
+
 class FeaturesPipeline:
     """Abstract class.
 
