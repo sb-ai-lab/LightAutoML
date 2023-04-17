@@ -26,3 +26,4 @@ cd matcher
 poetry build 
 pip install dist/lightautoml-<version>.whl
 ```
+
