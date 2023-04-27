@@ -96,14 +96,21 @@ class Matcher:
     def _preprocessing_data(self):
         """Turns categorical features into dummy.
         """
+        if self.info_col is not None:
+            info_col = self.df[self.info_col]
         if self.group_col is None:
-            self.df = pd.get_dummies(self.df, drop_first=True)
+            self.df = pd.get_dummies(self.df.drop(columns=self.info_col), drop_first=True)
             logger.debug('Categorical features turned into dummy')
         else:
             group_col = self.df[[self.group_col]]
-            self.df = pd.get_dummies(self.df.drop(columns=self.group_col), drop_first=True)
+            if self.info_col is not None:
+                self.df = pd.get_dummies(self.df.drop(columns=[self.group_col]+self.info_col), drop_first=True)
+            else:
+                self.df = pd.get_dummies(self.df.drop(columns=self.group_col), drop_first=True)
             self.df = pd.concat([self.df, group_col], axis=1)
             logger.debug('Categorical grouped features turned into dummy')
+        if self.info_col is not None:
+            self.df = pd.concat([self.df, info_col], axis=1)
 
     def _spearman_filter(self):
         """Applies filter by columns by correlation with outcome column
@@ -156,8 +163,12 @@ class Matcher:
         if self.info_col is not None:
             df = df.drop(columns=self.info_col)
         features = feat_select.perform_selection(df=df)
-        self.features_importance = features
-        return self.features_importance
+        if self.group_col is None:
+            self.features_importance = features
+        else:
+            self.features_importance = features.append({'Feature': self.group_col,  'Importance': features.Importance.max()},
+                                                      ignore_index=True)
+        return self.features_importance.sort_values("Importance", ascending=False)
 
     def _matching(self):
         """Realize matching
