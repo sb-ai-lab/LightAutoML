@@ -73,10 +73,10 @@ def gini_normalizedc(a: np.ndarray, p: np.ndarray) -> float:
 
     """
     ginic_aa = ginic(a, a)
-    
+
     if ginic_aa:
         return ginic(a, p) / ginic_aa
-    
+
     return 0
 
 
