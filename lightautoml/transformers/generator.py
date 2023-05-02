@@ -208,7 +208,7 @@ class FeatureGeneratorTransformer(LAMLTransformer, TabularDataFeatures):
         # If in the main table contains two keys, there will be two additional tables with the keys and key to connect with major table.
         plain_i_id = dict()
         for unique_id in plain_unique_ids:
-            plain_i_id[unique_id] = f"plain_{plain_id}"
+            plain_i_id[unique_id] = f"plain_{unique_id}"
         # TODO: check unused variable 'plain_i_id_inv'
         # plain_i_id_inv = dict((v, k) for k, v in plain_i_id.items())
 

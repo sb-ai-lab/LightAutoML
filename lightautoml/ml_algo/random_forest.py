@@ -69,10 +69,12 @@ class RandomForestSklearn(TabularMLAlgo, ImportanceEstimator):
         # Logging
         if "verbose" not in params:
             level = get_stdout_level()
-            if level in (logging.CRITICAL, logging.ERROR, logging.WARNING):
+            if level <= logging.INFO:
                 params["verbose"] = 0
-            else:
+            elif level == logging.DEBUG:
                 params["verbose"] = 2
+            else:
+                params["verbose"] = 1
 
         return params
 
