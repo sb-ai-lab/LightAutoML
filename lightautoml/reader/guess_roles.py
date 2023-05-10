@@ -53,6 +53,10 @@ def ginic(actual: np.ndarray, pred: np.ndarray) -> float:
     n = len(actual)
     a_s = actual[np.argsort(pred)]
     a_c = a_s.cumsum()
+
+    if a_s.sum() == 0:
+        return 0
+
     gini_sum = a_c.sum() / a_s.sum() - (n + 1) / 2.0
     return gini_sum / n
 
@@ -68,7 +72,12 @@ def gini_normalizedc(a: np.ndarray, p: np.ndarray) -> float:
         Metric value.
 
     """
-    return ginic(a, p) / ginic(a, a)
+    ginic_aa = ginic(a, a)
+
+    if ginic_aa:
+        return ginic(a, p) / ginic_aa
+
+    return 0
 
 
 def gini_normalized(y_true: np.ndarray, y_pred: np.ndarray, empty_slice: Optional[np.ndarray] = None):

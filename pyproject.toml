@@ -86,6 +86,7 @@ cffi = {version = "1.14.5", optional = true}
 
 
 [tool.poetry.dev-dependencies]
+pytest = "6.2.5"
 sphinx = {version = "5.3.0", extras = ["autdoc", "autosummary", "intersphinx", "napoleon", "viewcode"], python = ">=3.8 <3.10"}
 sphinx-autodoc-typehints = {version = "1.19.5", python = ">=3.8 <3.10"}
 sphinx-rtd-theme = {version = "1.1.1", python = ">=3.8 <3.10"}
