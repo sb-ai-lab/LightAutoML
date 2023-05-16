@@ -96,6 +96,11 @@ class Matcher:
     def _preprocessing_data(self):
         """Turns categorical features into dummy.
         """
+        info_cols = None
+        if len(self.info_col) != 0:
+            info_cols = self.df[self.info_col]
+            self.df = self.df.drop(columns=self.info_col)
+
         if self.group_col is None:
             self.df = pd.get_dummies(self.df, drop_first=True)
             logger.debug('Categorical features turned into dummy')
@@ -104,6 +109,10 @@ class Matcher:
             self.df = pd.get_dummies(self.df.drop(columns=self.group_col), drop_first=True)
             self.df = pd.concat([self.df, group_col], axis=1)
             logger.debug('Categorical grouped features turned into dummy')
+
+        if info_cols is not None:
+            self.df = pd.concat([self.df, info_cols], axis=1)
+
 
     def _spearman_filter(self):
         """Applies filter by columns by correlation with outcome column
