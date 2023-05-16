@@ -96,16 +96,9 @@ class Matcher:
     def _preprocessing_data(self):
         """Turns categorical features into dummy.
         """
-<<<<<<< HEAD
         if self.info_col is not None:
-            info_col = self.df[self.info_col]
-=======
-        info_cols = None
-        if len(self.info_col) != 0:
-            info_cols = self.df[self.info_col]
-            self.df = self.df.drop(columns=self.info_col)
+        	info_col = self.df[self.info_col]
 
->>>>>>> 8aec27c60c234a793c438afd673e19dda5605b91
         if self.group_col is None:
             self.df = pd.get_dummies(self.df.drop(columns=self.info_col), drop_first=True)
             logger.debug('Categorical features turned into dummy')
