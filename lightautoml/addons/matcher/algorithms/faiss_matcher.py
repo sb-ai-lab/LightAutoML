@@ -403,7 +403,7 @@ class FaissMatcher:
         self.treated_index = np.array(matches_t)
         self.orig_treated_index = np.array(index_t)
         self.orig_untreated_index = np.array(index_c)
-        df_group = df[self.columns_match]
+        df_group = df[self.columns_match].drop(columns=self.group_col)
         treated, untreated, std_treated, std_untreated = self._get_split_scalar_data(df_group)
         self._predict_outcome(treated, untreated)
         self._create_matched_df()
