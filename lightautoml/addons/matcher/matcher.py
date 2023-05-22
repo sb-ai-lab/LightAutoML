@@ -40,17 +40,17 @@ logging.basicConfig(
 class Matcher:
     def __init__(
             self,
-            df,
+            input_data,
             outcome,
             treatment,
             outcome_type='numeric',
             group_col=None,
-            info_col=[],
-            required_col=None,
+            info_col=None,
+            required_col=None, # похоже не используется, лол 😂 (с)Дима
             generate_report=GENERATE_REPORT,
             report_feat_select_dir=REPORT_FEAT_SELECT_DIR,
-            report_prop_score_dir=REPORT_PROP_SCORE_DIR,
-            report_matcher_dir=REPORT_PROP_MATCHER_DIR,
+            report_prop_score_dir=REPORT_PROP_SCORE_DIR, # похоже не используется, лол 😂 (с)Дима
+            report_matcher_dir=REPORT_PROP_MATCHER_DIR, # похоже не используется, лол 😂 (с)Дима
             timeout=TIMEOUT,
             n_threads=N_THREADS,
             n_folds=N_FOLDS,
@@ -58,13 +58,38 @@ class Matcher:
             use_algos=None,
             same_target_threshold=SAME_TARGET_THRESHOLD,
             interquartile_coeff=OUT_INTER_COEFF,
-            mode_percentile=OUT_MODE_PERCENT,
+            drop_outliers_by_percentile=OUT_MODE_PERCENT,
             min_percentile=OUT_MIN_PERCENT,
             max_percentile=OUT_MAX_PERCENT
     ):
+        """
+
+        Args:
+            input_data: датафрейм входной
+            outcome: колонка с таргетом?
+            treatment: колонка с обозначением контрольной и тестовой группы?
+            outcome_type: тип колонки с таргетом?
+            group_col: колонка, по которой производится группировка
+            info_col: ???
+            required_col: не используется
+            generate_report: флаг создания отчета
+            report_feat_select_dir: folder for report files
+            report_prop_score_dir: не используется
+            report_matcher_dir: не используется
+            timeout: ограничение времени выполнения
+            n_threads: максимальное количество потоков
+            n_folds: количество фолдов для кросс-валидации
+            verbose: флаг вывода этапов процесса
+            use_algos: название алгоритма в LAMA для отбора фичей
+            same_target_threshold: threshold for correlation coefficient filter (Spearman)
+            interquartile_coeff: интерквартильный коэффициент
+            drop_outliers_by_percentile: флаг удаления выбросов по перцентилям
+            min_percentile: минимальный процент, ниже которого удаляются выбросы
+            max_percentile: максимальный процент, выше которого удаляются выбросы
+        """
         if use_algos is None:
             use_algos = USE_ALGOS
-        self.df = df
+        self.input_data = input_data
         self.outcome = outcome
         self.treatment = treatment
         self.group_col = group_col
@@ -81,14 +106,14 @@ class Matcher:
         self.use_algos = use_algos
         self.same_target_threshold = same_target_threshold
         self.interquartile_coeff = interquartile_coeff
-        self.mode_percentile = mode_percentile
+        self.mode_percentile = drop_outliers_by_percentile
         self.min_percentile = min_percentile
         self.max_percentile = max_percentile
         self.info_col = info_col
         self.features_importance = None
         self._preprocessing_data()
         self.matcher = None
-        self.val_dict = {k: [] for k in [self.outcome]}
+        self.val_dict = {self.outcome: []}
         self.pval_dict = None
         self.new_treatment = None
         self.validate = None
@@ -97,15 +122,15 @@ class Matcher:
         """Turns categorical features into dummy.
         """
         if self.group_col is None:
-            self.df = pd.get_dummies(self.df, drop_first=True)
+            self.input_data = pd.get_dummies(self.input_data, drop_first=True)
             logger.debug('Categorical features turned into dummy')
         else:
-            group_col = self.df[[self.group_col]]
-            self.df = pd.get_dummies(
-                self.df.drop(columns=self.group_col),
+            group_col = self.input_data[[self.group_col]]
+            self.input_data = pd.get_dummies(
+                self.input_data.drop(columns=self.group_col),
                 drop_first=True
             )
-            self.df = pd.concat([self.df, group_col], axis=1)
+            self.input_data = pd.concat([self.input_data, group_col], axis=1)
             logger.debug('Categorical grouped features turned into dummy')
 
     def _spearman_filter(self):
@@ -118,12 +143,12 @@ class Matcher:
             threshold=self.same_target_threshold
         )
 
-        self.df = same_filter.perform_filter(self.df)
+        self.input_data = same_filter.perform_filter(self.input_data)
 
     def _outliers_filter(self):
         """Deletes outliers
 
-        If mode_percentile is true, leaves values between min and max
+        If drop_outliers_by_percentile is true, leaves values between min and max
         percentiles;
         If not, leaves only values between 25 and 75 percentile
 
@@ -136,8 +161,8 @@ class Matcher:
             max_percentile=self.max_percentile
         )
 
-        rows_for_del = out_filter.perform_filter(self.df)
-        self.df = self.df.drop(rows_for_del, axis=0)
+        rows_for_del = out_filter.perform_filter(self.input_data)
+        self.input_data = self.input_data.drop(rows_for_del, axis=0)
 
     def lama_feature_select(self):
         """Counts feature importance
@@ -155,7 +180,7 @@ class Matcher:
             report_dir=self.report_feat_select_dir,
             use_algos=self.use_algos
         )
-        df = self.df if self.group_col is None else self.df.drop(columns=self.group_col)
+        df = self.input_data if self.group_col is None else self.input_data.drop(columns=self.group_col)
 
         if self.info_col is not None:
             df = df.drop(columns=self.info_col)
@@ -174,7 +199,7 @@ class Matcher:
 
         """
         self.matcher = FaissMatcher(
-            self.df,
+            self.input_data,
             self.outcome,
             self.treatment,
             info_col=self.info_col,
@@ -193,7 +218,7 @@ class Matcher:
 
         Validates estimated effect by replacing real treatment with random
         placebo treatment.
-        Estimated effect must be droped to zero
+        Estimated effect must be dropped to zero
 
         Args:
             n_sim - number of simulations: int
@@ -205,18 +230,18 @@ class Matcher:
         logger.info('Applying validation of result')
 
         for i in range(n_sim):
-            prop1 = self.df[self.treatment].sum() / self.df.shape[0]
+            prop1 = self.input_data[self.treatment].sum() / self.input_data.shape[0]
             prop0 = 1 - prop1
             self.new_treatment = np.random.choice(
                 [0, 1],
-                size=self.df.shape[0],
+                size=self.input_data.shape[0],
                 p=[prop0, prop1]
             )
             self.validate = 1
-            self.df = self.df.drop(columns=self.treatment)
-            self.df[self.treatment] = self.new_treatment
+            self.input_data = self.input_data.drop(columns=self.treatment)
+            self.input_data[self.treatment] = self.new_treatment
             self.matcher = FaissMatcher(
-                self.df, self.outcome,
+                self.input_data, self.outcome,
                 self.treatment,
                 info_col=self.info_col,
                 features=self.features_importance,
