@@ -13,7 +13,7 @@ logging.basicConfig(
 )
 
 
-class psi:
+class PSI:
     """Calculates population stability index for buckets
 
     For numeric data - numeric buckets (except when numeric column
@@ -24,8 +24,8 @@ class psi:
     but in case of disbalance null-good data returns PSI
 
     Args:
-        expected - expected values: spark dataframe
-        actual - actual values: spark dataframe
+        expected - expected values: pd.DataFrame
+        actual - actual values: pd.DataFrame
         column_name: str
         plot - distribution plot if True. Default=False
 
@@ -39,7 +39,15 @@ class psi:
 
     """
 
-    def __init__(self, expected, actual, column_name, plot=False):
+    def __init__(self, expected: pd.DataFrame, actual: pd.DataFrame, column_name: str, plot: bool = False):
+        """
+
+        Args:
+            expected - dataframe of expected/training values: pd.DataFrame
+            actual: dataframe of actual values: pd.DataFrame
+            column_name: name of column to calculate PSI: str
+            plot - flag to plot expected and actual values: boole
+        """
         self.expected = expected[column_name].values
         self.actual = actual[column_name].values
         self.actual_len = len(self.actual)
@@ -72,15 +80,14 @@ class psi:
 
         return len(x.intersection(y)) / len(x.union(y))
 
-    def plots(self, expected_percents, actual_percents, breakpoints, intervals):
+    def plots(self, expected_percents, actual_percents, breakpoints: list, intervals: list):
         """Plots expected and actual percents
 
         Args:
-            nulls: ???
-            expected_percents: float
-            actual_percents: float
-            breakpoints: {__iter__}
-            intervals: {__len__}
+            expected_percents - percent of expected value from all expected values: float
+            actual_percents - percent of actual value from all actual values: float
+            breakpoints - names list of breakpoints: list
+            intervals - names list of intervals: list
 
         """
         points = [i for i in breakpoints]
@@ -111,6 +118,15 @@ class psi:
         plt.show()
 
     def sub_psi(self, e_perc: float, a_perc: float) -> float:
+        """
+
+        Args:
+            e_perc - expected percent: float
+            a_perc - actual percent: float
+
+        Returns:
+
+        """
         if a_perc == 0:
             a_perc = 0.0001
         if e_perc == 0:
@@ -140,9 +156,9 @@ class psi:
 
         """
         buckets = 10
-        breakpoints = np.arange(0, (buckets) / 10, 0.1)
+        breakpoints = np.arange(0, buckets / 10, 0.1)
 
-        # Заплатка, на случай, если в актуальной таблице появидись значения отличные от null
+        # Заплатка, на случай, если в актуальной таблице появились значения отличные от null
         if self.expected_nulls == self.expected_len and self.actual_nulls != self.actual_len:
             breakpoints = np.array(list(sorted(set(np.nanquantile(self.actual, breakpoints)))))
         else:
@@ -179,7 +195,7 @@ class psi:
             intervals = np.append(intervals, 'empty_values')
 
         if self.plot:
-            self.plots(nulls, expected_percents, actual_percents, breakpoints, intervals)
+            self.plots(nulls, expected_percents, actual_percents, breakpoints, intervals)  # в функции нет аргумента nulls
 
         psi_dict = {}
         for i in range(0, len(expected_percents)):
@@ -219,7 +235,7 @@ class psi:
 
         breakpoints = ['good_data', 'nulls']
         if self.plot:
-            self.plots(False, expected_percents, actual_percents, breakpoints, breakpoints)
+            self.plots(False, expected_percents, actual_percents, breakpoints, breakpoints)  # в функции нет аргумента nulls
 
         psi_dict = {}
         for i in range(0, len(expected_percents)):
@@ -267,15 +283,15 @@ class psi:
 
             return psi_value, psi_dict, new_cats, abs_cats
 
-        expected_dict = pd.DataFrame(self.expected, columns=[self.column_name])\
-            .groupby(self.column_name)[self.column_name]\
-            .count()\
-            .sort_values(ascending=False)\
+        expected_dict = pd.DataFrame(self.expected, columns=[self.column_name]) \
+            .groupby(self.column_name)[self.column_name] \
+            .count() \
+            .sort_values(ascending=False) \
             .to_dict()
-        actual_dict = pd.DataFrame(self.actual, columns=[self.column_name])\
-            .groupby(self.column_name)[self.column_name]\
-            .count()\
-            .sort_values(ascending=False)\
+        actual_dict = pd.DataFrame(self.actual, columns=[self.column_name]) \
+            .groupby(self.column_name)[self.column_name] \
+            .count() \
+            .sort_values(ascending=False) \
             .to_dict()
 
         breakpoints = list(set(list(expected_dict.keys()) + list(actual_dict.keys())))
@@ -317,7 +333,8 @@ class psi:
                     current_pos += group_size + 1
                 for val in group_values:
                     groups[val] = g_n
-        group_sum = 0
+        group_sum_exp = 0  # ???
+        group_sum_act = 0  # ???
         exp_dict = {}
         act_dict = {}
         group_re = -1
@@ -350,7 +367,7 @@ class psi:
         breakpoints = [e for e in exp_dict.keys()]
 
         if self.plot:
-            self.plots(False, expected_percents, actual_percents, breakpoints, breakpoints)
+            self.plots(False, expected_percents, actual_percents, breakpoints, breakpoints)  # в функции plots нет аргумента nulls
 
         psi_dict = {}
         for i in range(0, len(expected_percents)):
@@ -392,20 +409,16 @@ class psi:
         return round(psi_values, 2), psi_dict, new_cats, abs_cats
 
 
-def report(
-        expected: pd.DataFrame,
-        actual: pd.DataFrame,
-        plot=False
-) -> pd.DataFrame:
+def report(expected: pd.DataFrame, actual: pd.DataFrame, plot: bool = False) -> pd.DataFrame:
     """Func over class to create report according to the table
 
     Args:
         plot: bool
-        expected: spark dataframe
-        actual: spark dataframe
+        expected: pd.DataFrame
+        actual: pd.DataFrame
 
     Returns:
-        df - report in dataframe format: pd.DataFrame
+        df - report of PSI counting: pd.DataFrame
 
     """
     logger.info('Creating report')
@@ -417,9 +430,7 @@ def report(
     new_cat_dict = {}
 
     for col in data_cols:
-        a = expected
-        b = actual
-        psi_res = psi(a, b, col, plot=plot)
+        psi_res = PSI(expected, actual, col, plot=plot)
         # отладка, в случае ошибки  выдаст прооблемный столбец
         try:
             score, psi_dict, new_cats, abs_cats = psi_res.psi_result()
@@ -449,10 +460,12 @@ def report(
             'check_result': check_result,
             'failed_bucket': f'{failed_buckets}',
             'new_category': f'{new_cats}',
-            'disapeared_category': f'{abs_cats}'
+            'disappeared_category': f'{abs_cats}'
         },
             index=[1]
         )
         df = pd.concat([df, df_tmp])
+
     df = df.reset_index(drop=True)
+
     return df
