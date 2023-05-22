@@ -25,11 +25,25 @@ class LamaFeatureSelector:
             timeout,
             n_threads,
             n_folds,
-            verbose,
+            verbose, # не используется
             generate_report,
             report_dir,
             use_algos,
     ):
+        """
+
+        Args:
+            outcome: target column
+            outcome_type: type of target column
+            treatment: column determine control and test groups
+            timeout: limit work time of code
+            n_threads: maximum number of threads
+            n_folds: number of folds for cross-validation
+            verbose: flag to show process stages
+            generate_report: flag to create report
+            report_dir: folder for report files
+            use_algos: list of names of LAMA algorithms for feature selection
+        """
         self.outcome = outcome
         self.outcome_type = outcome_type
         self.treatment = treatment

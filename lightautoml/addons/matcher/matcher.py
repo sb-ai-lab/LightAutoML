@@ -72,15 +72,15 @@ class Matcher:
             group_col: column for grouping
             info_col: ???
             required_col: не используется
-            generate_report: флаг создания отчета
+            generate_report: flag to create report
             report_feat_select_dir: folder for report files
             report_prop_score_dir: не используется
             report_matcher_dir: не используется
             timeout: limit work time of code
-            n_threads: meximum number of threads
+            n_threads: maximum number of threads
             n_folds: number of folds for cross-validation
             verbose: flag to show process stages
-            use_algos: name of LAMA algorithm for feature selection
+            use_algos: list of names of LAMA algorithms for feature selection
             same_target_threshold: threshold for correlation coefficient filter (Spearman)
             interquartile_coeff: interquartile coefficient - percent for drop outliers
             drop_outliers_by_percentile: flag to drop outliers by percentiles
