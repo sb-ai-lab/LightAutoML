@@ -83,7 +83,7 @@ class Matcher:
             use_algos: list of names of LAMA algorithms for feature selection
             same_target_threshold: threshold for correlation coefficient filter (Spearman)
             interquartile_coeff: interquartile coefficient - percent for drop outliers
-            drop_outliers_by_percentile: flag to drop outliers by percentiles
+            drop_outliers_by_percentile: flag to drop outliers by custom percentiles
             min_percentile: minimum percentile to drop outliers
             max_percentile: maximum percentile to drop outliers
         """

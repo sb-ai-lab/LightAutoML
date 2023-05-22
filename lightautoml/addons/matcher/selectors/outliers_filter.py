@@ -20,6 +20,14 @@ class OutliersFilter:
             min_percentile,
             max_percentile
     ):
+        """
+
+        Args:
+            interquartile_coeff: interquartile coefficient - percent for drop outliers
+            mode_percentile: flag to drop outliers by custom percentiles
+            min_percentile: minimum percentile to drop outliers
+            max_percentile: maximum percentile to drop outliers
+        """
         self.interquartile_coeff = interquartile_coeff
         self.mode_percentile = mode_percentile
         self.min_percentile = min_percentile
