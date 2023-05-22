@@ -66,7 +66,7 @@ class Matcher:
 
         Args:
             input_data: input dataframe
-            outcome: target column?
+            outcome: target column
             treatment: column determine control and test groups?
             outcome_type: values type of target column?
             group_col: column for grouping
