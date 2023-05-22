@@ -33,6 +33,13 @@ class SpearmanFilter:
             treatment,
             threshold
     ):
+        """
+
+        Args:
+            outcome: target column
+            treatment: column determine control and test groups
+            threshold: threshold for correlation coefficient filter
+        """
         self.outcome = outcome
         self.treatment = treatment
         self.threshold = threshold
@@ -41,22 +48,19 @@ class SpearmanFilter:
         """Filter columns by correlation with outcome column.
 
         Correlation tests by Spearman coefficient,
-        that should be less than threshold, and p-value=0.5
+        that should be less than threshold, and p-value=0.05
 
         Args:
-            df: pd.DataFrame
+            df - input data: pd.DataFrame
 
         Returns:
-            df with columns, non-correlated with outcome column: pd.DataFrame
+            df with non-correlated with target (outcome) columns: pd.DataFrame
 
         """
         selected = []
         columns = df.drop([self.treatment, self.outcome], 1).columns
         for column in columns:
-            result = spearmanr(
-                df[self.outcome].values,
-                df[column].values
-            )
+            result = spearmanr(df[self.outcome].values, df[column].values)
             if (abs(result[0] < self.threshold)) & (result[1] < PVALUE):
                 selected.append(column)
 
