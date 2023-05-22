@@ -16,11 +16,11 @@ def smd(orig: pd.DataFrame, matched: pd.DataFrame) -> pd.DataFrame:
     """Standardised mean difference to check matching quality
 
     Args:
-        orig: pd.Dataframe or Any
-        matched: pd.Dataframe or Any
+        orig - initial dataframe: pd.Dataframe
+        matched - matched dataframe: pd.Dataframe
 
     Returns:
-        smd_data: pd.DataFrame
+        smd_data - standard mean deviation between initial and matched dataframes: pd.DataFrame
 
     """
     smd_data = abs(orig.mean(0) - matched.mean(0)) / orig.std(0)
@@ -55,17 +55,12 @@ def ks(orig: pd.DataFrame, matched: pd.DataFrame) -> dict:
     return ks_dict
 
 
-def matching_quality(
-        data: pd.DataFrame,
-        treatment,
-        features: list,
-        features_psi
-):
-    """Wrapping function for matching quality estimation.
+def matching_quality(data: pd.DataFrame, treatment: str, features: list, features_psi: int):
+    """Wrapping function for matching quality estimation
 
     Args:
         data - df_matched: pd.DataFrame
-        treatment -  treatment
+        treatment - column determine control and test groups
         features - feature list, kstest and  smd accept only numeric values
 
     Returns:
@@ -111,10 +106,7 @@ def matching_quality(
     report_psi_treated = report(psi_treated, psi_treated_matched)[report_cols]
     report_psi_untreated = report(psi_untreated, psi_untreated_matched)[report_cols]
     report_psi = pd.concat(
-        [
-            report_psi_treated,
-            report_psi_untreated
-        ],
+        [report_psi_treated, report_psi_untreated],
         ignore_index=True,
         axis=1
     )
@@ -122,11 +114,11 @@ def matching_quality(
     return report_psi, ks_df, smd_data
 
 
-def check_repeats(index) -> float:
+def check_repeats(index: np.array) -> float:
     """The function checks fraction of duplicated indexes
 
      Args:
-        index: numpy array
+        index - array of indexes to check on duplicates: numpy array
 
     Returns:
         rep_frac - fraction of duplicated index: float
