@@ -164,7 +164,7 @@ class Matcher:
         rows_for_del = out_filter.perform_filter(self.input_data)
         self.input_data = self.input_data.drop(rows_for_del, axis=0)
 
-    def lama_feature_select(self):
+    def lama_feature_select(self) -> pd.DataFrame:
         """Counts feature importance
         """
         logger.info('Counting feature importance')
@@ -189,7 +189,7 @@ class Matcher:
         self.features_importance = features
         return self.features_importance
 
-    def _matching(self):
+    def _matching(self) -> tuple:
         """Realize matching
 
         Take in count presence of groups
@@ -213,7 +213,7 @@ class Matcher:
 
         return self.results, self.quality_result
 
-    def validate_result(self, n_sim=10) -> dict:
+    def validate_result(self, n_sim: int = 10) -> dict:
         """Validates estimated effect
 
         Validates estimated effect by replacing real treatment with random
@@ -224,7 +224,7 @@ class Matcher:
             n_sim - number of simulations: int
 
         Returns:
-            self.pval_dict - dict of p-values: dict
+            dict of p-values: dict
 
         """
         logger.info('Applying validation of result')
@@ -261,14 +261,14 @@ class Matcher:
 
         return self.pval_dict
 
-    def estimate(self, features=None):
+    def estimate(self, features: bool = None):
         """Applies filters and outliers, then matches
 
         Args:
-            features List or feature_importance
+            features - list or feature_importances: list
 
         Returns:
-            Tuple of matched df and ATE
+            Matched df and ATE: tuple
 
         """
         if features is not None:
