@@ -65,27 +65,27 @@ class Matcher:
         """
 
         Args:
-            input_data: датафрейм входной
-            outcome: колонка с таргетом?
-            treatment: колонка с обозначением контрольной и тестовой группы?
-            outcome_type: тип колонки с таргетом?
-            group_col: колонка, по которой производится группировка
+            input_data: input dataframe
+            outcome: target column?
+            treatment: column determine control and test groups?
+            outcome_type: values type of target column?
+            group_col: column for grouping
             info_col: ???
             required_col: не используется
             generate_report: флаг создания отчета
             report_feat_select_dir: folder for report files
             report_prop_score_dir: не используется
             report_matcher_dir: не используется
-            timeout: ограничение времени выполнения
-            n_threads: максимальное количество потоков
-            n_folds: количество фолдов для кросс-валидации
-            verbose: флаг вывода этапов процесса
-            use_algos: название алгоритма в LAMA для отбора фичей
+            timeout: limit work time of code
+            n_threads: meximum number of threads
+            n_folds: number of folds for cross-validation
+            verbose: flag to show process stages
+            use_algos: name of LAMA algorithm for feature selection
             same_target_threshold: threshold for correlation coefficient filter (Spearman)
-            interquartile_coeff: интерквартильный коэффициент
-            drop_outliers_by_percentile: флаг удаления выбросов по перцентилям
-            min_percentile: минимальный процент, ниже которого удаляются выбросы
-            max_percentile: максимальный процент, выше которого удаляются выбросы
+            interquartile_coeff: interquartile coefficient - percent for drop outliers
+            drop_outliers_by_percentile: flag to drop outliers by percentiles
+            min_percentile: minimum percentile to drop outliers
+            max_percentile: maximum percentile to drop outliers
         """
         if use_algos is None:
             use_algos = USE_ALGOS
