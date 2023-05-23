@@ -7,6 +7,7 @@ from .algorithms.faiss_matcher import FaissMatcher
 from .selectors.lama_feature_selector import LamaFeatureSelector
 from .selectors.outliers_filter import OutliersFilter
 from .selectors.spearman_filter import SpearmanFilter
+from .utils.validators import random_treatment, random_feature, subset_refuter, test_significance
 
 REPORT_FEAT_SELECT_DIR = 'report_feature_selector'
 REPORT_PROP_SCORE_DIR = 'report_prop_score_estimator'
@@ -88,7 +89,7 @@ class Matcher:
         self.features_importance = None
         self._preprocessing_data()
         self.matcher = None
-        self.val_dict = {k: [] for k in [self.outcome]}
+        self.val_dict = None
         self.pval_dict = None
         self.new_treatment = None
         self.validate = None
@@ -113,8 +114,6 @@ class Matcher:
         if self.info_col is not None:
             self.df = pd.concat([self.df, info_col], axis=1)
 
-        if info_cols is not None:
-            self.df = pd.concat([self.df, info_cols], axis=1)
 
 
     def _spearman_filter(self):
@@ -194,39 +193,72 @@ class Matcher:
 
         return self.results, self.quality_result
 
-    def validate_result(self, n_sim=10):
-        """Validates estimated effect
+    def validate_result(self, refuter='random_feature', n_sim=10, fraction=0.8):
+        """Validates estimated ATE
 
-        Validates estimated effect by replacing real treatment with random
-        placebo treatment.
-        Estimated effect must be droped to zero
+        Validates estimated effect:
+                                    1) by replacing real treatment with random placebo treatment.
+                                     Estimated effect must be droped to zero, p-val < 0.05;
+                                    2) by adding random feature ('random_feature'). Estimated effect shouldn't change
+                                    sagnificantly, p-val > 0.05;
+                                    3) estimates effect on subset of data (default fraction is 0.8). Estimated effect
+                                    shouldn't change sagnificantly, p-val > 0.05.
 
         Args:
+            refuter - refuter type ('random_treatment', 'random_feature', 'subset_refuter')
             n_sim - number of simulations: int
+            fraction - subsret fraction for subset refuter only: float
 
         Returns:
-            self.pval_dict - dict of p-values: dict
+            self.pval_dict - dict of outcome_name: (mean_effect on validation, p-value): dict
 
         """
         logger.info('Applying validation of result')
-        for i in range(n_sim):
-            prop1 = self.df[self.treatment].sum() / self.df.shape[0]
-            prop0 = 1 - prop1
-            self.new_treatment = np.random.choice([0, 1], size=self.df.shape[0], p=[prop0, prop1])
-            self.validate = 1
-            self.df = self.df.drop(columns=self.treatment)
-            self.df[self.treatment] = self.new_treatment
-            self.matcher = FaissMatcher(self.df, self.outcome, self.treatment, info_col=self.info_col,
-                                        features=self.features_importance,
-                                        group_col=self.group_col, validation=self.validate)
 
-            sim = self.matcher.match()
+        self.val_dict = {k: [] for k in [self.outcome]}
+        self.pval_dict = dict()
+
+        for i in range(n_sim):
+            if refuter in ['random_treatment', 'random_feature']:
+                if refuter == 'random_treatment':
+                    self.df, orig_treatment, self.validate = random_treatment(self.df, self.treatment)
+                elif refuter == 'random_feature':
+                    self.df, self.validate = random_feature(self.df)
+                    if self.features_importance is not None:
+                        self.features_importance.append('random_feature')
+
+                self.matcher = FaissMatcher(self.df, self.outcome, self.treatment, info_col=self.info_col,
+                                            features=self.features_importance,
+                                            group_col=self.group_col, validation=self.validate)
+            elif refuter == "subset_refuter":
+                df, self.validate = subset_refuter(self.df, self.treatment, fraction)
+                self.matcher = FaissMatcher(df, self.outcome, self.treatment, info_col=self.info_col,
+                                            features=self.features_importance,
+                                            group_col=self.group_col, validation=self.validate)
+            else:
+                logger.info('Incorrect refuter name!')
+                raise NameError('Incorrect refuter name!')
+
+            if self.group_col is None:
+                sim = self.matcher.match()
+            else:
+                sim = self.matcher.group_match()
 
             for key in self.val_dict.keys():
                 self.val_dict[key].append(sim[key][0])
-        self.pval_dict = dict()
+
+
         for outcome in [self.outcome]:
-            self.pval_dict.update({outcome: np.mean(self.val_dict[outcome])})
+            self.pval_dict.update({outcome: [np.mean(self.val_dict[outcome])]})
+            self.pval_dict[outcome].append(test_significance(self.results.loc['ATE']['effect_size'],
+                                                             self.val_dict[outcome]))
+        if refuter == 'random_treatment':
+            self.df[self.treatment] = orig_treatment
+        elif refuter == "random_feature":
+            self.df = self.df.drop(columns='random_feature')
+            if self.features_importance is not None:
+                self.features_importance.pop('random_feature')
+
         return self.pval_dict
 
     def estimate(self, features=None):
