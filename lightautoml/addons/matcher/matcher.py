@@ -8,59 +8,59 @@ from .selectors.lama_feature_selector import LamaFeatureSelector
 from .selectors.outliers_filter import OutliersFilter
 from .selectors.spearman_filter import SpearmanFilter
 
-REPORT_FEAT_SELECT_DIR = 'report_feature_selector'
-REPORT_PROP_SCORE_DIR = 'report_prop_score_estimator'
-REPORT_PROP_MATCHER_DIR = 'report_matcher'
-NAME_REPORT = 'lama_interactive_report.html'
+REPORT_FEAT_SELECT_DIR = "report_feature_selector"
+REPORT_PROP_SCORE_DIR = "report_prop_score_estimator"
+REPORT_PROP_MATCHER_DIR = "report_matcher"
+NAME_REPORT = "lama_interactive_report.html"
 N_THREADS = 1
 N_FOLDS = 4
 RANDOM_STATE = 123
 TEST_SIZE = 0.2
 TIMEOUT = 600
 VERBOSE = 2
-USE_ALGOS = ['lgb']
-PROP_SCORES_COLUMN = 'prop_scores'
+USE_ALGOS = ["lgb"]
+PROP_SCORES_COLUMN = "prop_scores"
 GENERATE_REPORT = True
-SAME_TARGET_THRESHOLD = .7
+SAME_TARGET_THRESHOLD = 0.7
 OUT_INTER_COEFF = 1.5
 OUT_MODE_PERCENT = True
-OUT_MIN_PERCENT = .02
-OUT_MAX_PERCENT = .98
+OUT_MIN_PERCENT = 0.02
+OUT_MAX_PERCENT = 0.98
 
-logger = logging.getLogger('matcher')
+logger = logging.getLogger("matcher")
 console_out = logging.StreamHandler()
 logging.basicConfig(
     handlers=(console_out,),
-    format='[%(asctime)s | %(name)s | %(levelname)s]: %(message)s',
-    datefmt='%d.%m.%Y %H:%M:%S',
-    level=logging.INFO
+    format="[%(asctime)s | %(name)s | %(levelname)s]: %(message)s",
+    datefmt="%d.%m.%Y %H:%M:%S",
+    level=logging.INFO,
 )
 
 
 class Matcher:
     def __init__(
-            self,
-            input_data,
-            outcome,
-            treatment,
-            outcome_type='numeric',
-            group_col=None,
-            info_col=None,
-            required_col=None, # похоже не используется, лол 😂 (с)Дима
-            generate_report=GENERATE_REPORT,
-            report_feat_select_dir=REPORT_FEAT_SELECT_DIR,
-            report_prop_score_dir=REPORT_PROP_SCORE_DIR, # похоже не используется, лол 😂 (с)Дима
-            report_matcher_dir=REPORT_PROP_MATCHER_DIR, # похоже не используется, лол 😂 (с)Дима
-            timeout=TIMEOUT,
-            n_threads=N_THREADS,
-            n_folds=N_FOLDS,
-            verbose=VERBOSE,
-            use_algos=None,
-            same_target_threshold=SAME_TARGET_THRESHOLD,
-            interquartile_coeff=OUT_INTER_COEFF,
-            drop_outliers_by_percentile=OUT_MODE_PERCENT,
-            min_percentile=OUT_MIN_PERCENT,
-            max_percentile=OUT_MAX_PERCENT
+        self,
+        input_data,
+        outcome,
+        treatment,
+        outcome_type="numeric",
+        group_col=None,
+        info_col=None,
+        required_col=None,  # похоже не используется, лол 😂 (с)Дима
+        generate_report=GENERATE_REPORT,
+        report_feat_select_dir=REPORT_FEAT_SELECT_DIR,
+        report_prop_score_dir=REPORT_PROP_SCORE_DIR,  # похоже не используется, лол 😂 (с)Дима
+        report_matcher_dir=REPORT_PROP_MATCHER_DIR,  # похоже не используется, лол 😂 (с)Дима
+        timeout=TIMEOUT,
+        n_threads=N_THREADS,
+        n_folds=N_FOLDS,
+        verbose=VERBOSE,
+        use_algos=None,
+        same_target_threshold=SAME_TARGET_THRESHOLD,
+        interquartile_coeff=OUT_INTER_COEFF,
+        drop_outliers_by_percentile=OUT_MODE_PERCENT,
+        min_percentile=OUT_MIN_PERCENT,
+        max_percentile=OUT_MAX_PERCENT,
     ):
         """
 
@@ -123,24 +123,19 @@ class Matcher:
         """
         if self.group_col is None:
             self.input_data = pd.get_dummies(self.input_data, drop_first=True)
-            logger.debug('Categorical features turned into dummy')
+            logger.debug("Categorical features turned into dummy")
         else:
             group_col = self.input_data[[self.group_col]]
-            self.input_data = pd.get_dummies(
-                self.input_data.drop(columns=self.group_col),
-                drop_first=True
-            )
+            self.input_data = pd.get_dummies(self.input_data.drop(columns=self.group_col), drop_first=True)
             self.input_data = pd.concat([self.input_data, group_col], axis=1)
-            logger.debug('Categorical grouped features turned into dummy')
+            logger.debug("Categorical grouped features turned into dummy")
 
     def _spearman_filter(self):
         """Applies filter by columns by correlation with outcome column
         """
-        logger.info('Applying filter by spearman test - drop columns correlated with outcome')
+        logger.info("Applying filter by spearman test - drop columns correlated with outcome")
         same_filter = SpearmanFilter(
-            outcome=self.outcome,
-            treatment=self.treatment,
-            threshold=self.same_target_threshold
+            outcome=self.outcome, treatment=self.treatment, threshold=self.same_target_threshold
         )
 
         self.input_data = same_filter.perform_filter(self.input_data)
@@ -153,12 +148,12 @@ class Matcher:
         If not, leaves only values between 25 and 75 percentile
 
         """
-        logger.info('Applying filter of outliers')
+        logger.info("Applying filter of outliers")
         out_filter = OutliersFilter(
             interquartile_coeff=self.interquartile_coeff,
             mode_percentile=self.mode_percentile,
             min_percentile=self.min_percentile,
-            max_percentile=self.max_percentile
+            max_percentile=self.max_percentile,
         )
 
         rows_for_del = out_filter.perform_filter(self.input_data)
@@ -167,7 +162,7 @@ class Matcher:
     def lama_feature_select(self) -> pd.DataFrame:
         """Counts feature importance
         """
-        logger.info('Counting feature importance')
+        logger.info("Counting feature importance")
         feat_select = LamaFeatureSelector(
             outcome=self.outcome,
             outcome_type=self.outcome_type,
@@ -178,7 +173,7 @@ class Matcher:
             verbose=self.verbose,
             generate_report=self.generate_report,
             report_dir=self.report_feat_select_dir,
-            use_algos=self.use_algos
+            use_algos=self.use_algos,
         )
         df = self.input_data if self.group_col is None else self.input_data.drop(columns=self.group_col)
 
@@ -204,9 +199,9 @@ class Matcher:
             self.treatment,
             info_col=self.info_col,
             features=self.features_importance,
-            group_col=self.group_col
+            group_col=self.group_col,
         )
-        logger.info('Applying matching')
+        logger.info("Applying matching")
         self.results = self.matcher.match()
 
         self.quality_result = self.matcher.matching_quality()
@@ -227,26 +222,25 @@ class Matcher:
             dict of p-values: dict
 
         """
-        logger.info('Applying validation of result')
+        logger.info("Applying validation of result")
 
         for i in range(n_sim):
-            prop1 = self.input_data[self.treatment].sum() / self.input_data.shape[0]
-            prop0 = 1 - prop1
+            probability_1 = self.input_data[self.treatment].sum() / self.input_data.shape[0]
+            probability_0 = 1 - probability_1
             self.new_treatment = np.random.choice(
-                [0, 1],
-                size=self.input_data.shape[0],
-                p=[prop0, prop1]
+                [0, 1], size=self.input_data.shape[0], p=[probability_0, probability_1]
             )
             self.validate = 1
             self.input_data = self.input_data.drop(columns=self.treatment)
             self.input_data[self.treatment] = self.new_treatment
             self.matcher = FaissMatcher(
-                self.input_data, self.outcome,
+                self.input_data,
+                self.outcome,
                 self.treatment,
                 info_col=self.info_col,
                 features=self.features_importance,
                 group_col=self.group_col,
-                validation=self.validate
+                validation=self.validate,
             )
 
             sim = self.matcher.match()

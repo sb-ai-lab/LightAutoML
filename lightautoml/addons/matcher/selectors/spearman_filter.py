@@ -1,15 +1,15 @@
 from scipy.stats import spearmanr
 import logging
 
-PVALUE = .05
+PVALUE = 0.05
 
-logger = logging.getLogger('spearman_filter')
+logger = logging.getLogger("spearman_filter")
 console_out = logging.StreamHandler()
 logging.basicConfig(
     handlers=(console_out,),
-    format='[%(asctime)s | %(name)s | %(levelname)s]: %(message)s',
-    datefmt='%d.%m.%Y %H:%M:%S',
-    level=logging.INFO
+    format="[%(asctime)s | %(name)s | %(levelname)s]: %(message)s",
+    datefmt="%d.%m.%Y %H:%M:%S",
+    level=logging.INFO,
 )
 
 
@@ -27,12 +27,7 @@ class SpearmanFilter:
 
     """
 
-    def __init__(
-            self,
-            outcome,
-            treatment,
-            threshold
-    ):
+    def __init__(self, outcome, treatment, threshold):
         """
 
         Args:
@@ -61,10 +56,10 @@ class SpearmanFilter:
         columns = df.drop([self.treatment, self.outcome], 1).columns
         for column in columns:
             result = spearmanr(df[self.outcome].values, df[column].values)
-            if (abs(result[0] < self.threshold)) & (result[1] < PVALUE):
+            if (abs(result[0] < self.threshold)) and (result[1] < PVALUE):
                 selected.append(column)
 
-        logger.info(f'Drop columns {list(set(columns) - set(selected))}')
+        logger.info(f"Drop columns {list(set(columns) - set(selected))}")
 
         columns = selected + [self.treatment, self.outcome]
         df = df[columns]

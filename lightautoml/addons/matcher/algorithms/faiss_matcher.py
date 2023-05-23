@@ -12,28 +12,30 @@ from ..utils.psi_pandas import *
 POSTFIX = "_matched"
 POSTFIX_BIAS = "_matched_bias"
 
-logger = logging.getLogger('Faiss matcher')
+logger = logging.getLogger("Faiss matcher")
 console_out = logging.StreamHandler()
 logging.basicConfig(
     handlers=(console_out,),
-    format='[%(asctime)s | %(name)s | %(levelname)s]: %(message)s',
-    datefmt='%d.%m.%Y %H:%M:%S',
-    level=logging.INFO
+    format="[%(asctime)s | %(name)s | %(levelname)s]: %(message)s",
+    datefmt="%d.%m.%Y %H:%M:%S",
+    level=logging.INFO,
 )
 
 
 class FaissMatcher:
-    def __init__(
-            self,
-            df,
-            outcomes,
-            treatment,
-            info_col,
-            features=None,
-            group_col=False,
-            sigma=1.96,
-            validation=None
-    ):
+    def __init__(self, df, outcomes, treatment, info_col, features=None, group_col=False, sigma=1.96, validation=None):
+        """
+
+        Args:
+            df - input data: pd.DataFrame
+            outcomes - target column/data name: str
+            treatment - column/data name with treatment: str
+            info_col - informational column name: str
+            features - data with name of features
+            group_col - column for grouping: str
+            sigma - ?
+            validation - ?
+        """
         self.df = df
         self.info_col = info_col
         self.columns_del = [outcomes]
@@ -45,17 +47,19 @@ class FaissMatcher:
 
         if features is None:
             self.columns_match = list(
-                set([x for x in list(self.df.columns) if x not in self.info_col] + [self.treatment, self.outcomes]))
+                set([x for x in list(self.df.columns) if x not in self.info_col] + [self.treatment, self.outcomes])
+            )
         else:
             try:
-                self.columns_match = features['Feature'].tolist() + [self.treatment, self.outcomes]
+                self.columns_match = features["Feature"].tolist() + [self.treatment, self.outcomes]
             except TypeError:
                 self.columns_match = features + [self.treatment, self.outcomes]
 
-        self.features_quality = self.df\
-            .drop(columns=[self.treatment, self.outcomes] + self.info_col)\
-            .select_dtypes(include=['int16', 'int32', 'int64', 'float16', 'float32', 'float64'])\
+        self.features_quality = (
+            self.df.drop(columns=[self.treatment, self.outcomes] + self.info_col)
+            .select_dtypes(include=["int16", "int32", "int64", "float16", "float32", "float64"])
             .columns
+        )
         self.dict_outcome_untreated = {}
         self.dict_outcome_treated = {}
         self.group_col = group_col
@@ -84,7 +88,7 @@ class FaissMatcher:
             Tuple of dfs treated, untreated; scaled std_treated and std_untreated: tuple
 
         """
-        logger.debug('Creating split data by treatment column')
+        logger.debug("Creating split data by treatment column")
 
         std_scaler = StandardScaler().fit(df.drop([self.outcomes, self.treatment], axis=1))
 
@@ -96,11 +100,7 @@ class FaissMatcher:
 
         return treated, untreated, std_treated, std_untreated
 
-    def _predict_outcome(
-            self,
-            std_treated: pd.DataFrame,
-            std_untreated: pd.DataFrame
-    ):
+    def _predict_outcome(self, std_treated: pd.DataFrame, std_untreated: pd.DataFrame):
         """Func to predict target
 
         Applies LinearRegression to input arrays,
@@ -112,10 +112,10 @@ class FaissMatcher:
             std_untreated: pd.DataFrame
 
         """
-        logger.debug('Predicting target by Linear Regression')
+        logger.debug("Predicting target by Linear Regression")
 
         start_time = dt.datetime.now()
-        logger.debug('start --')
+        logger.debug("start --")
 
         self.dict_outcome_untreated = {}
         self.dict_outcome_treated = {}
@@ -138,26 +138,32 @@ class FaissMatcher:
                 y_untreated = df.loc[self.orig_untreated_index.ravel()][outcome]
                 y_treated = df.loc[self.orig_treated_index.ravel()][outcome]
 
-                x_treated = df.loc[self.orig_treated_index.ravel()]\
-                    .drop(columns=[self.treatment, outcome, self.group_col])
-                x_untreated = df.loc[self.orig_untreated_index.ravel()]\
-                    .drop(columns=[self.treatment, outcome, self.group_col])
+                x_treated = df.loc[self.orig_treated_index.ravel()].drop(
+                    columns=[self.treatment, outcome, self.group_col]
+                )
+                x_untreated = df.loc[self.orig_untreated_index.ravel()].drop(
+                    columns=[self.treatment, outcome, self.group_col]
+                )
 
                 y_match_treated = df.loc[self.untreated_index.ravel()][outcome]
                 y_match_untreated = df.loc[self.treated_index.ravel()][outcome]
 
-                x_match_treated = df.loc[self.treated_index.ravel()]\
-                    .drop(columns=[self.treatment, outcome, self.group_col])
-                x_match_untreated = df.loc[self.untreated_index.ravel()]\
-                    .drop(columns=[self.treatment, outcome, self.group_col])
+                x_match_treated = df.loc[self.treated_index.ravel()].drop(
+                    columns=[self.treatment, outcome, self.group_col]
+                )
+                x_match_untreated = df.loc[self.untreated_index.ravel()].drop(
+                    columns=[self.treatment, outcome, self.group_col]
+                )
 
             ols0 = LinearRegression().fit(x_untreated, y_untreated)
             ols1 = LinearRegression().fit(x_treated, y_treated)
 
-            bias0 = ols0.predict(x_treated) - ols0.predict(x_match_treated)  # check
+            # LinearRegression определен в LAMA и у класса нет метода predict
+            bias0 = ols0.predict(x_treated) - ols0.predict(x_match_treated)
             y_match_untreated_bias = y_match_untreated - bias0
 
-            bias1 = ols1.predict(x_untreated) - ols1.predict(x_match_untreated)  # check
+            # LinearRegression определен в LAMA и у класса нет метода predict
+            bias1 = ols1.predict(x_untreated) - ols1.predict(x_match_untreated)
             y_match_treated_bias = y_match_treated - bias1
 
             self.dict_outcome_untreated[outcome] = y_untreated.values
@@ -169,8 +175,8 @@ class FaissMatcher:
             self.dict_outcome_treated[outcome + POSTFIX_BIAS] = y_match_untreated_bias.values
 
         end_time = dt.datetime.now()
-        total = dt.datetime.strptime(str(end_time - start_time), '%H:%M:%S.%f').strftime('%H:%M:%S')
-        logger.debug(f'end -- [work time{total}]')
+        total = dt.datetime.strptime(str(end_time - start_time), "%H:%M:%S.%f").strftime("%H:%M:%S")
+        logger.debug(f"end -- [work time{total}]")
 
     def _create_outcome_matched_df(self, dict_outcome: dict, is_treated: bool) -> pd.DataFrame:
         """Matches treated values with treatment column
@@ -214,8 +220,9 @@ class FaissMatcher:
                 treated_df = df.loc[self.orig_untreated_index].reset_index()
         untreated_df.columns = [col + POSTFIX for col in treated_df.columns]
 
-        x = pd.concat([treated_df, untreated_df], axis=1)\
-            .drop(columns=[self.treatment, self.treatment + POSTFIX], axis=1)
+        x = pd.concat([treated_df, untreated_df], axis=1).drop(
+            columns=[self.treatment, self.treatment + POSTFIX], axis=1
+        )
 
         return x
 
@@ -226,17 +233,16 @@ class FaissMatcher:
             Matched dataframe
 
         """
+        df_pred_treated = self._create_outcome_matched_df(self.dict_outcome_treated, True)
+        df_pred_untreated = self._create_outcome_matched_df(self.dict_outcome_untreated, False)
 
-        df_pred0 = self._create_outcome_matched_df(self.dict_outcome_untreated, False)
-        df_pred1 = self._create_outcome_matched_df(self.dict_outcome_treated, True)
+        df_matched = pd.concat([df_pred_treated, df_pred_untreated])
 
-        df_matched = pd.concat([df_pred0, df_pred1])
+        treated_x = self._create_features_matched_df(self.treated_index.ravel(), True)
+        untreated_x = self._create_features_matched_df(self.untreated_index.ravel(), False)
 
-        x_ = self._create_features_matched_df(self.treated_index.ravel(), True)
-        x = self._create_features_matched_df(self.untreated_index.ravel(), False)
-
-        x = pd.concat([x_, x])
-        df_matched = pd.concat([x.reset_index(drop=True), df_matched.reset_index(drop=True)], axis=1)
+        untreated_x = pd.concat([treated_x, untreated_x])
+        df_matched = pd.concat([untreated_x, df_matched], axis=1, ignore_index=True)
         self.df_matched = df_matched
 
     def calc_ate(self, df: pd.DataFrame, outcome: str) -> np.array:
@@ -250,11 +256,9 @@ class FaissMatcher:
             ATE: float
 
         """
-        logger.debug('Calculating ATE')
+        logger.debug("Calculating ATE")
 
-        ate = np.mean(
-            (2 * df[self.treatment] - 1) * (df[outcome] - df[outcome + POSTFIX_BIAS])
-        )
+        ate = np.mean((2 * df[self.treatment] - 1) * (df[outcome] - df[outcome + POSTFIX_BIAS]))
 
         return ate
 
@@ -271,7 +275,7 @@ class FaissMatcher:
             ATC, scaled counts and variances: tuple of numpy arrays
 
         """
-        logger.debug('Calculating ATC')
+        logger.debug("Calculating ATC")
 
         df = df[df[self.treatment] == 0]
         N_c = len(df)
@@ -295,7 +299,7 @@ class FaissMatcher:
             ATT, scaled counts and variances: tuple of numpy arrays
 
         """
-        logger.debug('Calculating ATT')
+        logger.debug("Calculating ATT")
 
         df = df[df[self.treatment] == 1]
         N_t = len(df)
@@ -315,7 +319,7 @@ class FaissMatcher:
             df: pd.DataFrame
 
         """
-        logger.debug('Creating dicts of all effects: ATE, ATC, ATT')
+        logger.debug("Creating dicts of all effects: ATE, ATC, ATT")
 
         att_dict = {}
         atc_dict = {}
@@ -334,26 +338,25 @@ class FaissMatcher:
                 ate_se,
                 pval_calc(ate / ate_se),
                 ate - self.sigma * ate_se,
-                ate + self.sigma * ate_se
+                ate + self.sigma * ate_se,
             ]
             atc_dict[outcome] = [
                 atc,
                 atc_se,
                 pval_calc(atc / atc_se),
                 atc - self.sigma * atc_se,
-                atc + self.sigma * atc_se
+                atc + self.sigma * atc_se,
             ]
             att_dict[outcome] = [
                 att,
                 att_se,
                 pval_calc(att / att_se),
                 att - self.sigma * att_se,
-                att + self.sigma * att_se
+                att + self.sigma * att_se,
             ]
 
         self.ATE, self.ATC, self.ATT = ate_dict, atc_dict, att_dict
         self.val_dict = ate_dict
-        # return
 
     def matching_quality(self) -> Dict[str, Union[Dict[str, float], float]]:
         """Estimated the quality of covariates balance and repeat fraction
@@ -365,36 +368,28 @@ class FaissMatcher:
             dict of reports
 
         """
-        logger.info(f'Estimating quality of matching')
+        logger.info(f"Estimating quality of matching")
 
         psi_columns = self.columns_match
         psi_columns.remove(self.treatment)
         psi_data, ks_data, smd_data = matching_quality(
-            self.df_matched,
-            self.treatment,
-            self.features_quality,
-            psi_columns
+            self.df_matched, self.treatment, self.features_quality, psi_columns
         )
 
         rep_dict = {
-            'match_control_to_treat': check_repeats(self.treated_index.ravel()),
-            'match_treat_to_control': check_repeats(self.untreated_index.ravel())
+            "match_control_to_treat": check_repeats(self.treated_index.ravel()),
+            "match_treat_to_control": check_repeats(self.untreated_index.ravel()),
         }
 
-        self.quality_dict = {
-            'psi': psi_data,
-            'ks_test': ks_data,
-            'smd': smd_data,
-            'repeats': rep_dict
-        }
+        self.quality_dict = {"psi": psi_data, "ks_test": ks_data, "smd": smd_data, "repeats": rep_dict}
 
-        rep_df = pd.DataFrame.from_dict(rep_dict, orient='index').rename(columns={0: 'value'})
+        rep_df = pd.DataFrame.from_dict(rep_dict, orient="index").rename(columns={0: "value"})
         self.rep_dict = rep_df
 
-        logger.info(f'PSI info: \n {psi_data.head(10)} \nshape:{psi_data.shape}')
-        logger.info(f'Kolmogorov-Smirnov test info: \n {ks_data.head(10)} \nshape:{ks_data.shape}')
-        logger.info(f'Standardised mean difference info: \n {smd_data.head(10)} \nshape:{smd_data.shape}')
-        logger.info(f'Repeats info: \n {rep_df.head(10)}')
+        logger.info(f"PSI info: \n {psi_data.head(10)} \nshape:{psi_data.shape}")
+        logger.info(f"Kolmogorov-Smirnov test info: \n {ks_data.head(10)} \nshape:{ks_data.shape}")
+        logger.info(f"Standardised mean difference info: \n {smd_data.head(10)} \nshape:{smd_data.shape}")
+        logger.info(f"Repeats info: \n {rep_df.head(10)}")
 
         return self.quality_dict
 
@@ -407,11 +402,15 @@ class FaissMatcher:
         """
         df = self.df.drop(columns=self.info_col).sort_values(self.group_col)
         groups = sorted(df[self.group_col].unique())
-        all_treated_matches, all_untreated_matches, all_treated_outcome, all_untreated_outcome = {}, {}, {}, {}
+        all_treated_matches = {}
+        all_untreated_matches = {}
+        all_treated_outcome = {}
+        all_untreated_outcome = {}
 
         for group in groups:
+            treated_index = {}
+            untreated_index = {}
             df_group = df[df[self.group_col] == group]
-            treated_index, untreated_index = {}, {}  # check
             temp = df_group[self.columns_match + [self.group_col]]
             temp = temp.loc[:, (temp != 0).any(axis=0)].drop(columns=self.group_col)
             treated, untreated, std_treated, std_untreated = self._get_split_scalar_data(temp)
@@ -425,31 +424,19 @@ class FaissMatcher:
 
             matches_c = _get_index(std_treated_np, std_untreated_np)
             matches_t = _get_index(std_untreated_np, std_treated_np)
-            matches_c = np.array([list(map(lambda x: treated_index[x], l)) for l in matches_c])
-            matches_t = np.array([list(map(lambda x: untreated_index[x], l)) for l in matches_t])
+            matches_c = np.array([list(map(lambda x: treated_index[x], i)) for i in matches_c])
+            matches_t = np.array([list(map(lambda x: untreated_index[x], i)) for i in matches_t])
 
             all_treated_matches.update({group: matches_t})
             all_untreated_matches.update({group: matches_c})
             all_treated_outcome.update({group: list(treated_index.values())})
             all_untreated_outcome.update({group: list(untreated_index.values())})
 
-        matches_c = [item  # check
-                     for sublist
-                     in [i.tolist() for i in list(all_untreated_matches.values())]
-                     for item in sublist]
-        matches_t = [item  # check
-                     for sublist
-                     in [i.tolist() for i in list(all_treated_matches.values())]
-                     for item in sublist]
+        matches_c = [item for sublist in [i.tolist() for i in list(all_untreated_matches.values())] for item in sublist]
+        matches_t = [item for sublist in [i.tolist() for i in list(all_treated_matches.values())] for item in sublist]
 
-        index_c = [item
-                   for sublist
-                   in [i for i in list(all_untreated_outcome.values())]
-                   for item in sublist]
-        index_t = [item
-                   for sublist
-                   in [i for i in list(all_treated_outcome.values())]
-                   for item in sublist]
+        index_c = [item for sublist in [i for i in list(all_untreated_outcome.values())] for item in sublist]
+        index_t = [item for sublist in [i for i in list(all_treated_outcome.values())] for item in sublist]
 
         self.untreated_index = np.array(matches_c)
         self.treated_index = np.array(matches_t)
@@ -502,18 +489,8 @@ class FaissMatcher:
         result = (self.ATE, self.ATC, self.ATT)
         self.results = pd.DataFrame(
             [list(x.values())[0] for x in result],
-            columns=[
-                'effect_size',
-                'std_err',
-                'p-val',
-                'ci_lower',
-                'ci_upper'
-            ],
-            index=[
-                'ATE',
-                'ATC',
-                'ATT'
-            ]
+            columns=["effect_size", "std_err", "p-val", "ci_lower", "ci_upper"],
+            index=["ATE", "ATC", "ATT"],
         )
         return self.results
 
@@ -534,7 +511,7 @@ def _get_index(base, new):
     index = faiss.IndexFlatL2(base.shape[1])
     index.add(base)
 
-    logger.info('Searching index')
+    logger.info("Searching index")
 
     indexes = index.search(new, 1)[1]
 
@@ -551,7 +528,7 @@ def _transform_to_np(df: pd.DataFrame):
         Downsized data: array
 
     """
-    x = df.to_numpy().copy(order='C').astype("float32")
+    x = df.to_numpy().copy(order="C").astype("float32")
     whiten = faiss.PCAMatrix(x.shape[1], x.shape[1])
     whiten.train(x)
     faiss.vector_to_array(whiten.eigenvalues)
@@ -679,6 +656,6 @@ def scaled_counts(N: int, matches, index) -> np.array:
         for match in matches_i:
             s_counts[index_dict[match]] += scale
 
-    logger.info(f'Calculated the number of times each subject has appeared as a match: {s_counts}')
+    logger.info(f"Calculated the number of times each subject has appeared as a match: {s_counts}")
 
     return s_counts

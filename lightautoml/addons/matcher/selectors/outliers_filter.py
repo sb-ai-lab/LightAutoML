@@ -2,24 +2,18 @@ import logging
 
 import pandas as pd
 
-logger = logging.getLogger('outliers_filter')
+logger = logging.getLogger("outliers_filter")
 console_out = logging.StreamHandler()
 logging.basicConfig(
     handlers=(console_out,),
-    format='[%(asctime)s | %(name)s | %(levelname)s]: %(message)s',
-    datefmt='%d.%m.%Y %H:%M:%S',
-    level=logging.INFO
+    format="[%(asctime)s | %(name)s | %(levelname)s]: %(message)s",
+    datefmt="%d.%m.%Y %H:%M:%S",
+    level=logging.INFO,
 )
 
 
 class OutliersFilter:
-    def __init__(
-            self,
-            interquartile_coeff,
-            mode_percentile,
-            min_percentile,
-            max_percentile
-    ):
+    def __init__(self, interquartile_coeff, mode_percentile, min_percentile, max_percentile):
         """
 
         Args:
@@ -48,20 +42,20 @@ class OutliersFilter:
             rows_for_del: set
 
         """
-        columns_names = df.select_dtypes(include='number').columns
+        columns_names = df.select_dtypes(include="number").columns
         rows_for_del = []
         for column in columns_names:
             if self.mode_percentile:
                 min_value = df[column].quantile(self.min_percentile)
                 max_value = df[column].quantile(self.max_percentile)
             else:
-                interquartile_range = df[column].quantile(.75) - df[column].quantile(.25)
-                min_value = df[column].quantile(.25) - self.interquartile_coeff * interquartile_range
-                max_value = df[column].quantile(.75) + self.interquartile_coeff * interquartile_range
+                interquartile_range = df[column].quantile(0.75) - df[column].quantile(0.25)
+                min_value = df[column].quantile(0.25) - self.interquartile_coeff * interquartile_range
+                max_value = df[column].quantile(0.75) + self.interquartile_coeff * interquartile_range
             rows_for_del_column = (df[column] < min_value) | (df[column] > max_value)
             rows_for_del_column = df.index[rows_for_del_column].tolist()
             rows_for_del.extend(rows_for_del_column)
         rows_for_del = set(rows_for_del)
-        logger.info(f'Drop {len(rows_for_del)} rows')
+        logger.info(f"Drop {len(rows_for_del)} rows")
 
         return rows_for_del
