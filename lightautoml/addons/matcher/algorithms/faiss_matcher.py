@@ -469,7 +469,7 @@ def _get_index(base, new):
     """
     index = faiss.IndexFlatL2(base.shape[1])
     index.add(base)
-    print("Finding index")
+    logger.info('Finding index')
     indexes = index.search(new, 1)[1]
     return indexes
 

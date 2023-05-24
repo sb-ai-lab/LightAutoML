@@ -45,7 +45,7 @@ class Matcher:
             treatment,
             outcome_type='numeric',
             group_col=None,
-            info_col=[],
+            info_col=None,
             required_col=None,
             generate_report=GENERATE_REPORT,
             report_feat_select_dir=REPORT_FEAT_SELECT_DIR,
@@ -110,11 +110,12 @@ class Matcher:
                 self.df = pd.get_dummies(self.df.drop(columns=self.group_col), drop_first=True)
             self.df = pd.concat([self.df, group_col], axis=1)
             logger.debug('Categorical grouped features turned into dummy')
+
         if self.info_col is not None:
             self.df = pd.concat([self.df, info_col], axis=1)
 
-        if info_cols is not None:
-            self.df = pd.concat([self.df, info_cols], axis=1)
+        # if info_col is not None:
+        #     self.df = pd.concat([self.df, info_col], axis=1)
 
 
     def _spearman_filter(self):
