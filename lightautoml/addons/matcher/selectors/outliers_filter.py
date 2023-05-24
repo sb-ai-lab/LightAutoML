@@ -27,7 +27,7 @@ class OutliersFilter:
         self.min_percentile = min_percentile
         self.max_percentile = max_percentile
 
-    def perform_filter(self, df: pd.DataFrame) -> set:
+    def perform_filter(self, df: pd.DataFrame, interquartile=True) -> set:
         """Drops outlayers
 
         Creates set of rows to be deleted,
@@ -48,13 +48,20 @@ class OutliersFilter:
             if self.mode_percentile:
                 min_value = df[column].quantile(self.min_percentile)
                 max_value = df[column].quantile(self.max_percentile)
-            else:
-                high_quantile = df[column].quantile(0.75)
-                low_quantile = df[column].quantile(0.25)
+            elif interquartile:
+                upper_quantile = df[column].quantile(0.8)
+                lower_quantile = df[column].quantile(0.2)
 
-                interquartile_range = high_quantile - low_quantile
-                min_value = low_quantile - self.interquartile_coeff * interquartile_range
-                max_value = high_quantile + self.interquartile_coeff * interquartile_range
+                interquartile_range = upper_quantile - lower_quantile
+                min_value = lower_quantile - self.interquartile_coeff * interquartile_range
+                max_value = upper_quantile + self.interquartile_coeff * interquartile_range
+            else:
+                mean_value = df[column].mean()
+                standard_deviation = df[column].std()
+                nstd_lower, nstd_upper = 3, 3
+
+                min_value = mean_value - nstd_lower * standard_deviation
+                max_value = mean_value + nstd_upper * standard_deviation
 
             rows_for_del_column = (df[column] < min_value) | (df[column] > max_value)
             rows_for_del_column = df.index[rows_for_del_column].tolist()
