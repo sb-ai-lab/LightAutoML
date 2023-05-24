@@ -610,5 +610,5 @@ def scaled_counts(N, matches, index):
         scale = 1 / len(matches_i)
         for match in matches_i:
             s_counts[index_dict[match]] += scale
-    logger.info(f'Calculated the number of times each subject has appeared as a match: {s_counts}')
+    logger.info(f'Calculated the number of times each subject has appeared as a match, length of list: {len(s_counts)}')
     return s_counts
