@@ -33,8 +33,8 @@ class FaissMatcher:
             info_col - informational column name: str
             features - data with name of features
             group_col - column for grouping: str
-            sigma - ?
-            validation - ?
+            sigma - significant level for confidence interval calculation
+            validation - flag for validation of estimated ATE with default method 'random_feature'
         """
         self.df = df
         self.info_col = info_col
@@ -566,7 +566,7 @@ def calc_atc_se(vars_c, vars_t, scaled_counts_t):
         scaled_counts_t: Any
 
     Returns:
-        ATC standart error
+        ATC standard error
 
     """
     N_c, N_t = len(vars_c), len(vars_t)
@@ -587,7 +587,7 @@ def calc_att_se(vars_c, vars_t, scaled_counts_c):
         scaled_counts_c: Any
 
     Returns:
-        ATT standart error
+        ATT standard error
 
     """
     N_c, N_t = len(vars_c), len(vars_t)
@@ -641,9 +641,9 @@ def scaled_counts(N: int, matches, index) -> np.array:
     In the case of multiple matches, each subject only gets partial credit.
 
     Args:
-        N: int ???что это за число
-        matches: ???
-        index: list or Any
+        N - length of original treated/control group: int
+        matches - matched indexes from control/treated group: Series
+        index - indexes from control/treated group: list or Any
 
     Returns:
         Number of times each subject has appeared as a match: int

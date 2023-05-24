@@ -9,7 +9,6 @@ from .selectors.outliers_filter import OutliersFilter
 from .selectors.spearman_filter import SpearmanFilter
 
 REPORT_FEAT_SELECT_DIR = "report_feature_selector"
-REPORT_PROP_SCORE_DIR = "report_prop_score_estimator"
 REPORT_PROP_MATCHER_DIR = "report_matcher"
 NAME_REPORT = "lama_interactive_report.html"
 N_THREADS = 1
@@ -46,11 +45,8 @@ class Matcher:
         outcome_type="numeric",
         group_col=None,
         info_col=None,
-        required_col=None,  # похоже не используется, лол 😂 (с)Дима
         generate_report=GENERATE_REPORT,
         report_feat_select_dir=REPORT_FEAT_SELECT_DIR,
-        report_prop_score_dir=REPORT_PROP_SCORE_DIR,  # похоже не используется, лол 😂 (с)Дима
-        report_matcher_dir=REPORT_PROP_MATCHER_DIR,  # похоже не используется, лол 😂 (с)Дима
         timeout=TIMEOUT,
         n_threads=N_THREADS,
         n_folds=N_FOLDS,
@@ -65,27 +61,24 @@ class Matcher:
         """
 
         Args:
-            input_data: input dataframe
-            outcome: target column
-            treatment: column determine control and test groups?
-            outcome_type: values type of target column?
-            group_col: column for grouping
-            info_col: ???
-            required_col: не используется
-            generate_report: flag to create report
-            report_feat_select_dir: folder for report files
-            report_prop_score_dir: не используется
-            report_matcher_dir: не используется
-            timeout: limit work time of code
-            n_threads: maximum number of threads
-            n_folds: number of folds for cross-validation
-            verbose: flag to show process stages
-            use_algos: list of names of LAMA algorithms for feature selection
-            same_target_threshold: threshold for correlation coefficient filter (Spearman)
-            interquartile_coeff: interquartile coefficient - percent for drop outliers
-            drop_outliers_by_percentile: flag to drop outliers by custom percentiles
-            min_percentile: minimum percentile to drop outliers
-            max_percentile: maximum percentile to drop outliers
+            input_data - input dataframe: pd.DataFrame
+            outcome - target column: str
+            treatment - column determine control and test groups: str
+            outcome_type - values type of target column: str
+            group_col - column for grouping: str
+            info_col - columns with id, date or metadata, not take part in calculations: list
+            generate_report - flag to create report: bool
+            report_feat_select_dir - folder for report files: str
+            timeout - limit work time of code: int
+            n_threads - maximum number of threads: int
+            n_folds - number of folds for cross-validation: int
+            verbose - flag to show process stages: bool
+            use_algos - list of names of LAMA algorithms for feature selection: list or str
+            same_target_threshold - threshold for correlation coefficient filter (Spearman): float or Series
+            interquartile_coeff - percent for drop outliers: float
+            drop_outliers_by_percentile - flag to drop outliers by custom percentiles: bool
+            min_percentile - minimum percentile to drop outliers: float
+            max_percentile - maximum percentile to drop outliers: float
         """
         if use_algos is None:
             use_algos = USE_ALGOS
@@ -93,12 +86,9 @@ class Matcher:
         self.outcome = outcome
         self.treatment = treatment
         self.group_col = group_col
-        self.required_col = required_col
         self.outcome_type = outcome_type
         self.generate_report = generate_report
         self.report_feat_select_dir = report_feat_select_dir
-        self.report_prop_score_dir = report_prop_score_dir
-        self.report_matcher_dir = report_matcher_dir
         self.timeout = timeout
         self.n_threads = n_threads
         self.n_folds = n_folds
@@ -113,7 +103,7 @@ class Matcher:
         self.features_importance = None
         self._preprocessing_data()
         self.matcher = None
-        self.val_dict = {self.outcome: []}
+        self.val_dict = {k: [] for k in [self.outcome]}
         self.pval_dict = None
         self.new_treatment = None
         self.validate = None

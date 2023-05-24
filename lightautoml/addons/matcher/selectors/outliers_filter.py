@@ -49,9 +49,13 @@ class OutliersFilter:
                 min_value = df[column].quantile(self.min_percentile)
                 max_value = df[column].quantile(self.max_percentile)
             else:
-                interquartile_range = df[column].quantile(0.75) - df[column].quantile(0.25)
-                min_value = df[column].quantile(0.25) - self.interquartile_coeff * interquartile_range
-                max_value = df[column].quantile(0.75) + self.interquartile_coeff * interquartile_range
+                high_quantile = df[column].quantile(0.75)
+                low_quantile = df[column].quantile(0.25)
+
+                interquartile_range = high_quantile - low_quantile
+                min_value = low_quantile - self.interquartile_coeff * interquartile_range
+                max_value = high_quantile + self.interquartile_coeff * interquartile_range
+
             rows_for_del_column = (df[column] < min_value) | (df[column] > max_value)
             rows_for_del_column = df.index[rows_for_del_column].tolist()
             rows_for_del.extend(rows_for_del_column)
