@@ -361,7 +361,7 @@ class FaissMatcher:
     def matching_quality(self) -> Dict[str, Union[Dict[str, float], float]]:
         """Estimated the quality of covariates balance and repeat fraction
 
-        Estimates population stability index, Standartizied mean difference
+        Estimates population stability index, Standardized mean difference
         and Kolmogorov-Smirnov test for numeric values. Returns dict of reports.
 
         Returns:
@@ -442,7 +442,7 @@ class FaissMatcher:
         self.treated_index = np.array(matches_t)
         self.orig_treated_index = np.array(index_t)
         self.orig_untreated_index = np.array(index_c)
-        df_group = df[self.columns_match]
+        df_group = df[self.columns_match].drop(columns=self.group_col)
         treated, untreated, std_treated, std_untreated = self._get_split_scalar_data(df_group)
         self._predict_outcome(treated, untreated)
         self._create_matched_df()
@@ -558,7 +558,7 @@ def calc_atx_var(vars_c, vars_t, weights_c, weights_t):
 
 
 def calc_atc_se(vars_c, vars_t, scaled_counts_t):
-    """Calculates Average Treatment Effect for the control group (ATC) standart error
+    """Calculates Average Treatment Effect for the control group (ATC) standard error
 
     Args:
         vars_c: {__len__}
@@ -579,7 +579,7 @@ def calc_atc_se(vars_c, vars_t, scaled_counts_t):
 
 
 def calc_att_se(vars_c, vars_t, scaled_counts_c):
-    """Calculates Average Treatment Effect for the treated (ATT) standart error
+    """Calculates Average Treatment Effect for the treated (ATT) standard error
 
     Args:
         vars_c: {__len__}
