@@ -25,7 +25,7 @@ def smd(orig: pd.DataFrame, matched: pd.DataFrame) -> pd.DataFrame:
     """
     smd_data = abs(orig.mean(0) - matched.mean(0)) / orig.std(0)
 
-    logger.info(f"Standardised mean difference: {smd_data: .4f}")
+    logger.info(f"Standardised mean difference: {smd_data}")  # TypeError: unsupported format string passed to Series.__format__
 
     return smd_data
 
