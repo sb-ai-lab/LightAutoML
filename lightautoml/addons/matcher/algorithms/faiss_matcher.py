@@ -242,7 +242,13 @@ class FaissMatcher:
         untreated_x = self._create_features_matched_df(self.untreated_index.ravel(), False)
 
         untreated_x = pd.concat([treated_x, untreated_x])
+
+        columns = list(untreated_x.columns) + list(df_matched.columns)
+
         df_matched = pd.concat([untreated_x, df_matched], axis=1, ignore_index=True)
+        df_matched.columns = columns
+
+
         self.df_matched = df_matched
 
     def calc_ate(self, df: pd.DataFrame, outcome: str) -> np.array:
