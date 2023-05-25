@@ -1,16 +1,16 @@
 import numpy as np
-import pandas as pd
 import scipy.stats as st
 
+
 def random_treatment(df, treatment):
-    '''Replacing real treatment with random placebo treatment.
+    """Replacing real treatment with random placebo treatment.
     Args:
         df - initial dataframe: pd.DataFrame
         treatment - treatment column name: str
 
     Return:
         Modified dataframe, original treatment series and validation flag.
-    '''
+    """
 
     prop1 = df[treatment].sum() / df.shape[0]
     prop0 = 1 - prop1
@@ -23,13 +23,13 @@ def random_treatment(df, treatment):
 
 
 def random_feature(df):
-    '''Function adds random feature to initial dataset.
+    """Function adds random feature to initial dataset.
      Args:
          df - initial dataframe: pd.DataFrame
 
      Return:
          Modified dataframe, validation flag.
-    '''
+    """
 
     feature = np.random.normal(0, 1, size=len(df))
     validate = 1
@@ -38,14 +38,14 @@ def random_feature(df):
 
 
 def subset_refuter(df, treatment, fraction=0.8):
-    '''Functions returns subset of data with given fraction (by default 0.8).
+    """Functions returns subset of data with given fraction (by default 0.8).
      Args:
          df - initial dataframe: pd.DataFrame
          treatment - treatment column name: str
 
      Return:
          Modified dataframe, validation flag.
-    '''
+    """
 
     df = df.groupby(treatment, group_keys=False).apply(lambda x: x.sample(frac=fraction))
     validate = 1
@@ -53,15 +53,14 @@ def subset_refuter(df, treatment, fraction=0.8):
 
 
 def test_significance(estimate, simulations):
-    '''Significance test for normal distribution
+    """Significance test for normal distribution
     Args:
          estimate - estimated effect: float
          simulations - list of estimated effects on each simulation: list
 
      Return:
          p-value: float
-    '''
-
+    """
 
     mean_refute_value = np.mean(simulations)
     std_dev_refute_values = np.std(simulations)
