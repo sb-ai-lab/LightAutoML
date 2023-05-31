@@ -47,9 +47,14 @@ class FaissMatcher:
         self.treatment = treatment
 
         if features is None:
-            self.columns_match = list(
-                set([x for x in list(self.df.columns) if x not in self.info_col] + [self.treatment, self.outcomes])
-            )
+            if self.info_col:
+                self.columns_match = list(
+                    set([x for x in list(self.df.columns) if x not in self.info_col] + [self.treatment, self.outcomes])
+                )
+            else:
+                self.columns_match = list(
+                    set([x for x in list(self.df.columns)] + [self.treatment, self.outcomes])
+                )
         else:
             try:
                 self.columns_match = features["Feature"].tolist() + [self.treatment, self.outcomes]
