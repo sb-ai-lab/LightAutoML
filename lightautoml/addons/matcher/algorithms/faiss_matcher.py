@@ -3,6 +3,7 @@ from typing import Dict, Union
 
 import faiss
 from scipy.stats import norm
+from sklearn.decomposition import PCA
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import StandardScaler
 
@@ -535,12 +536,11 @@ def _transform_to_np(df: pd.DataFrame):
 
     """
     x = df.to_numpy().copy(order="C").astype("float32")
-    whiten = faiss.PCAMatrix(x.shape[1], x.shape[1])
-    whiten.train(x)
-    faiss.vector_to_array(whiten.eigenvalues)
-    xt = whiten.apply_py(x)
+    pca = PCA(n_components=x.shape[1], whiten=True, random_state=42)
+    pca.fit(x)
+    y = pca.transform(x)
 
-    return xt
+    return y
 
 
 def calc_atx_var(vars_c, vars_t, weights_c, weights_t):
