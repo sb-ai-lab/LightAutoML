@@ -38,8 +38,11 @@ class FaissMatcher:
             validation - flag for validation of estimated ATE with default method 'random_feature'
         """
         self.df = df
-        self.info_col = info_col
         self.columns_del = [outcomes]
+        if info_col:
+            self.info_col = info_col
+        else:
+            self.info_col = []
 
         if self.info_col is not None:
             self.columns_del = self.columns_del + [x for x in self.info_col if x in self.df.columns]
@@ -47,14 +50,9 @@ class FaissMatcher:
         self.treatment = treatment
 
         if features is None:
-            if self.info_col is not None:
-                self.columns_match = list(
-                    set([x for x in list(self.df.columns) if x not in self.info_col] + [self.treatment, self.outcomes])
-                )
-            else:
-                self.columns_match = list(
-                    set([x for x in list(self.df.columns)] + [self.treatment, self.outcomes])
-                )
+            self.columns_match = list(
+                set([x for x in list(self.df.columns) if x not in self.info_col] + [self.treatment, self.outcomes])
+            )
         else:
             try:
                 self.columns_match = features["Feature"].tolist() + [self.treatment, self.outcomes]
