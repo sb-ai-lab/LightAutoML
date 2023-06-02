@@ -429,8 +429,8 @@ class FaissMatcher:
             for i, ind in enumerate(temp[temp[self.treatment] == 0].index):
                 untreated_index.update({i: ind})
 
-            std_treated_np = _transform_to_np(std_treated)
-            std_untreated_np = _transform_to_np(std_untreated)
+            std_untreated_np, std_treated_np = _transform_to_np(std_untreated, std_treated)
+            # std_untreated_np = _transform_to_np(std_untreated)
 
             matches_c = _get_index(std_treated_np, std_untreated_np)
             matches_t = _get_index(std_untreated_np, std_treated_np)
@@ -476,8 +476,8 @@ class FaissMatcher:
         df = self.df[self.columns_match]
         treated, untreated, std_treated, std_untreated = self._get_split_scalar_data(df)
 
-        std_treated_np = _transform_to_np(std_treated)
-        std_untreated_np = _transform_to_np(std_untreated)
+        std_untreated_np, std_treated_np = _transform_to_np(std_untreated, std_treated)
+        # std_untreated_np = _transform_to_np(std_untreated)
 
         untreated_index = _get_index(std_treated_np, std_untreated_np)
         treated_index = _get_index(std_untreated_np, std_treated_np)
@@ -528,7 +528,7 @@ def _get_index(base, new):
     return indexes
 
 
-def _transform_to_np(df: pd.DataFrame):
+def _transform_to_np(untreated, treated):
     """Transforms df to numpy applying PCA analysis
 
     Args:
@@ -538,12 +538,20 @@ def _transform_to_np(df: pd.DataFrame):
         Downsized data: array
 
     """
-    x = df.to_numpy().copy(order="C").astype("float32")
-    pca = PCA(n_components=x.shape[1], whiten=True, random_state=42)
-    pca.fit(x)
-    y = pca.transform(x)
 
-    return y
+    xc = untreated.to_numpy().copy(order='C').astype("float32")
+    xt = treated.to_numpy().copy(order='C').astype("float32")
+
+    cov_c = np.cov(xc, rowvar=False, ddof=0)
+    cov_t = np.cov(xt, rowvar=False, ddof=0)
+    cov = (cov_c+cov_t)/2
+
+    L = np.linalg.cholesky(cov)
+    mahalanobis_transform = np.linalg.inv(L)
+    yc = np.dot(xc, mahalanobis_transform.T)
+    yt = np.dot(xt, mahalanobis_transform.T)
+
+    return yc, yt
 
 
 def calc_atx_var(vars_c, vars_t, weights_c, weights_t):
