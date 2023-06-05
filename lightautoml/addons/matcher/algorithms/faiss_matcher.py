@@ -430,7 +430,6 @@ class FaissMatcher:
                 untreated_index.update({i: ind})
 
             std_untreated_np, std_treated_np = _transform_to_np(std_untreated, std_treated)
-            # std_untreated_np = _transform_to_np(std_untreated)
 
             matches_c = _get_index(std_treated_np, std_untreated_np)
             matches_t = _get_index(std_untreated_np, std_treated_np)
@@ -477,7 +476,6 @@ class FaissMatcher:
         treated, untreated, std_treated, std_untreated = self._get_split_scalar_data(df)
 
         std_untreated_np, std_treated_np = _transform_to_np(std_untreated, std_treated)
-        # std_untreated_np = _transform_to_np(std_untreated)
 
         untreated_index = _get_index(std_treated_np, std_untreated_np)
         treated_index = _get_index(std_untreated_np, std_treated_np)
@@ -539,6 +537,7 @@ def _transform_to_np(untreated, treated):
 
     """
 
+    # """
     xc = untreated.to_numpy().copy(order='C').astype("float32")
     xt = treated.to_numpy().copy(order='C').astype("float32")
 
