@@ -3,7 +3,6 @@ from typing import Dict, Union
 
 import faiss
 from scipy.stats import norm
-from sklearn.decomposition import PCA
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import StandardScaler
 
@@ -530,10 +529,11 @@ def _transform_to_np(untreated, treated):
     """Transforms df to numpy applying PCA analysis
 
     Args:
-        df: pd. DataFrame
+        untreated - control subset: pd. DataFrame
+        treated - test subset: pd. DataFrame
 
     Returns:
-        Downsized data: array
+        Downsized data: Tuple[pd.DataFrame, pd.DataFrame]
 
     """
 
