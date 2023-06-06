@@ -129,7 +129,7 @@ class PSI:
 
         value = (e_perc - a_perc) * np.log(e_perc / a_perc)
 
-        logger.info(f"sub_psi value is {value: .6f}")
+        logger.debug(f"sub_psi value is {value: .6f}")
 
         return value
 
@@ -403,7 +403,7 @@ class PSI:
             else:
                 psi_values, psi_dict, new_cats, abs_cats = self.psi_num()
 
-        logger.info(f"PSI values: {psi_values: .2f}")
+        logger.info(f"PSI value: {psi_values: .3f}")
         # если expected_shape пустой - будет ошибка
         return round(psi_values, 2), psi_dict, new_cats, abs_cats
 

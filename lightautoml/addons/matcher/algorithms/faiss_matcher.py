@@ -37,8 +37,11 @@ class FaissMatcher:
             validation - flag for validation of estimated ATE with default method 'random_feature'
         """
         self.df = df
-        self.info_col = info_col
         self.columns_del = [outcomes]
+        if info_col:
+            self.info_col = info_col
+        else:
+            self.info_col = []
 
         if self.info_col is not None:
             self.columns_del = self.columns_del + [x for x in self.info_col if x in self.df.columns]
@@ -425,8 +428,7 @@ class FaissMatcher:
             for i, ind in enumerate(temp[temp[self.treatment] == 0].index):
                 untreated_index.update({i: ind})
 
-            std_treated_np = _transform_to_np(std_treated)
-            std_untreated_np = _transform_to_np(std_untreated)
+            std_untreated_np, std_treated_np = _transform_to_np(std_untreated, std_treated)
 
             matches_c = _get_index(std_treated_np, std_untreated_np)
             matches_t = _get_index(std_untreated_np, std_treated_np)
@@ -472,8 +474,7 @@ class FaissMatcher:
         df = self.df[self.columns_match]
         treated, untreated, std_treated, std_untreated = self._get_split_scalar_data(df)
 
-        std_treated_np = _transform_to_np(std_treated)
-        std_untreated_np = _transform_to_np(std_untreated)
+        std_untreated_np, std_treated_np = _transform_to_np(std_untreated, std_treated)
 
         untreated_index = _get_index(std_treated_np, std_untreated_np)
         treated_index = _get_index(std_untreated_np, std_treated_np)
@@ -524,23 +525,32 @@ def _get_index(base, new):
     return indexes
 
 
-def _transform_to_np(df: pd.DataFrame):
+def _transform_to_np(untreated, treated):
     """Transforms df to numpy applying PCA analysis
 
     Args:
-        df: pd. DataFrame
+        untreated - control subset: pd. DataFrame
+        treated - test subset: pd. DataFrame
 
     Returns:
-        Downsized data: array
+        Downsized data: Tuple[pd.DataFrame, pd.DataFrame]
 
     """
-    x = df.to_numpy().copy(order="C").astype("float32")
-    whiten = faiss.PCAMatrix(x.shape[1], x.shape[1])
-    whiten.train(x)
-    faiss.vector_to_array(whiten.eigenvalues)
-    xt = whiten.apply_py(x)
 
-    return xt
+    # """
+    xc = untreated.to_numpy().copy(order='C').astype("float32")
+    xt = treated.to_numpy().copy(order='C').astype("float32")
+
+    cov_c = np.cov(xc, rowvar=False, ddof=0)
+    cov_t = np.cov(xt, rowvar=False, ddof=0)
+    cov = (cov_c+cov_t)/2
+
+    L = np.linalg.cholesky(cov)
+    mahalanobis_transform = np.linalg.inv(L)
+    yc = np.dot(xc, mahalanobis_transform.T)
+    yt = np.dot(xt, mahalanobis_transform.T)
+
+    return yc, yt
 
 
 def calc_atx_var(vars_c, vars_t, weights_c, weights_t):
@@ -662,6 +672,6 @@ def scaled_counts(N: int, matches, index) -> np.array:
         for match in matches_i:
             s_counts[index_dict[match]] += scale
 
-    logger.info(f"Calculated the number of times each subject has appeared as a match: {s_counts}")
+    logger.info(f"Calculated the number of times each subject has appeared as a match: {len(s_counts)}")
 
     return s_counts
