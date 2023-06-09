@@ -1,15 +1,15 @@
 from scipy.stats import spearmanr
 import logging
 
-PVALUE = .05
+PVALUE = 0.05
 
-logger = logging.getLogger('spearman_filter')
+logger = logging.getLogger("spearman_filter")
 console_out = logging.StreamHandler()
 logging.basicConfig(
     handlers=(console_out,),
-    format='[%(asctime)s | %(name)s | %(levelname)s]: %(message)s',
-    datefmt='%d.%m.%Y %H:%M:%S',
-    level=logging.INFO
+    format="[%(asctime)s | %(name)s | %(levelname)s]: %(message)s",
+    datefmt="%d.%m.%Y %H:%M:%S",
+    level=logging.INFO,
 )
 
 
@@ -27,12 +27,14 @@ class SpearmanFilter:
 
     """
 
-    def __init__(
-            self,
-            outcome,
-            treatment,
-            threshold
-    ):
+    def __init__(self, outcome, treatment, threshold):
+        """
+
+        Args:
+            outcome: target column
+            treatment: column determine control and test groups
+            threshold: threshold for correlation coefficient filter
+        """
         self.outcome = outcome
         self.treatment = treatment
         self.threshold = threshold
@@ -41,26 +43,24 @@ class SpearmanFilter:
         """Filter columns by correlation with outcome column.
 
         Correlation tests by Spearman coefficient,
-        that should be less than threshold, and p-value=0.5
+        that should be less than threshold, and p-value=0.05
 
         Args:
-            df: pd.DataFrame
+            df - input data: pd.DataFrame
 
         Returns:
-            pd.DataFrame with columns, non-correlated with outcome column
+            df with non-correlated with target (outcome) columns: pd.DataFrame
 
         """
         selected = []
         columns = df.drop([self.treatment, self.outcome], 1).columns
         for column in columns:
-            result = spearmanr(
-                df[self.outcome].values,
-                df[column].values
-            )
-            if (abs(result[0] < self.threshold)) & (result[1] < PVALUE):
+            result = spearmanr(df[self.outcome].values, df[column].values)
+            if (abs(result[0] < self.threshold)) and (result[1] < PVALUE):
                 selected.append(column)
 
-        logger.info(f'Drop columns {list(set(columns) - set(selected))}')
+        logger.info(f"Drop columns {list(set(columns) - set(selected))}")
+
         columns = selected + [self.treatment, self.outcome]
         df = df[columns]
 
