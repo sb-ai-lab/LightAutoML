@@ -106,7 +106,8 @@ def matching_quality(data: pd.DataFrame, treatment: str, features: list, feature
     report_cols = ["column", "anomaly_score", "check_result"]
     report_psi_treated = report(psi_treated, psi_treated_matched)[report_cols]
     report_psi_untreated = report(psi_untreated, psi_untreated_matched)[report_cols]
-    report_psi = pd.concat([report_psi_treated, report_psi_untreated], ignore_index=True, axis=1)
+    report_psi = pd.concat([report_psi_treated.reset_index(drop=True), report_psi_untreated.reset_index(drop=True)],
+                           axis=1)
 
     return report_psi, ks_df, smd_data
 
