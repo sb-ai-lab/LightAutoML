@@ -210,7 +210,7 @@ class FaissMatcher:
             untreated_df['index'] = pd.Series(list(index))
             treated_df = df[df[self.treatment] == int(is_treated)].reset_index()
         else:
-            df = df.sort_values(self.group_col).reset_index(drop=True)
+            df = df.sort_values(self.group_col)
             X = df.drop(columns=self.group_col).to_numpy()
             untreated_df = pd.DataFrame(data=np.array([X[idx].mean(axis=0) for idx in index]), columns=df.drop(columns=self.group_col).columns)
             untreated_df[self.group_col] = df[self.group_col]
@@ -238,8 +238,8 @@ class FaissMatcher:
 
         df_matched = pd.concat([df_pred_treated, df_pred_untreated])
 
-        treated_x = self._create_features_matched_df(self.treated_index.ravel(), True)
-        untreated_x = self._create_features_matched_df(self.untreated_index.ravel(), False)
+        treated_x = self._create_features_matched_df(self.treated_index, True)
+        untreated_x = self._create_features_matched_df(self.untreated_index, False)
 
         untreated_x = pd.concat([treated_x, untreated_x])
 
