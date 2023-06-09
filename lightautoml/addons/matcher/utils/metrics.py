@@ -23,6 +23,8 @@ def smd(orig: pd.DataFrame, matched: pd.DataFrame) -> pd.DataFrame:
         smd_data - standard mean deviation between initial and matched dataframes: pd.DataFrame
 
     """
+
+
     smd_data = abs(orig.mean(0) - matched.mean(0)) / orig.std(0)
 
     logger.info(f"Standardised mean difference: {smd_data}")  # TypeError: unsupported format string passed to Series.__format__
@@ -68,14 +70,17 @@ def matching_quality(data: pd.DataFrame, treatment: str, features: list, feature
         for matched treated to control and control to treated: tuple of pd.DataFrames
 
     """
+
+
     orig_treated = data[data[treatment] == 1][features]
     orig_untreated = data[data[treatment] == 0][features]
+    matched_treated = data[data[treatment] == 1][
+        sorted([f + '_matched' for f in features])]
+    matched_treated.columns = list(map(lambda x: x.replace('_matched', ''), matched_treated.columns))
+    matched_untreated = data[data[treatment] == 0][
+        sorted([f + '_matched' for f in features])]
+    matched_untreated.columns = list(map(lambda x: x.replace('_matched', ''), matched_untreated.columns))
 
-    matched_treated = data[data[treatment] == 1][[f + "_matched" for f in features]]
-    matched_treated.columns = orig_treated.columns
-
-    matched_untreated = data[data[treatment] == 0][[f + "_matched" for f in features]]
-    matched_untreated.columns = orig_treated.columns
 
     psi_treated = data[data[treatment] == 1][features_psi]
     psi_treated_matched = data[data[treatment] == 1][[f + "_matched" for f in features_psi]]
