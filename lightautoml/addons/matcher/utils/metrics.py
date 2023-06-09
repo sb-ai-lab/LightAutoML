@@ -26,6 +26,8 @@ def smd(orig, matched):
         smd_data: pd.DataFrame
 
     """
+
+
     smd_data = abs(orig.mean(0) - matched.mean(0)) / orig.std(0)
 
     logger.info(f'Standardised mean difference: {round(smd_data, 4)}')
@@ -71,14 +73,16 @@ def matching_quality(data, treatment, features, features_psi):
         for matched treated to control and control to treated: tuple of pd.DataFrames
 
     """
+
+
     orig_treated = data[data[treatment] == 1][features]
     orig_untreated = data[data[treatment] == 0][features]
     matched_treated = data[data[treatment] == 1][
-        [f + '_matched' for f in features]]
-    matched_treated.columns = orig_treated.columns
+        sorted([f + '_matched' for f in features])]
+    matched_treated.columns = list(map(lambda x: x.replace('_matched', ''), matched_treated.columns))
     matched_untreated = data[data[treatment] == 0][
-        [f + '_matched' for f in features]]
-    matched_untreated.columns = orig_treated.columns
+        sorted([f + '_matched' for f in features])]
+    matched_untreated.columns = list(map(lambda x: x.replace('_matched', ''), matched_untreated.columns))
 
     psi_treated = data[data[treatment] == 1][features_psi]
     psi_treated_matched = data[data[treatment] == 1][[f + '_matched' for f in features_psi]]
