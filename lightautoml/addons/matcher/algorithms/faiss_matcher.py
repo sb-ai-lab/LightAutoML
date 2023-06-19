@@ -123,48 +123,48 @@ class FaissMatcher:
 
         for outcome in [self.outcomes]:
             if self.group_col is None:
-                y_untreated = df[df[self.treatment] == 0][outcome]
-                y_treated = df[df[self.treatment] == 1][outcome]
+                y_untreated = df[df[self.treatment] == 0][outcome].to_numpy()
+                y_treated = df[df[self.treatment] == 1][outcome].to_numpy()
 
-                x_treated = std_treated
-                x_untreated = std_untreated
-                y_match_treated = np.array([y_untreated.to_numpy()[idx].mean() for idx in self.treated_index])
-                y_match_untreated = np.array([y_treated.to_numpy()[idx].mean() for idx in self.untreated_index])
-                x_match_treated = np.array([x_untreated.to_numpy()[idx].mean(0) for idx in self.treated_index])
-                x_match_untreated = np.array([x_treated.to_numpy()[idx].mean(0) for idx in self.untreated_index])
-                bias_coefs_c = bias_coefs(self.untreated_index, y_treated.to_numpy(), x_treated.to_numpy())
-                bias_coefs_t = bias_coefs(self.treated_index, y_untreated.to_numpy(), x_untreated.to_numpy())
-                bias_c = bias(x_untreated.to_numpy(), x_match_untreated, bias_coefs_c)
-                bias_t = bias(x_treated.to_numpy(), x_match_treated, bias_coefs_t)
+                x_treated = std_treated.to_numpy()
+                x_untreated = std_untreated.to_numpy()
+                y_match_treated = np.array([y_untreated[idx].mean() for idx in self.treated_index])
+                y_match_untreated = np.array([y_treated[idx].mean() for idx in self.untreated_index])
+                x_match_treated = np.array([x_untreated[idx].mean(0) for idx in self.treated_index])
+                x_match_untreated = np.array([x_treated[idx].mean(0) for idx in self.untreated_index])
+                bias_coefs_c = bias_coefs(self.untreated_index, y_treated, x_treated)
+                bias_coefs_t = bias_coefs(self.treated_index, y_untreated, x_untreated)
+                bias_c = bias(x_untreated, x_match_untreated, bias_coefs_c)
+                bias_t = bias(x_treated, x_match_treated, bias_coefs_t)
 
             else:
                 outcome_arr = df[outcome].to_numpy()
                 X = df.drop(columns=[self.treatment, outcome, self.group_col]).to_numpy()
-                y_untreated = df.loc[self.orig_untreated_index.ravel()][outcome]
-                y_treated = df.loc[self.orig_treated_index.ravel()][outcome]
+                y_untreated = df.loc[self.orig_untreated_index.ravel()][outcome].to_numpy()
+                y_treated = df.loc[self.orig_treated_index.ravel()][outcome].to_numpy()
 
                 x_treated = df.loc[self.orig_treated_index.ravel()].drop(
                     columns=[self.treatment, outcome, self.group_col]
-                )
+                ).to_numpy()
                 x_untreated = df.loc[self.orig_untreated_index.ravel()].drop(
-                    columns=[self.treatment, outcome, self.group_col])
+                    columns=[self.treatment, outcome, self.group_col]).to_numpy()
                 y_match_untreated = np.array([outcome_arr[idx].mean() for idx in self.untreated_index])
                 y_match_treated = np.array([outcome_arr[idx].mean() for idx in self.treated_index])
                 x_match_treated = np.array([X[idx].mean(axis=0) for idx in self.treated_index])
                 x_match_untreated = np.array([X[idx].mean(axis=0) for idx in self.untreated_index])
                 bias_coefs_c = bias_coefs(self.untreated_index, outcome_arr, X)
                 bias_coefs_t = bias_coefs(self.treated_index, outcome_arr, X)
-                bias_c = bias(x_untreated.to_numpy(), x_match_untreated, bias_coefs_c)
-                bias_t = bias(x_treated.to_numpy(), x_match_treated, bias_coefs_t)
+                bias_c = bias(x_untreated, x_match_untreated, bias_coefs_c)
+                bias_t = bias(x_treated, x_match_treated, bias_coefs_t)
 
-            y_match_treated_bias = y_treated.to_numpy() - y_match_treated + bias_t
-            y_match_untreated_bias = y_match_untreated - y_untreated.to_numpy() - bias_c
+            y_match_treated_bias = y_treated - y_match_treated + bias_t
+            y_match_untreated_bias = y_match_untreated - y_untreated - bias_c
 
-            self.dict_outcome_untreated[outcome] = y_untreated.values
+            self.dict_outcome_untreated[outcome] = y_untreated
             self.dict_outcome_untreated[outcome + POSTFIX] = y_match_untreated
             self.dict_outcome_untreated[outcome + POSTFIX_BIAS] = y_match_untreated_bias
 
-            self.dict_outcome_treated[outcome] = y_treated.values
+            self.dict_outcome_treated[outcome] = y_treated
             self.dict_outcome_treated[outcome + POSTFIX] = y_match_treated
             self.dict_outcome_treated[outcome + POSTFIX_BIAS] = y_match_treated_bias
 
@@ -506,7 +506,7 @@ def _get_index(base, new):
     equal_dist = list(map(map_func, dist))
     f2 = lambda x, y: x[y]
     indexes = np.array([f2(i, j) for i, j in zip(indexes, equal_dist)])
-
+    print("Done")
     return indexes
 
 
