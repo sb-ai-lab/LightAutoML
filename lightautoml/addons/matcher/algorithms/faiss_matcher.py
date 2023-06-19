@@ -1,10 +1,8 @@
 import datetime as dt
 from typing import Dict, Union
-
 import faiss
 from scipy.stats import norm
-from sklearn.linear_model import LinearRegression
-from sklearn.preprocessing import StandardScaler
+
 
 from ..utils.metrics import *
 from ..utils.psi_pandas import *
@@ -130,14 +128,14 @@ class FaissMatcher:
 
                 x_treated = std_treated
                 x_untreated = std_untreated
-                y_match_treated = np.array([y_untreated.values[idx].mean() for idx in self.treated_index])
-                y_match_untreated = np.array([y_treated.values[idx].mean() for idx in self.untreated_index])
-                x_match_treated = np.array([x_untreated.values[idx].mean(axis=0) for idx in self.treated_index])
-                x_match_untreated = np.array([x_treated.values[idx].mean(axis=0) for idx in self.untreated_index])
+                y_match_treated = np.array([y_untreated.to_numpy()[idx].mean() for idx in self.treated_index])
+                y_match_untreated = np.array([y_treated.to_numpy()[idx].mean() for idx in self.untreated_index])
+                x_match_treated = np.array([x_untreated.to_numpy()[idx].mean(0) for idx in self.treated_index])
+                x_match_untreated = np.array([x_treated.to_numpy()[idx].mean(0) for idx in self.untreated_index])
                 bias_coefs_c = bias_coefs(self.untreated_index, y_treated.to_numpy(), x_treated.to_numpy())
                 bias_coefs_t = bias_coefs(self.treated_index, y_untreated.to_numpy(), x_untreated.to_numpy())
                 bias_c = bias(x_untreated.to_numpy(), x_match_untreated, bias_coefs_c)
-                bias_t = bias(x_treated.to_numpy(), x_match_treated,  bias_coefs_t)
+                bias_t = bias(x_treated.to_numpy(), x_match_treated, bias_coefs_t)
 
             else:
                 outcome_arr = df[outcome].to_numpy()
@@ -159,9 +157,8 @@ class FaissMatcher:
                 bias_c = bias(x_untreated.to_numpy(), x_match_untreated, bias_coefs_c)
                 bias_t = bias(x_treated.to_numpy(), x_match_treated, bias_coefs_t)
 
-            y_match_treated_bias = y_match_treated + bias_t
-            y_match_untreated_bias = y_match_untreated - bias_c
-
+            y_match_treated_bias = y_treated.to_numpy() - y_match_treated + bias_t
+            y_match_untreated_bias = y_match_untreated - y_untreated.to_numpy() - bias_c
 
             self.dict_outcome_untreated[outcome] = y_untreated.values
             self.dict_outcome_untreated[outcome + POSTFIX] = y_match_untreated
@@ -251,23 +248,6 @@ class FaissMatcher:
         self.df_matched = df_matched
 
 
-    def calc_ate(self, df: pd.DataFrame, outcome: str) -> np.array:
-        """Calculate ATE - average treatment effect
-
-        Args:
-            df: pd.DataFrame
-            outcome: pd.Series or {__iter__}
-
-        Returns:
-            ATE: float
-
-        """
-        logger.debug("Calculating ATE")
-
-        ate = np.mean((2 * df[self.treatment] - 1) * (df[outcome] - df[outcome + POSTFIX_BIAS]))
-
-        return ate
-
     def calc_atc(self, df: pd.DataFrame, outcome: str) -> ():
         """Calculates Average Treatment Effect for the control group (ATC)
 
@@ -286,11 +266,11 @@ class FaissMatcher:
         df = df[df[self.treatment] == 0]
         N_c = len(df)
         index_c = list(range(N_c)) if self.group_col is None else self.orig_untreated_index
-        ITT_c = df[outcome + POSTFIX_BIAS] - df[outcome]
+        ITT_c = df[outcome + POSTFIX_BIAS]
         scaled_counts_c = scaled_counts(N_c, self.treated_index, index_c)
 
         vars_c = np.repeat(ITT_c.var(), N_c)  # conservative
-        atc = np.mean(ITT_c)
+        atc = ITT_c.mean()
 
         return atc, scaled_counts_c, vars_c
 
@@ -310,11 +290,11 @@ class FaissMatcher:
         df = df[df[self.treatment] == 1]
         N_t = len(df)
         index_t = list(range(N_t)) if self.group_col is None else self.orig_treated_index
-        ITT_t = df[outcome] - df[outcome + POSTFIX_BIAS]
+        ITT_t = df[outcome + POSTFIX_BIAS]
         scaled_counts_t = scaled_counts(N_t, self.untreated_index, index_t)
 
         vars_t = np.repeat(ITT_t.var(), N_t)  # conservative
-        att = np.mean(ITT_t)
+        att = ITT_t.mean()
 
         return att, scaled_counts_t, vars_t
 
@@ -330,10 +310,15 @@ class FaissMatcher:
         att_dict = {}
         atc_dict = {}
         ate_dict = {}
+        N = len(df)
+        N_t = df[self.treatment].sum()
+        N_c = N - N_t
+
         for outcome in [self.outcomes]:
-            ate = self.calc_ate(df, outcome)
+
             att, scaled_counts_t, vars_t = self.calc_att(df, outcome)
             atc, scaled_counts_c, vars_c = self.calc_atc(df, outcome)
+            ate = (N_c / N) * atc + (N_t / N) * att
 
             att_se = calc_att_se(vars_c, vars_t, scaled_counts_c)
             atc_se = calc_atc_se(vars_c, vars_t, scaled_counts_t)
@@ -509,17 +494,18 @@ def _get_index(base, new):
         new: array or Any
 
     Returns:
-        Array of indexes
+        Array of indexes"""
 
-    """
+
     index = faiss.IndexFlatL2(base.shape[1])
     index.add(base)
     print("Finding index")
-    dist, indexes = index.search(new, 5)
+    dist, indexes = index.search(new, 10)
     map_func = lambda x: np.where(x == x[0])[0]
     equal_dist = list(map(map_func, dist))
     f2 = lambda x, y: x[y]
     indexes = np.array([f2(i, j) for i, j in zip(indexes, equal_dist)])
+
     return indexes
 
 
