@@ -160,7 +160,6 @@ class FaissMatcher:
             y_match_treated_bias = y_treated.to_numpy() - y_match_treated + bias_t
             y_match_untreated_bias = y_match_untreated - y_untreated.to_numpy() - bias_c
 
-
             self.dict_outcome_untreated[outcome] = y_untreated.values
             self.dict_outcome_untreated[outcome + POSTFIX] = y_match_untreated
             self.dict_outcome_untreated[outcome + POSTFIX_BIAS] = y_match_untreated_bias
@@ -271,7 +270,7 @@ class FaissMatcher:
         scaled_counts_c = scaled_counts(N_c, self.treated_index, index_c)
 
         vars_c = np.repeat(ITT_c.var(), N_c)  # conservative
-        atc = np.mean(ITT_c)
+        atc = ITT_c.mean()
 
         return atc, scaled_counts_c, vars_c
 
@@ -295,7 +294,7 @@ class FaissMatcher:
         scaled_counts_t = scaled_counts(N_t, self.untreated_index, index_t)
 
         vars_t = np.repeat(ITT_t.var(), N_t)  # conservative
-        att = np.mean(ITT_t)
+        att = ITT_t.mean()
 
         return att, scaled_counts_t, vars_t
 
