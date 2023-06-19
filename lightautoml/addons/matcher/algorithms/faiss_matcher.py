@@ -189,7 +189,7 @@ class FaissMatcher:
 
         return df_pred
 
-    def _create_features_matched_df(self, index: int, is_treated: bool) -> pd.DataFrame:
+    def _create_features_matched_df(self, index: np.array, is_treated: bool) -> pd.DataFrame:
         """Creates dataframe with matched values
 
         Args:
@@ -203,7 +203,8 @@ class FaissMatcher:
         df = self.df.drop(columns=[self.outcomes])
 
         if self.group_col is None:
-            untreated_df = pd.DataFrame(data=np.array([df[df[self.treatment] == int(not is_treated)].values[idx].mean(axis=0) for idx in index]), columns=df.columns)
+            filtered = df.loc[df[self.treatment] == int(not is_treated)].values
+            untreated_df = pd.DataFrame(data=np.array([filtered[idx].mean(axis=0) for idx in index]), columns=df.columns)
             untreated_df['index'] = pd.Series(list(index))
             treated_df = df[df[self.treatment] == int(is_treated)].reset_index()
         else:
