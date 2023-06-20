@@ -659,9 +659,9 @@ def scaled_counts(N: int, matches, index) -> np.array:
 
 
 def bias_coefs(matches, Y_m, X_m):
-    # Computes OLS coefficient in bias correction regression. Constructs
-    # data for regression by including (possibly multiple times) every
-    # observation that has appeared in the matched sample.
+    """Computes OLS coefficient in bias correction regression. Constructs
+    data for regression by including (possibly multiple times) every
+    observation that has appeared in the matched sample."""
 
     flat_idx = np.concatenate(matches)
     N, K = len(flat_idx), X_m.shape[1]
@@ -675,11 +675,12 @@ def bias_coefs(matches, Y_m, X_m):
 
 
 def bias(X, X_m, coefs):
-    # Computes bias correction term, which is approximated by the dot
-    # product of the matching discrepancy (i.e., X-X_matched) and the
-    # coefficients from the bias correction regression.
+    """Computes bias correction term, which is approximated by the dot
+    product of the matching discrepancy (i.e., X-X_matched) and the
+    coefficients from the bias correction regression.
 
-    # X_m_mean = [X_m[idx].mean(0) for idx in matches]
+    X_m_mean = [X_m[idx].mean(0) for idx in matches]"""
+
     bias_list = [(X_j - X_i).dot(coefs) for X_i, X_j in zip(X, X_m)]
 
     return np.array(bias_list)
