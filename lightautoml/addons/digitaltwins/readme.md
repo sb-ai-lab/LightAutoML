@@ -1,4 +1,4 @@
-# Matcher
+# Digital Twins
 
 [![Telegram](https://img.shields.io/badge/chat-on%20Telegram-2ba2d9.svg)](https://t.me/lamamatcher)
 
@@ -20,9 +20,9 @@ pip install -U lightautoml-<vesion>.whl
 git clone https://stash.delta.sbrf.ru/scm/finds/matcher.git mathcer
 
 # Alpha 
-git clone https://df-bitbucket.delta.sbrf.ru/scm/finds/matcher.git matcher
+git clone https://df-bitbucket.delta.sbrf.ru/scm/finds/matcher.git digitaltwins
 
-cd matcher
+cd digitaltwins
 poetry build 
 pip install dist/lightautoml-<version>.whl
 ```

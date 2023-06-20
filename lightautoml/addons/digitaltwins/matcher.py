@@ -27,7 +27,7 @@ OUT_MODE_PERCENT = True
 OUT_MIN_PERCENT = 0.02
 OUT_MAX_PERCENT = 0.98
 
-logger = logging.getLogger("matcher")
+logger = logging.getLogger("digitaltwins")
 console_out = logging.StreamHandler()
 logging.basicConfig(
     handlers=(console_out,),
