@@ -414,8 +414,8 @@ class FaissMatcher:
 
             matches_c = _get_index(std_treated_np, std_untreated_np, self.n_neighbors)
             matches_t = _get_index(std_untreated_np, std_treated_np, self.n_neighbors)
-            matches_c = np.array([list(map(lambda x: treated_index[x], i)) for i in matches_c])
-            matches_t = np.array([list(map(lambda x: untreated_index[x], i)) for i in matches_t])
+            matches_c = np.array([list(map(lambda x: treated_index[x], i)) for i in matches_c], dtype=object)
+            matches_t = np.array([list(map(lambda x: untreated_index[x], i)) for i in matches_t], dtype=object)
 
             all_treated_matches.update({group: matches_t})
             all_untreated_matches.update({group: matches_c})
@@ -503,7 +503,7 @@ def _get_index(base, new, n_neighbors: int):
     map_func = lambda x: np.where(x == x[0])[0]
     equal_dist = list(map(map_func, dist))
     f2 = lambda x, y: x[y]
-    indexes = np.array([f2(i, j) for i, j in zip(indexes, equal_dist)])
+    indexes = np.array([f2(i, j) for i, j in zip(indexes, equal_dist)], dtype=object)
     print("Done")
     return indexes
 
