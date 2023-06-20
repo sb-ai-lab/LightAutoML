@@ -58,6 +58,7 @@ class Matcher:
             drop_outliers_by_percentile=OUT_MODE_PERCENT,
             min_percentile=OUT_MIN_PERCENT,
             max_percentile=OUT_MAX_PERCENT,
+            n_neighbors=10,
     ):
         """
 
@@ -108,6 +109,7 @@ class Matcher:
         self.pval_dict = None
         self.new_treatment = None
         self.validate = None
+        self.n_neighbors = n_neighbors
 
     def _preprocessing_data(self):
         """Turns categorical features into dummy.
@@ -208,6 +210,7 @@ class Matcher:
             info_col=self.info_col,
             features=self.features_importance,
             group_col=self.group_col,
+            n_neighbors=self.n_neighbors
         )
         logger.info("Applying matching")
         self.results = self.matcher.match()
@@ -252,12 +255,14 @@ class Matcher:
 
                 self.matcher = FaissMatcher(self.input_data, self.outcome, self.treatment, info_col=self.info_col,
                                             features=self.features_importance,
-                                            group_col=self.group_col, validation=self.validate)
+                                            group_col=self.group_col, validation=self.validate,
+                                            n_neighbors=self.n_neighbors)
             elif refuter == "subset_refuter":
                 df, self.validate = subset_refuter(self.input_data, self.treatment, fraction)
                 self.matcher = FaissMatcher(df, self.outcome, self.treatment, info_col=self.info_col,
                                             features=self.features_importance,
-                                            group_col=self.group_col, validation=self.validate)
+                                            group_col=self.group_col, validation=self.validate,
+                                            n_neighbors=self.n_neighbors)
             else:
                 logger.info("Incorrect refuter name!")
                 raise NameError("Incorrect refuter name!")
