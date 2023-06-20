@@ -17,7 +17,7 @@ pip install -U lightautoml-<vesion>.whl
 # Or you can build last version using poetry
 
 # Sigma
-git clone https://stash.delta.sbrf.ru/scm/finds/matcher.git mathcer
+git clone https://stash.delta.sbrf.ru/scm/finds/matcher.git digitaltwins
 
 # Alpha 
 git clone https://df-bitbucket.delta.sbrf.ru/scm/finds/matcher.git digitaltwins
