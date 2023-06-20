@@ -250,7 +250,7 @@ class Matcher:
                     self.input_data, orig_treatment, self.validate = random_treatment(self.input_data, self.treatment)
                 elif refuter == "random_feature":
                     self.input_data, self.validate = random_feature(self.input_data)
-                    if self.features_importance is not None:
+                    if self.features_importance is not None and i == 0:
                         self.features_importance.append("random_feature")
 
                 self.matcher = FaissMatcher(self.input_data, self.outcome, self.treatment, info_col=self.info_col,
@@ -284,7 +284,7 @@ class Matcher:
         elif refuter == "random_feature":
             self.input_data = self.input_data.drop(columns="random_feature")
             if self.features_importance is not None:
-                self.features_importance.pop("random_feature")
+                self.features_importance.remove("random_feature")
 
         return self.pval_dict
 
