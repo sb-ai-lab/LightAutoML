@@ -36,7 +36,10 @@ class FaissMatcher:
             validation - flag for validation of estimated ATE with default method 'random_feature'
         """
         self.n_neighbors = n_neighbors
-        self.df = df
+        if group_col is None:
+            self.df = df
+        else:
+            self.df = df.sort_values([treatment, group_col]).reset_index(drop=True)
         self.columns_del = [outcomes]
         if info_col:
             self.info_col = info_col
@@ -121,40 +124,19 @@ class FaissMatcher:
         df = self.df.drop(columns=self.info_col)
 
         for outcome in [self.outcomes]:
-            if self.group_col is None:
-                y_untreated = df[df[self.treatment] == 0][outcome].to_numpy()
-                y_treated = df[df[self.treatment] == 1][outcome].to_numpy()
+            y_untreated = df[df[self.treatment] == 0][outcome].to_numpy()
+            y_treated = df[df[self.treatment] == 1][outcome].to_numpy()
 
-                x_treated = std_treated.to_numpy()
-                x_untreated = std_untreated.to_numpy()
-                y_match_treated = np.array([y_untreated[idx].mean() for idx in self.treated_index])
-                y_match_untreated = np.array([y_treated[idx].mean() for idx in self.untreated_index])
-                x_match_treated = np.array([x_untreated[idx].mean(0) for idx in self.treated_index])
-                x_match_untreated = np.array([x_treated[idx].mean(0) for idx in self.untreated_index])
-                bias_coefs_c = bias_coefs(self.untreated_index, y_treated, x_treated)
-                bias_coefs_t = bias_coefs(self.treated_index, y_untreated, x_untreated)
-                bias_c = bias(x_untreated, x_match_untreated, bias_coefs_c)
-                bias_t = bias(x_treated, x_match_treated, bias_coefs_t)
-
-            else:
-                outcome_arr = df[outcome].to_numpy()
-                X = df.drop(columns=[self.treatment, outcome, self.group_col]).to_numpy()
-                y_untreated = df.loc[self.orig_untreated_index.ravel()][outcome].to_numpy()
-                y_treated = df.loc[self.orig_treated_index.ravel()][outcome].to_numpy()
-
-                x_treated = df.loc[self.orig_treated_index.ravel()].drop(
-                    columns=[self.treatment, outcome, self.group_col]
-                ).to_numpy()
-                x_untreated = df.loc[self.orig_untreated_index.ravel()].drop(
-                    columns=[self.treatment, outcome, self.group_col]).to_numpy()
-                y_match_untreated = np.array([outcome_arr[idx].mean() for idx in self.untreated_index])
-                y_match_treated = np.array([outcome_arr[idx].mean() for idx in self.treated_index])
-                x_match_treated = np.array([X[idx].mean(axis=0) for idx in self.treated_index])
-                x_match_untreated = np.array([X[idx].mean(axis=0) for idx in self.untreated_index])
-                bias_coefs_c = bias_coefs(self.untreated_index, outcome_arr, X)
-                bias_coefs_t = bias_coefs(self.treated_index, outcome_arr, X)
-                bias_c = bias(x_untreated, x_match_untreated, bias_coefs_c)
-                bias_t = bias(x_treated, x_match_treated, bias_coefs_t)
+            x_treated = std_treated.to_numpy()
+            x_untreated = std_untreated.to_numpy()
+            y_match_treated = np.array([y_untreated[idx].mean() for idx in self.treated_index])
+            y_match_untreated = np.array([y_treated[idx].mean() for idx in self.untreated_index])
+            x_match_treated = np.array([x_untreated[idx].mean(0) for idx in self.treated_index])
+            x_match_untreated = np.array([x_treated[idx].mean(0) for idx in self.untreated_index])
+            bias_coefs_c = bias_coefs(self.untreated_index, y_treated, x_treated)
+            bias_coefs_t = bias_coefs(self.treated_index, y_untreated, x_untreated)
+            bias_c = bias(x_untreated, x_match_untreated, bias_coefs_c)
+            bias_t = bias(x_treated, x_match_treated, bias_coefs_t)
 
             y_match_treated_bias = y_treated - y_match_treated + bias_t
             y_match_untreated_bias = y_match_untreated - y_untreated - bias_c
@@ -208,17 +190,15 @@ class FaissMatcher:
             untreated_df['index'] = pd.Series(list(index))
             treated_df = df[df[self.treatment] == int(is_treated)].reset_index()
         else:
-            df = df.sort_values(self.group_col)
-            X = df.drop(columns=self.group_col).to_numpy()
-            untreated_df = pd.DataFrame(data=np.array([X[idx].mean(axis=0) for idx in index]),
-                                        columns=df.drop(columns=self.group_col).columns)
-            untreated_df[self.group_col] = df[self.group_col]
+            filtered = df.loc[df[self.treatment] == int(not is_treated)]
+            cols_untreated = [col for col in filtered.columns if col != self.group_col]
+            filtered = filtered.drop(columns=self.group_col).to_numpy()
+            untreated_df = pd.DataFrame(data=np.array([filtered[idx].mean(axis=0) for idx in index]),
+                                        columns=cols_untreated)
             untreated_df['index'] = pd.Series(list(index))
-            if is_treated:
-                treated_df = df.loc[self.orig_treated_index].reset_index()
-            else:
-                treated_df = df.loc[self.orig_untreated_index].reset_index()
-
+            treated_df = df[df[self.treatment] == int(is_treated)].reset_index()
+            grp = treated_df[self.group_col]
+            untreated_df[self.group_col] = grp
         untreated_df.columns = [col + POSTFIX for col in untreated_df.columns]
 
         x = pd.concat([treated_df, untreated_df], axis=1).drop(
@@ -266,9 +246,8 @@ class FaissMatcher:
 
         df = df[df[self.treatment] == 0]
         N_c = len(df)
-        index_c = list(range(N_c)) if self.group_col is None else self.orig_untreated_index
         ITT_c = df[outcome + POSTFIX_BIAS]
-        scaled_counts_c = scaled_counts(N_c, self.treated_index, index_c)
+        scaled_counts_c = scaled_counts(N_c, self.treated_index)
 
         vars_c = np.repeat(ITT_c.var(), N_c)  # conservative
         atc = ITT_c.mean()
@@ -290,9 +269,8 @@ class FaissMatcher:
 
         df = df[df[self.treatment] == 1]
         N_t = len(df)
-        index_t = list(range(N_t)) if self.group_col is None else self.orig_treated_index
         ITT_t = df[outcome + POSTFIX_BIAS]
-        scaled_counts_t = scaled_counts(N_t, self.untreated_index, index_t)
+        scaled_counts_t = scaled_counts(N_t, self.untreated_index)
 
         vars_t = np.repeat(ITT_t.var(), N_t)  # conservative
         att = ITT_t.mean()
@@ -391,47 +369,35 @@ class FaissMatcher:
             Tuple of matched df and ATE
 
         """
-        df = self.df.drop(columns=self.info_col).sort_values(self.group_col)
+        df = self.df.drop(columns=self.info_col)
         groups = sorted(df[self.group_col].unique())
-        all_treated_matches = {}
-        all_untreated_matches = {}
-        all_treated_outcome = {}
-        all_untreated_outcome = {}
-
+        matches_c = []
+        matches_t = []
+        group_arr_c = df[df[self.treatment] == 0][self.group_col].to_numpy()
+        group_arr_t = df[df[self.treatment] == 1][self.group_col].to_numpy()
+        treat_arr_c = df[df[self.treatment] == 0][self.treatment].to_numpy()
+        treat_arr_t = df[df[self.treatment] == 1][self.treatment].to_numpy()
         for group in groups:
-            treated_index = {}
-            untreated_index = {}
             df_group = df[df[self.group_col] == group]
             temp = df_group[self.columns_match + [self.group_col]]
             temp = temp.loc[:, (temp != 0).any(axis=0)].drop(columns=self.group_col)
             treated, untreated = self._get_split(temp)
-            for i, ind in enumerate(temp[temp[self.treatment] == 1].index):
-                treated_index.update({i: ind})
-            for i, ind in enumerate(temp[temp[self.treatment] == 0].index):
-                untreated_index.update({i: ind})
 
             std_treated_np, std_untreated_np = _transform_to_np(treated, untreated)
 
-            matches_c = _get_index(std_treated_np, std_untreated_np, self.n_neighbors)
-            matches_t = _get_index(std_untreated_np, std_treated_np, self.n_neighbors)
-            matches_c = np.array([list(map(lambda x: treated_index[x], i)) for i in matches_c], dtype=object)
-            matches_t = np.array([list(map(lambda x: untreated_index[x], i)) for i in matches_t], dtype=object)
-
-            all_treated_matches.update({group: matches_t})
-            all_untreated_matches.update({group: matches_c})
-            all_treated_outcome.update({group: list(treated_index.values())})
-            all_untreated_outcome.update({group: list(untreated_index.values())})
-
-        matches_c = [item for sublist in [i.tolist() for i in list(all_untreated_matches.values())] for item in sublist]
-        matches_t = [item for sublist in [i.tolist() for i in list(all_treated_matches.values())] for item in sublist]
-
-        index_c = [item for sublist in [i for i in list(all_untreated_outcome.values())] for item in sublist]
-        index_t = [item for sublist in [i for i in list(all_treated_outcome.values())] for item in sublist]
+            matches_c_i = _get_index(std_treated_np, std_untreated_np, self.n_neighbors)
+            matches_t_i = _get_index(std_untreated_np, std_treated_np, self.n_neighbors)
+            group_mask_c = (group_arr_c == group)
+            group_mask_t = (group_arr_t == group)
+            matches_c_mask = np.arange(treat_arr_t.shape[0])[group_mask_t]
+            matches_c_i = [matches_c_mask[i] for i in matches_c_i]
+            matches_t_mask = np.arange(treat_arr_c.shape[0])[group_mask_c]
+            matches_t_i = [matches_t_mask[i] for i in matches_t_i]
+            matches_c.extend(matches_c_i)
+            matches_t.extend(matches_t_i)
 
         self.untreated_index = np.array(matches_c)
         self.treated_index = np.array(matches_t)
-        self.orig_treated_index = np.array(index_t)
-        self.orig_untreated_index = np.array(index_c)
         df_group = df[self.columns_match].drop(columns=self.group_col)
         treated, untreated = self._get_split(df_group)
         self._predict_outcome(treated, untreated)
@@ -503,7 +469,7 @@ def _get_index(base, new, n_neighbors: int):
     map_func = lambda x: np.where(x == x[0])[0]
     equal_dist = list(map(map_func, dist))
     f2 = lambda x, y: x[y]
-    indexes = np.array([f2(i, j) for i, j in zip(indexes, equal_dist)], dtype=object)
+    indexes = np.array([f2(i, j) for i, j in zip(indexes, equal_dist)])
     print("Done")
     return indexes
 
@@ -632,7 +598,7 @@ def pval_calc(z):
     return round(2 * (1 - norm.cdf(abs(z))), 2)
 
 
-def scaled_counts(N: int, matches, index) -> np.array:
+def scaled_counts(N: int, matches) -> np.array:
     """Counts the number of times each subject has appeared as a match
 
     In the case of multiple matches, each subject only gets partial credit.
@@ -643,15 +609,14 @@ def scaled_counts(N: int, matches, index) -> np.array:
         index - indexes from control/treated group: list or Any
 
     Returns:
-        Number of times each subject has appeared as a match: int
+        Number of times each subject has appeared as a match: int"""
 
-    """
     s_counts = np.zeros(N)
-    index_dict = dict(zip(index, list(range(N))))
+
     for matches_i in matches:
         scale = 1 / len(matches_i)
         for match in matches_i:
-            s_counts[index_dict[match]] += scale
+            s_counts[match] += scale
 
     logger.info(f"Calculated the number of times each subject has appeared as a match: {len(s_counts)}")
 
@@ -677,9 +642,7 @@ def bias_coefs(matches, Y_m, X_m):
 def bias(X, X_m, coefs):
     """Computes bias correction term, which is approximated by the dot
     product of the matching discrepancy (i.e., X-X_matched) and the
-    coefficients from the bias correction regression.
-
-    X_m_mean = [X_m[idx].mean(0) for idx in matches]"""
+    coefficients from the bias correction regression."""
 
     bias_list = [(X_j - X_i).dot(coefs) for X_i, X_j in zip(X, X_m)]
 

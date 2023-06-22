@@ -264,8 +264,8 @@ class Matcher:
                                             group_col=self.group_col, validation=self.validate,
                                             n_neighbors=self.n_neighbors)
             else:
-                logger.info("Incorrect refuter name!")
-                raise NameError("Incorrect refuter name!")
+                logger.info("Incorrect refuter name")
+                raise NameError("Incorrect refuter name! Available refuters: 'random_feature', 'random_treatment', 'subset_refuter'")
 
             if self.group_col is None:
                 sim = self.matcher.match()
