@@ -389,8 +389,10 @@ class FaissMatcher:
             matches_t_i = _get_index(std_untreated_np, std_treated_np, self.n_neighbors)
             group_mask_c = (group_arr_c == group)
             group_mask_t = (group_arr_t == group)
-            matches_c_i = np.arange(treat_arr_t.shape[0])[group_mask_t][matches_c_i]
-            matches_t_i = np.arange(treat_arr_c.shape[0])[group_mask_c][matches_t_i]
+            matches_c_mask = np.arange(treat_arr_t.shape[0])[group_mask_t]
+            matches_c_i = [matches_c_mask[i] for i in matches_c_i]
+            matches_t_mask = np.arange(treat_arr_c.shape[0])[group_mask_c]
+            matches_t_i = [matches_t_mask[i] for i in matches_t_i]
             matches_c.extend(matches_c_i)
             matches_t.extend(matches_t_i)
 
