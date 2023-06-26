@@ -181,7 +181,7 @@ class FaissMatcher:
             Matched dataframe of features: pd.DataFrame
 
         """
-        df = self.df.drop(columns=[self.outcomes])
+        df = self.df.drop(columns=[self.outcomes]+self.info_col)
 
         if self.group_col is None:
             filtered = df.loc[df[self.treatment] == int(not is_treated)].values
