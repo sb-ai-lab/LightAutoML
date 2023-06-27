@@ -199,9 +199,11 @@ commands = pytest {posargs} -v --basetemp="{envtmpdir}"
 
 [testenv:lint]
 deps = pre-commit
+skip_install = true
 commands = pre-commit run --all-files --show-diff-on-failure
 
 #[testenv:docs]
+#skip_install = true
 #sphinx = {version = "5.3.0", extras = ["autdoc", "autosummary", "intersphinx", "napoleon", "viewcode"], python = ">=3.8"}
 #sphinx-autodoc-typehints = {version = ">=1.19.5", python = ">=3.8"}
 #sphinx-rtd-theme = {version = ">=1.1.1", python = ">=3.8"}
