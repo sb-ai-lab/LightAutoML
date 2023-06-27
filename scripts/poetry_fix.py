@@ -10,7 +10,7 @@ from typing import Optional
 
 
 PYPROJECT_TOML = Path("pyproject.toml")
-ALL_PYTHON_DEPS = ">=3.6.1, <3.10"
+ALL_PYTHON_DEPS = ">=3.6.1, <3.11"
 PYTHON_DEPS = {6: "~3.6.1", 7: "~3.7.1", 8: "~3.8.0", 9: "~3.9.0"}
 PYTHON_DEPS_PATTERN = '^python = ".*"$'
 
