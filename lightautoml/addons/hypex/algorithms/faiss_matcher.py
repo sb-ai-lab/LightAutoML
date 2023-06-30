@@ -10,7 +10,7 @@ faiss.cvar.distance_compute_blas_threshold = 100000
 POSTFIX = "_matched"
 POSTFIX_BIAS = "_matched_bias"
 
-logger = logging.getLogger("Faiss digitaltwins")
+logger = logging.getLogger("Faiss hypex")
 console_out = logging.StreamHandler()
 logging.basicConfig(
     handlers=(console_out,),

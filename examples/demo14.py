@@ -1,6 +1,6 @@
 import pandas as pd
 
-from lightautoml.addons.digitaltwins import Matcher
+from lightautoml.addons.hypex import Matcher
 
 
 df = pd.read_csv("data/sampled_matching.csv").drop(["Unnamed: 0"], axis=1)
