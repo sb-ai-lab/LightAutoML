@@ -84,7 +84,7 @@ class Matcher:
         """
         if use_algos is None:
             use_algos = USE_ALGOS
-        self.input_data = input_data
+        self.input_data = input_data.fillna(0)
         self.outcome = outcome
         self.treatment = treatment
         self.group_col = group_col
