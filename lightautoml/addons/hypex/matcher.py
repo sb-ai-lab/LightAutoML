@@ -59,6 +59,7 @@ class Matcher:
             min_percentile=OUT_MIN_PERCENT,
             max_percentile=OUT_MAX_PERCENT,
             n_neighbors=10,
+            silent=False
     ):
         """
 
@@ -110,6 +111,7 @@ class Matcher:
         self.new_treatment = None
         self.validate = None
         self.n_neighbors = n_neighbors
+        self.silent = silent
 
     def _preprocessing_data(self):
         """Turns categorical features into dummy.
@@ -138,7 +140,11 @@ class Matcher:
     def _spearman_filter(self):
         """Applies filter by columns by correlation with outcome column
         """
-        logger.info("Applying filter by spearman test - drop columns correlated with outcome")
+        if self.silent:
+            logger.debug("Applying filter by spearman test - drop columns correlated with outcome")
+        else:
+            logger.info("Applying filter by spearman test - drop columns correlated with outcome")
+
         same_filter = SpearmanFilter(
             outcome=self.outcome, treatment=self.treatment, threshold=self.same_target_threshold
         )
@@ -153,7 +159,11 @@ class Matcher:
         If not, leaves only values between 25 and 75 percentile
 
         """
-        logger.info("Applying filter of outliers")
+        if self.silent:
+            logger.debug(f"Applying filter of outliers\ninterquartile_coeff={self.interquartile_coeff}\nmode_percentile={self.mode_percentile}\nmin_percentile={self.min_percentile}\nmax_percentile={self.max_percentile}")
+        else:
+            logger.info(f"Applying filter of outliers\ninterquartile_coeff={self.interquartile_coeff}\nmode_percentile={self.mode_percentile}\nmin_percentile={self.min_percentile}\nmax_percentile={self.max_percentile}")
+
         out_filter = OutliersFilter(
             interquartile_coeff=self.interquartile_coeff,
             mode_percentile=self.mode_percentile,
@@ -167,7 +177,11 @@ class Matcher:
     def lama_feature_select(self) -> pd.DataFrame:
         """Counts feature importance
         """
-        logger.info("Counting feature importance")
+        if self.silent:
+            logger.debug("Counting feature importance")
+        else:
+            logger.info("Counting feature importance")
+
         feat_select = LamaFeatureSelector(
             outcome=self.outcome,
             outcome_type=self.outcome_type,
@@ -210,9 +224,13 @@ class Matcher:
             info_col=self.info_col,
             features=self.features_importance,
             group_col=self.group_col,
-            n_neighbors=self.n_neighbors
+            n_neighbors=self.n_neighbors,
+            silent=self.silent
         )
-        logger.info("Applying matching")
+        if self.silent:
+            logger.debug("Applying matching")
+        else:
+            logger.info("Applying matching")
         self.results = self.matcher.match()
 
         self.quality_result = self.matcher.matching_quality()
@@ -239,7 +257,10 @@ class Matcher:
             self.pval_dict - dict of outcome_name: (mean_effect on validation, p-value): dict
 
         """
-        logger.info("Applying validation of result")
+        if self.silent:
+            logger.debug("Applying validation of result")
+        else:
+            logger.info("Applying validation of result")
 
         self.val_dict = {k: [] for k in [self.outcome]}
         self.pval_dict = dict()
@@ -264,7 +285,7 @@ class Matcher:
                                             group_col=self.group_col, validation=self.validate,
                                             n_neighbors=self.n_neighbors)
             else:
-                logger.info("Incorrect refuter name")
+                logger.error("Incorrect refuter name")
                 raise NameError("Incorrect refuter name! Available refuters: 'random_feature', 'random_treatment', 'subset_refuter'")
 
             if self.group_col is None:

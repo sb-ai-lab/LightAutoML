@@ -22,7 +22,7 @@ logging.basicConfig(
 
 class FaissMatcher:
     def __init__(self, df, outcomes, treatment, info_col, features=None, group_col=False, sigma=1.96, validation=None,
-                 n_neighbors=10):
+                 n_neighbors=10, silent=False):
         """
 
         Args:
@@ -80,6 +80,7 @@ class FaissMatcher:
         self.quality_dict = {}
         self.rep_dict = None
         self.validation = validation
+        self.silent = silent
 
     def _get_split(self, df: pd.DataFrame) -> (pd.DataFrame, pd.DataFrame):
 
@@ -247,7 +248,7 @@ class FaissMatcher:
         df = df[df[self.treatment] == 0]
         N_c = len(df)
         ITT_c = df[outcome + POSTFIX_BIAS]
-        scaled_counts_c = scaled_counts(N_c, self.treated_index)
+        scaled_counts_c = scaled_counts(N_c, self.treated_index, self.silent)
 
         vars_c = np.repeat(ITT_c.var(), N_c)  # conservative
         atc = ITT_c.mean()
@@ -270,7 +271,7 @@ class FaissMatcher:
         df = df[df[self.treatment] == 1]
         N_t = len(df)
         ITT_t = df[outcome + POSTFIX_BIAS]
-        scaled_counts_t = scaled_counts(N_t, self.untreated_index)
+        scaled_counts_t = scaled_counts(N_t, self.untreated_index, self.silent)
 
         vars_t = np.repeat(ITT_t.var(), N_t)  # conservative
         att = ITT_t.mean()
@@ -337,17 +338,20 @@ class FaissMatcher:
             dict of reports
 
         """
-        logger.info(f"Estimating quality of matching")
+        if self.silent:
+            logger.debug(f"Estimating quality of matching")
+        else:
+            logger.info(f"Estimating quality of matching")
 
         psi_columns = self.columns_match
         psi_columns.remove(self.treatment)
         psi_data, ks_data, smd_data = matching_quality(
-            self.df_matched, self.treatment, sorted(self.features_quality), sorted(psi_columns)
+            self.df_matched, self.treatment, sorted(self.features_quality), sorted(psi_columns), self.silent
         )
 
         rep_dict = {
-            "match_control_to_treat": check_repeats(np.concatenate(self.treated_index)),
-            "match_treat_to_control": check_repeats(np.concatenate(self.untreated_index)),
+            "match_control_to_treat": check_repeats(np.concatenate(self.treated_index), silent=self.silent),
+            "match_treat_to_control": check_repeats(np.concatenate(self.untreated_index), silent=self.silent),
         }
 
         self.quality_dict = {"psi": psi_data, "ks_test": ks_data, "smd": smd_data, "repeats": rep_dict}
@@ -355,10 +359,17 @@ class FaissMatcher:
         rep_df = pd.DataFrame.from_dict(rep_dict, orient="index").rename(columns={0: "value"})
         self.rep_dict = rep_df
 
-        logger.info(f"PSI info: \n {psi_data.head(10)} \nshape:{psi_data.shape}")
-        logger.info(f"Kolmogorov-Smirnov test info: \n {ks_data.head(10)} \nshape:{ks_data.shape}")
-        logger.info(f"Standardised mean difference info: \n {smd_data.head(10)} \nshape:{smd_data.shape}")
-        logger.info(f"Repeats info: \n {rep_df.head(10)}")
+        if self.silent:
+            logger.debug(f"PSI info: \n {psi_data.head(10)} \nshape:{psi_data.shape}")
+            logger.debug(f"Kolmogorov-Smirnov test info: \n {ks_data.head(10)} \nshape:{ks_data.shape}")
+            logger.debug(f"Standardised mean difference info: \n {smd_data.head(10)} \nshape:{smd_data.shape}")
+            logger.debug(f"Repeats info: \n {rep_df.head(10)}")
+        else:
+            logger.info(f"PSI info: \n {psi_data.head(10)} \nshape:{psi_data.shape}")
+            logger.info(f"Kolmogorov-Smirnov test info: \n {ks_data.head(10)} \nshape:{ks_data.shape}")
+            logger.info(f"Standardised mean difference info: \n {smd_data.head(10)} \nshape:{smd_data.shape}")
+            logger.info(f"Repeats info: \n {rep_df.head(10)}")
+
 
         return self.quality_dict
 
@@ -464,13 +475,11 @@ def _get_index(base, new, n_neighbors: int):
 
     index = faiss.IndexFlatL2(base.shape[1])
     index.add(base)
-    print("Finding index")
     dist, indexes = index.search(new, n_neighbors)
     map_func = lambda x: np.where(x == x[0])[0]
     equal_dist = list(map(map_func, dist))
     f2 = lambda x, y: x[y]
     indexes = np.array([f2(i, j) for i, j in zip(indexes, equal_dist)])
-    print("Done")
     return indexes
 
 
@@ -598,7 +607,7 @@ def pval_calc(z):
     return round(2 * (1 - norm.cdf(abs(z))), 2)
 
 
-def scaled_counts(N: int, matches) -> np.array:
+def scaled_counts(N: int, matches, silence=False) -> np.array:
     """Counts the number of times each subject has appeared as a match
 
     In the case of multiple matches, each subject only gets partial credit.
@@ -618,7 +627,10 @@ def scaled_counts(N: int, matches) -> np.array:
         for match in matches_i:
             s_counts[match] += scale
 
-    logger.info(f"Calculated the number of times each subject has appeared as a match: {len(s_counts)}")
+    if silence:
+        logger.debug(f"Calculated the number of times each subject has appeared as a match: {len(s_counts)}")
+    else:
+        logger.info(f"Calculated the number of times each subject has appeared as a match: {len(s_counts)}")
 
     return s_counts
 
