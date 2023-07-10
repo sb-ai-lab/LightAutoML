@@ -1,6 +1,8 @@
 import datetime as dt
-from typing import Dict, Union
+from typing import Dict, Union, Tuple
 import faiss
+import numpy as np
+import pandas as pd
 from scipy.stats import norm
 
 from ..utils.metrics import *
@@ -24,7 +26,6 @@ class FaissMatcher:
     def __init__(self, df, outcomes, treatment, info_col, features=None, group_col=False, sigma=1.96, validation=None,
                  n_neighbors=10):
         """
-
         Args:
             df - input data: pd.DataFrame
             outcomes - target column/data name: str
@@ -82,17 +83,20 @@ class FaissMatcher:
         self.validation = validation
 
     def _get_split(self, df: pd.DataFrame) -> (pd.DataFrame, pd.DataFrame):
-
-        """Creates split data by treatment column
+        """
+        Creates split data by treatment column
 
         Separate treatment column with 1 (treated) an 0 (untreated),
         scales and transforms treatment column
 
         Args:
             df: pd.DataFrame
+                The input dataframe
 
         Returns:
-            Tuple of dfs treated, untreated; scaled std_treated and std_untreated: tuple
+            tuple: Tuple of dataframes - one for treated (df[self.treatment] == 1]) and
+            one for untreated (df[self.treatment] == 0]). Drops self.outcomes and
+            self.treatment columns
 
         """
         logger.debug("Creating split data by treatment column")
@@ -103,15 +107,16 @@ class FaissMatcher:
         return treated, untreated
 
     def _predict_outcome(self, std_treated: pd.DataFrame, std_untreated: pd.DataFrame):
-        """Func to predict target
-
+        """
         Applies LinearRegression to input arrays,
         calculate biases of treated and untreated values,
         creates dict of y - regular, matched and without bias
 
         Args:
             std_treated: pd.DataFrame
+                The dataframe of treated data
             std_untreated: pd.DataFrame
+                The dataframe of untreated data
 
         """
         logger.debug("Predicting target by Linear Regression")
@@ -154,14 +159,17 @@ class FaissMatcher:
         logger.debug(f"end -- [work time{total}]")
 
     def _create_outcome_matched_df(self, dict_outcome: dict, is_treated: bool) -> pd.DataFrame:
-        """Matches treated values with treatment column
+        """
+        Creates dataframe with outcomes values and treatment.
 
         Args:
             dict_outcome: dict
+                A dictionary containing outcomes
             is_treated: bool
+                A boolean value indicating whether the outcome is treated or not
 
         Returns:
-            Df with matched values: pd.DataFrame
+            pd.DataFrame: A dataframe with matched outcome and treatment columns
 
         """
         df_pred = pd.DataFrame(dict_outcome)
@@ -171,17 +179,21 @@ class FaissMatcher:
         return df_pred
 
     def _create_features_matched_df(self, index: np.array, is_treated: bool) -> pd.DataFrame:
-        """Creates dataframe with matched values
+        """
+        Creates matched dataframe with features
 
         Args:
-            index: int
+            index: np.array
+                An array of indices
             is_treated: bool
+                A boolean value indicating whether the outcome is treated or not
+
 
         Returns:
-            Matched dataframe of features: pd.DataFrame
+            pd.DataFrame: A dataframe of matched features
 
         """
-        df = self.df.drop(columns=[self.outcomes]+self.info_col)
+        df = self.df.drop(columns=[self.outcomes] + self.info_col)
 
         if self.group_col is None:
             filtered = df.loc[df[self.treatment] == int(not is_treated)].values
@@ -206,11 +218,11 @@ class FaissMatcher:
         return x
 
     def _create_matched_df(self):
-        """Creates matched df of features and outcome
+        """
+        Creates matched df of features and outcome
 
         Returns:
-            Matched dataframe
-
+            None
         """
         df_pred_treated = self._create_outcome_matched_df(self.dict_outcome_treated, True)
         df_pred_untreated = self._create_outcome_matched_df(self.dict_outcome_untreated, False)
@@ -230,16 +242,19 @@ class FaissMatcher:
         self.df_matched = df_matched
 
     def calc_atc(self, df: pd.DataFrame, outcome: str) -> ():
-        """Calculates Average Treatment Effect for the control group (ATC)
+        """
+        Calculates Average Treatment Effect for the control group (ATC)
 
         Effect on control group if it was affected
 
         Args:
             df: pd.DataFrame
-            outcome: pd.Series or {__iter__}
+                Input dataframe
+            outcome: str
+                The outcome to be considered for treatment effect
 
         Returns:
-            ATC, scaled counts and variances: tuple of numpy arrays
+            tuple: Contains ATC, scaled counts, and variances as numpy arrays
 
         """
         logger.debug("Calculating ATC")
@@ -255,14 +270,17 @@ class FaissMatcher:
         return atc, scaled_counts_c, vars_c
 
     def calc_att(self, df: pd.DataFrame, outcome: str) -> tuple:
-        """Calculates Average Treatment Effect for the treated (ATT) from pilot
+        """
+        Calculates Average Treatment Effect for the treated (ATT)
 
         Args:
             df: pd.DataFrame
+                Input dataframe
             outcome: str
+                The outcome to be considered for treatment effect
 
         Returns:
-            ATT, scaled counts and variances: tuple of numpy arrays
+            tuple: Contains ATT, scaled counts, and variances as numpy arrays
 
         """
         logger.debug("Calculating ATT")
@@ -278,10 +296,15 @@ class FaissMatcher:
         return att, scaled_counts_t, vars_t
 
     def _calculate_ate_all_target(self, df: pd.DataFrame):
-        """Creates dicts of all effects
+        """
+        Creates dictionaries of all effect: ATE, ATC, ATT
 
         Args:
             df: pd.DataFrame
+                Input dataframe
+
+        Returns:
+            None
 
         """
         logger.debug("Creating dicts of all effects: ATE, ATC, ATT")
@@ -328,13 +351,14 @@ class FaissMatcher:
         self.val_dict = ate_dict
 
     def matching_quality(self) -> Dict[str, Union[Dict[str, float], float]]:
-        """Estimated the quality of covariates balance and repeat fraction
+        """
+        Estimated the quality of covariates balance and repeat fraction
 
-        Estimates population stability index, Standardized mean difference
-        and Kolmogorov-Smirnov test for numeric values. Returns dict of reports.
+        Calculates population stability index,Standardized mean difference
+        and Kolmogorov-Smirnov test for numeric values. Returns a dictionary of reports.
 
         Returns:
-            dict of reports
+            dict: dictionary containing PSI, KS-test, SMD data and repeat fractions
 
         """
         logger.info(f"Estimating quality of matching")
@@ -363,10 +387,11 @@ class FaissMatcher:
         return self.quality_dict
 
     def group_match(self):
-        """Matches dfs if it divided by groups
+        """
+        Matches the dataframe if it divided by groups
 
         Returns:
-            Tuple of matched df and ATE
+            tuple: A tuple containing the matched dataframe and metrics such as ATE, ATT and ATC
 
         """
         df = self.df.drop(columns=self.info_col)
@@ -410,10 +435,11 @@ class FaissMatcher:
         return self.report_view()
 
     def match(self):
-        """Matches df
+        """
+        Matches the dataframe
 
         Returns:
-            Tuple of matched df and metrics ATE, ATC, ATT
+            tuple: A tuple containing the matched dataframe and metrics such as ATE, ATT and ATC
 
         """
         if self.group_col is not None:
@@ -441,6 +467,12 @@ class FaissMatcher:
         return self.report_view()
 
     def report_view(self) -> pd.DataFrame:
+        """
+        Formats the ATE, ATC, and ATT results into a Pandas DataFrame for easy viewing
+
+        Returns:
+            pd.DataFrame: DataFrame containing ATE, ATC, and ATT results
+        """
         result = (self.ATE, self.ATC, self.ATT)
         self.results = pd.DataFrame(
             [list(x.values())[0] for x in result],
@@ -450,17 +482,20 @@ class FaissMatcher:
         return self.results
 
 
-def _get_index(base, new, n_neighbors: int):
-    """Getting array of indexes that match new array
-
-    Creating indexes, add them to base array, search them in new array
+def _get_index(base: np.ndarray, new: np.ndarray, n_neighbors: int) -> np.ndarray:
+    """
+    Gets array of indexes that match a new array
 
     Args:
-        base: {shape}
-        new: array or Any
+        base: np.ndarray
+            A numpy array serving as the reference for matching
+        new: np.ndarray
+            A numpy array that needs to be matched with the base
+        n_neighbors: int
+            The number of neighbors to use for the matching
 
     Returns:
-        Array of indexes"""
+        np.ndarray: An array of indexes containing all neighbours with minimum distance"""
 
     index = faiss.IndexFlatL2(base.shape[1])
     index.add(base)
@@ -474,16 +509,18 @@ def _get_index(base, new, n_neighbors: int):
     return indexes
 
 
-def _transform_to_np(treated, untreated):
-    """Transforms df to numpy applying PCA analysis
+def _transform_to_np(treated: pd.DataFrame, untreated: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Transforms df to numpy and transform via Cholesky decomposition
 
     Args:
-        untreated - control subset: pd. DataFrame
-        treated - test subset: pd. DataFrame
+        treated: pd.DataFrame
+            Test subset DataFrame to be transformed
+        untreated: pd.DataFrame
+            Control subset DataFrame to be transformed
 
     Returns:
-        Downsized data: Tuple[pd.DataFrame, pd.DataFrame]
-
+        tuple: A tuple of transformed numpy arrays for treated and untreated data respectively
     """
     xc = untreated.to_numpy()
     xt = treated.to_numpy()
@@ -500,17 +537,22 @@ def _transform_to_np(treated, untreated):
     return yt.copy(order='C').astype("float32"), yc.copy(order='C').astype("float32")
 
 
-def calc_atx_var(vars_c, vars_t, weights_c, weights_t):
-    """Calculates Average Treatment Effect for the treated (ATT) variance
+def calc_atx_var(vars_c: np.ndarray, vars_t: np.ndarray, weights_c: np.ndarray, weights_t: np.ndarray) -> float:
+    """
+    Calculates Average Treatment Effect for the treated (ATT) variance
 
     Args:
-        vars_c: {__len__}
-        vars_t: {__len__}
-        weights_c: {__pow__}
-        weights_t: {__pow__}
+        vars_c: np.ndarray
+            Control group variance
+        vars_t: np.ndarray
+            Treatment group variance
+        weights_c: np.ndarray
+            Control group weights
+        weights_t: np.ndarray
+            Treatment group weights
 
     Returns:
-        ATE variance: int
+        float: The calculated ATT variance
 
     """
     N_c, N_t = len(vars_c), len(vars_t)
@@ -520,17 +562,20 @@ def calc_atx_var(vars_c, vars_t, weights_c, weights_t):
     return summands_t.sum() / N_t ** 2 + summands_c.sum() / N_c ** 2
 
 
-def calc_atc_se(vars_c, vars_t, scaled_counts_t):
-    """Calculates Average Treatment Effect for the control group (ATC) standard error
+def calc_atc_se(vars_c: np.ndarray, vars_t: np.ndarray, scaled_counts_t: np.ndarray) -> float:
+    """
+    Calculates Average Treatment Effect for the control group (ATC) standard error
 
     Args:
-        vars_c: {__len__}
-        vars_t: {__len__}
-        scaled_counts_t: Any
+        vars_c: np.ndarray
+            Control group variance
+        vars_t: np.ndarray
+            Treatment group variance
+        scaled_counts_t: np.ndarray
+            Scaled counts for treatment group
 
     Returns:
-        ATC standard error
-
+        float: The calculated ATC standard error
     """
     N_c, N_t = len(vars_c), len(vars_t)
     weights_c = np.ones(N_c)
@@ -541,17 +586,20 @@ def calc_atc_se(vars_c, vars_t, scaled_counts_t):
     return np.sqrt(var)
 
 
-def calc_att_se(vars_c, vars_t, scaled_counts_c):
-    """Calculates Average Treatment Effect for the treated (ATT) standard error
+def calc_att_se(vars_c: np.ndarray, vars_t: np.ndarray, scaled_counts_c: np.ndarray) -> float:
+    """
+    Calculates Average Treatment Effect for the treated (ATT) standard error
 
     Args:
-        vars_c: {__len__}
-        vars_t: {__len__}
-        scaled_counts_c: Any
+        vars_c: np.ndarray
+            Control group variance
+        vars_t: np.ndarray
+            Treatment group variance
+        scaled_counts_c: np.ndarray
+            Scaled counts for control group
 
     Returns:
-        ATT standard error
-
+        float: The calculated ATT standard error
     """
     N_c, N_t = len(vars_c), len(vars_t)
     weights_c = (N_c / N_t) * scaled_counts_c
@@ -562,18 +610,23 @@ def calc_att_se(vars_c, vars_t, scaled_counts_c):
     return np.sqrt(var)
 
 
-def calc_ate_se(vars_c, vars_t, scaled_counts_c, scaled_counts_t):
-    """Calculates Average Treatment Effect (ATE) standard error
+def calc_ate_se(vars_c: np.ndarray, vars_t: np.ndarray,
+                scaled_counts_c: np.ndarray, scaled_counts_t: np.ndarray) -> float:
+    """
+    Calculates Average Treatment Effect for the control group (ATC) standard error
 
     Args:
-        vars_c: {__len__}
-        vars_t: {__len__}
-        scaled_counts_c: Any
-        scaled_counts_t: Any
+        vars_c: np.ndarray
+            Control group variance
+        vars_t: np.ndarray
+            Treatment group variance
+        scaled_counts_c: np.ndarray
+            Scaled counts for control group
+        scaled_counts_t: np.ndarray
+            Scaled counts for treatment group
 
     Returns:
-        ATE standard error
-
+        float: The calculated ATE standard error
     """
     N_c, N_t = len(vars_c), len(vars_t)
     N = N_c + N_t
@@ -586,30 +639,35 @@ def calc_ate_se(vars_c, vars_t, scaled_counts_c, scaled_counts_t):
 
 
 def pval_calc(z):
-    """Calculates p-value of norm cdf based on z
+    """
+    Calculates p-value of the normal cumulative distribution function based on z
 
     Args:
         z: float
+            The z-score for which the p-value is calculated
 
     Returns:
-        P-value
+        float: The calculated p-value rounded to 2 decimal places
 
     """
     return round(2 * (1 - norm.cdf(abs(z))), 2)
 
 
 def scaled_counts(N: int, matches) -> np.array:
-    """Counts the number of times each subject has appeared as a match
+    """
+    Counts the number of times each subject has appeared as a match
 
     In the case of multiple matches, each subject only gets partial credit.
 
     Args:
-        N - length of original treated/control group: int
-        matches - matched indexes from control/treated group: Series
-        index - indexes from control/treated group: list or Any
+        N: int
+            The length of original treated or control group
+        matches: np.ndarray
+            A numpy array of matched indexes from control or treated group
 
     Returns:
-        Number of times each subject has appeared as a match: int"""
+        numpy.ndarray: An array representing the number of times each subject has appeared as a match
+    """
 
     s_counts = np.zeros(N)
 
@@ -624,9 +682,22 @@ def scaled_counts(N: int, matches) -> np.array:
 
 
 def bias_coefs(matches, Y_m, X_m):
-    """Computes OLS coefficient in bias correction regression. Constructs
-    data for regression by including (possibly multiple times) every
-    observation that has appeared in the matched sample."""
+    """
+    Computes Ordinary Least Squares (OLS) coefficient in bias correction regression.
+    Constructs data for regression by including (possibly multiple times) every
+    observation that has appeared in the matched sample.
+
+    Args:
+        matches: np.ndarray
+            A numpy array of matched indexes
+        Y_m: np.ndarray
+            The dependent variable values
+        X_m: np.ndarray:
+            The independent variable values
+
+    Returns:
+        np.ndarray: The calculated OLS coefficients excluding the intercept
+        """
 
     flat_idx = np.concatenate(matches)
     N, K = len(flat_idx), X_m.shape[1]
@@ -640,9 +711,22 @@ def bias_coefs(matches, Y_m, X_m):
 
 
 def bias(X, X_m, coefs):
-    """Computes bias correction term, which is approximated by the dot
+    """
+    Computes bias correction term, which is approximated by the dot
     product of the matching discrepancy (i.e., X-X_matched) and the
-    coefficients from the bias correction regression."""
+    coefficients from the bias correction regression.
+
+    Args:
+        X: np.ndarray
+            The original independent variable values
+        X_m: np.ndarray
+            The matched independent variable values
+        coefs: np.ndarray
+            The coefficients from the bias correction regression
+
+    Returns:
+        np.ndarray: The calculated bias correction terms for each observation
+    """
 
     bias_list = [(X_j - X_i).dot(coefs) for X_i, X_j in zip(X, X_m)]
 
