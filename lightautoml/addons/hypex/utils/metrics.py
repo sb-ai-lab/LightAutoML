@@ -13,34 +13,40 @@ logging.basicConfig(
 
 
 def smd(orig: pd.DataFrame, matched: pd.DataFrame) -> pd.DataFrame:
-    """Standardised mean difference to check matching quality
+    """
+    Calculates the standardised mean difference to evaluate matching quality
 
     Args:
-        orig - initial dataframe: pd.Dataframe
-        matched - matched dataframe: pd.Dataframe
+        orig: pd.DataFrame
+            Initial dataframe
+        matched: pd.DataFrame
+            Matched dataframe
 
     Returns:
-        smd_data - standard mean deviation between initial and matched dataframes: pd.DataFrame
+        pd.DataFrame: The standard mean deviation between initial and matched dataframes
 
     """
 
-
     smd_data = abs(orig.mean(0) - matched.mean(0)) / orig.std(0)
 
-    logger.info(f"Standardised mean difference: {smd_data}")  # TypeError: unsupported format string passed to Series.__format__
+    logger.info(
+        f"Standardised mean difference: {smd_data}")  # TypeError: unsupported format string passed to Series.__format__
 
     return smd_data
 
 
 def ks(orig: pd.DataFrame, matched: pd.DataFrame) -> dict:
-    """Kolmogorov-Smirnov test to check matching quality by columns
+    """
+    Performs a Kolmogorov-Smirnov test to evaluate matching quality per columns
 
     Args:
-        orig: pd.Dataframe
-        matched: pd.Dataframe
+        orig: pd.DataFrame
+            Initial dataframe
+        matched: pd.DataFrame
+            Matched dataframe
 
     Returns:
-        ks_dict - dict of p-values: dict
+        dict: dict of p-values
 
     """
 
@@ -57,20 +63,24 @@ def ks(orig: pd.DataFrame, matched: pd.DataFrame) -> dict:
     return ks_dict
 
 
-def matching_quality(data: pd.DataFrame, treatment: str, features: list, features_psi):
-    """Wrapping function for matching quality estimation
+def matching_quality(data: pd.DataFrame, treatment: str, features: list, features_psi: list) -> tuple:
+    """
+    Wraps the functionality for estimating matching quality
 
     Args:
-        data - df_matched: pd.DataFrame
-        treatment - column determine control and test groups
-        features - feature list, kstest and  smd accept only numeric values
+        data: pd.DataFrame
+            The dataframe of matched data
+        treatment: str
+            The column determining control and test groups
+        features: list
+            The list of features, ks-test and smd accept only numeric values
+        features_psi: list
+            The list of features for calculating Population Stability Index (PSI)
 
     Returns:
-        report_psi, ks_df, smd_data - dataframes with estimated metrics
-        for matched treated to control and control to treated: tuple of pd.DataFrames
+        tuple: A tuple of dataframes with estimated metrics for matched treated to control and control to treated
 
     """
-
 
     orig_treated = data[data[treatment] == 1][features]
     orig_untreated = data[data[treatment] == 0][features]
@@ -80,7 +90,6 @@ def matching_quality(data: pd.DataFrame, treatment: str, features: list, feature
     matched_untreated = data[data[treatment] == 0][
         sorted([f + '_matched' for f in features])]
     matched_untreated.columns = list(map(lambda x: x.replace('_matched', ''), matched_untreated.columns))
-
 
     psi_treated = data[data[treatment] == 1][features_psi]
     psi_treated_matched = data[data[treatment] == 1][[f + "_matched" for f in features_psi]]
@@ -115,13 +124,16 @@ def matching_quality(data: pd.DataFrame, treatment: str, features: list, feature
 
 
 def check_repeats(index: np.array) -> float:
-    """The function checks fraction of duplicated indexes
+    """
+    Checks the fraction of duplicated indexes in the given array
 
      Args:
-        index - array of indexes to check on duplicates: numpy array
+        index: np.ndarray
+            The array of indexes to check for duplicates
 
     Returns:
-        rep_frac - fraction of duplicated index: float
+        float:
+            The fraction of duplicated index
 
     """
     unique, counts = np.unique(index, return_counts=True)
