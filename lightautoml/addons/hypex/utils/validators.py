@@ -3,13 +3,18 @@ import scipy.stats as st
 
 
 def random_treatment(df, treatment):
-    """Replacing real treatment with random placebo treatment.
+    """
+    Replaces real treatment with a random placebo treatment.
     Args:
-        df - initial dataframe: pd.DataFrame
-        treatment - treatment column name: str
+        df: pd.DataFrame
+            The initial dataframe
+        treatment: str
+            The columns name representing the treatment
 
     Return:
-        Modified dataframe, original treatment series and validation flag.
+        pd.DataFrame: The modified dataframe with the original treatment replaced
+        pd.Series: The original treatment series
+        int: A validation flag
     """
 
     prop1 = df[treatment].sum() / df.shape[0]
@@ -23,12 +28,15 @@ def random_treatment(df, treatment):
 
 
 def random_feature(df):
-    """Function adds random feature to initial dataset.
+    """
+    Adds a random feature to the initial dataset.
      Args:
-         df - initial dataframe: pd.DataFrame
+         df: pd.DataFrame
+            The initial dataframe
 
      Return:
-         Modified dataframe, validation flag.
+         pd.DataFrame: The modified dataframe with an additional random feature
+         int: A validation flag
     """
 
     feature = np.random.normal(0, 1, size=len(df))
@@ -38,13 +46,18 @@ def random_feature(df):
 
 
 def subset_refuter(df, treatment, fraction=0.8):
-    """Functions returns subset of data with given fraction (by default 0.8).
+    """
+    Returns a subset of data with given fraction (default 0.8).
+
      Args:
-         df - initial dataframe: pd.DataFrame
-         treatment - treatment column name: str
+         df: pd.DataFrame
+            The initial dataframe
+         treatment: str
+            The column name representing the treatment
 
      Return:
-         Modified dataframe, validation flag.
+         pd.DataFrame: The subset of the dataframe
+         int: A validation flag
     """
 
     df = df.groupby(treatment, group_keys=False).apply(lambda x: x.sample(frac=fraction))
@@ -53,13 +66,16 @@ def subset_refuter(df, treatment, fraction=0.8):
 
 
 def test_significance(estimate, simulations):
-    """Significance test for normal distribution
+    """
+    Performs a significance test for a normal distribution
     Args:
-         estimate - estimated effect: float
-         simulations - list of estimated effects on each simulation: list
+         estimate: float
+            The estimated effect
+         simulations: list
+            A list of estimated effects from each simulation
 
      Return:
-         p-value: float
+         float: The p-value of the test
     """
 
     mean_refute_value = np.mean(simulations)
