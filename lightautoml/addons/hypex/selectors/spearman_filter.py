@@ -1,3 +1,4 @@
+import pandas as pd
 from scipy.stats import spearmanr
 import logging
 
@@ -14,43 +15,45 @@ logging.basicConfig(
 
 
 class SpearmanFilter:
-    """Class for filter columns by value of Spearman correlation coefficient
+    """
+    A class to filter columns based on the Spearman correlation coefficient
 
-    Example:
-        filter = SpearmanFilter(
-            outcome = df[['outcome']],
-            treatment = df[['treatment']],
-            threshold = df[['threshold']]
-        )
-
-        df = filter.perform_filter(df)
-
+    The class is utilized to filter dataframe columns that do not exhibit a significant
+    correlation (based on a provided threshold) with a specified outcome column.
+    The significance of the correlation is determined using the Spearman correlation coefficient
+    and a p-value threshold of 0.05
     """
 
-    def __init__(self, outcome, treatment, threshold):
+    def __init__(self, outcome: str, treatment: str, threshold: float):
         """
 
         Args:
-            outcome: target column
-            treatment: column determine control and test groups
-            threshold: threshold for correlation coefficient filter
+            outcome: str
+                The name of target column
+            treatment: str
+                The name of the column that determines control and test groups
+            threshold: float
+                The threshold for the Spearman correlation coefficient filter
         """
-        self.outcome = outcome
-        self.treatment = treatment
-        self.threshold = threshold
+        self.outcome: str = outcome
+        self.treatment: str  = treatment
+        self.threshold: float  = threshold
 
-    def perform_filter(self, df):
-        """Filter columns by correlation with outcome column.
+    def perform_filter(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Filters columns based on their correlation with the outcome column.
 
-        Correlation tests by Spearman coefficient,
-        that should be less than threshold, and p-value=0.05
+        The method tests the correlation using the Spearman correlation coefficient.
+        Columns that have an absolute correlation coefficient value less than the provided threshold,
+        and a p-value less than 0.05, are considered insignificant and are removed from the dataframe
 
         Args:
-            df - input data: pd.DataFrame
+            df: pd.DataFrame
+                The input DataFrame
 
         Returns:
-            df with non-correlated with target (outcome) columns: pd.DataFrame
-
+            pd.DataFrame: The filtered DataFrame, containing only columns that
+            are significantly correlated with the outcome column
         """
         selected = []
         columns = df.drop([self.treatment, self.outcome], 1).columns
