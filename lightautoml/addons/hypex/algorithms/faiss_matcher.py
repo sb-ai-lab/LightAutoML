@@ -23,18 +23,33 @@ logging.basicConfig(
 
 
 class FaissMatcher:
-    def __init__(self, df, outcomes, treatment, info_col, features=None, group_col=False, sigma=1.96, validation=None,
-                 n_neighbors=10):
+    """A class used to match instances using Faiss library"""
+
+    def __init__(self, df: pd.DataFrame, outcomes: str, treatment: str, info_col: list,
+                 features: [list, pd.DataFrame] = None, group_col: str = None, sigma: float = 1.96,
+                 validation: bool = None, n_neighbors: int = 10):
         """
+        Construct all the necessary attributes
+
         Args:
-            df - input data: pd.DataFrame
-            outcomes - target column/data name: str
-            treatment - column/data name with treatment: str
-            info_col - informational column name: str
-            features - data with name of features
-            group_col - column for grouping: str
-            sigma - significant level for confidence interval calculation
-            validation - flag for validation of estimated ATE with default method 'random_feature'
+            df: pd.DataFrame
+                The input dataframe
+            outcomes: str
+                The target column name
+            treatment: str
+                The column name with treatment
+            info_col: list[str]
+                A list with informational column names
+            features: list or pd.DataFrame, optional
+                A list with names of feature using to matching. Defaults to None
+            group_col: str. optional
+                The column for stratification. Defaults to None
+            sigma: float, optional
+                The significant level for confidence interval calculation Defaults to 1.96
+            validation: str, optional
+                The flag for validation of estimated ATE with default method 'random_feature'
+            n_neighbors: int, optional
+                The number of neighbors to find for each object. Defaults to 10
         """
         self.n_neighbors = n_neighbors
         if group_col is None:
@@ -96,7 +111,7 @@ class FaissMatcher:
         Returns:
             tuple: Tuple of dataframes - one for treated (df[self.treatment] == 1]) and
             one for untreated (df[self.treatment] == 0]). Drops self.outcomes and
-            self.treatment columns
+            `self.treatment` columns
 
         """
         logger.debug("Creating split data by treatment column")
@@ -178,12 +193,12 @@ class FaissMatcher:
 
         return df_pred
 
-    def _create_features_matched_df(self, index: np.array, is_treated: bool) -> pd.DataFrame:
+    def _create_features_matched_df(self, index: np.ndarray, is_treated: bool) -> pd.DataFrame:
         """
         Creates matched dataframe with features
 
         Args:
-            index: np.array
+            index: np.ndarray
                 An array of indices
             is_treated: bool
                 A boolean value indicating whether the outcome is treated or not
@@ -653,7 +668,7 @@ def pval_calc(z):
     return round(2 * (1 - norm.cdf(abs(z))), 2)
 
 
-def scaled_counts(N: int, matches) -> np.array:
+def scaled_counts(N: int, matches: np.ndarray) -> np.ndarray:
     """
     Counts the number of times each subject has appeared as a match
 
