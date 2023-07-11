@@ -3,6 +3,9 @@
 import pandas as pd
 import numpy as np
 import logging
+
+from tqdm.auto import tqdm
+
 from .algorithms.faiss_matcher import FaissMatcher
 from .selectors.lama_feature_selector import LamaFeatureSelector
 from .selectors.outliers_filter import OutliersFilter
@@ -59,7 +62,8 @@ class Matcher:
             min_percentile=OUT_MIN_PERCENT,
             max_percentile=OUT_MAX_PERCENT,
             n_neighbors=10,
-            silent=False
+            silent=True,
+            pbar=True
     ):
         """
 
@@ -112,6 +116,7 @@ class Matcher:
         self.validate = None
         self.n_neighbors = n_neighbors
         self.silent = silent
+        self.pbar = pbar
 
     def _preprocessing_data(self):
         """Turns categorical features into dummy.
@@ -225,12 +230,14 @@ class Matcher:
             features=self.features_importance,
             group_col=self.group_col,
             n_neighbors=self.n_neighbors,
-            silent=self.silent
+            silent=self.silent,
+            pbar=self.pbar
         )
         if self.silent:
             logger.debug("Applying matching")
         else:
             logger.info("Applying matching")
+
         self.results = self.matcher.match()
 
         self.quality_result = self.matcher.matching_quality()
@@ -265,7 +272,7 @@ class Matcher:
         self.val_dict = {k: [] for k in [self.outcome]}
         self.pval_dict = dict()
 
-        for i in range(n_sim):
+        for i in tqdm(range(n_sim)):
             if refuter in ["random_treatment", "random_feature"]:
                 if refuter == "random_treatment":
                     self.input_data, orig_treatment, self.validate = random_treatment(self.input_data, self.treatment)
@@ -277,13 +284,13 @@ class Matcher:
                 self.matcher = FaissMatcher(self.input_data, self.outcome, self.treatment, info_col=self.info_col,
                                             features=self.features_importance,
                                             group_col=self.group_col, validation=self.validate,
-                                            n_neighbors=self.n_neighbors)
+                                            n_neighbors=self.n_neighbors, pbar=False)
             elif refuter == "subset_refuter":
                 df, self.validate = subset_refuter(self.input_data, self.treatment, fraction)
                 self.matcher = FaissMatcher(df, self.outcome, self.treatment, info_col=self.info_col,
                                             features=self.features_importance,
                                             group_col=self.group_col, validation=self.validate,
-                                            n_neighbors=self.n_neighbors)
+                                            n_neighbors=self.n_neighbors, pbar=False)
             else:
                 logger.error("Incorrect refuter name")
                 raise NameError("Incorrect refuter name! Available refuters: 'random_feature', 'random_treatment', 'subset_refuter'")

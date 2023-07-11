@@ -2,6 +2,7 @@ import datetime as dt
 from typing import Dict, Union
 import faiss
 from scipy.stats import norm
+from tqdm.auto import tqdm
 
 from ..utils.metrics import *
 from ..utils.psi_pandas import *
@@ -22,7 +23,7 @@ logging.basicConfig(
 
 class FaissMatcher:
     def __init__(self, df, outcomes, treatment, info_col, features=None, group_col=False, sigma=1.96, validation=None,
-                 n_neighbors=10, silent=False):
+                 n_neighbors=10, silent=True, pbar=True):
         """
 
         Args:
@@ -81,6 +82,8 @@ class FaissMatcher:
         self.rep_dict = None
         self.validation = validation
         self.silent = silent
+        self.pbar = pbar
+        self.tqdm = None
 
     def _get_split(self, df: pd.DataFrame) -> (pd.DataFrame, pd.DataFrame):
 
@@ -388,6 +391,10 @@ class FaissMatcher:
         group_arr_t = df[df[self.treatment] == 1][self.group_col].to_numpy()
         treat_arr_c = df[df[self.treatment] == 0][self.treatment].to_numpy()
         treat_arr_t = df[df[self.treatment] == 1][self.treatment].to_numpy()
+
+        if self.pbar:
+            self.tqdm = tqdm(total=len(groups)*2)
+
         for group in groups:
             df_group = df[df[self.group_col] == group]
             temp = df_group[self.columns_match + [self.group_col]]
@@ -396,16 +403,29 @@ class FaissMatcher:
 
             std_treated_np, std_untreated_np = _transform_to_np(treated, untreated)
 
-            matches_c_i = _get_index(std_treated_np, std_untreated_np, self.n_neighbors)
+            if self.pbar:
+                self.tqdm.set_description(desc=f"Get untreated index by group {group}")
+            matches_u_i = _get_index(std_treated_np, std_untreated_np, self.n_neighbors)
+
+            if self.pbar:
+                self.tqdm.update(1)
+                self.tqdm.set_description(desc=f"Get treated index by group {group}")
             matches_t_i = _get_index(std_untreated_np, std_treated_np, self.n_neighbors)
+            if self.pbar:
+                self.tqdm.update(1)
+                self.tqdm.refresh()
+
             group_mask_c = (group_arr_c == group)
             group_mask_t = (group_arr_t == group)
             matches_c_mask = np.arange(treat_arr_t.shape[0])[group_mask_t]
-            matches_c_i = [matches_c_mask[i] for i in matches_c_i]
+            matches_u_i = [matches_c_mask[i] for i in matches_u_i]
             matches_t_mask = np.arange(treat_arr_c.shape[0])[group_mask_c]
             matches_t_i = [matches_t_mask[i] for i in matches_t_i]
-            matches_c.extend(matches_c_i)
+            matches_c.extend(matches_u_i)
             matches_t.extend(matches_t_i)
+
+        if self.pbar:
+            self.tqdm.close()
 
         self.untreated_index = np.array(matches_c)
         self.treated_index = np.array(matches_t)
@@ -435,8 +455,21 @@ class FaissMatcher:
 
         std_treated_np, std_untreated_np = _transform_to_np(treated, untreated)
 
+        if self.pbar:
+            self.tqdm = tqdm(total=len(std_treated_np) + len(std_untreated_np))
+            self.tqdm.set_description(desc="Get untreated index")
+
         untreated_index = _get_index(std_treated_np, std_untreated_np, self.n_neighbors)
+
+        if self.pbar:
+            self.tqdm.update(len(std_treated_np))
+            self.tqdm.set_description(desc="Get treated index")
         treated_index = _get_index(std_untreated_np, std_treated_np, self.n_neighbors)
+
+        if self.pbar:
+            self.tqdm.update(len(std_untreated_np))
+            self.tqdm.refresh()
+            self.tqdm.close()
 
         self.untreated_index = untreated_index
         self.treated_index = treated_index
@@ -607,7 +640,7 @@ def pval_calc(z):
     return round(2 * (1 - norm.cdf(abs(z))), 2)
 
 
-def scaled_counts(N: int, matches, silence=False) -> np.array:
+def scaled_counts(N: int, matches, silent=True) -> np.array:
     """Counts the number of times each subject has appeared as a match
 
     In the case of multiple matches, each subject only gets partial credit.
@@ -627,7 +660,7 @@ def scaled_counts(N: int, matches, silence=False) -> np.array:
         for match in matches_i:
             s_counts[match] += scale
 
-    if silence:
+    if silent:
         logger.debug(f"Calculated the number of times each subject has appeared as a match: {len(s_counts)}")
     else:
         logger.info(f"Calculated the number of times each subject has appeared as a match: {len(s_counts)}")

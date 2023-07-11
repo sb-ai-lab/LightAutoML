@@ -68,7 +68,6 @@ class LamaFeatureSelector:
             feature scores of model: pd.DataFrame
 
         """
-        logger.info("Getting feature scores")
         roles = {
             "target": self.outcome,
             "drop": [self.treatment],
