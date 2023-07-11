@@ -33,7 +33,7 @@ def random_feature(df):
 
     feature = np.random.normal(0, 1, size=len(df))
     validate = 1
-    df['random_feature'] = feature
+    df["random_feature"] = feature
     return df, validate
 
 

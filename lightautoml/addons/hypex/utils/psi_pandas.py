@@ -39,7 +39,9 @@ class PSI:
 
     """
 
-    def __init__(self, expected: pd.DataFrame, actual: pd.DataFrame, column_name: str, plot: bool = False):
+    def __init__(
+        self, expected: pd.DataFrame, actual: pd.DataFrame, column_name: str, plot: bool = False, silent=False
+    ):
         """
 
         Args:
@@ -59,6 +61,7 @@ class PSI:
         self.actual_nulls = np.sum(pd.isna(self.actual))
         self.axis = 1
         self.plot = plot
+        self.silent = silent
         if self.column_type == np.dtype("O"):
             self.expected_uniqs = expected[column_name].unique()
             self.actual_uniqs = actual[column_name].unique()
@@ -403,12 +406,16 @@ class PSI:
             else:
                 psi_values, psi_dict, new_cats, abs_cats = self.psi_num()
 
-        logger.info(f"PSI value: {psi_values: .3f}")
+        if self.silent:
+            logger.debug(f"PSI value: {psi_values: .3f}")
+        else:
+            logger.info(f"PSI value: {psi_values: .3f}")
+
         # если expected_shape пустой - будет ошибка
         return round(psi_values, 2), psi_dict, new_cats, abs_cats
 
 
-def report(expected: pd.DataFrame, actual: pd.DataFrame, plot: bool = False) -> pd.DataFrame:
+def report(expected: pd.DataFrame, actual: pd.DataFrame, plot: bool = False, silent=False) -> pd.DataFrame:
     """Func over class to create report according to the table
 
     Args:
@@ -420,7 +427,11 @@ def report(expected: pd.DataFrame, actual: pd.DataFrame, plot: bool = False) -> 
         df - report of PSI counting: pd.DataFrame
 
     """
-    logger.info("Creating report")
+    if silent:
+        logger.debug("Creating report")
+    else:
+        logger.info("Creating report")
+
     assert len(expected.columns) == len(actual.columns)
 
     data_cols = expected.columns
@@ -429,12 +440,12 @@ def report(expected: pd.DataFrame, actual: pd.DataFrame, plot: bool = False) -> 
     dfs = []
 
     for col in data_cols:
-        psi_res = PSI(expected, actual, col, plot=plot)
+        psi_res = PSI(expected, actual, col, plot=plot, silent=silent)
         # отладка, в случае ошибки  выдаст прооблемный столбец
         try:
             score, psi_dict, new_cats, abs_cats = psi_res.psi_result()
         except:
-            logger.error(f"Can not count PSIs, see column {col}")
+            logger.warning(f"Can not count PSIs, see column {col}")
             continue
 
         if len(new_cats) > 0:
