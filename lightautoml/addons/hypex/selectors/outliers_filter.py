@@ -15,31 +15,39 @@ logging.basicConfig(
 class OutliersFilter:
     def __init__(self, interquartile_coeff, mode_percentile, min_percentile, max_percentile):
         """
+        Initializes the OutliersFilter
 
         Args:
-            interquartile_coeff: interquartile coefficient - percent for drop outliers
-            mode_percentile: flag to drop outliers by custom percentiles
-            min_percentile: minimum percentile to drop outliers
-            max_percentile: maximum percentile to drop outliers
+            interquartile_coeff: float
+                Coefficient for the interquartile range to determine outliers
+            mode_percentile: bool
+                If True, outliers are determined by custom percentiles
+            min_percentile: float
+                The lower percentile. Values below this percentile are considered outliers.
+            max_percentile: float
+                The upper percentile. Values above this percentile are considered outliers
         """
         self.interquartile_coeff = interquartile_coeff
         self.mode_percentile = mode_percentile
         self.min_percentile = min_percentile
         self.max_percentile = max_percentile
 
-    def perform_filter(self, df: pd.DataFrame, interquartile=True) -> set:
-        """Drops outlayers
+    def perform_filter(self, df: pd.DataFrame, interquartile: bool = True) -> set:
+        """
+        Identifies rows with outliers.
 
-        Creates set of rows to be deleted,
-        that contains values less than min_percentile
-        and larger than max_percentile if mode_percentile is true
-        or 25 percentile and larger than 75 percentile if not
+        This method creates a set of row indices to be removed, which contains values less than
+        `min_percentile` and larger than `max_percentile` (if `mode_percentile` is True), or values
+        smaller than the 0.2 and larget than 0.8 (if `mode_percentile` is False)
 
         Args:
             df: pd.DataFrame
+                The input DataFrame
+            interquartile: bool, optional
+                If True, uses the interquartile range to determine outliers. Defaults to True
 
         Returns:
-            rows_for_del: set
+            set: The set of row indices with outliers
 
         """
         columns_names = df.select_dtypes(include="number").columns

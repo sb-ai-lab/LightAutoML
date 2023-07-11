@@ -41,53 +41,78 @@ logging.basicConfig(
 
 
 class Matcher:
+    """"""
+
     def __init__(
-        self,
-        input_data,
-        outcome,
-        treatment,
-        outcome_type="numeric",
-        group_col=None,
-        info_col=None,
-        generate_report=GENERATE_REPORT,
-        report_feat_select_dir=REPORT_FEAT_SELECT_DIR,
-        timeout=TIMEOUT,
-        n_threads=N_THREADS,
-        n_folds=N_FOLDS,
-        verbose=VERBOSE,
-        use_algos=None,
-        same_target_threshold=SAME_TARGET_THRESHOLD,
-        interquartile_coeff=OUT_INTER_COEFF,
-        drop_outliers_by_percentile=OUT_MODE_PERCENT,
-        min_percentile=OUT_MIN_PERCENT,
-        max_percentile=OUT_MAX_PERCENT,
-        n_neighbors=10,
-        silent=True,
-        pbar=True,
+            self,
+            input_data: pd.DataFrame,
+            outcome: str,
+            treatment: str,
+            outcome_type: str = "numeric",
+            group_col: str = None,
+            info_col: list = None,
+            generate_report: bool = GENERATE_REPORT,
+            report_feat_select_dir: str = REPORT_FEAT_SELECT_DIR,
+            timeout: int = TIMEOUT,
+            n_threads: int = N_THREADS,
+            n_folds: int = N_FOLDS,
+            verbose: bool = VERBOSE,
+            use_algos: list = None,
+            same_target_threshold: float = SAME_TARGET_THRESHOLD,
+            interquartile_coeff: float = OUT_INTER_COEFF,
+            drop_outliers_by_percentile: bool = OUT_MODE_PERCENT,
+            min_percentile: float = OUT_MIN_PERCENT,
+            max_percentile: float = OUT_MAX_PERCENT,
+            n_neighbors: int = 10,
+            silent: bool =True,
+            pbar: bool = True,
     ):
         """
+        Initialize the Matcher object
 
         Args:
-            input_data - input dataframe: pd.DataFrame
-            outcome - target column: str
-            treatment - column determine control and test groups: str
-            outcome_type - values type of target column: str
-            group_col - column for grouping: str
-            info_col - columns with id, date or metadata, not take part in calculations: list
-            generate_report - flag to create report: bool
-            report_feat_select_dir - folder for report files: str
-            timeout - limit work time of code: int
-            n_threads - maximum number of threads: int
-            n_folds - number of folds for cross-validation: int
-            verbose - flag to show process stages: bool
-            use_algos - list of names of LAMA algorithms for feature selection: list or str
-            same_target_threshold - threshold for correlation coefficient filter (Spearman): float or Series
-            interquartile_coeff - percent for drop outliers: float
-            drop_outliers_by_percentile - flag to drop outliers by custom percentiles: bool
-            min_percentile - minimum percentile to drop outliers: float
-            max_percentile - maximum percentile to drop outliers: float
-            silent - write logs in debug mode
-            pbar - display progress bar while get index
+            input_data: pd.DataFrame
+                Input dataframe
+            outcome: str
+                Target column
+            treatment: str
+                Column determine control and test groups
+            outcome_type: str, optional
+                Values type of target column. Defaults to "numeric"
+            group_col: str, optional
+                Column for grouping. Defaults to None.
+            info_col: list, optional
+                Columns with id, date or metadata, not taking part in calculations. Defaults to None
+            generate_report: bool, optional
+                Flag to create report. Defaults to True
+            report_feat_select_dir: str, optional
+                Folder for report files. Defaults to "report_feature_selector"
+            timeout: int, optional
+                Limit work time of code LAMA. Defaults to 600
+            n_threads: int, optional
+                Maximum number of threads. Defau;ts to 1
+            n_folds: int, optional
+                Number of folds for cross-validation. Defaults to 4
+            verbose: int, optional
+                Flag to show process stages. Defaults to 2
+            use_algos: list, optional
+                List of names of LAMA algorithms for feature selection. Defaults to ["lgb"]
+            same_target_threshold: float, optional
+                Threshold for correlation coefficient filter (Spearman). Default to 0.7
+            interquartile_coeff: float, optional
+                Percent for drop outliers. Default to 1.5
+            drop_outliers_by_percentile: bool, optional
+                Flag to drop outliers by custom percentiles. Defaults to True
+            min_percentile: float, optional
+                Minimum percentile to drop outliers. Defaults to 0.02
+            max_percentile: float, optional
+                Maximum percentile to drop outliers. Defaults to 0.98
+            n_neighbors: int, optional
+                Number of neighbors to match. Defaults to 10
+            silent: bool, optional
+                Write logs in debug mode
+            pbar: bool, optional
+                Display progress bar while get index
         """
         if use_algos is None:
             use_algos = USE_ALGOS
@@ -121,7 +146,8 @@ class Matcher:
         self.pbar = pbar
 
     def _preprocessing_data(self):
-        """Turns categorical features into dummy.
+        """
+        Converts categorical features into dummy variables.
         """
         if self.info_col is not None:
             info_col = self.input_data[self.info_col]
@@ -146,7 +172,12 @@ class Matcher:
             self.input_data = pd.concat([self.input_data, info_col], axis=1)
 
     def _spearman_filter(self):
-        """Applies filter by columns by correlation with outcome column
+        """
+        Applies a filter by dropping columns correlated with the outcome column.
+
+        This method uses the Spearman filter to eliminate features from the dataset
+        that are hihly correlated with the outcome columns, based on a pre-set threshold
+
         """
         if self.silent:
             logger.debug("Applying filter by spearman test - drop columns correlated with outcome")
@@ -160,12 +191,12 @@ class Matcher:
         self.input_data = same_filter.perform_filter(self.input_data)
 
     def _outliers_filter(self):
-        """Deletes outliers
+        """
+        Removes outlier values from the dataset.
 
-        If drop_outliers_by_percentile is true, leaves values between min and max
-        percentiles;
-        If not, leaves only values between 25 and 75 percentile
-
+        This method employs an OutliersFilter. If `drop_outliers_by_percentile` is True,
+        it retains only the values between the min and max percentiles
+        If `drop_outliers_by_percentile` is False, it retains only the values between 2nd and 98th percentiles
         """
         if self.silent:
             logger.debug(
@@ -187,7 +218,15 @@ class Matcher:
         self.input_data = self.input_data.drop(rows_for_del, axis=0)
 
     def lama_feature_select(self) -> pd.DataFrame:
-        """Counts feature importance
+        """
+        Calculates the importance of each feature
+
+        This method use LamaFeatureSelector to rank the importance of each feature in the dataset
+        The features are then sorted by their importance with the most important feature first
+
+        Returns:
+            pd.DataFrame
+                The feature importances, sorted in descending order
         """
         if self.silent:
             logger.debug("Counting feature importance")
@@ -221,12 +260,11 @@ class Matcher:
         return self.features_importance.sort_values("Importance", ascending=False)
 
     def _matching(self) -> tuple:
-        """Realize matching
-
-        Take in count presence of groups
+        """
+        Performs matching considering the presence of groups
 
         Returns:
-            Results of matching and metrics
+            tuple: Results of matching and matching quality metrics
 
         """
         self.matcher = FaissMatcher(
@@ -251,25 +289,28 @@ class Matcher:
 
         return self.results, self.quality_result
 
-    def validate_result(self, refuter="random_feature", n_sim=10, fraction=0.8):
-        """Validates estimated ATE
+    def validate_result(self, refuter: str = "random_feature", n_sim: int = 10, fraction: float = 0.8) -> dict:
+        """
+        Validates estimated ATE (Average Treatment Effect)
 
         Validates estimated effect:
                                     1) by replacing real treatment with random placebo treatment.
                                      Estimated effect must be droped to zero, p-val < 0.05;
                                     2) by adding random feature ('random_feature'). Estimated effect shouldn't change
-                                    sagnificantly, p-val > 0.05;
+                                    significantly, p-val > 0.05;
                                     3) estimates effect on subset of data (default fraction is 0.8). Estimated effect
-                                    shouldn't change sagnificantly, p-val > 0.05.
+                                    shouldn't change significantly, p-val > 0.05.
 
         Args:
-            refuter - refuter type ('random_treatment', 'random_feature', 'subset_refuter')
-            n_sim - number of simulations: int
-            fraction - subsret fraction for subset refuter only: float
+            refuter: str
+                Refuter type ('random_treatment', 'random_feature', 'subset_refuter')
+            n_sim: int
+                Number of simulations
+            fraction: float
+                Subset fraction for subset refuter only
 
         Returns:
-            self.pval_dict - dict of outcome_name: (mean_effect on validation, p-value): dict
-
+            dict: Dictionary of outcome_name: (mean_effect on validation, p-value)
         """
         if self.silent:
             logger.debug("Applying validation of result")
@@ -340,15 +381,16 @@ class Matcher:
 
         return self.pval_dict
 
-    def estimate(self, features: list = None):
-        """Applies filters and outliers, then matches
+    def estimate(self, features: list = None) -> tuple:
+        """
+        Applies filters and outliers, then perfoms matching
 
         Args:
-            features - list or feature_importances: list
+            features: list
+                Type List or feature_importances from LAMA
 
         Returns:
-            Matched df and ATE: tuple
-
+            tuple: Results of matching and matching quality metrics
         """
         if features is not None:
             self.features_importance = features

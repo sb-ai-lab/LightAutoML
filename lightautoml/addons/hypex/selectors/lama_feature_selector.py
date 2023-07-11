@@ -31,18 +31,28 @@ class LamaFeatureSelector:
         use_algos,
     ):
         """
-
+        Initialize the LamaFeatureSelector
         Args:
-            outcome: target column
-            outcome_type: type of target column
-            treatment: column determine control and test groups
-            timeout: limit work time of code
-            n_threads: maximum number of threads
-            n_folds: number of folds for cross-validation
-            verbose: flag to show process stages
-            generate_report: flag to create report
-            report_dir: folder for report files
-            use_algos: list of names of LAMA algorithms for feature selection
+            outcome: str
+                The target column
+            outcome_type: str
+                The type of target column
+            treatment: str
+                The column that determines control and test groups
+            timeout: int
+                Time limit for the execution of the code
+            n_threads: int
+                Maximum number of threads to be used
+            n_folds: int
+                Number of folds for cross-validation
+            verbose: bool
+                Flag to control the verbosity of the process stages
+            generate_report: bool
+                Flag to control whether to create a report or not
+            report_dir: str
+                Directory for storing report files
+            use_algos: list[str]
+                List of names of LAMA algorithms for feature selection
         """
         self.outcome = outcome
         self.outcome_type = outcome_type
@@ -56,16 +66,17 @@ class LamaFeatureSelector:
         self.report_dir = report_dir
 
     def perform_selection(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Realize model and returns feature scores
+        """
+        Trains a model and returns feature scores.
 
-        Defines metrics, applies the model, creates report
-        and gives feature scores
+        This method defines metrics, applies the model, creates a report, and returns feature scores
 
         Args:
             df: pd.DataFrame
+                Input data
 
         Returns:
-            feature scores of model: pd.DataFrame
+            pd.DataFrame: A DataFrame containing the feature scores from the model
 
         """
         roles = {

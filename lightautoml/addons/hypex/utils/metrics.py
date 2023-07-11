@@ -13,15 +13,19 @@ logging.basicConfig(
 
 
 def smd(orig: pd.DataFrame, matched: pd.DataFrame, silent=False) -> pd.DataFrame:
-    """Standardised mean difference to check matching quality
+    """
+    Calculates the standardised mean difference to evaluate matching quality
 
     Args:
-        orig - initial dataframe: pd.Dataframe
-        matched - matched dataframe: pd.Dataframe
+        orig: pd.DataFrame
+            Initial dataframe
+        matched: pd.DataFrame
+            Matched dataframe
+        silent: bool, optional
+            If silent, logger in info mode
 
     Returns:
-        smd_data - standard mean deviation between initial and matched dataframes: pd.DataFrame
-
+        pd.DataFrame: The standard mean deviation between initial and matched dataframes
     """
 
     smd_data = abs(orig.mean(0) - matched.mean(0)) / orig.std(0)
@@ -35,14 +39,20 @@ def smd(orig: pd.DataFrame, matched: pd.DataFrame, silent=False) -> pd.DataFrame
 
 
 def ks(orig: pd.DataFrame, matched: pd.DataFrame, silent=False) -> dict:
-    """Kolmogorov-Smirnov test to check matching quality by columns
+    """
+    Performs a Kolmogorov-Smirnov test to evaluate matching quality per columns
 
     Args:
-        orig: pd.Dataframe
-        matched: pd.Dataframe
+        orig: pd.DataFrame
+            Initial dataframe
+        matched: pd.DataFrame
+            Matched dataframe
+         silent: bool, optional
+            If silent, logger in info mode
+
 
     Returns:
-        ks_dict - dict of p-values: dict
+        dict: dict of p-values
 
     """
 
@@ -63,17 +73,25 @@ def ks(orig: pd.DataFrame, matched: pd.DataFrame, silent=False) -> dict:
     return ks_dict
 
 
-def matching_quality(data: pd.DataFrame, treatment: str, features: list, features_psi, silent=False):
-    """Wrapping function for matching quality estimation
+def matching_quality(data: pd.DataFrame, treatment: str, features: list, features_psi: list, silent: bool = False) -> tuple:
+    """
+    Wraps the functionality for estimating matching quality
 
     Args:
-        data - df_matched: pd.DataFrame
-        treatment - column determine control and test groups
-        features - feature list, kstest and  smd accept only numeric values
+        data: pd.DataFrame
+            The dataframe of matched data
+        treatment: str
+            The column determining control and test groups
+        features: list
+            The list of features, ks-test and smd accept only numeric values
+        features_psi: list
+            The list of features for calculating Population Stability Index (PSI)
+         silent: bool, optional
+            If silent, logger in info mode
+
 
     Returns:
-        report_psi, ks_df, smd_data - dataframes with estimated metrics
-        for matched treated to control and control to treated: tuple of pd.DataFrames
+        tuple: A tuple of dataframes with estimated metrics for matched treated to control and control to treated
 
     """
 
@@ -117,14 +135,19 @@ def matching_quality(data: pd.DataFrame, treatment: str, features: list, feature
     return report_psi, ks_df, smd_data
 
 
-def check_repeats(index: np.array, silent=False) -> float:
-    """The function checks fraction of duplicated indexes
+def check_repeats(index: np.array, silent: bool = False) -> float:
+    """
+    Checks the fraction of duplicated indexes in the given array
 
      Args:
-        index - array of indexes to check on duplicates: numpy array
+        index: np.ndarray
+            The array of indexes to check for duplicates
+        silent: bool, optional
+            If silent, logger in info mode
 
     Returns:
-        rep_frac - fraction of duplicated index: float
+        float:
+            The fraction of duplicated index
 
     """
     unique, counts = np.unique(index, return_counts=True)
