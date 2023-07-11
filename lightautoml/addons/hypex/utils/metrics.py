@@ -79,12 +79,10 @@ def matching_quality(data: pd.DataFrame, treatment: str, features: list, feature
 
     orig_treated = data[data[treatment] == 1][features]
     orig_untreated = data[data[treatment] == 0][features]
-    matched_treated = data[data[treatment] == 1][
-        sorted([f + '_matched' for f in features])]
-    matched_treated.columns = list(map(lambda x: x.replace('_matched', ''), matched_treated.columns))
-    matched_untreated = data[data[treatment] == 0][
-        sorted([f + '_matched' for f in features])]
-    matched_untreated.columns = list(map(lambda x: x.replace('_matched', ''), matched_untreated.columns))
+    matched_treated = data[data[treatment] == 1][sorted([f + "_matched" for f in features])]
+    matched_treated.columns = list(map(lambda x: x.replace("_matched", ""), matched_treated.columns))
+    matched_untreated = data[data[treatment] == 0][sorted([f + "_matched" for f in features])]
+    matched_untreated.columns = list(map(lambda x: x.replace("_matched", ""), matched_untreated.columns))
 
     psi_treated = data[data[treatment] == 1][features_psi]
     psi_treated_matched = data[data[treatment] == 1][[f + "_matched" for f in features_psi]]
@@ -112,8 +110,9 @@ def matching_quality(data: pd.DataFrame, treatment: str, features: list, feature
     report_psi_treated.columns = [col + "_treated" for col in report_cols]
     report_psi_untreated = report(psi_untreated, psi_untreated_matched, silent=silent)[report_cols]
     report_psi_untreated.columns = [col + "_untreated" for col in report_cols]
-    report_psi = pd.concat([report_psi_treated.reset_index(drop=True), report_psi_untreated.reset_index(drop=True)],
-                           axis=1)
+    report_psi = pd.concat(
+        [report_psi_treated.reset_index(drop=True), report_psi_untreated.reset_index(drop=True)], axis=1
+    )
 
     return report_psi, ks_df, smd_data
 

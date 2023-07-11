@@ -39,7 +39,9 @@ class PSI:
 
     """
 
-    def __init__(self, expected: pd.DataFrame, actual: pd.DataFrame, column_name: str, plot: bool = False, silent=False):
+    def __init__(
+        self, expected: pd.DataFrame, actual: pd.DataFrame, column_name: str, plot: bool = False, silent=False
+    ):
         """
 
         Args:

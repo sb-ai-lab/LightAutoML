@@ -22,8 +22,20 @@ logging.basicConfig(
 
 
 class FaissMatcher:
-    def __init__(self, df, outcomes, treatment, info_col, features=None, group_col=False, sigma=1.96, validation=None,
-                 n_neighbors=10, silent=True, pbar=True):
+    def __init__(
+        self,
+        df,
+        outcomes,
+        treatment,
+        info_col,
+        features=None,
+        group_col=False,
+        sigma=1.96,
+        validation=None,
+        n_neighbors=10,
+        silent=True,
+        pbar=True,
+    ):
         """
 
         Args:
@@ -35,6 +47,8 @@ class FaissMatcher:
             group_col - column for grouping: str
             sigma - significant level for confidence interval calculation
             validation - flag for validation of estimated ATE with default method 'random_feature'
+            silent - write logs in debug mode
+            pbar - display progress bar while get index
         """
         self.n_neighbors = n_neighbors
         if group_col is None:
@@ -185,28 +199,31 @@ class FaissMatcher:
             Matched dataframe of features: pd.DataFrame
 
         """
-        df = self.df.drop(columns=[self.outcomes]+self.info_col)
+        df = self.df.drop(columns=[self.outcomes] + self.info_col)
 
         if self.group_col is None:
             filtered = df.loc[df[self.treatment] == int(not is_treated)].values
-            untreated_df = pd.DataFrame(data=np.array([filtered[idx].mean(axis=0) for idx in index]),
-                                        columns=df.columns)
-            untreated_df['index'] = pd.Series(list(index))
+            untreated_df = pd.DataFrame(
+                data=np.array([filtered[idx].mean(axis=0) for idx in index]), columns=df.columns
+            )
+            untreated_df["index"] = pd.Series(list(index))
             treated_df = df[df[self.treatment] == int(is_treated)].reset_index()
         else:
             filtered = df.loc[df[self.treatment] == int(not is_treated)]
             cols_untreated = [col for col in filtered.columns if col != self.group_col]
             filtered = filtered.drop(columns=self.group_col).to_numpy()
-            untreated_df = pd.DataFrame(data=np.array([filtered[idx].mean(axis=0) for idx in index]),
-                                        columns=cols_untreated)
-            untreated_df['index'] = pd.Series(list(index))
+            untreated_df = pd.DataFrame(
+                data=np.array([filtered[idx].mean(axis=0) for idx in index]), columns=cols_untreated
+            )
+            untreated_df["index"] = pd.Series(list(index))
             treated_df = df[df[self.treatment] == int(is_treated)].reset_index()
             grp = treated_df[self.group_col]
             untreated_df[self.group_col] = grp
         untreated_df.columns = [col + POSTFIX for col in untreated_df.columns]
 
         x = pd.concat([treated_df, untreated_df], axis=1).drop(
-            columns=[self.treatment, self.treatment + POSTFIX], axis=1)
+            columns=[self.treatment, self.treatment + POSTFIX], axis=1
+        )
         return x
 
     def _create_matched_df(self):
@@ -373,7 +390,6 @@ class FaissMatcher:
             logger.info(f"Standardised mean difference info: \n {smd_data.head(10)} \nshape:{smd_data.shape}")
             logger.info(f"Repeats info: \n {rep_df.head(10)}")
 
-
         return self.quality_dict
 
     def group_match(self):
@@ -393,7 +409,7 @@ class FaissMatcher:
         treat_arr_t = df[df[self.treatment] == 1][self.treatment].to_numpy()
 
         if self.pbar:
-            self.tqdm = tqdm(total=len(groups)*2)
+            self.tqdm = tqdm(total=len(groups) * 2)
 
         for group in groups:
             df_group = df[df[self.group_col] == group]
@@ -415,8 +431,8 @@ class FaissMatcher:
                 self.tqdm.update(1)
                 self.tqdm.refresh()
 
-            group_mask_c = (group_arr_c == group)
-            group_mask_t = (group_arr_t == group)
+            group_mask_c = group_arr_c == group
+            group_mask_t = group_arr_t == group
             matches_c_mask = np.arange(treat_arr_t.shape[0])[group_mask_t]
             matches_u_i = [matches_c_mask[i] for i in matches_u_i]
             matches_t_mask = np.arange(treat_arr_c.shape[0])[group_mask_c]
@@ -539,7 +555,7 @@ def _transform_to_np(treated, untreated):
     yc = np.dot(xc, mahalanobis_transform.T)
     yt = np.dot(xt, mahalanobis_transform.T)
 
-    return yt.copy(order='C').astype("float32"), yc.copy(order='C').astype("float32")
+    return yt.copy(order="C").astype("float32"), yc.copy(order="C").astype("float32")
 
 
 def calc_atx_var(vars_c, vars_t, weights_c, weights_t):

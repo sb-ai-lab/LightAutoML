@@ -42,28 +42,28 @@ logging.basicConfig(
 
 class Matcher:
     def __init__(
-            self,
-            input_data,
-            outcome,
-            treatment,
-            outcome_type="numeric",
-            group_col=None,
-            info_col=None,
-            generate_report=GENERATE_REPORT,
-            report_feat_select_dir=REPORT_FEAT_SELECT_DIR,
-            timeout=TIMEOUT,
-            n_threads=N_THREADS,
-            n_folds=N_FOLDS,
-            verbose=VERBOSE,
-            use_algos=None,
-            same_target_threshold=SAME_TARGET_THRESHOLD,
-            interquartile_coeff=OUT_INTER_COEFF,
-            drop_outliers_by_percentile=OUT_MODE_PERCENT,
-            min_percentile=OUT_MIN_PERCENT,
-            max_percentile=OUT_MAX_PERCENT,
-            n_neighbors=10,
-            silent=True,
-            pbar=True
+        self,
+        input_data,
+        outcome,
+        treatment,
+        outcome_type="numeric",
+        group_col=None,
+        info_col=None,
+        generate_report=GENERATE_REPORT,
+        report_feat_select_dir=REPORT_FEAT_SELECT_DIR,
+        timeout=TIMEOUT,
+        n_threads=N_THREADS,
+        n_folds=N_FOLDS,
+        verbose=VERBOSE,
+        use_algos=None,
+        same_target_threshold=SAME_TARGET_THRESHOLD,
+        interquartile_coeff=OUT_INTER_COEFF,
+        drop_outliers_by_percentile=OUT_MODE_PERCENT,
+        min_percentile=OUT_MIN_PERCENT,
+        max_percentile=OUT_MAX_PERCENT,
+        n_neighbors=10,
+        silent=True,
+        pbar=True,
     ):
         """
 
@@ -86,6 +86,8 @@ class Matcher:
             drop_outliers_by_percentile - flag to drop outliers by custom percentiles: bool
             min_percentile - minimum percentile to drop outliers: float
             max_percentile - maximum percentile to drop outliers: float
+            silent - write logs in debug mode
+            pbar - display progress bar while get index
         """
         if use_algos is None:
             use_algos = USE_ALGOS
@@ -133,12 +135,13 @@ class Matcher:
         else:
             group_col = self.input_data[[self.group_col]]
             if self.info_col is not None:
-                self.input_data = pd.get_dummies(self.input_data.drop(columns=[self.group_col] + self.info_col),
-                                                 drop_first=True)
+                self.input_data = pd.get_dummies(
+                    self.input_data.drop(columns=[self.group_col] + self.info_col), drop_first=True
+                )
             else:
                 self.input_data = pd.get_dummies(self.input_data.drop(columns=self.group_col), drop_first=True)
             self.input_data = pd.concat([self.input_data, group_col], axis=1)
-            logger.debug('Categorical grouped features turned into dummy')
+            logger.debug("Categorical grouped features turned into dummy")
         if self.info_col is not None:
             self.input_data = pd.concat([self.input_data, info_col], axis=1)
 
@@ -165,9 +168,13 @@ class Matcher:
 
         """
         if self.silent:
-            logger.debug(f"Applying filter of outliers\ninterquartile_coeff={self.interquartile_coeff}\nmode_percentile={self.mode_percentile}\nmin_percentile={self.min_percentile}\nmax_percentile={self.max_percentile}")
+            logger.debug(
+                f"Applying filter of outliers\ninterquartile_coeff={self.interquartile_coeff}\nmode_percentile={self.mode_percentile}\nmin_percentile={self.min_percentile}\nmax_percentile={self.max_percentile}"
+            )
         else:
-            logger.info(f"Applying filter of outliers\ninterquartile_coeff={self.interquartile_coeff}\nmode_percentile={self.mode_percentile}\nmin_percentile={self.min_percentile}\nmax_percentile={self.max_percentile}")
+            logger.info(
+                f"Applying filter of outliers\ninterquartile_coeff={self.interquartile_coeff}\nmode_percentile={self.mode_percentile}\nmin_percentile={self.min_percentile}\nmax_percentile={self.max_percentile}"
+            )
 
         out_filter = OutliersFilter(
             interquartile_coeff=self.interquartile_coeff,
@@ -209,8 +216,8 @@ class Matcher:
             self.features_importance = features
         else:
             self.features_importance = features.append(
-                {'Feature': self.group_col, 'Importance': features.Importance.max()},
-                ignore_index=True)
+                {"Feature": self.group_col, "Importance": features.Importance.max()}, ignore_index=True
+            )
         return self.features_importance.sort_values("Importance", ascending=False)
 
     def _matching(self) -> tuple:
@@ -231,7 +238,7 @@ class Matcher:
             group_col=self.group_col,
             n_neighbors=self.n_neighbors,
             silent=self.silent,
-            pbar=self.pbar
+            pbar=self.pbar,
         )
         if self.silent:
             logger.debug("Applying matching")
@@ -244,7 +251,7 @@ class Matcher:
 
         return self.results, self.quality_result
 
-    def validate_result(self, refuter='random_feature', n_sim=10, fraction=0.8):
+    def validate_result(self, refuter="random_feature", n_sim=10, fraction=0.8):
         """Validates estimated ATE
 
         Validates estimated effect:
@@ -281,19 +288,35 @@ class Matcher:
                     if self.features_importance is not None and i == 0:
                         self.features_importance.append("random_feature")
 
-                self.matcher = FaissMatcher(self.input_data, self.outcome, self.treatment, info_col=self.info_col,
-                                            features=self.features_importance,
-                                            group_col=self.group_col, validation=self.validate,
-                                            n_neighbors=self.n_neighbors, pbar=False)
+                self.matcher = FaissMatcher(
+                    self.input_data,
+                    self.outcome,
+                    self.treatment,
+                    info_col=self.info_col,
+                    features=self.features_importance,
+                    group_col=self.group_col,
+                    validation=self.validate,
+                    n_neighbors=self.n_neighbors,
+                    pbar=False,
+                )
             elif refuter == "subset_refuter":
                 df, self.validate = subset_refuter(self.input_data, self.treatment, fraction)
-                self.matcher = FaissMatcher(df, self.outcome, self.treatment, info_col=self.info_col,
-                                            features=self.features_importance,
-                                            group_col=self.group_col, validation=self.validate,
-                                            n_neighbors=self.n_neighbors, pbar=False)
+                self.matcher = FaissMatcher(
+                    df,
+                    self.outcome,
+                    self.treatment,
+                    info_col=self.info_col,
+                    features=self.features_importance,
+                    group_col=self.group_col,
+                    validation=self.validate,
+                    n_neighbors=self.n_neighbors,
+                    pbar=False,
+                )
             else:
                 logger.error("Incorrect refuter name")
-                raise NameError("Incorrect refuter name! Available refuters: 'random_feature', 'random_treatment', 'subset_refuter'")
+                raise NameError(
+                    "Incorrect refuter name! Available refuters: 'random_feature', 'random_treatment', 'subset_refuter'"
+                )
 
             if self.group_col is None:
                 sim = self.matcher.match()
@@ -305,8 +328,9 @@ class Matcher:
 
         for outcome in [self.outcome]:
             self.pval_dict.update({outcome: [np.mean(self.val_dict[outcome])]})
-            self.pval_dict[outcome].append(test_significance(self.results.loc['ATE']['effect_size'],
-                                                             self.val_dict[outcome]))
+            self.pval_dict[outcome].append(
+                test_significance(self.results.loc["ATE"]["effect_size"], self.val_dict[outcome])
+            )
         if refuter == "random_treatment":
             self.input_data[self.treatment] = orig_treatment
         elif refuter == "random_feature":
