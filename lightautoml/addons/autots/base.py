@@ -192,7 +192,7 @@ class AutoTS:
 
         if hasattr(self.TM, "automl_trend"):
             self.datetime_step = (
-                pd.to_datetime(train_data[self.datetime_key])[1] - pd.to_datetime(train_data[self.datetime_key])[0]
+                pd.to_datetime(train_data[self.datetime_key]).iloc[1] - pd.to_datetime(train_data[self.datetime_key]).iloc[0]
             )
         # fit main
         train_detrend = train_data.copy()
@@ -211,10 +211,10 @@ class AutoTS:
         if self.time_series_trend_params["trend"] is True:
             last_datetime = pd.to_datetime(data[self.datetime_key]).values[-1]
             vals = [last_datetime + (i + 1) * self.datetime_step for i in range(self.n_target)]
-            if not self.test_last:
+            if not self.reader_params["seq_params"]["seq0"]["params"]["test_last"]:
                 vals = data[self.datetime_key].tolist() + vals
             test_data = pd.DataFrame(vals, columns=[self.datetime_key])
-            if not self.test_last:
+            if not self.reader_params["seq_params"]["seq0"]["params"]["test_last"]:
                 test_idx = self.automl_seq.reader.ti["seq0"].create_target(test_data, plain_data=None)
             trend, test_pred_trend = self.TM.predict(data, test_data)
         else:
@@ -230,7 +230,7 @@ class AutoTS:
         if test_pred_detrend.data.shape[0] == 1:
             final_pred = test_pred_trend + test_pred_detrend.data.flatten()
         else:
-            if (test_idx is not None) and (not self.test_last):
+            if (test_idx is not None) and (not self.reader_params["seq_params"]["seq0"]["params"]["test_last"]):
                 test_pred_trend = test_pred_trend[test_idx]
             final_pred = test_pred_trend + test_pred_detrend.data
         return final_pred, test_pred_trend
