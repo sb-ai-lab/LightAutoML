@@ -58,6 +58,9 @@ importlib-metadata = {version = "^1.0", python = "<3.8"}
 
 autowoe = ">=1.2"
 
+faiss-cpu = "*"
+
+
 jinja2 = "*"
 json2html = "*"
 seaborn = "*"
