@@ -65,7 +65,7 @@ def subset_refuter(df, treatment, fraction=0.8):
     return df, validate
 
 
-def test_significance(estimate, simulations):
+def test_significance(estimate, simulations) -> float:
     """
     Performs a significance test for a normal distribution
     Args:
