@@ -287,7 +287,7 @@ class Matcher:
 
         self.quality_result = self.matcher.matching_quality()
 
-        return self.results, self.quality_result
+        return self.results, self.quality_result, self.matcher.df_matched
 
     def validate_result(self, refuter: str = "random_feature", n_sim: int = 10, fraction: float = 0.8) -> dict:
         """
