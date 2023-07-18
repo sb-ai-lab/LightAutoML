@@ -9,10 +9,12 @@ __validate_extra_deps("nlp", error=True)
 import logging
 import os
 
+from copy import deepcopy
 from typing import Optional
 from typing import Sequence
 
 import torch
+import torch.nn as nn
 
 from pandas import DataFrame
 
@@ -20,6 +22,7 @@ from ...ml_algo.boost_cb import BoostCB
 from ...ml_algo.boost_lgbm import BoostLGBM
 from ...ml_algo.dl_model import TorchModel
 from ...ml_algo.linear_sklearn import LinearLBFGS
+from ...ml_algo.tuning.optuna import DLOptunaTuner
 from ...ml_algo.tuning.optuna import OptunaTuner
 from ...pipelines.features.base import FeaturesPipeline
 from ...pipelines.features.lgb_pipeline import LGBAdvancedPipeline
@@ -43,7 +46,17 @@ logger = logging.getLogger(__name__)
 
 _base_dir = os.path.dirname(__file__)
 # set initial runtime rate guess for first level models
-_time_scores = {"lgb": 1, "lgb_tuned": 3, "linear_l2": 0.7, "cb": 2, "cb_tuned": 6, "nn": 1, "rf": 5, "rf_tuned": 10}
+_time_scores = {
+    "lgb": 1,
+    "lgb_tuned": 3,
+    "linear_l2": 0.7,
+    "cb": 2,
+    "cb_tuned": 6,
+    "nn": 10,
+    "nn_tuned": 20,
+    "rf": 5,
+    "rf_tuned": 10,
+}
 
 
 # TODO: add text feature selection
@@ -72,6 +85,7 @@ class TabularNLPAutoML(TabularAutoML):
         memory_limit: Memory limit that are passed to each automl.
         cpu_limit: CPU limit that that are passed to each automl.
         gpu_ids: GPU IDs that are passed to each automl.
+        debug: To catch running model exceptions or not.
         timing_params: Timing param dict.
         config_path: Path to config file.
         general_params: General param dict.
@@ -117,6 +131,7 @@ class TabularNLPAutoML(TabularAutoML):
         memory_limit: int = 16,
         cpu_limit: int = 4,
         gpu_ids: Optional[str] = "all",
+        debug: bool = False,
         timing_params: Optional[dict] = None,
         config_path: Optional[str] = None,
         general_params: Optional[dict] = None,
@@ -143,6 +158,7 @@ class TabularNLPAutoML(TabularAutoML):
             memory_limit,
             cpu_limit,
             gpu_ids,
+            debug,
             timing_params,
             config_path,
         )
@@ -246,21 +262,64 @@ class TabularNLPAutoML(TabularAutoML):
         else:
             return None
 
-    def get_nn(self, n_level: int = 1, pre_selector: Optional[SelectionPipeline] = None) -> NestedTabularMLPipeline:
-
-        # nn model
-        time_score = self.get_time_score(n_level, "nn")
-        nn_timer = self.timer.get_task_timer("reg_nn", time_score)
-        nn_model = TorchModel(timer=nn_timer, default_params=self.nn_params)
+    def get_nn(
+        self, keys: Sequence[str], n_level: int = 1, pre_selector: Optional[SelectionPipeline] = None
+    ) -> NestedTabularMLPipeline:
+        ml_algos = []
+        force_calc = []
 
         text_nn_feats = self.get_nlp_pipe(self.nn_pipeline_params["text_features"])
         nn_feats = LinearFeatures(output_categories=True, **self.linear_pipeline_params)
         if text_nn_feats is not None:
             nn_feats.append(text_nn_feats)
 
+        general_nn_params = deepcopy(self.nn_params)
+        if "0" in self.nn_params:
+            for i in range(len(keys)):
+                if str(i) in general_nn_params:
+                    del general_nn_params[str(i)]
+
+        for i, key in enumerate(keys):
+            time_score = self.get_time_score(n_level, "nn")
+            nn_timer = self.timer.get_task_timer("reg_nn", time_score)
+            model_params = deepcopy(general_nn_params)
+
+            model_params.update(self.nn_params.get(str(i), general_nn_params))
+            model_name = key
+
+            if isinstance(key, str):
+                tuned = "_tuned" in key
+                if key[:2] == "nn":
+                    model_name = "_linear_layer"
+                _name = "TorchNN_" + model_name + "_" + str(i)
+                model_name = model_name.replace("_tuned", "")
+            else:
+                tuned = model_params.get("tuned")
+                _name = "TorchNN_" + str(i)
+
+            model_params["model"] = model_name
+            nn_model = TorchModel(
+                timer=nn_timer,
+                default_params=model_params,
+                optimization_search_space=model_params.get("optimization_search_space", None),
+            )
+            nn_model._name = _name
+
+            if tuned:
+                nn_model.set_prefix("Tuned")
+                nn_tuner = DLOptunaTuner(
+                    n_trials=model_params["tuning_params"]["max_tuning_iter"],
+                    timeout=model_params["tuning_params"]["max_tuning_time"],
+                    fit_on_holdout=model_params["tuning_params"]["fit_on_holdout"],
+                )
+                nn_model = (nn_model, nn_tuner)
+            ml_algos.append(nn_model)
+            force_calc.append(True if not len(ml_algos) - 1 else False)
+
         nn_pipe = NestedTabularMLPipeline(
-            [nn_model], pre_selection=None, features_pipeline=nn_feats, **self.nested_cv_params
+            ml_algos, force_calc, pre_selection=None, features_pipeline=nn_feats, **self.nested_cv_params
         )
+
         return nn_pipe
 
     def get_linear(self, n_level: int = 1, pre_selector: Optional[SelectionPipeline] = None) -> NestedTabularMLPipeline:
@@ -362,9 +421,15 @@ class TabularNLPAutoML(TabularAutoML):
                     selector = pre_selector
                 lvl.append(self.get_gbms(gbm_models, n + 1, selector))
 
-            if "nn" in names:
+            available_nn_models = ["nn", "mlp", "dense", "denselight", "resnet", "snn", "linear_layer", "_linear_layer"]
+            available_nn_models = available_nn_models + [x + "_tuned" for x in available_nn_models]
+            nn_models = [
+                x for x in names if x in available_nn_models or (isinstance(x, type) and issubclass(x, nn.Module))
+            ]
+
+            if len(nn_models) > 0:
                 selector = None
-                lvl.append(self.get_nn(n + 1, selector))
+                lvl.append(self.get_nn(nn_models, n + 1, selector))
 
             levels.append(lvl)
 
@@ -378,6 +443,7 @@ class TabularNLPAutoML(TabularAutoML):
             skip_conn=self.general_params["skip_conn"],
             blender=blender,
             timer=self.timer,
+            debug=self.debug,
         )
 
     def predict(

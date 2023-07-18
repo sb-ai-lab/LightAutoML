@@ -317,7 +317,7 @@ def plot_error_hist(data, path):
     sns.set(style="whitegrid", font_scale=1.5)
     fig, ax = plt.subplots(figsize=(16, 10))
 
-    sns.kdeplot(data["y_pred"] - data["y_true"], fill=True, color="m", ax=ax)
+    sns.kdeplot(data["y_pred"] - data["y_true"], shade=True, color="m", ax=ax)
     ax.set_xlabel("Error = y_pred - y_true")
     ax.set_ylabel("Density")
     ax.set_title("Error histogram")

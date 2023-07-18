@@ -1,7 +1,8 @@
 # Standard python libraries
 import logging
+import os
 
-from copy import deepcopy
+import yaml
 
 
 logging.basicConfig(format="[%(asctime)s] (%(levelname)s): %(message)s", level=logging.INFO)
@@ -15,12 +16,10 @@ from statsmodels.tsa.seasonal import seasonal_decompose
 
 # Imports from our package
 from ...automl.base import AutoML
-from ...automl.blend import WeightedBlender
+from ...automl.presets.base import upd_params
+from ...automl.presets.tabular_presets import TabularAutoML
 from ...dataset.roles import DatetimeRole
-from ...ml_algo.boost_cb import BoostCB
 from ...ml_algo.linear_sklearn import LinearLBFGS
-from ...ml_algo.random_forest import RandomForestSklearn
-from ...pipelines.features.lgb_pipeline import LGBSeqSimpleFeatures
 from ...pipelines.features.linear_pipeline import LinearTrendFeatures
 from ...pipelines.ml.base import MLPipeline
 from ...reader.base import DictToPandasSeqReader
@@ -30,23 +29,9 @@ from ...tasks import Task
 class TrendModel:
 
     _available_trend_types = ["decompose", "decompose_STL", "linear", "rolling"]
-    default_params = {
-        "trend": True,
-        "train_on_trend": True,
-        "trend_type": "decompose",
-        "trend_size": 7,
-        "decompose_period": 30,
-        "detect_step_quantile": 0.01,
-        "detect_step_window": 7,
-        "detect_step_threshold": 0.7,
-        "rolling_size": 7,
-        "verbose": 0,
-    }
 
     def __init__(self, params=None):
-        self.params = deepcopy(self.default_params)
-        if params is not None:
-            self.params.update(params)
+        self.params = params
         assert self.params["trend_type"] in self._available_trend_types
 
     def _detect_step(self, x):
@@ -146,26 +131,6 @@ class TrendModel:
 
 
 class AutoTS:
-
-    default_trend_params = {
-        "trend": True,
-        "train_on_trend": True,
-        "trend_type": "decompose",  # 'decompose', 'decompose_STL', 'linear' or 'rolling'
-        "trend_size": 7,
-        "decompose_period": 30,
-        "detect_step_quantile": 0.01,
-        "detect_step_window": 7,
-        "detect_step_threshold": 0.7,
-        "rolling_size": 7,
-        "verbose": 0,
-    }
-
-    default_transformers_params = {  # True (then set default value), False, int, list or np.array
-        "lag_features": True,
-        # "lag_time_features": True,
-        "diff_features": False,
-    }
-
     @property
     def n_target(self):
         """Get length of future prediction.
@@ -173,7 +138,7 @@ class AutoTS:
         Returns:
             length
         """
-        return self.seq_params["seq0"]["params"]["n_target"]
+        return self.reader_params["seq_params"]["seq0"]["params"]["n_target"]
 
     @property
     def n_history(self):
@@ -182,7 +147,7 @@ class AutoTS:
         Returns:
             length
         """
-        return self.seq_params["seq0"]["params"]["history"]
+        return self.reader_params["seq_params"]["params"]["history"]
 
     @property
     def datetime_key(self):
@@ -198,38 +163,28 @@ class AutoTS:
             .keys[0]
         )
 
-    def __init__(self, task, seq_params=None, trend_params=None, transformers_params=None):
+    def __init__(self, task, time_series_trend_params=None, reader_params=None, **kwargs):
         self.task = task
         self.task_trend = Task("reg", greater_is_better=False, metric="mae", loss="mae")
-        if seq_params is None:
-            self.seq_params = {
-                "seq0": {
-                    "case": "next_values",
-                    "params": {"n_target": 7, "history": 7, "step": 1, "from_last": True, "test_last": True},
-                },
-            }
-        else:
-            self.seq_params = seq_params
-        self.test_last = self.seq_params["seq0"]["params"]["test_last"]
+        self.kwargs = kwargs
 
-        # Trend params
-        self.trend_params = deepcopy(self.default_trend_params)
-        if trend_params is not None:
-            self.trend_params.update(trend_params)
-        self.TM = TrendModel(params=self.trend_params)
+        if "config_path" not in kwargs:
+            self.kwargs["config_path"] = (
+                "/".join(os.path.dirname(__file__).split("/")[:-2]) + "/automl/presets/time_series_config.yml"
+            )
 
-        # Transformers params
-        self.transformers_params = deepcopy(self.default_transformers_params)
-        if transformers_params is not None:
-            self.transformers_params.update(transformers_params)
+        with open(self.kwargs["config_path"]) as f:
+            params = yaml.safe_load(f)
 
-        # default params if they have been stated as boolean True
-        if isinstance(self.transformers_params["lag_features"], bool) and self.transformers_params["lag_features"]:
-            self.transformers_params["lag_features"] = 30
-        # if isinstance(self.transformers_params["lag_time_features"], bool) and self.transformers_params["lag_time_features"]:
-        #     self.transformers_params["lag_time_features"] = 7
-        if isinstance(self.transformers_params["diff_features"], bool) and self.transformers_params["diff_features"]:
-            self.transformers_params["diff_features"] = 7
+        # TrendModel and reader_params initialization
+        for name, param in zip(
+            ["time_series_trend_params", "reader_params"], [time_series_trend_params, reader_params]
+        ):
+            if param is None:
+                param = {}
+            self.__dict__[name] = upd_params(params[name], param)
+
+        self.TM = TrendModel(params=self.time_series_trend_params)
 
     def fit_predict(self, train_data, roles, verbose=0):
         self.roles = roles
@@ -237,24 +192,15 @@ class AutoTS:
 
         if hasattr(self.TM, "automl_trend"):
             self.datetime_step = (
-                pd.to_datetime(train_data[self.datetime_key])[1] - pd.to_datetime(train_data[self.datetime_key])[0]
+                pd.to_datetime(train_data[self.datetime_key]).iloc[1] - pd.to_datetime(train_data[self.datetime_key]).iloc[0]
             )
         # fit main
         train_detrend = train_data.copy()
         train_detrend.loc[:, roles["target"]] = train_detrend.loc[:, roles["target"]] - train_trend
 
-        reader_seq = DictToPandasSeqReader(task=self.task, cv=2, seq_params=self.seq_params)
-        feats_seq = LGBSeqSimpleFeatures(fill_na=True, scaler=True, transformers_params=self.transformers_params)
-        model = RandomForestSklearn(default_params={"verbose": 0})
-        # model2 = LinearLBFGS(default_params={'cs': [1]})
-        model2 = LinearLBFGS()
-
-        model3 = BoostCB()
-        pipeline_lvl1 = MLPipeline([model], pre_selection=None, features_pipeline=feats_seq, post_selection=None)
-        pipeline2_lvl1 = MLPipeline([model2], pre_selection=None, features_pipeline=feats_seq, post_selection=None)
-        pipeline3_lvl1 = MLPipeline([model3], pre_selection=None, features_pipeline=feats_seq, post_selection=None)
-        self.automl_seq = AutoML(
-            reader_seq, [[pipeline_lvl1, pipeline2_lvl1, pipeline3_lvl1]], skip_conn=False, blender=WeightedBlender()
+        # Tabular preset
+        self.automl_seq = TabularAutoML(
+            task=self.task, is_time_series=True, reader_params=self.reader_params, **self.kwargs
         )
 
         oof_pred_seq = self.automl_seq.fit_predict({"seq": {"seq0": train_detrend}}, roles=roles, verbose=verbose)
@@ -262,13 +208,13 @@ class AutoTS:
 
     def predict(self, data, return_raw=False):
         test_idx = None
-        if self.trend_params["trend"] is True:
+        if self.time_series_trend_params["trend"] is True:
             last_datetime = pd.to_datetime(data[self.datetime_key]).values[-1]
             vals = [last_datetime + (i + 1) * self.datetime_step for i in range(self.n_target)]
-            if not self.test_last:
+            if not self.reader_params["seq_params"]["seq0"]["params"]["test_last"]:
                 vals = data[self.datetime_key].tolist() + vals
             test_data = pd.DataFrame(vals, columns=[self.datetime_key])
-            if not self.test_last:
+            if not self.reader_params["seq_params"]["seq0"]["params"]["test_last"]:
                 test_idx = self.automl_seq.reader.ti["seq0"].create_target(test_data, plain_data=None)
             trend, test_pred_trend = self.TM.predict(data, test_data)
         else:
@@ -284,7 +230,7 @@ class AutoTS:
         if test_pred_detrend.data.shape[0] == 1:
             final_pred = test_pred_trend + test_pred_detrend.data.flatten()
         else:
-            if (test_idx is not None) and (not self.test_last):
+            if (test_idx is not None) and (not self.reader_params["seq_params"]["seq0"]["params"]["test_last"]):
                 test_pred_trend = test_pred_trend[test_idx]
             final_pred = test_pred_trend + test_pred_detrend.data
         return final_pred, test_pred_trend

@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  schedule:
+    - cron: 0 9 * * *
+
+  # Manually triggerable in github
+  workflow_dispatch:
+
+  push:
+    paths-ignore:
+      - "docs/**"
+      - "*.md"
+      - ".github/workflows/mirror.yml"
+      - ".gitlab/.gitlab-ci.yml"
+
+  pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "*.md"
+      - ".github/workflows/mirror.yml"
+      - ".gitlab/.gitlab-ci.yml"
+
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: "3.9"
+      - uses: pre-commit/action@v2.0.3
+
+  tests:
+    needs: pre-commit
+    runs-on: ${{matrix.os}}
+    if: |
+      ( github.event_name == 'pull_request' ) && ( needs.pre-commit.result == 'success' )
+      ||
+      ( github.event_name == 'schedule' ) && ( needs.pre-commit.result == 'success' )
+      ||
+      ( github.event_name == 'workflow_dispatch' ) && ( needs.pre-commit.result == 'success' )
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-20.04, windows-latest, macos-latest]  # FIX: 'ubuntu-latest'(ubunut-22.04) -> 'ubuntu-20.04': Python version 3.6 was not found in the local cache
+        python-version: [3.6, 3.7, 3.8, 3.9]
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - uses: Gr1N/setup-poetry@v8
+        with:
+          poetry-version: 1.1.7
+
+      - name: install libomp for MacOS
+        if: ${{ matrix.os == 'macos-latest' }}
+        run: brew install libomp
+
+      - name: install tox
+        run: |
+          pip3 install tox==3.24.4
+          pip3 install tox-gh-actions==2.8.1
+
+      - name: test with tox
+        run: |
+          tox

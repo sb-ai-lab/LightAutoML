@@ -1,0 +1,330 @@
+general_params:
+  # possible values are list of lists, that describes levels
+  # possible values are ['linear_l2', 'cb', 'cb_tuned', 'nn', 'mlp', 'dense', 'denselight', 'resnet', 'snn'].
+  # or 'auto' - configuration will be infered from data
+  # for using one of the 'nn', 'mlp', 'dense', 'denselight', 'resnet', 'snn' on the only one layer, it should be defined using double brackets, e. g. [['nn']]
+  # it is also possible to use ['lgb', 'lgb_tunes'] but only for regression on the only one point. Task should be specified as 'reg' instead of 'multi:reg'
+  # ex.[['linear_l2', 'cb', 'cb_tuned'], ['linear_l2']] is 2 algos on 1 level, 1 algos on 2 level and blender on 3 level
+  # to define more than 1 level nested_cv_params.cv should be > 1
+  use_algos: "auto"
+  # nested_cv - True/False. If true, check nested_cv params. Use folds-in-folds cross-validation scheme
+  # May performs better but take much more time to run (train and inference)
+  nested_cv: False
+  # skip connections
+  skip_conn: False
+  # Return prediction from all last layer algos?
+  return_all_predictions: False
+  # The smallest weight in weighted blender (if lower - the algo will be dropped from final model)
+  weighted_blender_max_nonzero_coef: 0.05
+
+reader_params:
+  # sample of data to perform analysis
+  samples: 100000
+  # minimum nan_rate in feature to keep feature
+  max_nan_rate: 0.999
+  # maximum frequency of top frequent value to keep feature
+  max_constant_rate: 0.999
+  # create validation folds. Folds will be created even if valid samples or custom validation will be passed
+  # it will be used for feature generation
+  cv: 2
+  # random state for folds creation
+  random_state: 42
+  # default roles params.
+  # Ex if {'numeric': {'force_input': True}} will be passed, all numeric features will pass all selectors,
+  # if another will not be passed in roles argument of .fit_predict
+  roles_params:
+  # n_jobs for advanced roles guess and reading csv files (more RAM needed due to multiprocessing)
+  n_jobs: 8
+  # If to turn on advanced roles guess. Slower, but shows better quality
+  # If role of feature is not defined, reader will guess role in 2 ways:
+  #   - simple (numbers as numbers, object as categories or dates if dateformat inferred)
+  #   - advanced, based on some statistic calculation
+  # Advanced also searches to best processing type for defined roles, and in most cases is better, but slower
+  advanced_roles: True
+  # advanced roles parsing params
+  # defaults are ok in general case, don't touch it if you don't know it's meanings
+  numeric_unique_rate: 0.999
+  max_to_3rd_rate: 1.1
+  binning_enc_rate: 2
+  raw_decr_rate: 1.1
+  max_score_rate: 0.2
+  abs_score_val: 0.04
+  drop_score_co: 0.00
+  seq_params: {
+    "seq0": {
+      # the type of problem we are solving
+      "case": "next_values",
+      "params": {
+        # forecasting horizon
+        "n_target": 7,
+        # history size for feature generating
+        # (i.e., features for observation $y_t$ are counted from observations ($y_{t-history}$, ..., $y_{t-1}$))
+        "history": 7,
+        # in how many points to take the next observation in the training sample
+        # (the higher the step value --> the fewer observations fall into the training sample)
+        "step": 1,
+        # technical parameter: build train features from last possible observation.
+        "from_last": True,
+        # technical parameter: test data are built by the last observation from the training sample
+        "test_last": True
+      },
+    }
+  }
+
+read_csv_params:
+  # params for pandas.read_csv func
+  decimal: '.'
+  sep: ','
+  # another params from pandas read_csv docs can be added...
+
+nested_cv_params:
+  # params describe how to use inner cross validation (folds-in-folds) to get unbiased oof prediction
+  # cv defines how many folds we split dataset to perform nested cross validation. 1 means no nested cv
+  cv: 5
+  # n_folds defines how many cv loops to perform. None for all or int < cv
+  n_folds:
+  # how to perform params tuning. If True - we tune params on inner cv loops, False - on outer validation
+  inner_tune: False
+  # should we refit tuner each inner cv loop or just take first
+  refit_tuner: True
+
+tuning_params:
+  # pretrain tuner on holdout set. True - fast/ False - accurate
+  # Ex. if you have 5-fold cv, validate tuner only on 1 fold
+  fit_on_holdout: True
+  # max tuning iter for lightgbm. Auto - depends on dataset
+  # smaller dataset gets more iters (int or 'auto')
+  max_tuning_iter: 101
+  # max tuning time. Tuning time might be set lower during train by automl's timer, but cannot be higher
+  max_tuning_time: 300
+
+# params for BoostLGBM MLAlgo. Note - params are default and may be changed during train if not freeze_defaults
+lgb_params:
+  # Look for lightgbm train params here. (num_threads will be rewrited by global preset's cpu limit)
+  default_params:
+    num_threads: 100
+  freeze_defaults: False
+
+# params for BoostCB MLAlgo. Note - params are default and may be changed during train if not freeze_defaults
+cb_params:
+  # Look for lightgbm train params here. (thread_count will be rewrited by global preset's cpu limit)
+  default_params:
+    # task type - auto based on gpu available
+    task_type: 'CPU'
+    thread_count: 100
+  freeze_defaults: False
+
+# params for RandomForest MLAlgo. Note - params are default and may be changed during train if not freeze_defaults
+rf_params:
+  # Look for RF train params here. (thread_count will be rewrited by global preset's cpu limit)
+  default_params:
+    verbose: 0
+  freeze_defaults: False
+
+# params for LinearLBFGS MLAlgo
+# no tuner needed for this algo - regularization params are found during fit
+linear_l2_params:
+  default_params: { }
+  freeze_defaults: False
+
+# params for NN model
+nn_params:
+  # Look for NN train params here.
+  # str in ['nn', 'mlp', 'dense', 'denselight', 'resnet', 'snn'] or custom torch model
+  model: denselight
+  # use model with custom embeddings
+  model_with_emb: false
+  # tune custom network
+  tuned: false
+  # fewf
+  optimization_search_space: null
+  # str in torch.nn loss functions or nn.Module or func with (y_pred, y_true) args
+  loss: null
+  loss_params: {}
+  # calculate loss on logits or on predictions of model for classification tasks
+  loss_on_logits: true
+  # clip gradient before loss backprop
+  clip_grad: false
+  clip_grad_params: {}
+  drop_rate: 0.1
+  # add fc layer before model with certain dim
+  num_init_features: null
+  # activation function (str in torch.nn activation functions or custom nn.Module)
+  act_fun: ReLU
+  # add noise after dropout layer for more regularization
+  use_noise: false
+  # noise parameter
+  noise_std: 0.05
+  # use BatchNorm
+  use_bn: true
+  # define hidden layer dimensions for models in ['mlp', 'denselight', 'snn']
+  hidden_size: [512, 512, 512]
+  # dim of intermediate fc is increased times this factor in ResnetModel layer
+  hid_factor: [2, 2]
+  # list of number of layers within each DenseModel block
+  block_config: [2, 2]
+  # portion of neuron to drop after DenseBlock
+  compression: 0.5
+  # output dim of every DenseLayer
+  growth_size: 256
+  # dim of intermediate fc is increased times this factor in DenseModel layer
+  bn_factor: 2
+  # early stopping and scheduler use metric
+  stop_by_metric: false
+  random_state: 42
+  # path to save model state
+  # if None: stay in memory (CPU)
+  path_to_save: null
+  # optimizer
+  opt: Adam
+  # params of optimizer
+  opt_params: { 'lr': 0.0003, 'weight_decay': 0 }
+  # scheduler
+  sch: ReduceLROnPlateau
+  # params of ReduceLROnPlateau scheduler
+  scheduler_params: { 'patience': 5, 'factor': 0.5, 'min_lr': 0.00001 }
+  # using snapshot ensembles
+  # https://arxiv.org/abs/1704.00109
+  is_snap: false
+  # params of snapshots:
+  # k - number of best snapshots (in terms of loss)
+  # early_stopping - use early stopping
+  # patience - early_stopping patience
+  # swa - stochastic weight average - averaging of snapshots weights and replace base model
+  # https://pytorch.org/blog/stochastic-weight-averaging-in-pytorch/ for idea details (different implementation)
+  # use swa with disabled is_snap
+  snap_params: { 'k': 3, 'early_stopping': True, 'patience': 10, 'swa': True }
+  # init last linear layer:
+  # zeros for weights, mean value for bias in regression, inverse sigmoid mean for binary, argmax for multiclass
+  init_bias: true
+  # verbose and create snapshots inside one training epoch every k steps
+  verbose_inside: null
+  # verbose every k epochs
+  verbose: 1
+  # show progress bar for each epoch during batchwise training
+  verbose_bar: false
+  n_epochs: 50
+  input_bn: False
+  emb_dropout: 0.1
+  emb_ratio: 3
+  max_emb_size: 256
+  use_cont: true
+  use_cat: true
+  use_text: false
+  #set cudnn backend
+  deterministic: true
+  # use DP for model training
+  # currently, must be set to FALSE value
+  multigpu: false
+  # device
+  device: cuda:0
+  # use defualt dataset config or custom torch dataset
+  dataset: UniversalDataset
+  pin_memory: false
+  # training and inference batch size
+  bs: 512
+  num_workers: 0
+
+  tuning_params:
+    # pretrain tuner on holdout set. True - fast/ False - accurate
+    # Ex. if you have 5-fold cv, validate tuner only on 1 fold
+    fit_on_holdout: True
+    # max tuning iter for lightgbm. Auto - depends on dataset
+    # smaller dataset gets more iters (int or 'auto')
+    max_tuning_iter: 25
+    # max tuning time. Tuning time might be set lower during train by automl's timer, but cannot be higher
+    max_tuning_time: 3600
+  freeze_defaults: False
+
+time_series_trend_params:
+  # params for time series trend (detrend) model
+  "trend": True
+  "train_on_trend": True
+  # may be one of ['decompose', 'decompose_STL', 'linear', 'rolling']
+  "trend_type": "decompose"
+  "trend_size": 7
+  "decompose_period": 30
+  "detect_step_quantile": 0.01
+  "detect_step_window": 7
+  "detect_step_threshold": 0.7
+  "rolling_size": 7
+  "verbose": 0
+
+time_series_pipeline_params:
+  # params for time series feature generation
+  # lags to make lag features for features other than date
+  "lag_features": 30
+  # lags to make lag features for date features
+  "lag_time_features": 10
+  # lags to make difference features for features other than date
+  "diff_features": 10
+
+gbm_pipeline_params:
+  # max number of categories to generate intersections
+  top_intersections: 4
+  # max depth of cat intersection
+  max_intersection_depth: 3
+  # subsample to calc data statistics
+  subsample: 100000
+  auto_unique_co: 10
+  # n_classes to use target encoding for multiclass task
+  multiclass_te_co: 3
+  # DEV feature: output categorical features as categories (if True, can totally overfit your model - be careful!)
+  output_categories: False
+
+linear_pipeline_params:
+  # max number of categories to generate intersections
+  top_intersections: 4
+  # max depth of cat intersection
+  max_intersection_depth: 3
+  # subsample to calc data statistics
+  subsample: 100000
+  auto_unique_co: 50
+  # n_classes to use target encoding for multiclass task
+  multiclass_te_co: 3
+
+nn_pipeline_params:
+  # use quantile transformer for numerical columns
+  use_qnt: false
+  # number of quantiles to be computed
+  n_quantiles: null
+  # maximum number of samples used to estimate the quantiles for computational efficiency
+  subsample: 1000000000
+  # marginal distribution for the transformed data. The choices are 'uniform' or 'normal'
+  output_distribution: normal
+  # add noise with certain std to dataset before quantile transformation to make data more smooth
+  noise: 0.001
+  # if number of quantiles is none then it equals dataset size / factor
+  qnt_factor: 30
+  # use target encoding for categorical columns
+  use_te: false
+  # max number of categories to generate intersections
+  top_intersections: 5
+  max_bin_count: 10
+  # max depth of cat intersection
+  max_intersection_depth: 3
+  # subsample to calc data statistics
+  te_subsample: null
+  # should we output sparse if ohe encoding was used during cat handling
+  sparse_ohe: auto
+  # switch to target encoding if high cardinality
+  auto_unique_co: 50
+  # output encoded categories or embed idxs
+  output_categories: true
+  # cutoff if use target encoding in cat handling on multiclass task if number of classes is high
+  multiclass_te_co: 3
+
+timing_params:
+  # select timing mode:
+  # 0: no limits - use time limits to create algo's settings but if automl run out of time - let it finish
+  # 1: soft - approximate time limits - tasks will finished after timeout
+  # 2: hard - hard time limits - stop all tasks before timeout to be exactly in time
+  # Any time limitation mode will start working after at least single fold of single model will be computed
+  mode: 1
+  overhead: 0.1
+  # we assume than each algo takes same amount of time to calc (adjusted with some timing score).
+  # So each algo gets TIME/N_ALGOS.
+  # tuning_rate of that time can be given to the params tuner
+  # 0 - means no tuning
+  # 'auto' - means infer depends on dataset size
+  tuning_rate: 0.7

@@ -53,6 +53,10 @@ def ginic(actual: np.ndarray, pred: np.ndarray) -> float:
     n = len(actual)
     a_s = actual[np.argsort(pred)]
     a_c = a_s.cumsum()
+
+    if a_s.sum() == 0:
+        return 0
+
     gini_sum = a_c.sum() / a_s.sum() - (n + 1) / 2.0
     return gini_sum / n
 
@@ -68,7 +72,12 @@ def gini_normalizedc(a: np.ndarray, p: np.ndarray) -> float:
         Metric value.
 
     """
-    return ginic(a, p) / ginic(a, a)
+    ginic_aa = ginic(a, a)
+
+    if ginic_aa:
+        return ginic(a, p) / ginic_aa
+
+    return 0
 
 
 def gini_normalized(y_true: np.ndarray, y_pred: np.ndarray, empty_slice: Optional[np.ndarray] = None):
@@ -298,7 +307,7 @@ def get_numeric_roles_stat(
         train.folds = set_sklearn_folds(train.task, train.target, cv=5, random_state=42, group=train.group)
 
     if subsample is not None:
-        idx = np.random.RandomState(random_state).permutation(train.shape[0])[:subsample]
+        idx = np.random.RandomState(random_state + 1).permutation(train.shape[0])[:subsample]
         train = train[idx]
 
     data, target = train.data, train.target
@@ -513,7 +522,7 @@ def get_category_roles_stat(
         train.folds = set_sklearn_folds(train.task, train.target.values, cv=5, random_state=42, group=train.group)
 
     if subsample is not None:
-        idx = np.random.RandomState(random_state).permutation(train.shape[0])[:subsample]
+        idx = np.random.RandomState(random_state + 1).permutation(train.shape[0])[:subsample]
         train = train[idx]
 
     # check task specific
@@ -626,7 +635,7 @@ def get_null_scores(
         train = train[:, feats].to_pandas()
 
     if subsample is not None:
-        idx = np.random.RandomState(random_state).permutation(train.shape[0])[:subsample]
+        idx = np.random.RandomState(random_state + 1).permutation(train.shape[0])[:subsample]
         train = train[idx]
 
     # check task specific
