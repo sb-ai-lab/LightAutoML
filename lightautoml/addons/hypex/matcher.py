@@ -1,4 +1,5 @@
 """Base Matcher class."""
+import pickle
 
 import pandas as pd
 import numpy as np
@@ -395,3 +396,34 @@ class Matcher:
         if features is not None:
             self.features_importance = features
         return self._matching()
+
+    def save(self, filename):
+        """
+        Save the object to a file using pickle
+
+        This method serializes the object and writes it to a file
+
+        Args:
+            filename: str
+                The name of the file to write to.
+        """
+        with open(filename, 'wb') as f:
+            pickle.dump(self, f)
+
+    @classmethod
+    def load(cls, filename):
+        """
+        Load an object from a file
+
+        This method reads a file and deserializes the object from it
+
+        Args:
+            filename: str
+                The name of the file to read from.
+
+        Returns:
+            object:
+            The deserialized object
+        """
+        with open(filename, 'rb') as f:
+            return pickle.load(f)
