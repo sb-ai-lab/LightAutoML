@@ -1,6 +1,7 @@
 import logging
 
 import pandas as pd
+from typing import List
 
 from ....automl.presets.tabular_presets import TabularAutoML
 from ....report import ReportDeco
@@ -19,16 +20,16 @@ logging.basicConfig(
 class LamaFeatureSelector:
     def __init__(
             self,
-            outcome,
-            outcome_type,
-            treatment,
-            timeout,
-            n_threads,
-            n_folds,
-            verbose,  # не используется
-            generate_report,
-            report_dir,
-            use_algos,
+            outcome: str,
+            outcome_type: str,
+            treatment: str,
+            timeout: int,
+            n_threads: int,
+            n_folds: int,
+            verbose: bool,  # не используется
+            generate_report: bool,
+            report_dir: str,
+            use_algos: List[str],
     ):
         """Initialize the LamaFeatureSelector.
 
@@ -51,7 +52,7 @@ class LamaFeatureSelector:
                 Flag to control whether to create a report or not
             report_dir: str
                 Directory for storing report files
-            use_algos: list[str]
+            use_algos: List[str]
                 List of names of LAMA algorithms for feature selection
         """
         self.outcome = outcome

@@ -29,9 +29,17 @@ class FaissMatcher:
     """A class used to match instances using Faiss library.
     """
 
-    def __init__(self, df: pd.DataFrame, outcomes: str, treatment: str, info_col: list,
-                 features: [list, pd.DataFrame] = None, group_col: str = None, sigma: float = 1.96,
-                 validation: bool = None, n_neighbors: int = 10, silent: bool = True,
+    def __init__(self,
+                 df: pd.DataFrame,
+                 outcomes: str,
+                 treatment: str,
+                 info_col: list,
+                 features: [list, pd.DataFrame] = None,
+                 group_col: str = None,
+                 sigma: float = 1.96,
+                 validation: bool = None,
+                 n_neighbors: int = 10,
+                 silent: bool = True,
                  pbar: bool = True):
         """Construct all the necessary attributes.
 
