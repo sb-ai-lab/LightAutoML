@@ -44,7 +44,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-20.04, windows-latest, macos-latest]  # FIX: 'ubuntu-latest'(ubunut-22.04) -> 'ubuntu-20.04': Python version 3.6 was not found in the local cache
-        python-version: [3.6, 3.7, 3.8, 3.9]
+        python-version: [3.6, 3.7, 3.8, 3.9, 3.10]
 
     steps:
       - uses: actions/checkout@v2
@@ -64,7 +64,7 @@ jobs:
 
       - name: install tox
         run: |
-          pip3 install tox==3.24.4
+          pip3 install tox==4.6.0
           pip3 install tox-gh-actions==2.8.1
 
       - name: test with tox
