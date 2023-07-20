@@ -283,11 +283,11 @@ class Matcher:
         else:
             logger.info("Applying matching")
 
-        self.results = self.matcher.match()
+        self.results, df_matched = self.matcher.match()
 
-        self.quality_result = self.matcher.matching_quality()
+        self.quality_result = self.matcher.matching_quality(df_matched)
 
-        return self.results, self.quality_result, self.matcher.df_matched
+        return self.results, self.quality_result, df_matched
 
     def validate_result(self, refuter: str = "random_feature", n_sim: int = 10, fraction: float = 0.8) -> dict:
         """

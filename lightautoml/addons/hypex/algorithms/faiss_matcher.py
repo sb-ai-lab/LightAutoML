@@ -97,7 +97,6 @@ class FaissMatcher:
         self.orig_untreated_index = None
         self.results = {}
         self.ATE = None
-        self.df_matched = None
         self.sigma = sigma
         self.quality_dict = {}
         self.rep_dict = None
@@ -264,7 +263,7 @@ class FaissMatcher:
         df_matched = pd.concat([untreated_x, df_matched], axis=1, ignore_index=True)
         df_matched.columns = columns
 
-        self.df_matched = df_matched
+        return df_matched
 
     def calc_atc(self, df: pd.DataFrame, outcome: str) -> ():
         """
@@ -375,12 +374,16 @@ class FaissMatcher:
         self.ATE, self.ATC, self.ATT = ate_dict, atc_dict, att_dict
         self.val_dict = ate_dict
 
-    def matching_quality(self) -> Dict[str, Union[Dict[str, float], float]]:
+    def matching_quality(self, df_matched) -> Dict[str, Union[Dict[str, float], float]]:
         """
         Estimated the quality of covariates balance and repeat fraction
 
         Calculates population stability index,Standardized mean difference
         and Kolmogorov-Smirnov test for numeric values. Returns a dictionary of reports.
+
+        Args:
+            df_matched: pd.DataFrame
+                Matched DataFrame to calculate quality
 
         Returns:
             dict: dictionary containing PSI, KS-test, SMD data and repeat fractions
@@ -394,7 +397,7 @@ class FaissMatcher:
         psi_columns = self.columns_match
         psi_columns.remove(self.treatment)
         psi_data, ks_data, smd_data = matching_quality(
-            self.df_matched, self.treatment, sorted(self.features_quality), sorted(psi_columns), self.silent
+            df_matched, self.treatment, sorted(self.features_quality), sorted(psi_columns), self.silent
         )
 
         rep_dict = {
@@ -477,13 +480,13 @@ class FaissMatcher:
         df_group = df[self.columns_match].drop(columns=self.group_col)
         treated, untreated = self._get_split(df_group)
         self._predict_outcome(treated, untreated)
-        self._create_matched_df()
-        self._calculate_ate_all_target(self.df_matched)
+        df_matched = self._create_matched_df()
+        self._calculate_ate_all_target(df_matched)
 
         if self.validation:
             return self.val_dict
 
-        return self.report_view()
+        return self.report_view(), df_matched
 
     def match(self):
         """
@@ -522,13 +525,13 @@ class FaissMatcher:
 
         self._predict_outcome(treated, untreated)
 
-        self._create_matched_df()
-        self._calculate_ate_all_target(self.df_matched)
+        df_matched = self._create_matched_df()
+        self._calculate_ate_all_target(df_matched)
 
         if self.validation:
             return self.val_dict
 
-        return self.report_view()
+        return self.report_view(), df_matched
 
     def report_view(self) -> pd.DataFrame:
         """
