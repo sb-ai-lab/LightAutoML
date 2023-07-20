@@ -300,7 +300,7 @@ class TorchModel(TabularMLAlgo):
             Array with bias values.
 
         """
-        if isinstance(target, pd.Series):
+        if isinstance(target, pd.Series) or isinstance(target, pd.DataFrame):
             target = target.values
         target = target.reshape(target.shape[0], -1)
         bias = (

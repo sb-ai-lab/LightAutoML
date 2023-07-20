@@ -42,17 +42,16 @@ class Timer:  # noqa: D101
 
 def install_lightautoml():
     """Install lightautoml using pip."""
-    os.system("python ./scripts/poetry_fix.py -c")
-    os.system(
-        """
-        pip install .
-    """
-    )
+    os.system("curl -sSL https://install.python-poetry.org | ../../bin/python -")
+    os.system("/root/.local/bin/poetry build")
+    os.system("../../bin/pip install ./dist/lightautoml-0.3.7.4-py3-none-any.whl")
 
-    # poetry config virtualenvs.create false --local
-    # poetry run python ./scripts/poetry_fix.py -c
-    # ls -la
-    # poetry run pip install pillow==9.2.0
-    # poetry install
-    # poetry run pip freeze
-    # poetry run python -c "import sys; print(sys.path)"
+
+#        .pip install --upgrade pip
+# poetry config virtualenvs.create false --local
+# poetry run python ./scripts/poetry_fix.py -c
+# ls -la
+# poetry run pip install pillow==9.2.0
+# poetry install
+# poetry run pip freeze
+# poetry run python -c "import sys; print(sys.path)"
