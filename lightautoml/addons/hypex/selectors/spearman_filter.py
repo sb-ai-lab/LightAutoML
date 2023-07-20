@@ -1,6 +1,7 @@
+import logging
+
 import pandas as pd
 from scipy.stats import spearmanr
-import logging
 
 PVALUE = 0.05
 
@@ -22,6 +23,7 @@ class SpearmanFilter:
     The significance of the correlation is determined using the Spearman correlation coefficient
     and a p-value threshold of 0.05
     """
+
     def __init__(self, outcome: str, treatment: str, threshold: float):
         """
         Initialize spearman filter.
@@ -35,8 +37,8 @@ class SpearmanFilter:
                 The threshold for the Spearman correlation coefficient filter
         """
         self.outcome: str = outcome
-        self.treatment: str  = treatment
-        self.threshold: float  = threshold
+        self.treatment: str = treatment
+        self.threshold: float = threshold
 
     def perform_filter(self, df: pd.DataFrame) -> pd.DataFrame:
         """Filters columns based on their correlation with the outcome column.

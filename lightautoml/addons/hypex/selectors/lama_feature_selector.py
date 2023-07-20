@@ -1,10 +1,10 @@
+import logging
+
 import pandas as pd
 
 from ....automl.presets.tabular_presets import TabularAutoML
 from ....report import ReportDeco
 from ....tasks import Task
-
-import logging
 
 logger = logging.getLogger("lama_feature_selector")
 console_out = logging.StreamHandler()
@@ -18,17 +18,17 @@ logging.basicConfig(
 
 class LamaFeatureSelector:
     def __init__(
-        self,
-        outcome,
-        outcome_type,
-        treatment,
-        timeout,
-        n_threads,
-        n_folds,
-        verbose,  # не используется
-        generate_report,
-        report_dir,
-        use_algos,
+            self,
+            outcome,
+            outcome_type,
+            treatment,
+            timeout,
+            n_threads,
+            n_folds,
+            verbose,  # не используется
+            generate_report,
+            report_dir,
+            use_algos,
     ):
         """Initialize the LamaFeatureSelector.
 
@@ -103,7 +103,7 @@ class LamaFeatureSelector:
             timeout=self.timeout,
             cpu_limit=self.n_threads,
             general_params={"use_algos": [self.use_algos]},
-            reader_params={"n_jobs": self.n_threads, "cv": self.n_folds,},
+            reader_params={"n_jobs": self.n_threads, "cv": self.n_folds, },
         )
 
         if self.generate_report:

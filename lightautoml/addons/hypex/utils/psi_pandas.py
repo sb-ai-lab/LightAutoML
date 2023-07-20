@@ -1,7 +1,8 @@
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
 import logging
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 
 logger = logging.getLogger("psi_pandas")
 console_out = logging.StreamHandler()
@@ -40,8 +41,9 @@ class PSI:
         list: Categories that are absent in actual column (empty list for non-categorical data)
 
     """
+
     def __init__(
-        self, expected: pd.DataFrame, actual: pd.DataFrame, column_name: str, plot: bool = False, silent=False
+            self, expected: pd.DataFrame, actual: pd.DataFrame, column_name: str, plot: bool = False, silent=False
     ):
         """Initializes the PSI class with given parameters.
 

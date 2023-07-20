@@ -1,7 +1,8 @@
+import logging
+
 import numpy as np
 import pandas as pd
 from scipy.stats import ks_2samp
-import logging
 
 from ..utils.psi_pandas import report
 
@@ -72,7 +73,8 @@ def ks(orig: pd.DataFrame, matched: pd.DataFrame, silent=False) -> dict:
     return ks_dict
 
 
-def matching_quality(data: pd.DataFrame, treatment: str, features: list, features_psi: list, silent: bool = False) -> tuple:
+def matching_quality(data: pd.DataFrame, treatment: str, features: list, features_psi: list,
+                     silent: bool = False) -> tuple:
     """Wraps the functionality for estimating matching quality.
 
     Args:

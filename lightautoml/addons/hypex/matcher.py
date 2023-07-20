@@ -1,10 +1,9 @@
 """Base Matcher class."""
+import logging
 import pickle
 
-import pandas as pd
 import numpy as np
-import logging
-
+import pandas as pd
 from tqdm.auto import tqdm
 
 from .algorithms.faiss_matcher import FaissMatcher

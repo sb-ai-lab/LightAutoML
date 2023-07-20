@@ -1,13 +1,14 @@
 """Class that search indexes"""
 import datetime as dt
+import logging
 from typing import Dict, Union, Tuple
+
 import faiss
 import numpy as np
 import pandas as pd
 from scipy.stats import norm
 from tqdm.auto import tqdm
 
-import logging
 from ..utils.metrics import check_repeats, matching_quality
 
 faiss.cvar.distance_compute_blas_threshold = 100000
