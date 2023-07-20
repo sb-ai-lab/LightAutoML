@@ -105,6 +105,38 @@ class FaissMatcher:
         self.pbar = pbar
         self.tqdm = None
 
+    def __getstate__(self):
+        """
+        Prepare the object for serialization
+
+        This method is called when the object is about to be serialized.
+        It removes the 'tqdm' attribute from the object's dictionary
+        because `tqdm` objects cannot be serialized.
+
+        Returns:
+            dict: A copy of the object's dictionary with the `tqdm` attribute removed.
+        """
+        state = self.__dict__.copy()
+        if "tqdm" in state:
+            del state['tqdm']
+        return state
+
+    def __setstate__(self, state):
+        """
+        Restore the object after deserialization
+
+        This method is called when the object is deserialized.
+        It adds the `tqdm` attribute back to the object's dictionary
+        if the 'pbar' attribute is True.
+
+        Args:
+            state: dict
+                The deserialized state of the object
+        """
+        if 'pbar' in state and state['pbar']:
+            state['tqdm'] = None
+        self.__dict__.update(state)
+
     def _get_split(self, df: pd.DataFrame) -> (pd.DataFrame, pd.DataFrame):
         """
         Creates split data by treatment column
