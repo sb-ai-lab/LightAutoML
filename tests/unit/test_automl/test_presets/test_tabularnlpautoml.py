@@ -1,10 +1,10 @@
 import numpy as np
 
-from tests.unit.test_automl.test_presets.presets_utils import check_pickling
-from tests.unit.test_automl.test_presets.presets_utils import get_target_name
 from sklearn.metrics import mean_squared_error
 
 from lightautoml.automl.presets.text_presets import TabularNLPAutoML
+from tests.unit.test_automl.test_presets.presets_utils import check_pickling
+from tests.unit.test_automl.test_presets.presets_utils import get_target_name
 
 
 class TestTabularNLPAutoML:
