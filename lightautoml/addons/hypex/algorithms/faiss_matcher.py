@@ -591,6 +591,9 @@ def _transform_to_np(treated: pd.DataFrame, untreated: pd.DataFrame) -> Tuple[np
     cov_t = np.cov(xt, rowvar=False, ddof=0)
     cov = (cov_c + cov_t) / 2
 
+    epsilon = 1e-6
+    cov = cov + epsilon * np.eye(cov.shape[0])
+
     L = np.linalg.cholesky(cov)
     mahalanobis_transform = np.linalg.inv(L)
     yc = np.dot(xc, mahalanobis_transform.T)
