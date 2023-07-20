@@ -3,8 +3,7 @@ import scipy.stats as st
 
 
 def random_treatment(df, treatment):
-    """
-    Replaces real treatment with a random placebo treatment.
+    """Replaces real treatment with a random placebo treatment.
     Args:
         df: pd.DataFrame
             The initial dataframe
@@ -28,8 +27,7 @@ def random_treatment(df, treatment):
 
 
 def random_feature(df):
-    """
-    Adds a random feature to the initial dataset.
+    """Adds a random feature to the initial dataset.
      Args:
          df: pd.DataFrame
             The initial dataframe
@@ -46,8 +44,7 @@ def random_feature(df):
 
 
 def subset_refuter(df, treatment, fraction=0.8):
-    """
-    Returns a subset of data with given fraction (default 0.8).
+    """Returns a subset of data with given fraction (default 0.8).
 
      Args:
          df: pd.DataFrame
@@ -66,8 +63,7 @@ def subset_refuter(df, treatment, fraction=0.8):
 
 
 def test_significance(estimate, simulations) -> float:
-    """
-    Performs a significance test for a normal distribution
+    """Performs a significance test for a normal distribution.
     Args:
          estimate: float
             The estimated effect

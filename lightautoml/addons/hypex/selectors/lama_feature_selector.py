@@ -30,8 +30,8 @@ class LamaFeatureSelector:
         report_dir,
         use_algos,
     ):
-        """
-        Initialize the LamaFeatureSelector
+        """Initialize the LamaFeatureSelector.
+
         Args:
             outcome: str
                 The target column
@@ -66,8 +66,7 @@ class LamaFeatureSelector:
         self.report_dir = report_dir
 
     def perform_selection(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Trains a model and returns feature scores.
+        """Trains a model and returns feature scores.
 
         This method defines metrics, applies the model, creates a report, and returns feature scores
 

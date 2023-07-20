@@ -68,8 +68,7 @@ class Matcher:
             silent: bool = True,
             pbar: bool = True,
     ):
-        """
-        Initialize the Matcher object
+        """Initialize the Matcher object.
 
         Args:
             input_data: pd.DataFrame
@@ -147,8 +146,7 @@ class Matcher:
         self.pbar = pbar
 
     def _preprocessing_data(self):
-        """
-        Converts categorical features into dummy variables.
+        """Converts categorical features into dummy variables.
         """
         if self.info_col is not None:
             info_col = self.input_data[self.info_col]
@@ -173,12 +171,10 @@ class Matcher:
             self.input_data = pd.concat([self.input_data, info_col], axis=1)
 
     def _spearman_filter(self):
-        """
-        Applies a filter by dropping columns correlated with the outcome column.
+        """Applies a filter by dropping columns correlated with the outcome column.
 
         This method uses the Spearman filter to eliminate features from the dataset
-        that are hihly correlated with the outcome columns, based on a pre-set threshold
-
+        that are highly correlated with the outcome columns, based on a pre-set threshold
         """
         if self.silent:
             logger.debug("Applying filter by spearman test - drop columns correlated with outcome")
@@ -192,8 +188,7 @@ class Matcher:
         self.input_data = same_filter.perform_filter(self.input_data)
 
     def _outliers_filter(self):
-        """
-        Removes outlier values from the dataset.
+        """Removes outlier values from the dataset.
 
         This method employs an OutliersFilter. If `drop_outliers_by_percentile` is True,
         it retains only the values between the min and max percentiles
@@ -219,8 +214,7 @@ class Matcher:
         self.input_data = self.input_data.drop(rows_for_del, axis=0)
 
     def lama_feature_select(self) -> pd.DataFrame:
-        """
-        Calculates the importance of each feature
+        """Calculates the importance of each feature.
 
         This method use LamaFeatureSelector to rank the importance of each feature in the dataset
         The features are then sorted by their importance with the most important feature first
@@ -261,8 +255,7 @@ class Matcher:
         return self.features_importance.sort_values("Importance", ascending=False)
 
     def _matching(self) -> tuple:
-        """
-        Performs matching considering the presence of groups
+        """Performs matching considering the presence of groups.
 
         Returns:
             tuple: Results of matching and matching quality metrics
@@ -291,8 +284,7 @@ class Matcher:
         return self.results, self.quality_result, df_matched
 
     def validate_result(self, refuter: str = "random_feature", n_sim: int = 10, fraction: float = 0.8) -> dict:
-        """
-        Validates estimated ATE (Average Treatment Effect)
+        """Validates estimated ATE (Average Treatment Effect).
 
         Validates estimated effect:
                                     1) by replacing real treatment with random placebo treatment.
@@ -383,8 +375,7 @@ class Matcher:
         return self.pval_dict
 
     def estimate(self, features: list = None) -> tuple:
-        """
-        Applies filters and outliers, then performs matching
+        """Applies filters and outliers, then performs matching.
 
         Args:
             features: list
@@ -398,8 +389,7 @@ class Matcher:
         return self._matching()
 
     def save(self, filename):
-        """
-        Save the object to a file using pickle
+        """Save the object to a file using pickle.
 
         This method serializes the object and writes it to a file
 
@@ -412,8 +402,7 @@ class Matcher:
 
     @classmethod
     def load(cls, filename):
-        """
-        Load an object from a file
+        """Load an object from a file.
 
         This method reads a file and deserializes the object from it
 

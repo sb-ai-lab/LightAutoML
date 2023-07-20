@@ -1,6 +1,9 @@
+import numpy as np
+import pandas as pd
 from scipy.stats import ks_2samp
-from ..utils.psi_pandas import *
 import logging
+
+from ..utils.psi_pandas import report
 
 logger = logging.getLogger("metrics")
 console_out = logging.StreamHandler()
@@ -13,8 +16,7 @@ logging.basicConfig(
 
 
 def smd(orig: pd.DataFrame, matched: pd.DataFrame, silent=False) -> pd.DataFrame:
-    """
-    Calculates the standardised mean difference to evaluate matching quality
+    """Calculates the standardised mean difference to evaluate matching quality.
 
     Args:
         orig: pd.DataFrame
@@ -39,8 +41,7 @@ def smd(orig: pd.DataFrame, matched: pd.DataFrame, silent=False) -> pd.DataFrame
 
 
 def ks(orig: pd.DataFrame, matched: pd.DataFrame, silent=False) -> dict:
-    """
-    Performs a Kolmogorov-Smirnov test to evaluate matching quality per columns
+    """Performs a Kolmogorov-Smirnov test to evaluate matching quality per columns.
 
     Args:
         orig: pd.DataFrame
@@ -74,8 +75,7 @@ def ks(orig: pd.DataFrame, matched: pd.DataFrame, silent=False) -> dict:
 
 
 def matching_quality(data: pd.DataFrame, treatment: str, features: list, features_psi: list, silent: bool = False) -> tuple:
-    """
-    Wraps the functionality for estimating matching quality
+    """Wraps the functionality for estimating matching quality.
 
     Args:
         data: pd.DataFrame
@@ -136,8 +136,7 @@ def matching_quality(data: pd.DataFrame, treatment: str, features: list, feature
 
 
 def check_repeats(index: np.array, silent: bool = False) -> float:
-    """
-    Checks the fraction of duplicated indexes in the given array
+    """Checks the fraction of duplicated indexes in the given array.
 
      Args:
         index: np.ndarray

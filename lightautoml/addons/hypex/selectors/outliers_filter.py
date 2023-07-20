@@ -15,7 +15,7 @@ logging.basicConfig(
 class OutliersFilter:
     def __init__(self, interquartile_coeff, mode_percentile, min_percentile, max_percentile):
         """
-        Initializes the OutliersFilter
+        Initializes the OutliersFilter.
 
         Args:
             interquartile_coeff: float
@@ -33,8 +33,7 @@ class OutliersFilter:
         self.max_percentile = max_percentile
 
     def perform_filter(self, df: pd.DataFrame, interquartile: bool = True) -> set:
-        """
-        Identifies rows with outliers.
+        """Identifies rows with outliers.
 
         This method creates a set of row indices to be removed, which contains values less than
         `min_percentile` and larger than `max_percentile` (if `mode_percentile` is True), or values

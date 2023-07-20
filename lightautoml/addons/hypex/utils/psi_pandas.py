@@ -14,8 +14,7 @@ logging.basicConfig(
 
 
 class PSI:
-    """
-    Calculates population stability index for different categories of data
+    """Calculates population stability index for different categories of data.
 
     For numeric data the class generates numeric buckets, except when numeric column
     includes only NULL. For categorical data:
@@ -45,8 +44,7 @@ class PSI:
     def __init__(
         self, expected: pd.DataFrame, actual: pd.DataFrame, column_name: str, plot: bool = False, silent=False
     ):
-        """
-        Initializes the PSI class with given parameters
+        """Initializes the PSI class with given parameters.
 
         Args:
             expected: pd.DataFrame
@@ -75,8 +73,7 @@ class PSI:
             self.actual_uniqs = actual[column_name].unique()
 
     def jac(self) -> float:
-        """
-        Calculates the Jacquard similarity index
+        """Calculates the Jacquard similarity index.
 
         The Jacquard similarity index measures the intersection between two sequences
         versus the union of the two sequences
@@ -94,8 +91,7 @@ class PSI:
 
     # в функции нет аргумента nulls, а был и испольовался далее в коде
     def plots(self, expected_percents, actual_percents, breakpoints, intervals):
-        """
-        Generates plots expected and actual percents
+        """Generates plots expected and actual percents.
 
         Args:
             expected_percents: float
@@ -130,8 +126,7 @@ class PSI:
         plt.show()
 
     def sub_psi(self, e_perc: float, a_perc: float) -> float:
-        """
-        Calculates the sub PSI value
+        """Calculates the sub PSI value.
 
         Args:
             e_perc: float
@@ -154,8 +149,7 @@ class PSI:
         return value
 
     def psi_num(self):
-        """
-        Calculate the PSI for a single variable
+        """Calculate the PSI for a single variable.
 
 
         Returns:
@@ -216,8 +210,7 @@ class PSI:
         return psi_value, psi_dict, new_cats, abs_cats
 
     def uniq_psi(self):
-        """
-        Calculates PSI for categorical unique counts grater than 100
+        """Calculates PSI for categorical unique counts grater than 100.
 
          Returns:
             float: PSI for column
@@ -267,8 +260,7 @@ class PSI:
         return psi_value, psi_dict, new_cats, abs_cats
 
     def psi_categ(self):
-        """
-        Calculates PSI for categorical data excluding unique counts grater than 100
+        """Calculates PSI for categorical data excluding unique counts grater than 100.
 
         Returns:
             float: PSI for column
@@ -392,8 +384,7 @@ class PSI:
         return psi_value, psi_dict, new_cats, abs_cats
 
     def psi_result(self):
-        """
-        Calculates PSI.
+        """Calculates PSI.
 
         Returns:
             float: PSI for column
@@ -425,8 +416,7 @@ class PSI:
 
 
 def report(expected: pd.DataFrame, actual: pd.DataFrame, plot: bool = False, silent: bool = False) -> pd.DataFrame:
-    """
-    Generates a report using PSI (Population Stability Index)  between the expected and actual data
+    """Generates a report using PSI (Population Stability Index)  between the expected and actual data.
 
     Args:
         expected: pd.DataFrame

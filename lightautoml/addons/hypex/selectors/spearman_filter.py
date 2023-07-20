@@ -15,8 +15,7 @@ logging.basicConfig(
 
 
 class SpearmanFilter:
-    """
-    A class to filter columns based on the Spearman correlation coefficient
+    """A class to filter columns based on the Spearman correlation coefficient.
 
     The class is utilized to filter dataframe columns that do not exhibit a significant
     correlation (based on a provided threshold) with a specified outcome column.
@@ -40,8 +39,7 @@ class SpearmanFilter:
         self.threshold: float  = threshold
 
     def perform_filter(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Filters columns based on their correlation with the outcome column.
+        """Filters columns based on their correlation with the outcome column.
 
         The method tests the correlation using the Spearman correlation coefficient.
         Columns that have an absolute correlation coefficient value less than the provided threshold,
