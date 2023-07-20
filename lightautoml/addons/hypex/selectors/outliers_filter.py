@@ -1,3 +1,4 @@
+"""Outliers filter."""
 import logging
 
 import pandas as pd

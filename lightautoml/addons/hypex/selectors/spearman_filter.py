@@ -1,3 +1,4 @@
+"""Spearman filter."""
 import logging
 
 import pandas as pd

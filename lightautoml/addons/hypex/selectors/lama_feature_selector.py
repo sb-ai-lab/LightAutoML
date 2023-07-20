@@ -1,3 +1,4 @@
+"""Feature selection class using LAMA."""
 import logging
 
 import pandas as pd

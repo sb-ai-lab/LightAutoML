@@ -1,3 +1,4 @@
+"""Calculate metrics."""
 import logging
 
 import numpy as np

@@ -1,4 +1,4 @@
-"""Class that search indexes"""
+"""Class that search indexes."""
 import datetime as dt
 import logging
 from typing import Dict, Union, Tuple
@@ -29,18 +29,20 @@ class FaissMatcher:
     """A class used to match instances using Faiss library.
     """
 
-    def __init__(self,
-                 df: pd.DataFrame,
-                 outcomes: str,
-                 treatment: str,
-                 info_col: list,
-                 features: [list, pd.DataFrame] = None,
-                 group_col: str = None,
-                 sigma: float = 1.96,
-                 validation: bool = None,
-                 n_neighbors: int = 10,
-                 silent: bool = True,
-                 pbar: bool = True):
+    def __init__(
+            self,
+            df: pd.DataFrame,
+            outcomes: str,
+            treatment: str,
+            info_col: list,
+            features: [list, pd.DataFrame] = None,
+            group_col: str = None,
+            sigma: float = 1.96,
+            validation: bool = None,
+            n_neighbors: int = 10,
+            silent: bool = True,
+            pbar: bool = True
+    ):
         """Construct all the necessary attributes.
 
         Args:
@@ -170,6 +172,7 @@ class FaissMatcher:
 
     def _predict_outcome(self, std_treated: pd.DataFrame, std_untreated: pd.DataFrame):
         """Applies LinearRegression to input arrays.
+
         Calculate biases of treated and untreated values,
         creates dict of y - regular, matched and without bias.
 
@@ -800,8 +803,9 @@ def bias_coefs(matches, Y_m, X_m):
 
 
 def bias(X, X_m, coefs):
-    """Computes bias correction term, which is approximated by the dot
-    product of the matching discrepancy (i.e., X-X_matched) and the
+    """Computes bias correction term.
+    It is approximated by the dot product of the
+    matching discrepancy (i.e., X-X_matched) and the
     coefficients from the bias correction regression.
 
     Args:
