@@ -1,5 +1,5 @@
-from presets_utils import check_pickling
-from presets_utils import get_target_name
+from tests.unit.test_automl.test_presets.presets_utils import check_pickling
+from tests.unit.test_automl.test_presets.presets_utils import get_target_name
 from sklearn.metrics import roc_auc_score
 
 from lightautoml.automl.presets.whitebox_presets import WhiteBoxPreset

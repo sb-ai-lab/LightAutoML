@@ -198,6 +198,7 @@ legacy_tox_ini = """
     [testenv]
     package = wheel
     deps =
+        .[all]
         pytest >= 6.2.5
     commands = pytest {posargs} -v --basetemp="{envtmpdir}"
 
