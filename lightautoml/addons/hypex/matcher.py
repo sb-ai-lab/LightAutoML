@@ -64,7 +64,7 @@ class Matcher:
             min_percentile: float = OUT_MIN_PERCENT,
             max_percentile: float = OUT_MAX_PERCENT,
             n_neighbors: int = 10,
-            silent: bool =True,
+            silent: bool = True,
             pbar: bool = True,
     ):
         """
@@ -383,7 +383,7 @@ class Matcher:
 
     def estimate(self, features: list = None) -> tuple:
         """
-        Applies filters and outliers, then perfoms matching
+        Applies filters and outliers, then performs matching
 
         Args:
             features: list
