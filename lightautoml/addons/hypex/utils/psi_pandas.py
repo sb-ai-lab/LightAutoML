@@ -40,7 +40,6 @@ class PSI:
         list: Categories that are absent in actual column (empty list for non-categorical data)
 
     """
-
     def __init__(
         self, expected: pd.DataFrame, actual: pd.DataFrame, column_name: str, plot: bool = False, silent=False
     ):

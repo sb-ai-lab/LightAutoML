@@ -42,7 +42,8 @@ logging.basicConfig(
 
 
 class Matcher:
-    """"""
+    """Main class.
+    """
 
     def __init__(
             self,
@@ -289,14 +290,14 @@ class Matcher:
         Validates estimated effect:
                                     1) by replacing real treatment with random placebo treatment.
                                      Estimated effect must be droped to zero, p-val < 0.05;
-                                    2) by adding random feature ('random_feature'). Estimated effect shouldn't change
+                                    2) by adding random feature (`random_feature`). Estimated effect shouldn't change
                                     significantly, p-val > 0.05;
                                     3) estimates effect on subset of data (default fraction is 0.8). Estimated effect
                                     shouldn't change significantly, p-val > 0.05.
 
         Args:
             refuter: str
-                Refuter type ('random_treatment', 'random_feature', 'subset_refuter')
+                Refuter type (`random_treatment`, `random_feature`, `subset_refuter`)
             n_sim: int
                 Number of simulations
             fraction: float
@@ -349,7 +350,7 @@ class Matcher:
             else:
                 logger.error("Incorrect refuter name")
                 raise NameError(
-                    "Incorrect refuter name! Available refuters: 'random_feature', 'random_treatment', 'subset_refuter'"
+                    "Incorrect refuter name! Available refuters: `random_feature`, `random_treatment`, `subset_refuter`"
                 )
 
             if self.group_col is None:
@@ -397,7 +398,7 @@ class Matcher:
             filename: str
                 The name of the file to write to.
         """
-        with open(filename, 'wb') as f:
+        with open(filename, "wb") as f:
             pickle.dump(self, f)
 
     @classmethod
@@ -412,7 +413,7 @@ class Matcher:
 
         Returns:
             object:
-            The deserialized object
+                The deserialized object
         """
-        with open(filename, 'rb') as f:
+        with open(filename, "rb") as f:
             return pickle.load(f)

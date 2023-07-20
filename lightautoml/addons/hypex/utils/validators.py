@@ -15,7 +15,6 @@ def random_treatment(df, treatment):
         pd.Series: The original treatment series
         int: A validation flag
     """
-
     prop1 = df[treatment].sum() / df.shape[0]
     prop0 = 1 - prop1
     new_treatment = np.random.choice([0, 1], size=df.shape[0], p=[prop0, prop1])
@@ -36,7 +35,6 @@ def random_feature(df):
          pd.DataFrame: The modified dataframe with an additional random feature
          int: A validation flag
     """
-
     feature = np.random.normal(0, 1, size=len(df))
     validate = 1
     df["random_feature"] = feature
@@ -56,7 +54,6 @@ def subset_refuter(df, treatment, fraction=0.8):
          pd.DataFrame: The subset of the dataframe
          int: A validation flag
     """
-
     df = df.groupby(treatment, group_keys=False).apply(lambda x: x.sample(frac=fraction))
     validate = 1
     return df, validate
@@ -73,7 +70,6 @@ def test_significance(estimate, simulations) -> float:
      Return:
          float: The p-value of the test
     """
-
     mean_refute_value = np.mean(simulations)
     std_dev_refute_values = np.std(simulations)
     z_score = (estimate - mean_refute_value) / std_dev_refute_values

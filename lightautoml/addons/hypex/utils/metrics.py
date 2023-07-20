@@ -29,7 +29,6 @@ def smd(orig: pd.DataFrame, matched: pd.DataFrame, silent=False) -> pd.DataFrame
     Returns:
         pd.DataFrame: The standard mean deviation between initial and matched dataframes
     """
-
     smd_data = abs(orig.mean(0) - matched.mean(0)) / orig.std(0)
 
     if silent:
@@ -56,7 +55,6 @@ def ks(orig: pd.DataFrame, matched: pd.DataFrame, silent=False) -> dict:
         dict: dict of p-values
 
     """
-
     ks_dict = dict()
     matched.columns = orig.columns
     for col in orig.columns:
@@ -94,7 +92,6 @@ def matching_quality(data: pd.DataFrame, treatment: str, features: list, feature
         tuple: A tuple of dataframes with estimated metrics for matched treated to control and control to treated
 
     """
-
     orig_treated = data[data[treatment] == 1][features]
     orig_untreated = data[data[treatment] == 0][features]
     matched_treated = data[data[treatment] == 1][sorted([f + "_matched" for f in features])]
@@ -147,7 +144,6 @@ def check_repeats(index: np.array, silent: bool = False) -> float:
     Returns:
         float:
             The fraction of duplicated index
-
     """
     unique, counts = np.unique(index, return_counts=True)
     rep_frac = len(unique) / len(index) if len(unique) > 0 else 0

@@ -1,3 +1,4 @@
+"""Class that search indexes"""
 import datetime as dt
 from typing import Dict, Union, Tuple
 import faiss
@@ -49,7 +50,7 @@ class FaissMatcher:
             sigma: float, optional
                 The significant level for confidence interval calculation Defaults to 1.96
             validation: str, optional
-                The flag for validation of estimated ATE with default method 'random_feature'
+                The flag for validation of estimated ATE with default method `random_feature`
             n_neighbors: int, optional
                 The number of neighbors to find for each object. Defaults to 10
             silent: bool, optional
@@ -109,7 +110,7 @@ class FaissMatcher:
         """Prepare the object for serialization.
 
         This method is called when the object is about to be serialized.
-        It removes the 'tqdm' attribute from the object's dictionary
+        It removes the `tqdm` attribute from the object's dictionary
         because `tqdm` objects cannot be serialized.
 
         Returns:
@@ -117,7 +118,7 @@ class FaissMatcher:
         """
         state = self.__dict__.copy()
         if "tqdm" in state:
-            del state['tqdm']
+            del state["tqdm"]
         return state
 
     def __setstate__(self, state):
@@ -125,14 +126,14 @@ class FaissMatcher:
 
         This method is called when the object is deserialized.
         It adds the `tqdm` attribute back to the object's dictionary
-        if the 'pbar' attribute is True.
+        if the `pbar` attribute is True.
 
         Args:
             state: dict
                 The deserialized state of the object
         """
-        if 'pbar' in state and state['pbar']:
-            state['tqdm'] = None
+        if "pbar" in state and state["pbar"]:
+            state["tqdm"] = None
         self.__dict__.update(state)
 
     def _get_split(self, df: pd.DataFrame) -> (pd.DataFrame, pd.DataFrame):
@@ -159,8 +160,8 @@ class FaissMatcher:
         return treated, untreated
 
     def _predict_outcome(self, std_treated: pd.DataFrame, std_untreated: pd.DataFrame):
-        """Applies LinearRegression to input arrays,
-        calculate biases of treated and untreated values,
+        """Applies LinearRegression to input arrays.
+        Calculate biases of treated and untreated values,
         creates dict of y - regular, matched and without bias.
 
         Args:
@@ -578,8 +579,8 @@ def _get_index(base: np.ndarray, new: np.ndarray, n_neighbors: int) -> np.ndarra
             The number of neighbors to use for the matching
 
     Returns:
-        np.ndarray: An array of indexes containing all neighbours with minimum distance"""
-
+        np.ndarray: An array of indexes containing all neighbours with minimum distance
+    """
     index = faiss.IndexFlatL2(base.shape[1])
     index.add(base)
     dist, indexes = index.search(new, n_neighbors)
@@ -746,7 +747,6 @@ def scaled_counts(N: int, matches: np.ndarray, silent: bool = True) -> np.ndarra
     Returns:
         numpy.ndarray: An array representing the number of times each subject has appeared as a match
     """
-
     s_counts = np.zeros(N)
 
     for matches_i in matches:
@@ -778,8 +778,7 @@ def bias_coefs(matches, Y_m, X_m):
 
     Returns:
         np.ndarray: The calculated OLS coefficients excluding the intercept
-        """
-
+    """
     flat_idx = np.concatenate(matches)
     N, K = len(flat_idx), X_m.shape[1]
 
@@ -807,7 +806,6 @@ def bias(X, X_m, coefs):
     Returns:
         np.ndarray: The calculated bias correction terms for each observation
     """
-
     bias_list = [(X_j - X_i).dot(coefs) for X_i, X_j in zip(X, X_m)]
 
     return np.array(bias_list)

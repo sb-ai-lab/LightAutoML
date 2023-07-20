@@ -22,9 +22,9 @@ class SpearmanFilter:
     The significance of the correlation is determined using the Spearman correlation coefficient
     and a p-value threshold of 0.05
     """
-
     def __init__(self, outcome: str, treatment: str, threshold: float):
         """
+        Initialize spearman filter.
 
         Args:
             outcome: str
