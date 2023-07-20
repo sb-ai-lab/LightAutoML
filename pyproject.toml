@@ -208,6 +208,7 @@ legacy_tox_ini = """
 
     [testenv:docs]
     requires = python >= 3.8
+    changedir = docs
     deps =
         poetry >= 1.1.7
         sphinx == 5.3.0 # extras = ["autdoc", "autosummary", "intersphinx", "napoleon", "viewcode"]
@@ -219,10 +220,8 @@ legacy_tox_ini = """
         rstcheck == 3.3.1
         pandoc == 2.0.1
     commands =
-        poetry run python scripts/poetry_fix.py -c
-        poetry install -E all
-        cd docs
-        poetry run make html
+        poetry run make clean html
+        poetry run python ../check_docs.py
 
     [testenv:typing]
     description = run type checks
@@ -233,6 +232,7 @@ legacy_tox_ini = """
 
     [testenv:experiment_tracking]
     deps = clearml
+    commands = sh experiments/run_bench_release.sh {posargs}
 
     [testenv:jupyter]
     requires = python >= 3.8
