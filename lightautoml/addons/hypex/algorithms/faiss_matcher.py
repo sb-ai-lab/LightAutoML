@@ -117,7 +117,7 @@ class FaissMatcher:
         self.pbar = pbar
         self.tqdm = None
 
-    def __getstate__(self):
+    def __getstate__(self) -> dict:
         """Prepare the object for serialization.
 
         This method is called when the object is about to be serialized.
@@ -132,7 +132,7 @@ class FaissMatcher:
             del state["tqdm"]
         return state
 
-    def __setstate__(self, state):
+    def __setstate__(self, state: dict):
         """Restore the object after deserialization.
 
         This method is called when the object is deserialized.
@@ -282,8 +282,11 @@ class FaissMatcher:
         )
         return x
 
-    def _create_matched_df(self):
+    def _create_matched_df(self) -> pd.DataFrame:
         """Creates matched df of features and outcome.
+
+        Return:
+            pd.DataFrame: Matched dataframe
         """
         df_pred_treated = self._create_outcome_matched_df(self.dict_outcome_treated, True)
         df_pred_untreated = self._create_outcome_matched_df(self.dict_outcome_untreated, False)
@@ -302,7 +305,7 @@ class FaissMatcher:
 
         return df_matched
 
-    def calc_atc(self, df: pd.DataFrame, outcome: str) -> ():
+    def calc_atc(self, df: pd.DataFrame, outcome: str) -> tuple:
         """Calculates Average Treatment Effect for the control group (ATC).
 
         Effect on control group if it was affected
