@@ -40,7 +40,6 @@ class PSI:
         float: The PSI for each bucket
         list: New categories (empty list for non-categorical data)
         list: Categories that are absent in actual column (empty list for non-categorical data)
-
     """
 
     def __init__(
@@ -57,6 +56,8 @@ class PSI:
                 The column name for which to calculate the PSI
             plot: bool, optional
                 If true, generates a distribution plot. Defaults to False
+            silent: bool, optional
+                If True show logs. Default by False
         """
         self.expected = expected[column_name].values
         self.actual = actual[column_name].values
@@ -152,7 +153,6 @@ class PSI:
 
     def psi_num(self):
         """Calculate the PSI for a single variable.
-
 
         Returns:
             float: PSI for column

@@ -26,8 +26,7 @@ class SpearmanFilter:
     """
 
     def __init__(self, outcome: str, treatment: str, threshold: float):
-        """
-        Initialize spearman filter.
+        """Initialize spearman filter.
 
         Args:
             outcome: str

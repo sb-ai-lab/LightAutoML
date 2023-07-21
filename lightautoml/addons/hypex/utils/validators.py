@@ -1,10 +1,14 @@
 """Validators."""
+from typing import List
+
 import numpy as np
+import pandas as pd
 import scipy.stats as st
 
 
-def random_treatment(df, treatment):
+def random_treatment(df: pd.DataFrame, treatment: str):
     """Replaces real treatment with a random placebo treatment.
+
     Args:
         df: pd.DataFrame
             The initial dataframe
@@ -26,8 +30,9 @@ def random_treatment(df, treatment):
     return df, orig_treatment, validate
 
 
-def random_feature(df):
+def random_feature(df: pd.DataFrame):
     """Adds a random feature to the initial dataset.
+
      Args:
          df: pd.DataFrame
             The initial dataframe
@@ -42,7 +47,7 @@ def random_feature(df):
     return df, validate
 
 
-def subset_refuter(df, treatment, fraction=0.8):
+def subset_refuter(df: pd.DataFrame, treatment: str, fraction: float = 0.8):
     """Returns a subset of data with given fraction (default 0.8).
 
      Args:
@@ -50,6 +55,8 @@ def subset_refuter(df, treatment, fraction=0.8):
             The initial dataframe
          treatment: str
             The column name representing the treatment
+        fraction: float
+            The fraction of the dataset to divide random matching
 
      Return:
          pd.DataFrame: The subset of the dataframe
@@ -60,8 +67,9 @@ def subset_refuter(df, treatment, fraction=0.8):
     return df, validate
 
 
-def test_significance(estimate, simulations) -> float:
+def test_significance(estimate: float, simulations: List) -> float:
     """Performs a significance test for a normal distribution.
+
     Args:
          estimate: float
             The estimated effect

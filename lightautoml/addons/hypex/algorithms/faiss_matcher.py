@@ -1,4 +1,4 @@
-"""Class that search indexes."""
+"""Class that searches indexes."""
 import datetime as dt
 import logging
 from typing import Dict, Union, Tuple
@@ -426,9 +426,9 @@ class FaissMatcher:
 
         """
         if self.silent:
-            logger.debug(f"Estimating quality of matching")
+            logger.debug("Estimating quality of matching")
         else:
-            logger.info(f"Estimating quality of matching")
+            logger.info("Estimating quality of matching")
 
         psi_columns = self.columns_match
         psi_columns.remove(self.treatment)
@@ -807,6 +807,7 @@ def bias_coefs(matches, Y_m, X_m):
 
 def bias(X, X_m, coefs):
     """Computes bias correction term.
+
     It is approximated by the dot product of the
     matching discrepancy (i.e., X-X_matched) and the
     coefficients from the bias correction regression.
