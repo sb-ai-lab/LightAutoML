@@ -81,7 +81,7 @@ torchvision = [
 ]
 
 # AFG
-featuretools = {version = ">=1.11.1", python = ">=3.8", optional = true}
+featuretools = {version = ">=1.11.1", python = ">=3.7", optional = true}
 
 # Report (pdf)
 weasyprint = {version = "52.5", optional = true}
@@ -164,7 +164,7 @@ filter_files = true
 [tool.tox]
 legacy_tox_ini = """
     [tox]
-    min_version = 3.24
+    min_version = 4.0
     isolated_build = True
     envlist =
         py{36, 37, 38, 39, 310},
@@ -198,7 +198,6 @@ legacy_tox_ini = """
     [testenv]
     package = wheel
     deps =
-        .[all]
         pytest >= 6.2.5
     commands = pytest {posargs} -v --basetemp="{envtmpdir}"
 
