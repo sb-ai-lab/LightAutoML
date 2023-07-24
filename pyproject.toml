@@ -164,7 +164,7 @@ filter_files = true
 [tool.tox]
 legacy_tox_ini = """
     [tox]
-    min_version = 3.24.4
+    min_version = 3.24
     isolated_build = True
     envlist =
         py{36, 37, 38, 39, 310},
