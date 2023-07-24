@@ -68,7 +68,7 @@ jobs:
 
       - name: install tox
         run: |
-          pip3 install tox==4.6.0
+          pip3 install tox==3.24.4
           pip3 install tox-gh-actions==2.8.1
 
       - name: test with tox
