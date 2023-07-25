@@ -15,7 +15,7 @@ def random_treatment(df: pd.DataFrame, treatment: str):
         treatment: str
             The columns name representing the treatment
 
-    Return:
+    Returns:
         pd.DataFrame: The modified dataframe with the original treatment replaced
         pd.Series: The original treatment series
         int: A validation flag
@@ -33,13 +33,13 @@ def random_treatment(df: pd.DataFrame, treatment: str):
 def random_feature(df: pd.DataFrame):
     """Adds a random feature to the initial dataset.
 
-     Args:
-         df: pd.DataFrame
+    Args:
+        df: pd.DataFrame
             The initial dataframe
 
-     Return:
-         pd.DataFrame: The modified dataframe with an additional random feature
-         int: A validation flag
+    Returns:
+        pd.DataFrame: The modified dataframe with an additional random feature
+        int: A validation flag
     """
     feature = np.random.normal(0, 1, size=len(df))
     validate = 1
@@ -50,17 +50,17 @@ def random_feature(df: pd.DataFrame):
 def subset_refuter(df: pd.DataFrame, treatment: str, fraction: float = 0.8):
     """Returns a subset of data with given fraction (default 0.8).
 
-     Args:
-         df: pd.DataFrame
+    Args:
+        df: pd.DataFrame
             The initial dataframe
-         treatment: str
+        treatment: str
             The column name representing the treatment
         fraction: float
             The fraction of the dataset to divide random matching
 
-     Return:
-         pd.DataFrame: The subset of the dataframe
-         int: A validation flag
+    Returns:
+        pd.DataFrame: The subset of the dataframe
+        int: A validation flag
     """
     df = df.groupby(treatment, group_keys=False).apply(lambda x: x.sample(frac=fraction))
     validate = 1
@@ -71,13 +71,13 @@ def test_significance(estimate: float, simulations: List) -> float:
     """Performs a significance test for a normal distribution.
 
     Args:
-         estimate: float
+        estimate: float
             The estimated effect
-         simulations: list
+        simulations: list
             A list of estimated effects from each simulation
 
-     Return:
-         float: The p-value of the test
+    Returns:
+        float: The p-value of the test
     """
     mean_refute_value = np.mean(simulations)
     std_dev_refute_values = np.std(simulations)

@@ -3,6 +3,7 @@ import logging
 
 import pandas as pd
 
+
 logger = logging.getLogger("outliers_filter")
 console_out = logging.StreamHandler()
 logging.basicConfig(
@@ -14,12 +15,10 @@ logging.basicConfig(
 
 
 class OutliersFilter:
-    """The main class of Outliers Filter.
+    """The main class of Outliers Filter. It creates a row indices that should be deleted by percentile."""
 
-    It creates a row indices that should be deleted by percentile."""
     def __init__(self, interquartile_coeff, mode_percentile, min_percentile, max_percentile):
-        """
-        Initializes the OutliersFilter.
+        """Initializes the OutliersFilter.
 
         Args:
             interquartile_coeff: float

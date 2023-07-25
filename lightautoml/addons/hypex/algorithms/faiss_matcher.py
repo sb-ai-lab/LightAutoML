@@ -1,15 +1,21 @@
 """Class that searches indexes."""
 import datetime as dt
 import logging
-from typing import Dict, Union, Tuple
+
+from typing import Dict
+from typing import Tuple
+from typing import Union
 
 import faiss
 import numpy as np
 import pandas as pd
+
 from scipy.stats import norm
 from tqdm.auto import tqdm
 
-from ..utils.metrics import check_repeats, matching_quality
+from ..utils.metrics import check_repeats
+from ..utils.metrics import matching_quality
+
 
 faiss.cvar.distance_compute_blas_threshold = 100000
 POSTFIX = "_matched"
@@ -26,22 +32,21 @@ logging.basicConfig(
 
 
 class FaissMatcher:
-    """A class used to match instances using Faiss library.
-    """
+    """A class used to match instances using Faiss library."""
 
     def __init__(
-            self,
-            df: pd.DataFrame,
-            outcomes: str,
-            treatment: str,
-            info_col: list,
-            features: [list, pd.DataFrame] = None,
-            group_col: str = None,
-            sigma: float = 1.96,
-            validation: bool = None,
-            n_neighbors: int = 10,
-            silent: bool = True,
-            pbar: bool = True
+        self,
+        df: pd.DataFrame,
+        outcomes: str,
+        treatment: str,
+        info_col: list,
+        features: [list, pd.DataFrame] = None,
+        group_col: str = None,
+        sigma: float = 1.96,
+        validation: bool = None,
+        n_neighbors: int = 10,
+        silent: bool = True,
+        pbar: bool = True,
     ):
         """Construct all the necessary attributes.
 
@@ -285,7 +290,7 @@ class FaissMatcher:
     def _create_matched_df(self) -> pd.DataFrame:
         """Creates matched df of features and outcome.
 
-        Return:
+        Returns:
             pd.DataFrame: Matched dataframe
         """
         df_pred_treated = self._create_outcome_matched_df(self.dict_outcome_treated, True)
@@ -363,9 +368,6 @@ class FaissMatcher:
         Args:
             df: pd.DataFrame
                 Input dataframe
-
-        Returns:
-            None
 
         """
         logger.debug("Creating dicts of all effects: ATE, ATC, ATT")
@@ -599,10 +601,8 @@ def _get_index(base: np.ndarray, new: np.ndarray, n_neighbors: int) -> np.ndarra
     index = faiss.IndexFlatL2(base.shape[1])
     index.add(base)
     dist, indexes = index.search(new, n_neighbors)
-    map_func = lambda x: np.where(x == x[0])[0]
-    equal_dist = list(map(map_func, dist))
-    f2 = lambda x, y: x[y]
-    indexes = np.array([f2(i, j) for i, j in zip(indexes, equal_dist)])
+    equal_dist = list(map(lambda x: np.where(x == x[0])[0], dist))
+    indexes = np.array([i[j] for i, j in zip(indexes, equal_dist)])
     return indexes
 
 
@@ -706,8 +706,9 @@ def calc_att_se(vars_c: np.ndarray, vars_t: np.ndarray, scaled_counts_c: np.ndar
     return np.sqrt(var)
 
 
-def calc_ate_se(vars_c: np.ndarray, vars_t: np.ndarray,
-                scaled_counts_c: np.ndarray, scaled_counts_t: np.ndarray) -> float:
+def calc_ate_se(
+    vars_c: np.ndarray, vars_t: np.ndarray, scaled_counts_c: np.ndarray, scaled_counts_t: np.ndarray
+) -> float:
     """Calculates Average Treatment Effect for the control group (ATC) standard error.
 
     Args:
@@ -759,8 +760,9 @@ def scaled_counts(N: int, matches: np.ndarray, silent: bool = True) -> np.ndarra
             A numpy array of matched indexes from control or treated group
         silent: bool, optional
             If true logger in info mode
+
     Returns:
-        numpy.ndarray: An array representing the number of times each subject has appeared as a match
+        np.ndarray: An array representing the number of times each subject has appeared as a match
     """
     s_counts = np.zeros(N)
 

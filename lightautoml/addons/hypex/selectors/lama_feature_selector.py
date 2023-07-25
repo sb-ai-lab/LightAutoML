@@ -1,12 +1,14 @@
 """Feature selection class using LAMA."""
 import logging
 
-import pandas as pd
 from typing import List
+
+import pandas as pd
 
 from ....automl.presets.tabular_presets import TabularAutoML
 from ....report import ReportDeco
 from ....tasks import Task
+
 
 logger = logging.getLogger("lama_feature_selector")
 console_out = logging.StreamHandler()
@@ -19,21 +21,20 @@ logging.basicConfig(
 
 
 class LamaFeatureSelector:
-    """The main class of LAMA Feature selector.
+    """The main class of LAMA Feature selector. Select top features. By default, use LGM."""
 
-    Select top features. By default, use LGM"""
     def __init__(
-            self,
-            outcome: str,
-            outcome_type: str,
-            treatment: str,
-            timeout: int,
-            n_threads: int,
-            n_folds: int,
-            verbose: bool,  # не используется
-            generate_report: bool,
-            report_dir: str,
-            use_algos: List[str],
+        self,
+        outcome: str,
+        outcome_type: str,
+        treatment: str,
+        timeout: int,
+        n_threads: int,
+        n_folds: int,
+        verbose: bool,  # не используется
+        generate_report: bool,
+        report_dir: str,
+        use_algos: List[str],
     ):
         """Initialize the LamaFeatureSelector.
 
@@ -108,7 +109,10 @@ class LamaFeatureSelector:
             timeout=self.timeout,
             cpu_limit=self.n_threads,
             general_params={"use_algos": [self.use_algos]},
-            reader_params={"n_jobs": self.n_threads, "cv": self.n_folds, },
+            reader_params={
+                "n_jobs": self.n_threads,
+                "cv": self.n_folds,
+            },
         )
 
         if self.generate_report:

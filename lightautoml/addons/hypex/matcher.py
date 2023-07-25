@@ -192,8 +192,8 @@ class Matcher:
         Args:
             filter_class: class
                 The class of the filter to apply.
-            *filter_args: (args)
-             Arguments to pass to the filter class.
+            *filter_args: (args) #noqa: DAR101
+                Arguments to pass to the filter class.
         """
         filter_instance = filter_class(*filter_args)
         self.input_data = filter_instance.perform_filter(self.input_data)
