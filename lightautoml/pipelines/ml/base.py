@@ -165,6 +165,57 @@ class MLPipeline:
 
         return predictions
 
+    def extractor_fit_transform(self, train_valid: TrainValidIterator) -> LAMLDataset:
+        """Feature extract on train/valid iterator.
+
+        Args:
+            train_valid: Dataset iterator.
+
+        Returns:
+            Dataset with features.
+
+        """
+        # train and apply pre selection
+        train_valid = train_valid.apply_selector(self.pre_selection)
+
+        # apply features pipeline
+        train_valid = train_valid.apply_feature_pipeline(self.features_pipeline)
+
+        # train and apply post selection
+        train_valid = train_valid.apply_selector(self.post_selection)
+
+        return train_valid.train
+
+    def extractor_transform(self, dataset: LAMLDataset) -> LAMLDataset:
+        """Feature extract on new dataset.
+
+        Args:
+            dataset: Dataset used for transform.
+
+        Returns:
+            Dataset with features.
+
+        """
+        dataset = self.pre_selection.select(dataset)
+        dataset = self.features_pipeline.transform(dataset)
+        dataset = self.post_selection.select(dataset)
+
+        return dataset
+
+    def get_name(self) -> str:
+        """Get name of pipeline.
+
+        Returns:
+            Name.
+
+        """
+        name = ""
+        for n, ml_algo in enumerate(self._ml_algos):
+            name += ml_algo.name
+            if n != len(self._ml_algos) - 1:
+                name += " | "
+        return name
+
     def upd_model_names(self, prefix: str):
         """Update prefix pipeline models names.
 

@@ -707,6 +707,37 @@ class TabularAutoML(AutoMLPreset):
 
         return cast(NumpyDataset, oof_pred)
 
+    def extractor_fit_transform(
+        self, train_data: ReadableToDf, roles: Optional[dict] = None, train_features: Optional[Sequence[str]] = None
+    ) -> dict:
+        """Feature extract on train_data.
+
+        Args:
+            train_data: Dataset to train.
+            roles: Roles dict.
+            train_features: Optional features names,
+                if cannot be inferred from train_data.
+
+        Returns:
+            Dict with features.
+
+        """
+        # roles may be none in case of train data is set {'data': np.ndarray, 'target': np.ndarray ...}
+        if roles is None:
+            roles = {}
+        read_csv_params = self._get_read_csv_params()
+        if self.is_time_series:
+            train_data = train_data["seq"]["seq0"]
+        train, upd_roles = read_data(train_data, train_features, self.cpu_limit, read_csv_params)
+        if upd_roles:
+            roles = {**roles, **upd_roles}
+        if self.is_time_series:
+            train = {"seq": {"seq0": train}}
+
+        oof_pred = super().extractor_fit_transform(train, roles=roles, train_features=train_features)
+
+        return oof_pred
+
     def predict(
         self,
         data: ReadableToDf,
@@ -780,6 +811,66 @@ class TabularAutoML(AutoMLPreset):
         )
 
         return res
+
+    def extractor_transform(
+        self,
+        data: ReadableToDf,
+        features_names: Optional[Sequence[str]] = None,
+    ) -> dict:
+        """Feature extract on new dataset.
+
+        Almost same as :meth:`lightautoml.automl.base.AutoML.extractor_transform`
+        on new dataset, with additional features.
+
+        Additional features - working with different data formats.
+        Supported now:
+
+            - Path to ``.csv``, ``.parquet``, ``.feather`` files.
+            - :class:`~numpy.ndarray`, or dict of :class:`~numpy.ndarray`. For example,
+              ``{'data': X...}``. In this case roles are optional,
+              but `train_features` and `valid_features` required.
+            - :class:`pandas.DataFrame`.
+
+        Args:
+            data: Dataset to perform inference.
+            features_names: Optional features names,
+                if cannot be inferred from `train_data`.
+
+        Returns:
+            Dict with features.
+
+        """
+        read_csv_params = self._get_read_csv_params()
+
+        # if batch_size is None and n_jobs == 1:
+        if self.is_time_series:
+            data = data["seq"]["seq0"]
+        data, _ = read_data(data, features_names, self.cpu_limit, read_csv_params)
+        if self.is_time_series:
+            data = {"seq": {"seq0": data}}
+        pred = super().extractor_transform(data, features_names)
+        return pred
+        # Think of parallel
+        # data_generator = read_batch(
+        #     data,
+        #     features_names,
+        #     n_jobs=n_jobs,
+        #     batch_size=batch_size,
+        #     read_csv_params=read_csv_params,
+        # )
+
+        # if n_jobs == 1:
+        #     res = [self.extractor_transform(df, features_names) for df in data_generator]
+        # else:
+        #     # TODO: Check here for pre_dispatch param
+        #     with Parallel(n_jobs, pre_dispatch=len(data_generator) + 1) as p:
+        #         res = p(delayed(self.predict)(df, features_names, return_all_predictions) for df in data_generator)
+
+        # res = NumpyDataset(
+        #     np.concatenate([x.data for x in res], axis=0),
+        #     features=res[0].features,
+        #     roles=res[0].roles,
+        # )
 
     def get_feature_scores(
         self,

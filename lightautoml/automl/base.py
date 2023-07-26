@@ -148,6 +148,43 @@ class AutoML:
         self.return_all_predictions = return_all_predictions
         self.debug = debug
 
+    def extractor_fit_transform(
+        self,
+        train_data: Any,
+        roles: dict,
+        train_features: Optional[Sequence[str]] = None,
+    ) -> dict:
+        """Feature extract on train_data.
+
+        Args:
+            train_data: Dataset to train.
+            roles: Roles dict.
+            train_features: Optional features names,
+                if cannot be inferred from train_data.
+
+        Returns:
+            Dict with features.
+
+        """
+        self.timer.start()
+        train_dataset = self.reader.fit_read(train_data, train_features, roles)
+
+        # assert (
+        #     len(self._levels) <= 1 or train_dataset.folds is not None
+        # ), "Not possible to fit more than 1 level without cv folds"
+
+        train = create_validation_iterator(train_dataset, valid=None, n_folds=None)
+
+        level = self._levels[0]
+        pipes_f = []
+        names = []
+        for k, ml_pipe in enumerate(level):
+            ml_pipe.debug = self.debug
+            pipe_extract = ml_pipe.extractor_fit_transform(train)
+            pipes_f.append(pipe_extract)
+            names.append(ml_pipe.get_name())
+        return dict(zip(names, pipes_f))
+
     def fit_predict(
         self,
         train_data: Any,
@@ -269,6 +306,29 @@ class AutoML:
         if self.return_all_predictions:
             return concatenate(level_predictions)
         return blended_prediction
+
+    def extractor_transform(self, data: Any, features_names: Optional[Sequence[str]] = None) -> dict:
+        """Feature extract on new dataset.
+
+        Args:
+            data: Dataset to perform inference.
+            features_names: Optional features names,
+                if cannot be inferred from `train_data`.
+
+        Returns:
+            dict with features.
+
+        """
+        dataset = self.reader.read(data, features_names=features_names, add_array_attrs=False)
+
+        level = self._levels[0]
+        pipes_f = []
+        names = []
+
+        for _n, ml_pipe in enumerate(level):
+            pipes_f.append(ml_pipe.extractor_transform(dataset))
+            names.append(ml_pipe.get_name())
+        return dict(zip(names, pipes_f))
 
     def predict(
         self,

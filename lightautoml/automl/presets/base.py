@@ -219,6 +219,37 @@ class AutoMLPreset(AutoML):
 
         return result
 
+    def extractor_fit_transform(
+        self,
+        train_data: Any,
+        roles: dict,
+        train_features: Optional[Sequence[str]] = None,
+    ) -> dict:
+        """Feature extract on train_data.
+
+        Args:
+            train_data: Dataset to train.
+            roles: Roles dict.
+            train_features: Optional features names,
+                if cannot be inferred from train_data.
+
+        Returns:
+            Dict with features.
+
+        """
+        self.create_automl(
+            train_data=train_data,
+            roles=roles,
+            train_features=train_features,
+            cv_iter=None,
+            valid_data=None,
+            valid_features=None,
+        )
+
+        result = super().extractor_fit_transform(train_data, roles, train_features)
+
+        return result
+
     def create_model_str_desc(self, pref_tab_num: int = 0, split_line_len: int = 0) -> str:  # noqa: D102
         prefix = "\t" * pref_tab_num
         splitter = prefix + "=" * split_line_len + "\n"
