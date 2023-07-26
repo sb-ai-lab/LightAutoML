@@ -1,3 +1,4 @@
+# TODO: проверить что NLP не падает, CV
 """Tabular presets."""
 
 import logging
@@ -31,6 +32,7 @@ from ...ml_algo.random_forest import RandomForestSklearn
 from ...ml_algo.tuning.optuna import DLOptunaTuner
 from ...ml_algo.tuning.optuna import OptunaTuner
 from ...pipelines.features.lgb_pipeline import LGBAdvancedPipeline
+from ...pipelines.features.lgb_pipeline import LGBSeqSimpleFeatures
 from ...pipelines.features.lgb_pipeline import LGBSimpleFeatures
 from ...pipelines.features.linear_pipeline import LinearFeatures
 from ...pipelines.features.torch_pipeline import TorchSimpleFeatures
@@ -45,6 +47,7 @@ from ...pipelines.selection.permutation_importance_based import (
 from ...pipelines.selection.permutation_importance_based import (
     NpPermutationImportanceEstimator,
 )
+from ...reader.base import DictToPandasSeqReader
 from ...reader.base import PandasToPandasReader
 from ...reader.tabular_batch_generator import ReadableToDf
 from ...reader.tabular_batch_generator import read_batch
@@ -110,7 +113,6 @@ class TabularAutoML(AutoMLPreset):
             for linear models.
         nn_pipeline_params: Params of feature generation
             for neural network models.
-
     """
 
     _default_config_path = "tabular_config.yml"
@@ -152,8 +154,12 @@ class TabularAutoML(AutoMLPreset):
         gbm_pipeline_params: Optional[dict] = None,
         linear_pipeline_params: Optional[dict] = None,
         nn_pipeline_params: Optional[dict] = None,
+        time_series_pipeline_params: Optional[dict] = None,
+        is_time_series: bool = False,
     ):
         super().__init__(task, timeout, memory_limit, cpu_limit, gpu_ids, debug, timing_params, config_path)
+        #
+        self.is_time_series = is_time_series
 
         # upd manual params
         for name, param in zip(
@@ -163,7 +169,6 @@ class TabularAutoML(AutoMLPreset):
                 "read_csv_params",
                 "nested_cv_params",
                 "tuning_params",
-                "selection_params",
                 "lgb_params",
                 "cb_params",
                 "rf_params",
@@ -179,7 +184,6 @@ class TabularAutoML(AutoMLPreset):
                 read_csv_params,
                 nested_cv_params,
                 tuning_params,
-                selection_params,
                 lgb_params,
                 cb_params,
                 rf_params,
@@ -193,6 +197,20 @@ class TabularAutoML(AutoMLPreset):
             if param is None:
                 param = {}
             self.__dict__[name] = upd_params(self.__dict__[name], param)
+
+        # if not time-series mode --> update selection_params too
+        if not self.is_time_series:
+            for name, param in zip(["selection_params"], [selection_params]):
+                if param is None:
+                    param = {}
+                self.__dict__[name] = upd_params(self.__dict__[name], param)
+
+        # if time-series mode --> update time_series_pipeline_params
+        if self.is_time_series:
+            for name, param in zip(["time_series_pipeline_params"], [time_series_pipeline_params]):
+                if param is None:
+                    param = {}
+                self.__dict__[name] = upd_params(self.__dict__[name], param)
 
     def infer_auto_params(self, train_data: DataFrame, multilevel_avail: bool = False):
 
@@ -212,11 +230,14 @@ class TabularAutoML(AutoMLPreset):
         if self.general_params["use_algos"] == "auto":
             # TODO: More rules and add cases
             self.general_params["use_algos"] = [["lgb", "lgb_tuned", "linear_l2", "cb", "cb_tuned"]]
-            if self.task.name == "multiclass" and multilevel_avail:
-                self.general_params["use_algos"].append(["linear_l2", "lgb"])
+            if self.task.name == "multi:reg" and self.is_time_series:
+                self.general_params["use_algos"] = [["cb", "linear_l2", "rf"]]
+            else:
+                if self.task.name == "multiclass" and multilevel_avail:
+                    self.general_params["use_algos"].append(["linear_l2", "lgb"])
 
-            if (self.task.name == "multi:reg") or (self.task.name == "multilabel"):
-                self.general_params["use_algos"] = [["linear_l2", "cb", "rf", "rf_tuned", "cb_tuned"]]
+                if (self.task.name == "multi:reg") or (self.task.name == "multilabel"):
+                    self.general_params["use_algos"] = [["linear_l2", "cb", "rf", "rf_tuned", "cb_tuned"]]
 
         if not self.general_params["nested_cv"]:
             self.nested_cv_params["cv"] = 1
@@ -246,6 +267,29 @@ class TabularAutoML(AutoMLPreset):
             self.lgb_params["default_params"]["num_threads"], cpu_cnt
         )
         self.reader_params["n_jobs"] = min(self.reader_params["n_jobs"], cpu_cnt)
+
+    def get_feature_pipeline(self, model, **kwargs):
+        """Get LGBSeqSimpleFeatures pipeline if task is the time series prediction.
+
+        Args:
+            model: one from ["gbm", "linear_l2",, "rf", "nn"].
+
+        Returns:
+            appropriate features pipeline.
+        """
+        if self.is_time_series and model in ["gbm", "linear_l2", "rf", "nn"]:
+            return LGBSeqSimpleFeatures(fill_na=True, scaler=True, transformers_params=self.time_series_pipeline_params)
+        else:
+            if model == "nn":
+                return TorchSimpleFeatures(**self.nn_pipeline_params)
+            if model == "linear_l2":
+                return LinearFeatures(output_categories=True, **self.linear_pipeline_params)
+            if model == "gbm":
+                return LGBAdvancedPipeline(**self.gbm_pipeline_params, **kwargs)
+            if model == "rf":
+                if 'fill_na' in kwargs:
+                    return LGBAdvancedPipeline(**self.gbm_pipeline_params, **kwargs)
+                return LGBAdvancedPipeline(**self.gbm_pipeline_params, fill_na=True, **kwargs)
 
     def get_time_score(self, n_level: int, model_type: str, nested: Optional[bool] = None):
 
@@ -354,7 +398,7 @@ class TabularAutoML(AutoMLPreset):
         ml_algos = []
         force_calc = []
 
-        nn_feats = TorchSimpleFeatures(**self.nn_pipeline_params)
+        nn_feats = self.get_feature_pipeline(model="nn")
         general_nn_params = deepcopy(self.nn_params)
         if "0" in self.nn_params:
             for i in range(len(keys)):
@@ -411,7 +455,7 @@ class TabularAutoML(AutoMLPreset):
         time_score = self.get_time_score(n_level, "linear_l2")
         linear_l2_timer = self.timer.get_task_timer("reg_l2", time_score)
         linear_l2_model = LinearLBFGS(timer=linear_l2_timer, **self.linear_l2_params)
-        linear_l2_feats = LinearFeatures(output_categories=True, **self.linear_pipeline_params)
+        linear_l2_feats = self.get_feature_pipeline(model="linear_l2")
 
         linear_l2_pipe = NestedTabularMLPipeline(
             [linear_l2_model],
@@ -429,7 +473,7 @@ class TabularAutoML(AutoMLPreset):
         pre_selector: Optional[SelectionPipeline] = None,
     ):
 
-        gbm_feats = LGBAdvancedPipeline(**self.gbm_pipeline_params, feats_imp=pre_selector)
+        gbm_feats = self.get_feature_pipeline(model="gbm", feats_imp=pre_selector)
 
         ml_algos = []
         force_calc = []
@@ -464,8 +508,7 @@ class TabularAutoML(AutoMLPreset):
 
     def get_rfs(self, keys: Sequence[str], n_level: int = 1, pre_selector: Optional[SelectionPipeline] = None):
 
-        rf_feats = LGBAdvancedPipeline(**self.gbm_pipeline_params, feats_imp=pre_selector, fill_na=True)
-
+        rf_feats = self.get_feature_pipeline(model="rf", feats_imp=pre_selector, fill_na=True)
         ml_algos = []
         force_calc = []
         for key, force in zip(keys, [True, False]):
@@ -503,10 +546,14 @@ class TabularAutoML(AutoMLPreset):
         train_data = fit_args["train_data"]
         multilevel_avail = fit_args["valid_data"] is None and fit_args["cv_iter"] is None
 
-        self.infer_auto_params(train_data, multilevel_avail)
-        reader = PandasToPandasReader(task=self.task, **self.reader_params)
-
-        pre_selector = self.get_selector()
+        if self.is_time_series:
+            self.infer_auto_params(train_data["seq"]["seq0"], multilevel_avail)
+            reader = DictToPandasSeqReader(task=self.task, **self.reader_params)
+            pre_selector = None
+        else:
+            self.infer_auto_params(train_data, multilevel_avail)
+            reader = PandasToPandasReader(task=self.task, **self.reader_params)
+            pre_selector = self.get_selector()
 
         levels = []
 
@@ -517,14 +564,20 @@ class TabularAutoML(AutoMLPreset):
 
             if len(rf_models) > 0:
                 selector = None
-                if "rf" in self.selection_params["select_algos"] and (self.general_params["skip_conn"] or n == 0):
+                if (
+                    self.is_time_series
+                    or "rf" in self.selection_params["select_algos"]
+                    and (self.general_params["skip_conn"] or n == 0)
+                ):
                     selector = pre_selector
                 lvl.append(self.get_rfs(rf_models, n + 1, selector))
 
             if "linear_l2" in names:
                 selector = None
-                if "linear_l2" in self.selection_params["select_algos"] and (
-                    self.general_params["skip_conn"] or n == 0
+                if (
+                    self.is_time_series
+                    or "linear_l2" in self.selection_params["select_algos"]
+                    and (self.general_params["skip_conn"] or n == 0)
                 ):
                     selector = pre_selector
                 lvl.append(self.get_linear(n + 1, selector))
@@ -535,7 +588,11 @@ class TabularAutoML(AutoMLPreset):
 
             if len(gbm_models) > 0:
                 selector = None
-                if "gbm" in self.selection_params["select_algos"] and (self.general_params["skip_conn"] or n == 0):
+                if (
+                    self.is_time_series
+                    or "gbm" in self.selection_params["select_algos"]
+                    and (self.general_params["skip_conn"] or n == 0)
+                ):
                     selector = pre_selector
                 lvl.append(self.get_gbms(gbm_models, n + 1, selector))
 
@@ -634,15 +691,19 @@ class TabularAutoML(AutoMLPreset):
         """
         # roles may be none in case of train data is set {'data': np.ndarray, 'target': np.ndarray ...}
         self.set_logfile(log_file)
-
         if roles is None:
             roles = {}
         read_csv_params = self._get_read_csv_params()
+        if self.is_time_series:
+            train_data = train_data["seq"]["seq0"]
         train, upd_roles = read_data(train_data, train_features, self.cpu_limit, read_csv_params)
         if upd_roles:
             roles = {**roles, **upd_roles}
         if valid_data is not None:
             data, _ = read_data(valid_data, valid_features, self.cpu_limit, self.read_csv_params)
+
+        if self.is_time_series:
+            train = {"seq": {"seq0": train}}
 
         oof_pred = super().fit_predict(train, roles=roles, cv_iter=cv_iter, valid_data=valid_data, verbose=verbose)
 
@@ -691,7 +752,11 @@ class TabularAutoML(AutoMLPreset):
         read_csv_params = self._get_read_csv_params()
 
         if batch_size is None and n_jobs == 1:
+            if self.is_time_series:
+                data = data["seq"]["seq0"]
             data, _ = read_data(data, features_names, self.cpu_limit, read_csv_params)
+            if self.is_time_series:
+                data = {"seq": {"seq0": data}}
             pred = super().predict(data, features_names, return_all_predictions)
             return cast(NumpyDataset, pred)
 
