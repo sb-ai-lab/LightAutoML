@@ -1,5 +1,6 @@
 """Linear models features."""
 
+from typing import List
 from typing import Optional
 from typing import Union
 
@@ -22,6 +23,7 @@ from ...transformers.numeric import LogOdds
 from ...transformers.numeric import NaNFlags
 from ...transformers.numeric import StandardScaler
 from ..selection.base import ImportanceEstimator
+from ..selection.base import SelectionPipeline
 from ..utils import get_columns_by_role
 from .base import FeaturesPipeline
 from .base import TabularDataFeatures
@@ -62,7 +64,7 @@ class LinearFeatures(FeaturesPipeline, TabularDataFeatures):
 
     def __init__(
         self,
-        feats_imp: Optional[ImportanceEstimator] = None,
+        feats_imp: Optional[Union[ImportanceEstimator, SelectionPipeline]] = None,
         top_intersections: int = 5,
         max_bin_count: int = 10,
         max_intersection_depth: int = 3,
@@ -71,6 +73,12 @@ class LinearFeatures(FeaturesPipeline, TabularDataFeatures):
         auto_unique_co: int = 50,
         output_categories: bool = True,
         multiclass_te_co: int = 3,
+        use_groupby: bool = False,
+        groupby_types: List[str] = ["delta_median", "delta_mean", "min", "max", "std", "mode", "is_mode"],
+        groupby_triplets: list = [],
+        groupby_top_based_on: str = "cardinality",
+        groupby_top_categorical: int = 3,
+        groupby_top_numerical: int = 3,
         **kwargs
     ):
         assert max_bin_count is None or max_bin_count > 1, "Max bin count should be >= 2 or None"
@@ -87,7 +95,13 @@ class LinearFeatures(FeaturesPipeline, TabularDataFeatures):
             max_bin_count=max_bin_count,
             sparse_ohe=sparse_ohe,
             multiclass_te_co=multiclass_te_co,
+            groupby_types=groupby_types,
+            groupby_triplets=groupby_triplets,
+            groupby_top_based_on=groupby_top_based_on,
+            groupby_top_categorical=groupby_top_categorical,
+            groupby_top_numerical=groupby_top_numerical,
         )
+        self.use_groupby = use_groupby
 
     def create_pipeline(self, train: NumpyOrPandas) -> LAMLTransformer:
         """Create linear pipeline.
@@ -166,6 +180,9 @@ class LinearFeatures(FeaturesPipeline, TabularDataFeatures):
         probs_list.append(self.get_numeric_data(train, prob=True))
         # add difference with base date
         dense_list.append(self.get_datetime_diffs(train))
+
+        if self.use_groupby:
+            dense_list.append(self.get_groupby(train))
 
         # combine it all together
         # handle probs if exists
