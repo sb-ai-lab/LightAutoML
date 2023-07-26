@@ -273,6 +273,7 @@ class TabularAutoML(AutoMLPreset):
 
         Args:
             model: one from ["gbm", "linear_l2",, "rf", "nn"].
+            kwargs: Arbitrary keyword arguments.
 
         Returns:
             appropriate features pipeline.
@@ -287,7 +288,7 @@ class TabularAutoML(AutoMLPreset):
             if model == "gbm":
                 return LGBAdvancedPipeline(**self.gbm_pipeline_params, **kwargs)
             if model == "rf":
-                if 'fill_na' in kwargs:
+                if "fill_na" in kwargs:
                     return LGBAdvancedPipeline(**self.gbm_pipeline_params, **kwargs)
                 return LGBAdvancedPipeline(**self.gbm_pipeline_params, fill_na=True, **kwargs)
 
