@@ -86,8 +86,19 @@ to work with environments.
 
 4. Install LightAutoML (**warning**: it may take a long time, check the ```script/poetry_fix.py``` to shorten the installation time.):
 
+    To install only necessary dependencies, without extras:
     ```bash
     poetry install
+    ```
+
+    To install all dependencies:
+    ```bash
+    poetry install --all-extras
+    ```
+
+    To install only specific dependency groups:
+    ```
+    poetry install -E cv -E report
     ```
 
 After that, there is virtual environment, where you can test and implement your own code.
@@ -132,6 +143,7 @@ Before making a pull request (despite changing only the documentation or writing
 tox --parallel 6
 ```
 
+
 To run all tests with specific Python versions:
 ```bash
 tox -e py37
@@ -141,6 +153,12 @@ To run specific test:
 ```
 tox -e py37 -- -x tests/unit/test_utils
 ```
+
+To run tests for specific Python versions (for example python 3.6):
+```bash
+poetry run tox -e py36
+```
+
 
 Also if you develop new functionality, please add your own tests.
 
