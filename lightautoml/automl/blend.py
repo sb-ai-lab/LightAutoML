@@ -361,11 +361,14 @@ class WeightedBlender(Blender):
 
         length = len(splitted_preds)
         candidate = np.ones(length, dtype=np.float32) / length
+        pre_candidate = candidate
         best_pred = self._get_weighted_pred(splitted_preds, candidate)
 
         best_score = self.score(best_pred)
         logger.info("Blending: optimization starts with equal weights and score \x1b[1m{0}\x1b[0m".format(best_score))
         score = best_score
+        iter_best_score = None
+        iter_best_weights = None
         for _ in range(self.max_iters):
             flg_no_upd = True
             for i in range(len(splitted_preds)):
@@ -381,17 +384,21 @@ class WeightedBlender(Blender):
                 )
                 w = opt_res.x
                 score = -opt_res.fun
+                pre_candidate = self._get_candidate(candidate, i, w)
+                if i == 0 or iter_best_score < score:
+                    iter_best_score = score
+                    iter_best_weights = pre_candidate
                 if score > best_score:
                     flg_no_upd = False
                     best_score = score
                     # if w < self.max_nonzero_coef:
                     #     w = 0
 
-                    candidate = self._get_candidate(candidate, i, w)
+                    candidate = pre_candidate
 
             logger.info(
                 "Blending: iteration \x1b[1m{0}\x1b[0m: score = \x1b[1m{1}\x1b[0m, weights = \x1b[1m{2}\x1b[0m".format(
-                    _, score, candidate
+                    _, iter_best_score, iter_best_weights
                 )
             )
 
