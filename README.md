@@ -19,7 +19,7 @@ Multitable datasets and sequences are a work in progress :)
 
 **Note**: we use [`AutoWoE`](https://pypi.org/project/autowoe) library to automatically create interpretable models.
 
-**Authors**: [Alexander Ryzhkov](https://kaggle.com/alexryzhkov), [Anton Vakhrushev](https://kaggle.com/btbpanda), [Dmitry Simakov](https://kaggle.com/simakov), Vasilii Bunakov, Rinchin Damdinov, Alexander Kirilin, Pavel Shvets.
+**Authors**: [Alexander Ryzhkov](https://kaggle.com/alexryzhkov), [Anton Vakhrushev](https://kaggle.com/btbpanda), [Dmitry Simakov](https://kaggle.com/simakov), Rinchin Damdinov, Vasilii Bunakov, Alexander Kirilin, Pavel Shvets.
 
 **Documentation** of LightAutoML is available [here](https://lightautoml.readthedocs.io/), you can also [generate](https://github.com/AILab-MLTools/LightAutoML/blob/master/.github/CONTRIBUTING.md#building-documentation) it.
 
@@ -138,6 +138,9 @@ LighAutoML framework has a lot of ready-to-use parts and extensive customization
 - [`Tutorial_8_CV_preset.ipynb`](https://colab.research.google.com/github/AILab-MLTools/LightAutoML/blob/master/examples/tutorials/Tutorial_8_CV_preset.ipynb) - example of using TabularCVAutoML preset in CV multi-class classification task.
 - [`Tutorial_9_neural_networks.ipynb`](https://colab.research.google.com/github/AILab-MLTools/LightAutoML/blob/master/examples/tutorials/Tutorial_9_neural_networks.ipynb) - example of using Tabular preset with neural networks.
 - [`Tutorial_10_relational_data_with_star_scheme.ipynb`](https://colab.research.google.com/github/AILab-MLTools/LightAutoML/blob/master/examples/tutorials/Tutorial_10_relational_data_with_star_scheme.ipynb) - example of using Tabular preset with neural networks.
+- [`Tutorial_11_time_series.ipynb`](https://colab.research.google.com/github/AILab-MLTools/LightAutoML/blob/master/examples/tutorials/Tutorial_11_time_series.ipynb) - example of using Tabular preset with timeseries data.
+- [`Tutorial_12_Matching.ipynb`](https://colab.research.google.com/github/AILab-MLTools/LightAutoML/blob/master/examples/tutorials/Tutorial_12_Matching.ipynb) - example of using addon for matchig.
+
 
 **Note 1**: for production you have no need to use profiler (which increase work time and memory consomption), so please do not turn it on - it is in off state by default
 
