@@ -69,8 +69,8 @@ jobs:
       - name: install tox
         run: |
           python3 -m pip install --upgrade pip
-          pip3 install tox==4.0.0
-          pip3 install tox-gh-actions==3.1.3
+          pip3 install tox==3.28.0
+          pip3 install tox-gh-actions==2.12.0
 
       - name: test with tox
         run: |
