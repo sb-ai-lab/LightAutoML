@@ -104,7 +104,7 @@ class TorchSimpleFeatures(FeaturesPipeline, TabularDataFeatures):
         transformers_list = []
         cat_cols = get_columns_by_role(train, "Category")
         freq_cols = get_columns_by_role(train, "Category", encoding_type="freq")
-        other_cols = list(set(cat_cols) - set(freq_cols))
+        other_cols = sorted(list(set(cat_cols) - set(freq_cols)))
 
         transformers_list.append(self.get_freq_encoding(train, freq_cols))
 
