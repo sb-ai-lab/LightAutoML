@@ -128,8 +128,21 @@ gbm_pipeline_params:
   auto_unique_co: 10
   # n_classes to use target encoding for multiclass task
   multiclass_te_co: 3
+  # use groupby features
+  use_groupby: False
+  # groupby types used in feature engeneering
+  groupby_types: [ 'delta_median', 'delta_mean', 'min', 'max', 'std', 'mode', 'is_mode' ]
+  # top features are choosen by cardinality or feature importance
+  groupby_top_based_on: 'cardinality'
+  # top categorical features to use in groupby transformer
+  groupby_top_categorical: 3
+  # top numerical features to use in groupby transformer
+  groupby_top_numerical: 3
+  # list of groupby triplets ("group_col", "feat", "groupby_type") for manual setting
+  # disables groupby_types, groupby_top_based_on and other groupby parameters if defined
+  groupby_triplets: [ ]
   # text_features in gbm feature pipeline. embed or simple
-  cv_features: "simple"
+  cv_features: 'simple'
 
 linear_pipeline_params:
   # max number of categories to generate intersections
@@ -141,8 +154,21 @@ linear_pipeline_params:
   auto_unique_co: 50
   # n_classes to use target encoding for multiclass task
   multiclass_te_co: 3
+  # use groupby features
+  use_groupby: False
+  # groupby types used in feature engeneering
+  groupby_types: [ 'delta_median', 'delta_mean', 'min', 'max', 'std', 'mode', 'is_mode' ]
+  # top features are choosen by cardinality or feature importance
+  groupby_top_based_on: 'cardinality'
+  # top categorical features to use in groupby transformer
+  groupby_top_categorical: 3
+  # top numerical features to use in groupby transformer
+  groupby_top_numerical: 3
+  # list of groupby triplets ("group_col", "feat", "groupby_type") for manual setting
+  # disables groupby_types, groupby_top_based_on and other groupby parameters if defined
+  groupby_triplets: [ ]
   # text_features in linear feature pipeline. embed or simple
-  cv_features: "embed"
+  cv_features: 'embed'
 
 timing_params:
   # select timing mode:
