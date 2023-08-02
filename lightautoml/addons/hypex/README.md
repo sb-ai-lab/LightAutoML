@@ -21,4 +21,3 @@ You can see the examples of usages this addons [here](https://github.com/sb-ai-l
 
 Conclusion
 The HypEx addon for LightAutoML is a powerful tool for any data analyst or researcher interested in causal inference. Its automated features, effective matching technique, and rigorous validation and testing methods make it an essential addition to the toolkit when seeking to understand cause and effect in complex datasets.
-
