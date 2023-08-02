@@ -268,11 +268,12 @@ class TabularAutoML(AutoMLPreset):
         )
         self.reader_params["n_jobs"] = min(self.reader_params["n_jobs"], cpu_cnt)
 
-    def get_feature_pipeline(self, model):
+    def get_feature_pipeline(self, model, **kwargs):
         """Get LGBSeqSimpleFeatures pipeline if task is the time series prediction.
 
         Args:
             model: one from ["gbm", "linear_l2",, "rf", "nn"].
+            kwargs: Arbitrary keyword arguments.
 
         Returns:
             appropriate features pipeline.
@@ -285,9 +286,11 @@ class TabularAutoML(AutoMLPreset):
             if model == "linear_l2":
                 return LinearFeatures(output_categories=True, **self.linear_pipeline_params)
             if model == "gbm":
-                return LGBAdvancedPipeline(**self.gbm_pipeline_params)
+                return LGBAdvancedPipeline(**self.gbm_pipeline_params, **kwargs)
             if model == "rf":
-                return LGBAdvancedPipeline(**self.gbm_pipeline_params, fill_na=True)
+                if "fill_na" in kwargs:
+                    return LGBAdvancedPipeline(**self.gbm_pipeline_params, **kwargs)
+                return LGBAdvancedPipeline(**self.gbm_pipeline_params, fill_na=True, **kwargs)
 
     def get_time_score(self, n_level: int, model_type: str, nested: Optional[bool] = None):
 
@@ -471,7 +474,7 @@ class TabularAutoML(AutoMLPreset):
         pre_selector: Optional[SelectionPipeline] = None,
     ):
 
-        gbm_feats = self.get_feature_pipeline(model="gbm")
+        gbm_feats = self.get_feature_pipeline(model="gbm", feats_imp=pre_selector)
 
         ml_algos = []
         force_calc = []
@@ -506,7 +509,7 @@ class TabularAutoML(AutoMLPreset):
 
     def get_rfs(self, keys: Sequence[str], n_level: int = 1, pre_selector: Optional[SelectionPipeline] = None):
 
-        rf_feats = self.get_feature_pipeline(model="rf")
+        rf_feats = self.get_feature_pipeline(model="rf", feats_imp=pre_selector, fill_na=True)
         ml_algos = []
         force_calc = []
         for key, force in zip(keys, [True, False]):

@@ -56,7 +56,7 @@ def main(dataset_name: str, cpu_limit: int, memory_limit: int):  # noqa D103
         )
         metric_ho = log_loss(test[TARGET_NAME].map(automl.reader.class_mapping), test_predictions.data)
 
-    elif task_type == "regression":
+    elif task_type == "reg":
         metric_oof = task.metric_func(train[TARGET_NAME].values, oof_predictions.data[:, 0])
         metric_ho = task.metric_func(test[TARGET_NAME].values, test_predictions.data[:, 0])
 
