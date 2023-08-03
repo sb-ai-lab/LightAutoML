@@ -56,6 +56,7 @@ from ..text.utils import is_shuffle
 from ..text.utils import parse_devices
 from ..text.utils import seed_everything
 from .torch_based.nn_models import MLP
+from .torch_based.nn_models import NODE
 from .torch_based.nn_models import SNN
 from .torch_based.nn_models import DenseLightModel
 from .torch_based.nn_models import DenseModel
@@ -74,6 +75,7 @@ model_by_name = {
     "linear_layer": LinearLayer,
     "_linear_layer": _LinearLayer,
     "snn": SNN,
+    "node": NODE,
 }
 
 
