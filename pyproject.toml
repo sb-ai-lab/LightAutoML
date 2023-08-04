@@ -63,6 +63,7 @@ autowoe = ">=1.2"
 jinja2 = "*"
 json2html = "*"
 seaborn = "*"
+SQLAlchemy = ">=2.0"
 
 # NLP
 gensim = {version = ">=4", optional = true}
