@@ -43,13 +43,14 @@ numpy = [
     {version = ">=1.22", python = ">=3.10"}
 ]
 scikit-learn = ">=0.22"
-lightgbm = ">=2.3, <=3.2.1"
+lightgbm = ">=2.3"
 catboost = ">=0.26.1"
 optuna = "*"
 torch = [
     {platform = "win32", python = "3.6.1", version = "1.7.0"},
     {version = ">=1.0.0"}
 ]
+faiss-cpu="*"
 dataclasses = {version = "0.6", python = "<3.7"}
 holidays = "*"
 statsmodels = "<=0.14.0"
@@ -63,6 +64,12 @@ autowoe = ">=1.2"
 jinja2 = "*"
 json2html = "*"
 seaborn = "*"
+nbconvert = "7.7.3"
+defusedxml = "0.7.1"
+tinycss2 = "1.2.1"
+webencodings = "0.5.1"
+
+
 
 # NLP
 gensim = {version = ">=4", optional = true}
@@ -85,6 +92,8 @@ featuretools = {version = ">=1.11.1", python = ">=3.7", optional = true}
 # Report (pdf)
 weasyprint = {version = "52.5", optional = true}
 cffi = {version = "1.14.5", optional = true}
+
+
 
 
 [tool.poetry.extras]
