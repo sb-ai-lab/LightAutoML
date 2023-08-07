@@ -73,7 +73,7 @@ class FaissMatcher:
         if group_col is None:
             self.df = df
         else:
-            self.df = df.sort_values([treatment, group_col]).reset_index(drop=True)
+            self.df = df.sort_values([treatment, group_col])
         self.columns_del = [outcomes]
         if info_col:
             self.info_col = info_col
@@ -82,21 +82,21 @@ class FaissMatcher:
 
         if self.info_col is not None:
             self.columns_del = self.columns_del + [x for x in self.info_col if x in self.df.columns]
-        self.outcomes = outcomes
+        self.outcomes = outcomes if type(outcomes) == list else [outcomes]
         self.treatment = treatment
 
         if features is None:
             self.columns_match = list(
-                set([x for x in list(self.df.columns) if x not in self.info_col] + [self.treatment, self.outcomes])
+                set([x for x in list(self.df.columns) if x not in self.info_col] + [self.treatment] + self.outcomes)
             )
         else:
             try:
-                self.columns_match = features["Feature"].tolist() + [self.treatment, self.outcomes]
+                self.columns_match = features["Feature"].tolist() + [self.treatment] + self.outcomes
             except TypeError:
-                self.columns_match = features + [self.treatment, self.outcomes]
+                self.columns_match = features + [self.treatment] + self.outcomes
 
         self.features_quality = (
-            self.df.drop(columns=[self.treatment, self.outcomes] + self.info_col)
+            self.df.drop(columns=[self.treatment] + self.outcomes + self.info_col)
             .select_dtypes(include=["int16", "int32", "int64", "float16", "float32", "float64"])
             .columns
         )
@@ -116,6 +116,7 @@ class FaissMatcher:
         self.silent = silent
         self.pbar = pbar
         self.tqdm = None
+        self.results = pd.DataFrame()
 
     def __getstate__(self) -> dict:
         """Prepare the object for serialization.
@@ -165,8 +166,8 @@ class FaissMatcher:
         """
         logger.debug("Creating split data by treatment column")
 
-        treated = df[df[self.treatment] == 1].drop([self.outcomes, self.treatment], axis=1)
-        untreated = df[df[self.treatment] == 0].drop([self.outcomes, self.treatment], axis=1)
+        treated = df[df[self.treatment] == 1].drop([self.treatment] + self.outcomes, axis=1)
+        untreated = df[df[self.treatment] == 0].drop([self.treatment] + self.outcomes, axis=1)
 
         return treated, untreated
 
@@ -192,7 +193,7 @@ class FaissMatcher:
         self.dict_outcome_treated = {}
         df = self.df.drop(columns=self.info_col)
 
-        for outcome in [self.outcomes]:
+        for outcome in self.outcomes:
             y_untreated = df[df[self.treatment] == 0][outcome].to_numpy()
             y_treated = df[df[self.treatment] == 1][outcome].to_numpy()
 
@@ -255,26 +256,44 @@ class FaissMatcher:
             pd.DataFrame: A dataframe of matched features
 
         """
-        df = self.df.drop(columns=[self.outcomes] + self.info_col)
+        df = self.df.drop(columns=self.outcomes + self.info_col)
 
         if self.group_col is None:
+            untreated_index = df[df[self.treatment] == int(not is_treated)].index.to_numpy()
+            converted_index = [untreated_index[i] for i in index]
             filtered = df.loc[df[self.treatment] == int(not is_treated)].values
             untreated_df = pd.DataFrame(
                 data=np.array([filtered[idx].mean(axis=0) for idx in index]), columns=df.columns
             )
-            untreated_df["index"] = pd.Series(list(index))
-            treated_df = df[df[self.treatment] == int(is_treated)].reset_index()
+            if self.info_col is not None and len(self.info_col) > 1:
+                untreated_df["index"] = pd.Series(converted_index)
+                treated_df = df[df[self.treatment] == int(is_treated)].reset_index()
+            else:
+                ids = self.df[df[self.treatment] == int(not is_treated)][self.info_col].values.ravel()
+                converted_index = [ids[i] for i in index]
+                untreated_df["index"] = pd.Series(converted_index)
+                treated_df = df[df[self.treatment] == int(is_treated)].reset_index()
+                treated_df['index'] = self.df[self.df[self.treatment] == int(is_treated)][self.info_col].values.ravel()
         else:
+            df = df.sort_values([self.treatment, self.group_col])
+            untreated_index = df[df[self.treatment] == int(not is_treated)].index.to_numpy()
+            converted_index = [untreated_index[i] for i in index]
             filtered = df.loc[df[self.treatment] == int(not is_treated)]
             cols_untreated = [col for col in filtered.columns if col != self.group_col]
             filtered = filtered.drop(columns=self.group_col).to_numpy()
             untreated_df = pd.DataFrame(
                 data=np.array([filtered[idx].mean(axis=0) for idx in index]), columns=cols_untreated
             )
-            untreated_df["index"] = pd.Series(list(index))
             treated_df = df[df[self.treatment] == int(is_treated)].reset_index()
             grp = treated_df[self.group_col]
             untreated_df[self.group_col] = grp
+            if self.info_col is not None and len(self.info_col) > 1:
+                untreated_df["index"] = pd.Series(converted_index)
+            else:
+                ids = self.df[df[self.treatment] == int(not is_treated)].sort_values([self.treatment, self.group_col])[self.info_col].values.ravel()
+                converted_index = [ids[i] for i in index]
+                untreated_df["index"] = pd.Series(converted_index)
+                treated_df['index'] = self.df[self.df[self.treatment] == int(is_treated)][self.info_col].values.ravel()
         untreated_df.columns = [col + POSTFIX for col in untreated_df.columns]
 
         x = pd.concat([treated_df, untreated_df], axis=1).drop(
@@ -377,7 +396,7 @@ class FaissMatcher:
         N_t = df[self.treatment].sum()
         N_c = N - N_t
 
-        for outcome in [self.outcomes]:
+        for outcome in self.outcomes:
             att, scaled_counts_t, vars_t = self.calc_att(df, outcome)
             atc, scaled_counts_c, vars_c = self.calc_atc(df, outcome)
             ate = (N_c / N) * atc + (N_t / N) * att
@@ -510,8 +529,9 @@ class FaissMatcher:
         if self.pbar:
             self.tqdm.close()
 
-        self.untreated_index = np.array(matches_c)
-        self.treated_index = np.array(matches_t)
+        self.untreated_index = matches_c
+        self.treated_index = matches_t
+
         df_group = df[self.columns_match].drop(columns=self.group_col)
         treated, untreated = self._get_split(df_group)
         self._predict_outcome(treated, untreated)
@@ -574,11 +594,14 @@ class FaissMatcher:
             pd.DataFrame: DataFrame containing ATE, ATC, and ATT results
         """
         result = (self.ATE, self.ATC, self.ATT)
-        self.results = pd.DataFrame(
-            [list(x.values())[0] for x in result],
-            columns=["effect_size", "std_err", "p-val", "ci_lower", "ci_upper"],
-            index=["ATE", "ATC", "ATT"],
-        )
+
+        for outcome in self.outcomes:
+            res = pd.DataFrame(
+                [x[outcome] + [outcome] for x in result],
+                columns=["effect_size", "std_err", "p-val", "ci_lower", "ci_upper", 'outcome'],
+                index=["ATE", "ATC", "ATT"],
+            )
+            self.results = pd.concat([self.results, res])
         return self.results
 
 
@@ -602,7 +625,7 @@ def _get_index(base: np.ndarray, new: np.ndarray, n_neighbors: int) -> np.ndarra
     map_func = lambda x: np.where(x == x[0])[0]
     equal_dist = list(map(map_func, dist))
     f2 = lambda x, y: x[y]
-    indexes = np.array([f2(i, j) for i, j in zip(indexes, equal_dist)])
+    indexes = [f2(i, j) for i, j in zip(indexes, equal_dist)]
     return indexes
 
 
