@@ -29,3 +29,8 @@ HypEx -- Hypothesises and Experiments
     :template: classtemplate.rst
 
     ~matcher.Matcher
+    algorithms.faiss_matcher.FaissMatcher
+    selectors.lama_feature_selector.LamaFeatureSelector
+    selectors.outliers_filter.OutliersFilter
+    selectors.spearman_filter.SpearmanFilter
+
