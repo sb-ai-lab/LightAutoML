@@ -282,7 +282,7 @@ autonlp_params:
   # 'pooled_bert' - embeddings from pooled bert output
   # 'wat' - weighted average transformers
   # borep and random_lstm: https://arxiv.org/abs/1901.10444
-  model_name: 'random_lstm_bert'
+  model_name: 'pooled_bert'
 
   # dict with params of random_lstm, bert_embedder, borep or wat
   # check corresponding classes for details
