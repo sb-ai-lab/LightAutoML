@@ -31,11 +31,11 @@ class SpearmanFilter:
         """Initialize spearman filter.
 
         Args:
-            outcome: str
+            outcome:
                 The name of target column
-            treatment: str
+            treatment:
                 The name of the column that determines control and test groups
-            threshold: float
+            threshold:
                 The threshold for the Spearman correlation coefficient filter
         """
         self.outcome: str = outcome
@@ -50,11 +50,11 @@ class SpearmanFilter:
         and a p-value less than 0.05, are considered insignificant and are removed from the dataframe
 
         Args:
-            df: pd.DataFrame
+            df:
                 The input DataFrame
 
         Returns:
-            pd.DataFrame: The filtered DataFrame, containing only columns that
+            The filtered DataFrame, containing only columns that
             are significantly correlated with the outcome column
         """
         selected = []

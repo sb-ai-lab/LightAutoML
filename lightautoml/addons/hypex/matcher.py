@@ -46,7 +46,43 @@ logging.basicConfig(
 
 
 class Matcher:
-    """Class that help you calculate effect via Matching"""
+    """Class for compile full pipeline of Matching in Causal Inference task.
+
+    Matcher steps:
+        - Read, analyze data
+        - Feature selection via LightAutoML
+        - Converting a dataset with features to another space via Cholesky decomposition
+          In the new space, the distance L2 becomes equivalent to the Mahalanobis distance.
+          This allows us to use faiss to search for nearest objects, which can search only by L2 metric,
+          but without violating the methodology of matching,
+          for which it is important to count by the Mahalanobis distance
+        - Finding the nearest neighbors for each unit (with duplicates) using faiss.
+          For each of the control group, neighbors from the target group are matched and vice versa.
+        - Calculation bias
+        - Creating matched df (Wide df with pairs)
+        - Calculation metrics: ATE, ATT, ATC, p-value,  and сonfidence intervals
+        - Calculation quality: PS-test, KS test, SMD test
+        - Returns metrics as dataframe, quality results as dict of df's and df_matched
+        - After receiving the result, the result should be validated using :func:`~lightautoml.addons.hypex.matcher.Matcher.validate_result`
+
+    Example:
+        Common usecase - base pipeline for matching
+
+        >>> # Base info
+        >>> treatment = "treatment" # Column name with info about 'treatment' 0 or 1
+        >>> target = "target" # Column name with target
+        >>>
+        >>> # Optional
+        >>> info_col = ["user_id", 'address'] # Columns that will not participate in the match and are informative.
+        >>> group_col = "CatCol" # Column name for strict comparison (for a categorical feature)
+        >>>
+        >>> # Matching
+        >>> model = Matcher(data, outcome=outcome, treatment=treatment, info_col=info_col, group_col=group_col)
+        >>> features = model.lama_feature_select() # Feature selection via lama
+        >>> results, quality, df_matched = model.estimate(features=some_features) # Performs matching
+        >>>
+        >>> model.validate_result()
+    """
 
     def __init__(
         self,
@@ -332,13 +368,12 @@ class Matcher:
         """Validates estimated ATE (Average Treatment Effect).
 
         Validates estimated effect:
-                                    - ``random_feature`` Validation by replacing real treatment with
-                                     random placebo treatment.
-                                     Estimated effect must be dropped to zero, p-val < 0.05;
-                                    - ``random_feature`` Estimated effect shouldn't change
-                                    significantly, p-val > 0.05;
-                                    - ``random_subset``  Estimates effect on subset of data (default fraction is 0.8).
-                                     Estimated effect shouldn't change significantly, p-val > 0.05.
+            - ``random_treatment`` Validation by replacing real treatment with random placebo treatment.
+                Estimated effect must be dropped to zero, p-val < 0.05;
+            - ``random_feature`` Validation by added random feature.
+                Estimated effect shouldn't change significantly, p-val > 0.05;
+            - ``random_subset`` Estimates effect on subset of data (default fraction is 0.8).
+                Estimated effect shouldn't change significantly, p-val > 0.05.
 
         Args:
             refuter:
@@ -349,7 +384,7 @@ class Matcher:
                 Subset fraction for subset refuter only
 
         Returns:
-            Dictionary of outcome_name: (mean_effect on validation, p-value)
+            Dictionary of outcome_name (mean_effect on validation, p-value)
         """
         self._log(f"Perform validation with {refuter} refuter")
 
@@ -390,11 +425,11 @@ class Matcher:
         return self.pval_dict
 
     def estimate(self, features: list = None) -> tuple:
-        """Applies filters and outliers, then performs matching.
+        """Performs matching via Mahalanobis distance.
 
         Args:
             features:
-                Type List or feature_importances from LAMA
+                List or feature_importances from LAMA of features for matching
 
         Returns:
             Results of matching and matching quality metrics

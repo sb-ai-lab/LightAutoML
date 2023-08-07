@@ -51,27 +51,27 @@ class FaissMatcher:
         """Construct all the necessary attributes.
 
         Args:
-            df: pd.DataFrame
+            df:
                 The input dataframe
-            outcomes: str
+            outcomes:
                 The target column name
-            treatment: str
+            treatment:
                 The column name with treatment
-            info_col: list[str]
+            info_col:
                 A list with informational column names
-            features: list or pd.DataFrame, optional
+            features:
                 A list with names of feature using to matching. Defaults to None
-            group_col: str. optional
+            group_col:
                 The column for stratification. Defaults to None
-            sigma: float, optional
+            sigma:
                 The significant level for confidence interval calculation Defaults to 1.96
-            validation: str, optional
+            validation:
                 The flag for validation of estimated ATE with default method `random_feature`
-            n_neighbors: int, optional
+            n_neighbors:
                 The number of neighbors to find for each object. Defaults to 10
-            silent: bool, optional
+            silent:
                 Write logs in debug mode
-            pbar: bool, optional
+            pbar:
                 Display progress bar while get index
         """
         self.n_neighbors = n_neighbors
@@ -130,7 +130,7 @@ class FaissMatcher:
         because `tqdm` objects cannot be serialized.
 
         Returns:
-            dict: A copy of the object's dictionary with the `tqdm` attribute removed.
+            A copy of the object's dictionary with the `tqdm` attribute removed.
         """
         state = self.__dict__.copy()
         if "tqdm" in state:
@@ -145,7 +145,7 @@ class FaissMatcher:
         if the `pbar` attribute is True.
 
         Args:
-            state: dict
+            state
                 The deserialized state of the object
         """
         if "pbar" in state and state["pbar"]:
@@ -159,11 +159,11 @@ class FaissMatcher:
         scales and transforms treatment column
 
         Args:
-            df: pd.DataFrame
+            df:
                 The input dataframe
 
         Returns:
-            tuple: Tuple of dataframes - one for treated (df[self.treatment] == 1]) and
+            Tuple of dataframes - one for treated (df[self.treatment] == 1]) and
             one for untreated (df[self.treatment] == 0]). Drops self.outcomes and
             `self.treatment` columns
 
@@ -182,9 +182,9 @@ class FaissMatcher:
         creates dict of y - regular, matched and without bias.
 
         Args:
-            std_treated: pd.DataFrame
+            std_treated:
                 The dataframe of treated data
-            std_untreated: pd.DataFrame
+            std_untreated:
                 The dataframe of untreated data
 
         """
@@ -231,13 +231,13 @@ class FaissMatcher:
         """Creates dataframe with outcomes values and treatment.
 
         Args:
-            dict_outcome: dict
+            dict_outcome:
                 A dictionary containing outcomes
-            is_treated: bool
+            is_treated:
                 A boolean value indicating whether the outcome is treated or not
 
         Returns:
-            pd.DataFrame: A dataframe with matched outcome and treatment columns
+            A dataframe with matched outcome and treatment columns
 
         """
         df_pred = pd.DataFrame(dict_outcome)
@@ -250,14 +250,14 @@ class FaissMatcher:
         """Creates matched dataframe with features.
 
         Args:
-            index: np.ndarray
+            index:
                 An array of indices
-            is_treated: bool
+            is_treated:
                 A boolean value indicating whether the outcome is treated or not
 
 
         Returns:
-            pd.DataFrame: A dataframe of matched features
+            A dataframe of matched features
 
         """
         df = self.df.drop(columns=[self.outcomes] + self.info_col)
@@ -291,7 +291,7 @@ class FaissMatcher:
         """Creates matched df of features and outcome.
 
         Returns:
-            pd.DataFrame: Matched dataframe
+            Matched dataframe
         """
         df_pred_treated = self._create_outcome_matched_df(self.dict_outcome_treated, True)
         df_pred_untreated = self._create_outcome_matched_df(self.dict_outcome_untreated, False)
@@ -316,13 +316,13 @@ class FaissMatcher:
         Effect on control group if it was affected
 
         Args:
-            df: pd.DataFrame
+            df:
                 Input dataframe
-            outcome: str
+            outcome:
                 The outcome to be considered for treatment effect
 
         Returns:
-            tuple: Contains ATC, scaled counts, and variances as numpy arrays
+            Contains ATC, scaled counts, and variances as numpy arrays
 
         """
         logger.debug("Calculating ATC")
@@ -341,13 +341,13 @@ class FaissMatcher:
         """Calculates Average Treatment Effect for the treated (ATT).
 
         Args:
-            df: pd.DataFrame
+            df:
                 Input dataframe
-            outcome: str
+            outcome:
                 The outcome to be considered for treatment effect
 
         Returns:
-            tuple: Contains ATT, scaled counts, and variances as numpy arrays
+            Contains ATT, scaled counts, and variances as numpy arrays
 
         """
         logger.debug("Calculating ATT")
@@ -366,7 +366,7 @@ class FaissMatcher:
         """Creates dictionaries of all effect: ATE, ATC, ATT.
 
         Args:
-            df: pd.DataFrame
+            df:
                 Input dataframe
 
         """
@@ -420,11 +420,11 @@ class FaissMatcher:
         and Kolmogorov-Smirnov test for numeric values. Returns a dictionary of reports.
 
         Args:
-            df_matched: pd.DataFrame
+            df_matched:
                 Matched DataFrame to calculate quality
 
         Returns:
-            dict: dictionary containing PSI, KS-test, SMD data and repeat fractions
+            dictionary containing PSI, KS-test, SMD data and repeat fractions
 
         """
         if self.silent:
@@ -465,7 +465,7 @@ class FaissMatcher:
         """Matches the dataframe if it divided by groups.
 
         Returns:
-            tuple: A tuple containing the matched dataframe and metrics such as ATE, ATT and ATC
+            A tuple containing the matched dataframe and metrics such as ATE, ATT and ATC
 
         """
         df = self.df.drop(columns=self.info_col)
@@ -529,7 +529,7 @@ class FaissMatcher:
         """Matches the dataframe.
 
         Returns:
-            tuple: A tuple containing the matched dataframe and metrics such as ATE, ATT and ATC
+            A tuple containing the matched dataframe and metrics such as ATE, ATT and ATC
 
         """
         if self.group_col is not None:
@@ -573,7 +573,7 @@ class FaissMatcher:
         """Formats the ATE, ATC, and ATT results into a Pandas DataFrame for easy viewing.
 
         Returns:
-            pd.DataFrame: DataFrame containing ATE, ATC, and ATT results
+            DataFrame containing ATE, ATC, and ATT results
         """
         result = (self.ATE, self.ATC, self.ATT)
         self.results = pd.DataFrame(
@@ -588,15 +588,15 @@ def _get_index(base: np.ndarray, new: np.ndarray, n_neighbors: int) -> np.ndarra
     """Gets array of indexes that match a new array.
 
     Args:
-        base: np.ndarray
+        base:
             A numpy array serving as the reference for matching
-        new: np.ndarray
+        new:
             A numpy array that needs to be matched with the base
-        n_neighbors: int
+        n_neighbors:
             The number of neighbors to use for the matching
 
     Returns:
-        np.ndarray: An array of indexes containing all neighbours with minimum distance
+        An array of indexes containing all neighbours with minimum distance
     """
     index = faiss.IndexFlatL2(base.shape[1])
     index.add(base)
@@ -610,13 +610,13 @@ def _transform_to_np(treated: pd.DataFrame, untreated: pd.DataFrame) -> Tuple[np
     """Transforms df to numpy and transform via Cholesky decomposition.
 
     Args:
-        treated: pd.DataFrame
+        treated:
             Test subset DataFrame to be transformed
-        untreated: pd.DataFrame
+        untreated:
             Control subset DataFrame to be transformed
 
     Returns:
-        tuple: A tuple of transformed numpy arrays for treated and untreated data respectively
+        A tuple of transformed numpy arrays for treated and untreated data respectively
     """
     xc = untreated.to_numpy()
     xt = treated.to_numpy()
@@ -640,17 +640,17 @@ def calc_atx_var(vars_c: np.ndarray, vars_t: np.ndarray, weights_c: np.ndarray, 
     """Calculates Average Treatment Effect for the treated (ATT) variance.
 
     Args:
-        vars_c: np.ndarray
+        vars_c:
             Control group variance
-        vars_t: np.ndarray
+        vars_t:
             Treatment group variance
-        weights_c: np.ndarray
+        weights_c:
             Control group weights
-        weights_t: np.ndarray
+        weights_t:
             Treatment group weights
 
     Returns:
-        float: The calculated ATT variance
+        The calculated ATT variance
 
     """
     N_c, N_t = len(vars_c), len(vars_t)
@@ -664,15 +664,15 @@ def calc_atc_se(vars_c: np.ndarray, vars_t: np.ndarray, scaled_counts_t: np.ndar
     """Calculates Average Treatment Effect for the control group (ATC) standard error.
 
     Args:
-        vars_c: np.ndarray
+        vars_c:
             Control group variance
-        vars_t: np.ndarray
+        vars_t:
             Treatment group variance
-        scaled_counts_t: np.ndarray
+        scaled_counts_t:
             Scaled counts for treatment group
 
     Returns:
-        float: The calculated ATC standard error
+        The calculated ATC standard error
     """
     N_c, N_t = len(vars_c), len(vars_t)
     weights_c = np.ones(N_c)
@@ -687,15 +687,15 @@ def calc_att_se(vars_c: np.ndarray, vars_t: np.ndarray, scaled_counts_c: np.ndar
     """Calculates Average Treatment Effect for the treated (ATT) standard error.
 
     Args:
-        vars_c: np.ndarray
+        vars_c:
             Control group variance
-        vars_t: np.ndarray
+        vars_t:
             Treatment group variance
-        scaled_counts_c: np.ndarray
+        scaled_counts_c:
             Scaled counts for control group
 
     Returns:
-        float: The calculated ATT standard error
+        The calculated ATT standard error
     """
     N_c, N_t = len(vars_c), len(vars_t)
     weights_c = (N_c / N_t) * scaled_counts_c
@@ -712,17 +712,17 @@ def calc_ate_se(
     """Calculates Average Treatment Effect for the control group (ATC) standard error.
 
     Args:
-        vars_c: np.ndarray
+        vars_c:
             Control group variance
-        vars_t: np.ndarray
+        vars_t:
             Treatment group variance
-        scaled_counts_c: np.ndarray
+        scaled_counts_c:
             Scaled counts for control group
-        scaled_counts_t: np.ndarray
+        scaled_counts_t:
             Scaled counts for treatment group
 
     Returns:
-        float: The calculated ATE standard error
+        The calculated ATE standard error
     """
     N_c, N_t = len(vars_c), len(vars_t)
     N = N_c + N_t
@@ -738,11 +738,11 @@ def pval_calc(z):
     """Calculates p-value of the normal cumulative distribution function based on z.
 
     Args:
-        z: float
+        z:
             The z-score for which the p-value is calculated
 
     Returns:
-        float: The calculated p-value rounded to 2 decimal places
+        The calculated p-value rounded to 2 decimal places
 
     """
     return round(2 * (1 - norm.cdf(abs(z))), 2)
@@ -754,15 +754,15 @@ def scaled_counts(N: int, matches: np.ndarray, silent: bool = True) -> np.ndarra
     In the case of multiple matches, each subject only gets partial credit.
 
     Args:
-        N: int
+        N:
             The length of original treated or control group
-        matches: np.ndarray
+        matches:
             A numpy array of matched indexes from control or treated group
-        silent: bool, optional
+        silent:
             If true logger in info mode
 
     Returns:
-        np.ndarray: An array representing the number of times each subject has appeared as a match
+        An array representing the number of times each subject has appeared as a match
     """
     s_counts = np.zeros(N)
 
@@ -786,15 +786,15 @@ def bias_coefs(matches, Y_m, X_m):
     observation that has appeared in the matched sample.
 
     Args:
-        matches: np.ndarray
+        matches:
             A numpy array of matched indexes
-        Y_m: np.ndarray
+        Y_m:
             The dependent variable values
-        X_m: np.ndarray:
+        X_m:
             The independent variable values
 
     Returns:
-        np.ndarray: The calculated OLS coefficients excluding the intercept
+        The calculated OLS coefficients excluding the intercept
     """
     flat_idx = np.concatenate(matches)
     N, K = len(flat_idx), X_m.shape[1]
@@ -815,15 +815,15 @@ def bias(X, X_m, coefs):
     coefficients from the bias correction regression.
 
     Args:
-        X: np.ndarray
+        X:
             The original independent variable values
-        X_m: np.ndarray
+        X_m:
             The matched independent variable values
-        coefs: np.ndarray
+        coefs:
             The coefficients from the bias correction regression
 
     Returns:
-        np.ndarray: The calculated bias correction terms for each observation
+        The calculated bias correction terms for each observation
     """
     bias_list = [(X_j - X_i).dot(coefs) for X_i, X_j in zip(X, X_m)]
 
