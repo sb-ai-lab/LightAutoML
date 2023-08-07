@@ -46,7 +46,7 @@ logging.basicConfig(
 
 
 class Matcher:
-    """Main class."""
+    """Class that help you calculate effect via Matching"""
 
     def __init__(
         self,
@@ -75,47 +75,47 @@ class Matcher:
         """Initialize the Matcher object.
 
         Args:
-            input_data: pd.DataFrame
+            input_data:
                 Input dataframe
-            outcome: str
+            outcome:
                 Target column
-            treatment: str
+            treatment:
                 Column determine control and test groups
-            outcome_type: str, optional
+            outcome_type:
                 Values type of target column. Defaults to "numeric"
-            group_col: str, optional
+            group_col:
                 Column for grouping. Defaults to None.
-            info_col: list, optional
+            info_col:
                 Columns with id, date or metadata, not taking part in calculations. Defaults to None
-            generate_report: bool, optional
+            generate_report:
                 Flag to create report. Defaults to True
-            report_feat_select_dir: str, optional
+            report_feat_select_dir:
                 Folder for report files. Defaults to "report_feature_selector"
-            timeout: int, optional
+            timeout:
                 Limit work time of code LAMA. Defaults to 600
-            n_threads: int, optional
-                Maximum number of threads. Defau;ts to 1
-            n_folds: int, optional
+            n_threads:
+                Maximum number of threads. Defaults to 1
+            n_folds:
                 Number of folds for cross-validation. Defaults to 4
-            verbose: int, optional
+            verbose:
                 Flag to show process stages. Defaults to 2
-            use_algos: list, optional
+            use_algos:
                 List of names of LAMA algorithms for feature selection. Defaults to ["lgb"]
-            same_target_threshold: float, optional
+            same_target_threshold:
                 Threshold for correlation coefficient filter (Spearman). Default to 0.7
-            interquartile_coeff: float, optional
+            interquartile_coeff:
                 Percent for drop outliers. Default to 1.5
-            drop_outliers_by_percentile: bool, optional
+            drop_outliers_by_percentile:
                 Flag to drop outliers by custom percentiles. Defaults to True
-            min_percentile: float, optional
+            min_percentile:
                 Minimum percentile to drop outliers. Defaults to 0.02
-            max_percentile: float, optional
+            max_percentile:
                 Maximum percentile to drop outliers. Defaults to 0.98
-            n_neighbors: int, optional
+            n_neighbors:
                 Number of neighbors to match. Defaults to 10
-            silent: bool, optional
+            silent:
                 Write logs in debug mode
-            pbar: bool, optional
+            pbar:
                 Display progress bar while get index
         """
         if use_algos is None:
@@ -153,11 +153,11 @@ class Matcher:
         """Converts categorical variables to dummy variables.
 
         Args:
-            columns_to_drop: list:
+            columns_to_drop:
                 List of column names to drop before the conversion.
 
         Returns:
-            pandas.DataFrame: Data with categorical variables converted to dummy variables.
+            Data with categorical variables converted to dummy variables.
         """
         data = self.input_data.drop(columns=columns_to_drop)
         dummy_data = pd.get_dummies(data, drop_first=True)
@@ -190,9 +190,9 @@ class Matcher:
         """Applies a filter to the input data.
 
         Args:
-            filter_class: class
+            filter_class:
                 The class of the filter to apply.
-            *filter_args: (args) #noqa: DAR101
+            *filter_args:
                 Arguments to pass to the filter class.
         """
         filter_instance = filter_class(*filter_args)
@@ -268,9 +268,9 @@ class Matcher:
         """Creates a FaissMatcher object.
 
         Args:
-            df: pd.DataFrame, optional
+            df:
                 The dataframe to use. If None, uses self.input_data.
-            validation: bool, optional
+            validation:
                 Whether to use the matcher for validation. If None, determines based on whether
         """
         if df is None:
@@ -300,9 +300,9 @@ class Matcher:
         """Logs a message at the appropriate level.
 
         Args:
-            message: str
+            message:
                 The message to log.
-            silent: bool, optional
+            silent:
                 If silent, logs will be only info
         """
         if silent is None:
@@ -316,7 +316,7 @@ class Matcher:
         """Performs matching considering the presence of groups.
 
         Returns:
-            tuple: Results of matching and matching quality metrics
+            Results of matching and matching quality metrics
 
         """
         self._create_faiss_matcher()
@@ -332,23 +332,24 @@ class Matcher:
         """Validates estimated ATE (Average Treatment Effect).
 
         Validates estimated effect:
-                                    1) by replacing real treatment with random placebo treatment.
-                                     Estimated effect must be droped to zero, p-val < 0.05;
-                                    2) by adding random feature (`random_feature`). Estimated effect shouldn't change
+                                    - ``random_feature`` Validation by replacing real treatment with
+                                     random placebo treatment.
+                                     Estimated effect must be dropped to zero, p-val < 0.05;
+                                    - ``random_feature`` Estimated effect shouldn't change
                                     significantly, p-val > 0.05;
-                                    3) estimates effect on subset of data (default fraction is 0.8). Estimated effect
-                                    shouldn't change significantly, p-val > 0.05.
+                                    - ``random_subset``  Estimates effect on subset of data (default fraction is 0.8).
+                                     Estimated effect shouldn't change significantly, p-val > 0.05.
 
         Args:
-            refuter: str
+            refuter:
                 Refuter type (`random_treatment`, `random_feature`, `subset_refuter`)
-            n_sim: int
+            n_sim:
                 Number of simulations
-            fraction: float
+            fraction:
                 Subset fraction for subset refuter only
 
         Returns:
-            dict: Dictionary of outcome_name: (mean_effect on validation, p-value)
+            Dictionary of outcome_name: (mean_effect on validation, p-value)
         """
         self._log(f"Perform validation with {refuter} refuter")
 
@@ -392,11 +393,11 @@ class Matcher:
         """Applies filters and outliers, then performs matching.
 
         Args:
-            features: list
+            features:
                 Type List or feature_importances from LAMA
 
         Returns:
-            tuple: Results of matching and matching quality metrics
+            Results of matching and matching quality metrics
         """
         if features is not None:
             self.features_importance = features
@@ -408,7 +409,7 @@ class Matcher:
         This method serializes the object and writes it to a file
 
         Args:
-            filename: str
+            filename:
                 The name of the file to write to.
         """
         with open(filename, "wb") as f:
@@ -421,11 +422,10 @@ class Matcher:
         This method reads a file and deserializes the object from it
 
         Args:
-            filename: str
+            filename:
                 The name of the file to read from.
 
         Returns:
-            object:
                 The deserialized object
         """
         with open(filename, "rb") as f:
