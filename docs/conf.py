@@ -69,6 +69,7 @@ autosummary_mock_imports = [
     "matplotlib",
     "seaborn",
     "json2html",
+    "faiss"
 ]
 
 # Add any paths that contain templates here, relative to this directory.
