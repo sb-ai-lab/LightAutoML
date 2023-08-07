@@ -265,7 +265,7 @@ class FaissMatcher:
             untreated_df = pd.DataFrame(
                 data=np.array([filtered[idx].mean(axis=0) for idx in index]), columns=df.columns
             )
-            if self.info_col is not None and len(self.info_col) > 1:
+            if self.info_col is not None and len(self.info_col) != 1:
                 untreated_df["index"] = pd.Series(converted_index)
                 treated_df = df[df[self.treatment] == int(is_treated)].reset_index()
             else:
@@ -287,7 +287,7 @@ class FaissMatcher:
             treated_df = df[df[self.treatment] == int(is_treated)].reset_index()
             grp = treated_df[self.group_col]
             untreated_df[self.group_col] = grp
-            if self.info_col is not None and len(self.info_col) > 1:
+            if self.info_col is not None and len(self.info_col) != 1:
                 untreated_df["index"] = pd.Series(converted_index)
             else:
                 ids = self.df[df[self.treatment] == int(not is_treated)].sort_values([self.treatment, self.group_col])[self.info_col].values.ravel()
