@@ -66,7 +66,7 @@ json2html = "*"
 seaborn = "*"
 nbconvert = "7.7.3"
 defusedxml = "0.7.1"
-tinycss2 = "1.2.1"
+tinycss2 = {version = "1.2.1", python = ">=3.7"}
 webencodings = "0.5.1"
 
 
