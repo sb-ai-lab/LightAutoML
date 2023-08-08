@@ -185,7 +185,7 @@ class Matcher:
         self.pbar = pbar
         self._preprocessing_data()
 
-    def _convert_categorical_to_dummy(self, columns_to_drop):
+    def _convert_categorical_to_dummy(self, info_col=None, group_col=None):
         """Converts categorical variables to dummy variables.
 
         Args:
@@ -195,7 +195,14 @@ class Matcher:
         Returns:
             Data with categorical variables converted to dummy variables.
         """
-        data = self.input_data.drop(columns=columns_to_drop)
+        info_col = info_col if info_col is not None else []
+        group_col = [group_col] if group_col is not None else []
+
+        columns_to_drop = info_col + group_col
+        if columns_to_drop is not None:
+            data = self.input_data.drop(columns=columns_to_drop)
+        else:
+            data = self.input_data
         dummy_data = pd.get_dummies(data, drop_first=True)
         return dummy_data
 
@@ -211,11 +218,9 @@ class Matcher:
         if self.info_col is not None:
             info_col = self.input_data[self.info_col]
 
-        if self.group_col is None:
-            self.input_data = self._convert_categorical_to_dummy(self.info_col)
-        else:
-            self.input_data = self._convert_categorical_to_dummy([self.group_col] + self.info_col)
-            self.input_data = pd.concat([self.input_data, group_col], axis=1)
+        self.input_data = self._convert_categorical_to_dummy(group_col=self.group_col, info_col=self.info_col)
+        if self.group_col is not None:
+             self.input_data = pd.concat([self.input_data, group_col], axis=1)
 
         if self.info_col is not None:
             self.input_data = pd.concat([self.input_data, info_col], axis=1)
