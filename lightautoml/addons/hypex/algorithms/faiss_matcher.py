@@ -5,6 +5,7 @@ import logging
 from typing import Dict
 from typing import Tuple
 from typing import Union
+from typing import Any
 
 import faiss
 import numpy as np
@@ -34,18 +35,18 @@ class FaissMatcher:
     """A class used to match instances using Faiss library."""
 
     def __init__(
-            self,
-            df: pd.DataFrame,
-            outcomes: str,
-            treatment: str,
-            info_col: list,
-            features: [list, pd.DataFrame] = None,
-            group_col: str = None,
-            sigma: float = 1.96,
-            validation: bool = None,
-            n_neighbors: int = 10,
-            silent: bool = True,
-            pbar: bool = True,
+        self,
+        df: pd.DataFrame,
+        outcomes: str,
+        treatment: str,
+        info_col: list,
+        features: [list, pd.DataFrame] = None,
+        group_col: str = None,
+        sigma: float = 1.96,
+        validation: bool = None,
+        n_neighbors: int = 10,
+        silent: bool = True,
+        pbar: bool = True,
     ):
         """Construct all the necessary attributes.
 
@@ -610,11 +611,32 @@ class FaissMatcher:
         return self.results
 
 
-def map_func(x):
+def map_func(x: np.ndarray) -> np.ndarray:
+    """Get the indices of elements in an array that are equal to the first element.
+
+    Args:
+        x:
+            An input array.
+
+    Returns:
+        Array of indices where the elements match the first element of x.
+    """
     return np.where(x == x[0])[0]
 
 
-def f2(x, y):
+def f2(x: np.ndarray, y: np.ndarray) -> Any:
+    """Index an array using a secondary array of indices.
+
+    Args:
+        x:
+            An input array.
+        y:
+            Array of indices used for indexing x.
+
+    Returns:
+        Indexed element from the input array x.
+    """
+
     return x[y]
 
 
@@ -741,7 +763,7 @@ def calc_att_se(vars_c: np.ndarray, vars_t: np.ndarray, scaled_counts_c: np.ndar
 
 
 def calc_ate_se(
-        vars_c: np.ndarray, vars_t: np.ndarray, scaled_counts_c: np.ndarray, scaled_counts_t: np.ndarray
+    vars_c: np.ndarray, vars_t: np.ndarray, scaled_counts_c: np.ndarray, scaled_counts_t: np.ndarray
 ) -> float:
     """Calculates Average Treatment Effect for the control group (ATC) standard error.
 
