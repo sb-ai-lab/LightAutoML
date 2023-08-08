@@ -117,7 +117,7 @@ class Matcher:
         if use_algos is None:
             use_algos = USE_ALGOS
         self.input_data = input_data
-        self.outcome = outcome
+        self.outcomes = outcome if type(outcome) == list else [outcome]
         self.treatment = treatment
         self.group_col = group_col
         self.outcome_type = outcome_type
@@ -182,7 +182,7 @@ class Matcher:
             logger.info("Applying filter by spearman test - drop columns correlated with outcome")
 
         same_filter = SpearmanFilter(
-            outcome=self.outcome, treatment=self.treatment, threshold=self.same_target_threshold
+            outcome=self.outcomes, treatment=self.treatment, threshold=self.same_target_threshold
         )
 
         self.input_data = same_filter.perform_filter(self.input_data)
@@ -229,7 +229,7 @@ class Matcher:
             logger.info("Counting feature importance")
 
         feat_select = LamaFeatureSelector(
-            outcome=self.outcome,
+            outcome=self.outcomes,
             outcome_type=self.outcome_type,
             treatment=self.treatment,
             timeout=self.timeout,
@@ -263,7 +263,7 @@ class Matcher:
         """
         self.matcher = FaissMatcher(
             self.input_data,
-            self.outcome,
+            self.outcomes,
             self.treatment,
             info_col=self.info_col,
             features=self.features_importance,
@@ -283,7 +283,7 @@ class Matcher:
 
         return self.results, self.quality_result, df_matched
 
-    def validate_result(self, refuter: str = "random_feature", n_sim: int = 10, fraction: float = 0.8) -> dict:
+    def validate_result(self, refuter: str = "random_feature", effect_type: str = 'ate', n_sim: int = 10, fraction: float = 0.8) -> dict:
         """Validates estimated ATE (Average Treatment Effect).
 
         Validates estimated effect:
@@ -310,8 +310,12 @@ class Matcher:
         else:
             logger.info("Applying validation of result")
 
-        self.val_dict = {k: [] for k in [self.outcome]}
+        self.val_dict = {k: [] for k in self.outcomes}
         self.pval_dict = dict()
+
+        effect_dict = {'ate': 0, 'atc': 1, 'att': 2}
+
+        assert effect_type in effect_dict.keys()
 
         for i in tqdm(range(n_sim)):
             if refuter in ["random_treatment", "random_feature"]:
@@ -324,7 +328,7 @@ class Matcher:
 
                 self.matcher = FaissMatcher(
                     self.input_data,
-                    self.outcome,
+                    self.outcomes,
                     self.treatment,
                     info_col=self.info_col,
                     features=self.features_importance,
@@ -337,7 +341,7 @@ class Matcher:
                 df, self.validate = subset_refuter(self.input_data, self.treatment, fraction)
                 self.matcher = FaissMatcher(
                     df,
-                    self.outcome,
+                    self.outcomes,
                     self.treatment,
                     info_col=self.info_col,
                     features=self.features_importance,
@@ -360,10 +364,10 @@ class Matcher:
             for key in self.val_dict.keys():
                 self.val_dict[key].append(sim[key][0])
 
-        for outcome in [self.outcome]:
+        for outcome in self.outcomes:
             self.pval_dict.update({outcome: [np.mean(self.val_dict[outcome])]})
             self.pval_dict[outcome].append(
-                test_significance(self.results.loc["ATE"]["effect_size"], self.val_dict[outcome])
+                test_significance(self.results.query('outcome==@outcome').loc[effect_type.upper()]["effect_size"], self.val_dict[outcome])
             )
         if refuter == "random_treatment":
             self.input_data[self.treatment] = orig_treatment
