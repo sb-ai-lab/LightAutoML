@@ -19,7 +19,7 @@ Utilization
     ~utilization.TimeUtilization
 
 HypEx -- Hypothesises and Experiments
------------
+-------------------------------------
 
 .. currentmodule:: lightautoml.addons.hypex
 

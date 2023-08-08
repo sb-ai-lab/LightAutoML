@@ -16,7 +16,6 @@ from tqdm.auto import tqdm
 from ..utils.metrics import check_repeats
 from ..utils.metrics import matching_quality
 
-
 faiss.cvar.distance_compute_blas_threshold = 100000
 POSTFIX = "_matched"
 POSTFIX_BIAS = "_matched_bias"
@@ -35,18 +34,18 @@ class FaissMatcher:
     """A class used to match instances using Faiss library."""
 
     def __init__(
-        self,
-        df: pd.DataFrame,
-        outcomes: str,
-        treatment: str,
-        info_col: list,
-        features: [list, pd.DataFrame] = None,
-        group_col: str = None,
-        sigma: float = 1.96,
-        validation: bool = None,
-        n_neighbors: int = 10,
-        silent: bool = True,
-        pbar: bool = True,
+            self,
+            df: pd.DataFrame,
+            outcomes: str,
+            treatment: str,
+            info_col: list,
+            features: [list, pd.DataFrame] = None,
+            group_col: str = None,
+            sigma: float = 1.96,
+            validation: bool = None,
+            n_neighbors: int = 10,
+            silent: bool = True,
+            pbar: bool = True,
     ):
         """Construct all the necessary attributes.
 
@@ -146,7 +145,7 @@ class FaissMatcher:
         if the `pbar` attribute is True.
 
         Args:
-            state
+            state:
                 The deserialized state of the object
         """
         if "pbar" in state and state["pbar"]:
@@ -278,7 +277,7 @@ class FaissMatcher:
                 converted_index = [ids[i] for i in index]
                 untreated_df["index"] = pd.Series(converted_index)
                 treated_df = df[df[self.treatment] == int(is_treated)].reset_index()
-                treated_df['index'] = self.df[self.df[self.treatment] == int(is_treated)][self.info_col].values.ravel()
+                treated_df["index"] = self.df[self.df[self.treatment] == int(is_treated)][self.info_col].values.ravel()
         else:
             df = df.sort_values([self.treatment, self.group_col])
             untreated_index = df[df[self.treatment] == int(not is_treated)].index.to_numpy()
@@ -295,10 +294,13 @@ class FaissMatcher:
             if self.info_col is not None and len(self.info_col) != 1:
                 untreated_df["index"] = pd.Series(converted_index)
             else:
-                ids = self.df[df[self.treatment] == int(not is_treated)].sort_values([self.treatment, self.group_col])[self.info_col].values.ravel()
+                ids = (
+                    self.df[df[self.treatment] == int(not is_treated)]
+                    .sort_values([self.treatment, self.group_col])[self.info_col]
+                    .values.ravel())
                 converted_index = [ids[i] for i in index]
                 untreated_df["index"] = pd.Series(converted_index)
-                treated_df['index'] = self.df[self.df[self.treatment] == int(is_treated)][self.info_col].values.ravel()
+                treated_df["index"] = self.df[self.df[self.treatment] == int(is_treated)][self.info_col].values.ravel()
         untreated_df.columns = [col + POSTFIX for col in untreated_df.columns]
 
         x = pd.concat([treated_df, untreated_df], axis=1).drop(
@@ -600,7 +602,7 @@ class FaissMatcher:
         for outcome in self.outcomes:
             res = pd.DataFrame(
                 [x[outcome] + [outcome] for x in result],
-                columns=["effect_size", "std_err", "p-val", "ci_lower", "ci_upper", 'outcome'],
+                columns=["effect_size", "std_err", "p-val", "ci_lower", "ci_upper", "outcome"],
                 index=["ATE", "ATC", "ATT"],
             )
             self.results = pd.concat([self.results, res])
@@ -732,7 +734,7 @@ def calc_att_se(vars_c: np.ndarray, vars_t: np.ndarray, scaled_counts_c: np.ndar
 
 
 def calc_ate_se(
-    vars_c: np.ndarray, vars_t: np.ndarray, scaled_counts_c: np.ndarray, scaled_counts_t: np.ndarray
+        vars_c: np.ndarray, vars_t: np.ndarray, scaled_counts_c: np.ndarray, scaled_counts_t: np.ndarray
 ) -> float:
     """Calculates Average Treatment Effect for the control group (ATC) standard error.
 
