@@ -33,4 +33,3 @@ HypEx -- Hypothesises and Experiments
     selectors.lama_feature_selector.LamaFeatureSelector
     selectors.outliers_filter.OutliersFilter
     selectors.spearman_filter.SpearmanFilter
-
