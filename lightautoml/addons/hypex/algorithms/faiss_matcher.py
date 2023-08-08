@@ -261,9 +261,11 @@ class FaissMatcher:
             A dataframe of matched features
 
         """
-        df = self.df.drop(columns=[self.outcomes] + self.info_col)
+        df = self.df.drop(columns=self.outcomes + self.info_col)
 
         if self.group_col is None:
+            untreated_index = df[df[self.treatment] == int(not is_treated)].index.to_numpy()
+            converted_index = [untreated_index[i] for i in index]
             filtered = df.loc[df[self.treatment] == int(not is_treated)].values
             untreated_df = pd.DataFrame(
                 data=np.array([filtered[idx].mean(axis=0) for idx in index]), columns=df.columns
