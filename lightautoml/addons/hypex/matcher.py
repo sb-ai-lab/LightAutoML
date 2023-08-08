@@ -77,7 +77,7 @@ class Matcher:
         >>> group_col = "CatCol" # Column name for strict comparison (for a categorical feature)
         >>>
         >>> # Matching
-        >>> model = Matcher(data, outcome=outcome, treatment=treatment, info_col=info_col, group_col=group_col)
+        >>> model = Matcher(data, outcome=target, treatment=treatment, info_col=info_col, group_col=group_col)
         >>> features = model.lama_feature_select() # Feature selection via lama
         >>> results, quality, df_matched = model.estimate(features=some_features) # Performs matching
         >>>

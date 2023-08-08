@@ -34,18 +34,18 @@ class FaissMatcher:
     """A class used to match instances using Faiss library."""
 
     def __init__(
-        self,
-        df: pd.DataFrame,
-        outcomes: str,
-        treatment: str,
-        info_col: list,
-        features: [list, pd.DataFrame] = None,
-        group_col: str = None,
-        sigma: float = 1.96,
-        validation: bool = None,
-        n_neighbors: int = 10,
-        silent: bool = True,
-        pbar: bool = True,
+            self,
+            df: pd.DataFrame,
+            outcomes: str,
+            treatment: str,
+            info_col: list,
+            features: [list, pd.DataFrame] = None,
+            group_col: str = None,
+            sigma: float = 1.96,
+            validation: bool = None,
+            n_neighbors: int = 10,
+            silent: bool = True,
+            pbar: bool = True,
     ):
         """Construct all the necessary attributes.
 
@@ -610,7 +610,15 @@ class FaissMatcher:
         return self.results
 
 
-def _get_index(base: np.ndarray, new: np.ndarray, n_neighbors: int) -> np.ndarray:
+def map_func(x):
+    return np.where(x == x[0])[0]
+
+
+def f2(x, y):
+    return x[y]
+
+
+def _get_index(base: np.ndarray, new: np.ndarray, n_neighbors: int) -> list:
     """Gets array of indexes that match a new array.
 
     Args:
@@ -627,9 +635,7 @@ def _get_index(base: np.ndarray, new: np.ndarray, n_neighbors: int) -> np.ndarra
     index = faiss.IndexFlatL2(base.shape[1])
     index.add(base)
     dist, indexes = index.search(new, n_neighbors)
-    map_func = lambda x: np.where(x == x[0])[0]
     equal_dist = list(map(map_func, dist))
-    f2 = lambda x, y: x[y]
     indexes = [f2(i, j) for i, j in zip(indexes, equal_dist)]
     return indexes
 
@@ -735,7 +741,7 @@ def calc_att_se(vars_c: np.ndarray, vars_t: np.ndarray, scaled_counts_c: np.ndar
 
 
 def calc_ate_se(
-    vars_c: np.ndarray, vars_t: np.ndarray, scaled_counts_c: np.ndarray, scaled_counts_t: np.ndarray
+        vars_c: np.ndarray, vars_t: np.ndarray, scaled_counts_c: np.ndarray, scaled_counts_t: np.ndarray
 ) -> float:
     """Calculates Average Treatment Effect for the control group (ATC) standard error.
 
