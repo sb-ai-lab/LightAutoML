@@ -157,7 +157,7 @@ class Matcher:
         if use_algos is None:
             use_algos = USE_ALGOS
         self.input_data = input_data
-        self.outcome = outcome
+        self.outcomes = outcome if type(outcome) == list else [outcome]
         self.treatment = treatment
         self.group_col = group_col
         self.outcome_type = outcome_type
@@ -241,7 +241,7 @@ class Matcher:
         that are highly correlated with the outcome columns, based on a pre-set threshold
         """
         self._log("Applying filter by spearman test - drop columns correlated with outcome")
-        self._apply_filter(SpearmanFilter, self.outcome, self.treatment, self.same_target_threshold)
+        self._apply_filter(SpearmanFilter, self.outcomes[0], self.treatment, self.same_target_threshold)
 
     def _outliers_filter(self):
         """Removes outlier values from the dataset.
@@ -275,7 +275,7 @@ class Matcher:
         self._log("Counting feature importance")
 
         feat_select = LamaFeatureSelector(
-            outcome=self.outcome,
+            outcome=self.outcomes[0],
             outcome_type=self.outcome_type,
             treatment=self.treatment,
             timeout=self.timeout,
@@ -313,7 +313,7 @@ class Matcher:
             df = self.input_data
         self.matcher = FaissMatcher(
             df,
-            self.outcome,
+            self.outcomes,
             self.treatment,
             info_col=self.info_col,
             features=self.features_importance,
@@ -388,7 +388,7 @@ class Matcher:
         """
         self._log(f"Perform validation with {refuter} refuter")
 
-        self.val_dict = {k: [] for k in [self.outcome]}
+        self.val_dict = {k: [] for k in [self.outcomes]}
         self.pval_dict = dict()
 
         for i in tqdm(range(n_sim)):
@@ -410,7 +410,7 @@ class Matcher:
             self._create_faiss_matcher(self.input_data, self.validate)
             self._perform_validation()
 
-        for outcome in [self.outcome]:
+        for outcome in [self.outcomes]:
             self.pval_dict.update({outcome: [np.mean(self.val_dict[outcome])]})
             self.pval_dict[outcome].append(
                 test_significance(self.results.loc["ATE"]["effect_size"], self.val_dict[outcome])

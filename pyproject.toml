@@ -94,8 +94,6 @@ weasyprint = {version = "52.5", optional = true}
 cffi = {version = "1.14.5", optional = true}
 
 
-
-
 [tool.poetry.extras]
 cv = [
     "albumentations",
