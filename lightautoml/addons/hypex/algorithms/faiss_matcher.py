@@ -636,7 +636,6 @@ def f2(x: np.ndarray, y: np.ndarray) -> Any:
     Returns:
         Indexed element from the input array x.
     """
-
     return x[y]
 
 
