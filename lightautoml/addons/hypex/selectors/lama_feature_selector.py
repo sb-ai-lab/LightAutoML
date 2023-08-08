@@ -21,7 +21,7 @@ logging.basicConfig(
 
 
 class LamaFeatureSelector:
-    """The main class of LAMA Feature selector. Select top features. By default, use LGM."""
+    """Class of LAMA Feature selector. Select top features. By default, use LGM."""
 
     def __init__(
         self,

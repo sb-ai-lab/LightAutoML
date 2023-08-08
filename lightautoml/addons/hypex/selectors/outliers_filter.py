@@ -15,7 +15,7 @@ logging.basicConfig(
 
 
 class OutliersFilter:
-    """The main class of Outliers Filter. It creates a row indices that should be deleted by percentile."""
+    """Class of Outliers Filter. It creates a row indices that should be deleted by percentile."""
 
     def __init__(self, interquartile_coeff, mode_percentile, min_percentile, max_percentile):
         """Initializes the OutliersFilter.

@@ -19,7 +19,7 @@ logging.basicConfig(
 
 
 class SpearmanFilter:
-    """A class to filter columns based on the Spearman correlation coefficient.
+    """Class to filter columns based on the Spearman correlation coefficient.
 
     The class is utilized to filter dataframe columns that do not exhibit a significant
     correlation (based on a provided threshold) with a specified outcome column.
