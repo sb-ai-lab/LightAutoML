@@ -22,20 +22,14 @@ import torch.nn as nn
 
 
 try:
-    from albumentations import Compose
-    from albumentations import Normalize
-    from albumentations import Resize
-    from albumentations.pytorch import ToTensorV2
+    import timm
+
+    from timm.data import resolve_data_config
+    from timm.data.transforms_factory import create_transform
 except:
     import warnings
 
-    warnings.warn("'albumentations' - package isn't installed")
-try:
-    from efficientnet_pytorch import EfficientNet
-except:
-    import warnings
-
-    warnings.warn("'efficientnet_pytorch' - package isn't installed")
+    warnings.warn("'timm' - package isn't installed")
 
 from joblib import Parallel
 from joblib import delayed
@@ -171,39 +165,31 @@ class CreateImageFeatures:
         return np.vstack(res)
 
 
-class EffNetImageEmbedder(nn.Module):
-    """Class to compute EfficientNet embeddings."""
+class TimmModelEmbedder(nn.Module):
+    """Class to compute TimmModels embeddings."""
 
     def __init__(
         self,
-        model_name: str = "efficientnet-b0",
+        model_name: str = "efficientnet_b0.ra_in1k",
         weights_path: Optional[str] = None,
-        is_advprop: bool = True,
         device=torch.device("cuda:0"),
     ):
-        """Pytorch module for image embeddings based on efficient-net model.
+        """Pytorch module for image embeddings based on timm models.
 
         Args:
             model_name: Name of effnet model.
             weights_path: Path to saved weights.
-            is_advprop: Use adversarial training.
             device: Device to use.
 
         """
-        super(EffNetImageEmbedder, self).__init__()
+        super(TimmModelEmbedder, self).__init__()
         self.device = device
         self.model = (
-            EfficientNet.from_pretrained(
-                model_name,
-                weights_path=weights_path,
-                advprop=is_advprop,
-                include_top=False,
-            )
+            timm.create_model(model_name, pretrained=True, num_classes=0, checkpoint_path=weights_path)
             .eval()
             .to(self.device)
         )
         self.feature_shape = self.get_shape()
-        self.is_advprop = is_advprop
         self.model_name = model_name
 
     @torch.no_grad()
@@ -219,85 +205,77 @@ class EffNetImageEmbedder(nn.Module):
     def forward(self, x) -> torch.Tensor:
         """Forward pass."""
         out = self.model(x)
-        return out[:, :, 0, 0]
+        return out
 
 
-class ImageDataset:
-    """Image Dataset Class."""
+class ImageTimmDataset:
+    """Image for Timm Dataset Class."""
 
     def __init__(
         self,
+        model: TimmModelEmbedder,
         data: Sequence[str],
-        is_advprop: bool = True,
         loader: Callable = pil_loader,
     ):
-        """Pytorch Dataset for :class:`~lightautoml.image.EffNetImageEmbedder`.
+        """Pytorch Dataset for :class:`~lightautoml.image.TimmModelEmbedder`.
 
         Args:
+            model: model which we train.
             data: Sequence of paths.
-            is_advprop: Use adversarial training.
             loader: Callable for reading image from path.
 
         """
         self.X = data
-        self.transforms = Compose(
-            [
-                Resize(224, 224),
-                Normalize([0.5] * 3, [0.5] * 3) if is_advprop else Normalize(),
-                ToTensorV2(),
-            ]
-        )
+        self.transforms = create_transform(**resolve_data_config(model.model.pretrained_cfg, model=model.model))
         self.loader = loader
 
     def __getitem__(self, idx: int) -> np.ndarray:
         path = self.X[idx]
-        img = np.array(self.loader(path))
-        img = self.transforms(image=img)["image"]
+        img = self.loader(path)
+        img = self.transforms(img)
         return img
 
     def __len__(self):
         return len(self.X)
 
 
-class DeepImageEmbedder(TransformerMixin):
-    """Transformer for image embeddings."""
+class DeepTimmImageEmbedder(TransformerMixin):
+    """Timm Transformer for image embeddings."""
 
     def __init__(
         self,
         device: torch.device = torch.device("cuda:0"),
         n_jobs=4,
         random_state=42,
-        is_advprop=True,
-        model_name="efficientnet-b0",
+        model_name="efficientnet_b0.ra_in1k",
         weights_path: Optional[str] = None,
         batch_size: int = 128,
         verbose: bool = True,
     ):
-        """Pytorch Dataset for :class:`~lightautoml.image.EffNetImageEmbedder`.
+        """Pytorch Dataset for :class:`~lightautoml.image.TimmModelEmbedder`.
 
         Args:
             device: Torch device.
             n_jobs: Number of threads for dataloader.
             random_state: Random seed.
-            is_advprop: Use adversarial training.
             model_name: Name of effnet model.
             weights_path: Path to saved weights.
             batch_size: Batch size.
             verbose: Verbose data processing.
 
         """
-        super(DeepImageEmbedder, self).__init__()
-        assert model_name in {f"efficientnet-b{i}" for i in range(8)}
+        super(DeepTimmImageEmbedder, self).__init__()
+        # add assert to check model
+        # assert model_name in {f"efficientnet-b{i}" for i in range(8)}
 
         self.device, self.device_ids = parse_devices(device)
         self.random_state = random_state
         self.n_jobs = n_jobs
-        self.is_advprop = is_advprop
         self.batch_size = batch_size
         self.verbose = verbose
         seed_everything(random_state)
 
-        self.model = EffNetImageEmbedder(model_name, weights_path, self.is_advprop, self.device)
+        self.model = TimmModelEmbedder(model_name, weights_path, self.device)
 
     def fit(self, data: Any = None):
         """Train model."""
@@ -314,7 +292,7 @@ class DeepImageEmbedder(TransformerMixin):
             Array of embeddings.
 
         """
-        data = ImageDataset(data, self.is_advprop)
+        data = ImageTimmDataset(self.model, data)
         loader = DataLoader(data, batch_size=self.batch_size, shuffle=False, num_workers=self.n_jobs)
 
         result = []
