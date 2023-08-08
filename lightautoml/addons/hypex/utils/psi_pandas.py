@@ -329,10 +329,10 @@ class PSI:
             reminder = g_counts % group_num
             for g_n in range(group_num):
                 if g_n < group_num - reminder:
-                    group_values = category_names[int(current_pos): int(current_pos + group_size)]
+                    group_values = category_names[int(current_pos) : int(current_pos + group_size)]
                     current_pos += group_size
                 else:
-                    group_values = category_names[int(current_pos): int(current_pos + group_size + 1)]
+                    group_values = category_names[int(current_pos) : int(current_pos + group_size + 1)]
                     current_pos += group_size + 1
                 for val in group_values:
                     groups[val] = g_n
@@ -403,7 +403,7 @@ class PSI:
 
         for i in range(0, len(psi_values)):
             if (self.column_type == np.dtype("O")) or (
-                    self.expected_nulls == self.expected_len and self.actual_nulls == self.actual_len
+                self.expected_nulls == self.expected_len and self.actual_nulls == self.actual_len
             ):
                 psi_values, psi_dict, new_cats, abs_cats = self.psi_categ()
             else:

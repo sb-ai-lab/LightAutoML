@@ -17,6 +17,7 @@ import sys
 
 
 CURR_PATH = os.path.abspath(os.path.dirname(__file__))
+CURR_PATH = os.path.abspath(os.path.dirname(__file__))
 LIB_PATH = os.path.join(CURR_PATH, os.path.pardir)
 sys.path.insert(0, LIB_PATH)
 
@@ -35,13 +36,10 @@ extensions = [
     "nbsphinx",
     "nbsphinx_link",
     "sphinx_autodoc_typehints",
-    "IPython.sphinxext.ipython_console_highlighting"
+    "IPython.sphinxext.ipython_console_highlighting",
 ]
 
-exclude_patterns = [
-    "_build/*",
-    "**.ipynb_checkpoints"
-]
+exclude_patterns = ["_build/*", "**.ipynb_checkpoints"]
 
 # Delete external references
 autosummary_mock_imports = [
@@ -69,7 +67,7 @@ autosummary_mock_imports = [
     "matplotlib",
     "seaborn",
     "json2html",
-    "faiss"
+    "faiss",
 ]
 
 # Add any paths that contain templates here, relative to this directory.

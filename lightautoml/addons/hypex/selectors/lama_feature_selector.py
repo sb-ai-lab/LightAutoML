@@ -109,7 +109,10 @@ class LamaFeatureSelector:
             timeout=self.timeout,
             cpu_limit=self.n_threads,
             general_params={"use_algos": [self.use_algos]},
-            reader_params={"n_jobs": self.n_threads, "cv": self.n_folds, },
+            reader_params={
+                "n_jobs": self.n_threads,
+                "cv": self.n_folds,
+            },
         )
 
         if self.generate_report:
