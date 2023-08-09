@@ -365,32 +365,39 @@ class Matcher:
 
         return self.results, self.quality_result, df_matched
 
-    def validate_result(self, refuter: str = "random_feature", n_sim: int = 10, fraction: float = 0.8) -> dict:
+    def validate_result(self, refuter: str = "random_feature", effect_type: str = 'ate', n_sim: int = 10, fraction: float = 0.8) -> dict:
         """Validates estimated ATE (Average Treatment Effect).
 
         Validates estimated effect:
-            - ``random_treatment`` Validation by replacing real treatment with random placebo treatment.
-                Estimated effect must be dropped to zero, p-val < 0.05;
-            - ``random_feature`` Validation by added random feature.
-                Estimated effect shouldn't change significantly, p-val > 0.05;
-            - ``random_subset`` Estimates effect on subset of data (default fraction is 0.8).
-                Estimated effect shouldn't change significantly, p-val > 0.05.
+                                    1) by replacing real treatment with random placebo treatment.
+                                     Estimated effect must be droped to zero, p-val < 0.05;
+                                    2) by adding random feature (`random_feature`). Estimated effect shouldn't change
+                                    significantly, p-val > 0.05;
+                                    3) estimates effect on subset of data (default fraction is 0.8). Estimated effect
+                                    shouldn't change significantly, p-val > 0.05.
 
         Args:
-            refuter:
+            refuter: str
                 Refuter type (`random_treatment`, `random_feature`, `subset_refuter`)
-            n_sim:
+            n_sim: int
                 Number of simulations
-            fraction:
+            fraction: float
                 Subset fraction for subset refuter only
 
         Returns:
-            Dictionary of outcome_name (mean_effect on validation, p-value)
+            dict: Dictionary of outcome_name: (mean_effect on validation, p-value)
         """
-        self._log(f"Perform validation with {refuter} refuter")
+        if self.silent:
+            logger.debug("Applying validation of result")
+        else:
+            logger.info("Applying validation of result")
 
-        self.val_dict = {k: [] for k in [self.outcomes]}
+        self.val_dict = {k: [] for k in self.outcomes}
         self.pval_dict = dict()
+
+        effect_dict = {'ate': 0, 'atc': 1, 'att': 2}
+
+        assert effect_type in effect_dict.keys()
 
         for i in tqdm(range(n_sim)):
             if refuter in ["random_treatment", "random_feature"]:
@@ -400,21 +407,49 @@ class Matcher:
                     self.input_data, self.validate = random_feature(self.input_data)
                     if self.features_importance is not None and i == 0:
                         self.features_importance.append("random_feature")
+
+                self.matcher = FaissMatcher(
+                    self.input_data,
+                    self.outcomes,
+                    self.treatment,
+                    info_col=self.info_col,
+                    features=self.features_importance,
+                    group_col=self.group_col,
+                    validation=self.validate,
+                    n_neighbors=self.n_neighbors,
+                    pbar=False,
+                )
             elif refuter == "subset_refuter":
-                self.input_data, self.validate = subset_refuter(self.input_data, self.treatment, fraction)
+                df, self.validate = subset_refuter(self.input_data, self.treatment, fraction)
+                self.matcher = FaissMatcher(
+                    df,
+                    self.outcomes,
+                    self.treatment,
+                    info_col=self.info_col,
+                    features=self.features_importance,
+                    group_col=self.group_col,
+                    validation=self.validate,
+                    n_neighbors=self.n_neighbors,
+                    pbar=False,
+                )
             else:
                 logger.error("Incorrect refuter name")
                 raise NameError(
                     "Incorrect refuter name! Available refuters: `random_feature`, `random_treatment`, `subset_refuter`"
                 )
 
-            self._create_faiss_matcher(self.input_data, self.validate)
-            self._perform_validation()
+            if self.group_col is None:
+                sim = self.matcher.match()
+            else:
+                sim = self.matcher.group_match()
 
-        for outcome in [self.outcomes]:
+            for key in self.val_dict.keys():
+                self.val_dict[key].append(sim[key][0])
+
+        for outcome in self.outcomes:
             self.pval_dict.update({outcome: [np.mean(self.val_dict[outcome])]})
             self.pval_dict[outcome].append(
-                test_significance(self.results.loc["ATE"]["effect_size"], self.val_dict[outcome])
+                test_significance(self.results.query('outcome==@outcome').loc[effect_type.upper()]["effect_size"], self.val_dict[outcome])
             )
         if refuter == "random_treatment":
             self.input_data[self.treatment] = orig_treatment
@@ -424,6 +459,7 @@ class Matcher:
                 self.features_importance.remove("random_feature")
 
         return self.pval_dict
+      
 
     def estimate(self, features: list = None) -> tuple:
         """Performs matching via Mahalanobis distance.
