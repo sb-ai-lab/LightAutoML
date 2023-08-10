@@ -44,9 +44,9 @@ except:
 from ..ml_algo.base import TabularDataset
 from ..ml_algo.base import TabularMLAlgo
 from ..pipelines.utils import get_columns_by_role
-from ..text.nn_model import CatEmbedder, DefaultEmbedding, DenseEmbedding, LinearEmbedding, BasicEmbedding
-from ..text.nn_model import ContEmbedder
-from ..text.nn_model import TextBert
+from ..text.embed import CatEmbedder, DefaultEmbedding, DenseEmbedding, LinearEmbedding, BasicEmbedding
+from ..text.embed import ContEmbedder
+from ..text.embed import TextBert
 from ..text.nn_model import TorchUniversalModel
 from ..text.nn_model import UniversalDataset
 from ..text.trainer import Trainer
