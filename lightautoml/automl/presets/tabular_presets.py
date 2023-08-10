@@ -607,6 +607,8 @@ class TabularAutoML(AutoMLPreset):
                 "linear_layer",
                 "_linear_layer",
                 "node",
+                "autoint",
+                "autoint_emb_v2",
             ]
             available_nn_models = available_nn_models + [x + "_tuned" for x in available_nn_models]
             nn_models = [

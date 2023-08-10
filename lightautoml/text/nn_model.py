@@ -2,17 +2,18 @@
 
 import logging
 
-from typing import Any
+from typing import Any, List, Tuple, Type
 from typing import Callable
 from typing import Dict
 from typing import Optional
 from typing import Sequence
 from typing import Union
-
+from functools import reduce
 import numpy as np
 import torch
 import torch.nn as nn
-
+from torch import Tensor
+import operator
 
 try:
     from transformers import AutoModel
@@ -175,11 +176,7 @@ class CatEmbedder(nn.Module):
     """
 
     def __init__(
-        self,
-        cat_dims: Sequence[int],
-        emb_dropout: bool = 0.1,
-        emb_ratio: int = 3,
-        max_emb_size: int = 50,
+        self, cat_dims: Sequence[int], emb_dropout: bool = 0.1, emb_ratio: int = 3, max_emb_size: int = 50, **kwargs
     ):
         super(CatEmbedder, self).__init__()
         emb_dims = [(int(x), int(min(max_emb_size, max(1, (x + 1) // emb_ratio)))) for x in cat_dims]
@@ -219,7 +216,7 @@ class ContEmbedder(nn.Module):
 
     """
 
-    def __init__(self, num_dims: int, input_bn: bool = True):
+    def __init__(self, num_dims: int, input_bn: bool = True, **kwargs):
         super(ContEmbedder, self).__init__()
         self.n_out = num_dims
         self.bn = nn.Identity()
@@ -241,6 +238,321 @@ class ContEmbedder(nn.Module):
         output = inp["cont"]
         output = self.bn(output)
         return output
+
+
+class BasicEmbedding(nn.Module):
+    """A basic embedding that creates an embedded vector for each field value from https://github.com/jrfiedler/xynn.
+
+    Args:
+        embedding_size : int, optional
+            size of each value's embedding vector; default is 10
+        device : string or torch.device
+
+    """
+
+    def __init__(
+        self, cat_vc: Sequence[Dict], embedding_size: int = 10, device: Union[str, torch.device] = "cuda:0", **kwargs
+    ):
+        super().__init__()
+        self._device = device
+        self._isfit = False
+        self.num_fields = 0
+        self.output_size = 0
+        self.lookup: Dict[Tuple[int, Any], int] = {}
+        self.lookup_nan: Dict[int, int] = {}
+        self.num_values = 0
+        self.embedding: Optional[nn.Embedding] = None
+        self.embedding_size = embedding_size
+        self._from_summary(cat_vc)
+        self.cat_len = len(cat_vc)
+
+    def _from_summary(self, uniques: List[Union[List, Tensor, np.ndarray]]):
+        lookup = {}
+        lookup_nan = {}
+        num_values = 0
+        for fieldnum, field in enumerate(uniques):
+            for value in field:
+                if (fieldnum, value) in lookup:
+                    # extra defense against repeated values
+                    continue
+                lookup[(fieldnum, value)] = num_values
+                num_values += 1
+
+        self.num_fields = len(uniques)
+        self.output_size = self.num_fields * self.embedding_size
+        self.lookup = lookup
+        self.lookup_nan = lookup_nan
+        self.num_values = num_values
+        self.embedding = nn.Embedding(num_values, self.embedding_size)
+        nn.init.xavier_uniform_(self.embedding.weight)
+        self._isfit = True
+
+    def get_out_shape(self) -> int:
+        """Output shape.
+
+        Returns:
+            int with module output shape.
+
+        """
+        return self.cat_len
+
+    def forward(self, X: Dict) -> Tensor:
+        """Produce embedding for each value in input.
+
+        Args:
+            X : Dict
+
+        Returns:
+            torch.Tensor
+
+        """
+        if not self._isfit:
+            raise RuntimeError("need to call `fit` or `from_summary` first")
+        X = X["cat"]
+        idxs: List[List[int]] = []
+        for row in X:
+            idxs.append([])
+            for col, val in enumerate(row):
+                val = val.item()
+                idx = self.lookup[(col, val)]
+                idxs[-1].append(idx)
+
+        return self.embedding(torch.tensor(idxs, dtype=torch.int64, device=self._device))
+
+
+class DefaultEmbedding(nn.Module):
+    """DefaultEmbedding from https://github.com/jrfiedler/xynn.
+
+    An embedding with a default value for each field. The default is returned for
+    any field value not seen when the embedding was initialized (using `fit` or
+    `from_summary`). For any value seen at initialization, a weighted average of
+    that value's embedding and the default embedding is returned. The weights for
+    the average are determined by the parameter `alpha`:
+
+    weight = count / (count + alpha)
+    final = embedding * weight + default * (1 - weight)
+
+    Args:
+        embedding_size : int, optional
+            size of each value's embedding vector; default is 10
+        alpha : int, optional
+            controls the weighting of each embedding vector with the default;
+            when `alpha`-many values are seen at initialization; the final
+            vector is evenly weighted; the influence of the default is decreased
+            with either higher counts or lower `alpha`; default is 20
+        device : string or torch.device
+
+    """
+
+    def __init__(
+        self,
+        cat_vc: Sequence[Dict],
+        embedding_size: int = 10,
+        alpha: int = 20,
+        device: Union[str, torch.device] = "cuda:0",
+        **kwargs,
+    ):
+        super().__init__()
+        self._isfit = False
+        self._device = device
+        self.num_fields = 0
+        self.output_size = 0
+        self.alpha = alpha
+        self.lookup: Dict[Tuple[int, Any], Tuple[int, int]] = {}
+        self.lookup_default: Dict[int, Tuple[int, int]] = {}
+        self.num_values = 0
+        self.embedding: Optional[nn.Embedding] = None
+        self.embedding_size = embedding_size
+        self._from_summary(cat_vc)
+        self.cat_len = len(cat_vc)
+
+    def _from_summary(self, unique_counts: List[Dict[Any, int]]):
+        lookup = {}
+        lookup_default = {}
+        num_values = 0
+        for fieldnum, counts in enumerate(unique_counts):
+            lookup_default[fieldnum] = (num_values, 0)
+            num_values += 1
+            for value, count in counts.items():
+                lookup[(fieldnum, value)] = (num_values, count)
+                num_values += 1
+
+        self.num_fields = len(unique_counts)
+        self.output_size = self.num_fields * self.embedding_size
+        self.lookup = lookup
+        self.lookup_default = lookup_default
+        self.num_values = num_values
+        self.embedding = nn.Embedding(num_values, self.embedding_size)
+        nn.init.xavier_uniform_(self.embedding.weight)
+
+        self._isfit = True
+
+    def get_out_shape(self) -> int:
+        """Output shape.
+
+        Returns:
+            int with module output shape.
+
+        """
+        return self.cat_len
+
+    def forward(self, X: Dict) -> Tensor:
+        """Produce embedding for each value in input.
+
+        Args:
+            X : Dict
+
+        Returns:
+            torch.Tensor
+        """
+        if not self._isfit:
+            raise RuntimeError("need to call `fit` or `from_summary` first")
+        X = X["cat"]
+        list_weights: List[List[List[float]]] = []
+        idxs_primary: List[List[int]] = []
+        idxs_default: List[List[int]] = []
+        for row in X:
+            list_weights.append([])
+            idxs_primary.append([])
+            idxs_default.append([])
+            for col, val in enumerate(row):
+                val = val.item()
+                default = self.lookup_default[col]
+                idx, count = self.lookup.get((col, val), default)
+                list_weights[-1].append([count / (count + self.alpha)])
+                idxs_primary[-1].append(idx)
+                idxs_default[-1].append(default[0])
+        tsr_weights = torch.tensor(list_weights, dtype=torch.float32, device=self._device)
+        emb_primary = self.embedding(torch.tensor(idxs_primary, dtype=torch.int64, device=self._device))
+        emb_default = self.embedding(torch.tensor(idxs_default, dtype=torch.int64, device=self._device))
+        x = tsr_weights * emb_primary + (1 - tsr_weights) * emb_default
+        return x
+
+
+class LinearEmbedding(nn.Module):
+    """An embedding for numeric fields from https://github.com/jrfiedler/xynn.
+
+    There is one embedded vector for each field.
+    The embedded vector for a value is that value times its field's vector.
+
+    Args:
+        embedding_size : int, optional
+            size of each value's embedding vector; default is 10
+        device : string or torch.device
+
+    """
+
+    def __init__(self, num_dims: int, embedding_size: int = 10, **kwargs):
+        super().__init__()
+        self._isfit = False
+        self.num_fields = num_dims
+        self.output_size = 0
+        self.embedding: Optional[nn.Embedding] = None
+        self.embedding_size = embedding_size
+        self._from_summary(self.num_fields)
+
+    def _from_summary(self, num_fields: int):
+        self.num_fields = num_fields
+        self.output_size = num_fields * self.embedding_size
+        self.embedding = nn.Embedding(num_fields, self.embedding_size)
+        nn.init.xavier_uniform_(self.embedding.weight)
+        self._isfit = True
+
+    def get_out_shape(self) -> int:
+        """Output shape.
+
+        Returns:
+            int with module output shape.
+
+        """
+        return self.num_fields
+
+    def forward(self, X: Dict) -> Tensor:
+        """Produce embedding for each value in input.
+
+        Args:
+            X : Dict
+
+        Returns:
+            torch.Tensor
+
+        """
+        X = X["cont"]
+        if not self._isfit:
+            raise RuntimeError("need to call `fit` or `from_summary` first")
+        return self.embedding.weight * X.unsqueeze(dim=-1)
+
+
+class DenseEmbedding(nn.Module):
+    """An embedding for numeric fields, consisting of just a linear transformation with an activation from https://github.com/jrfiedler/xynn.
+
+    Maps an input with shape n_rows * n_fields to an output with shape
+    n_rows * 1 * embedding_size if one value passed for embedding_size or
+    n_rows * embeddin_size[0] * embedding_size[1] if two values are passed
+
+    Args:
+        embedding_size : int, tuple of ints, or list of ints; optional
+            size of each value's embedding vector; default is 10
+        activation : subclass of torch.nn.Module, optional
+            default is nn.LeakyReLU
+        device : string or torch.device
+    """
+
+    def __init__(
+        self,
+        num_dims: int,
+        embedding_size: Union[int, Tuple[int, ...], List[int]] = 10,
+        activation: Type[nn.Module] = nn.LeakyReLU,
+        **kwargs,
+    ):
+        super().__init__()
+
+        if isinstance(embedding_size, int):
+            embedding_size = (1, embedding_size)
+        elif len(embedding_size) == 1:
+            embedding_size = (1, embedding_size[0])
+        self._isfit = False
+        self.num_fields = num_dims
+        self.output_size = 0
+        self.embedding_w = None
+        self.embedding_b = None
+        self.dense_out_size = embedding_size
+        self.embedding_size = embedding_size[-1]
+        self.activation = activation()
+        self._from_summary(self.num_fields)
+
+    def _from_summary(self, num_fields: int):
+        self.output_size = reduce(operator.mul, self.dense_out_size, 1)
+        self.embedding_w = nn.Parameter(torch.zeros((num_fields, *self.dense_out_size)))
+        self.embedding_b = nn.Parameter(torch.zeros(self.dense_out_size))
+        nn.init.xavier_uniform_(self.embedding_w)
+        self._isfit = True
+
+    def get_out_shape(self) -> int:
+        """Output shape.
+
+        Returns:
+            int with module output shape.
+
+        """
+        return self.dense_out_size[0]
+
+    def forward(self, X: Dict) -> Tensor:
+        """Produce embedding for each value in input.
+
+        Args:
+            X : Dict
+
+        Returns:
+            torch.Tensor
+
+        """
+        X = X["cont"]
+        if not self._isfit:
+            raise RuntimeError("need to call `fit` or `from_summary` first")
+        embedded = self.embedding_w.T.matmul(X.T.to(dtype=torch.float)).T + self.embedding_b
+        embedded = self.activation(embedded.reshape((X.shape[0], -1)))
+        return embedded.reshape((X.shape[0], *self.dense_out_size))
 
 
 class TorchUniversalModel(nn.Module):
@@ -305,7 +617,12 @@ class TorchUniversalModel(nn.Module):
             torch_model(
                 **{
                     **kwargs,
-                    **{"n_in": n_in, "n_out": n_out, "loss": loss, "task": task},
+                    **{
+                        "n_in": n_in,
+                        "n_out": n_out,
+                        "loss": loss,
+                        "task": task,
+                    },
                 }
             )
             if torch_model is not None
