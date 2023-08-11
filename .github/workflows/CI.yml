@@ -67,7 +67,7 @@ jobs:
         run: sudo apt-get install build-essential libcairo2 libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf2.0-0 libffi-dev shared-mime-info
 
       - name: install deps for Windows
-        if: ${{ matrix.os == 'windows-latest' }} && ${{ matrix.python-version == "3.6"}}
+        if: ${{ matrix.os == 'windows-latest' }} && ${{ matrix.python-version == '3.6'}}
         run: pip3 install pycairo==1.20.0
 
       - name: install tox
