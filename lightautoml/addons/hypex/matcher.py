@@ -9,8 +9,9 @@ from tqdm.auto import tqdm
 
 from .algorithms.faiss_matcher import FaissMatcher
 from .selectors.lama_feature_selector import LamaFeatureSelector
-from .selectors.outliers_filter import OutliersFilter
 from .selectors.spearman_filter import SpearmanFilter
+from .selectors.outliers_filter import OutliersFilter
+from .selectors.base_filtration import const_filtration
 from .utils.validators import random_feature
 from .utils.validators import random_treatment
 from .utils.validators import subset_refuter
@@ -92,6 +93,8 @@ class Matcher:
         outcome_type: str = "numeric",
         group_col: str = None,
         info_col: list = None,
+        weights: dict = None,
+        base_filtration: bool = False,
         generate_report: bool = GENERATE_REPORT,
         report_feat_select_dir: str = REPORT_FEAT_SELECT_DIR,
         timeout: int = TIMEOUT,
@@ -123,6 +126,9 @@ class Matcher:
                 Column for grouping. Defaults to None.
             info_col:
                 Columns with id, date or metadata, not taking part in calculations. Defaults to None
+            base_filtration
+                To use or not base filtration of features in order to remove all constant or almost all constant, bool.
+                Default is False.
             generate_report:
                 Flag to create report. Defaults to True
             report_feat_select_dir:
@@ -160,7 +166,9 @@ class Matcher:
         self.outcomes = outcome if type(outcome) == list else [outcome]
         self.treatment = treatment
         self.group_col = group_col
+        self.info_col = info_col if info_col is not None else []
         self.outcome_type = outcome_type
+        self.weights = weights
         self.generate_report = generate_report
         self.report_feat_select_dir = report_feat_select_dir
         self.timeout = timeout
@@ -174,12 +182,14 @@ class Matcher:
         self.min_percentile = min_percentile
         self.max_percentile = max_percentile
         self.info_col = info_col
+        self.base_filtration = base_filtration
         self.features_importance = None
         self.matcher = None
         self.val_dict = None
         self.pval_dict = None
         self.new_treatment = None
         self.validate = None
+        self.dropped_features = []
         self.n_neighbors = n_neighbors
         self.silent = silent
         self.pbar = pbar
@@ -220,6 +230,12 @@ class Matcher:
 
         if self.info_col is not None:
             self.input_data = pd.concat([self.input_data, info_col], axis=1)
+
+        if self.base_filtration:
+            columns_to_drop = self.info_col + self.group_col + self.outcomes
+            filtered_features = const_filtration(self.input_data.drop(columns_to_drop))
+            self.dropped_features = [f for f in self.input_data.columns if f not in filtered_features+columns_to_drop]
+            self.input_data = self.input_data[filtered_features + columns_to_drop]
 
         self._log("Categorical features turned into dummy")
 
@@ -317,6 +333,7 @@ class Matcher:
             self.outcomes,
             self.treatment,
             info_col=self.info_col,
+            weights=self.weights,
             features=self.features_importance,
             group_col=self.group_col,
             validation=validation,
