@@ -42,6 +42,7 @@ class FaissMatcher:
         info_col: list,
         features: [list, pd.DataFrame] = None,
         group_col: str = None,
+        weights: dict = None,
         sigma: float = 1.96,
         validation: bool = None,
         n_neighbors: int = 10,
@@ -108,6 +109,7 @@ class FaissMatcher:
         self.dict_outcome_untreated = {}
         self.dict_outcome_treated = {}
         self.group_col = group_col
+        self.weights = weights
         self.treated_index = None
         self.untreated_index = None
         self.orig_treated_index = None
@@ -509,7 +511,7 @@ class FaissMatcher:
             temp = temp.loc[:, (temp != 0).any(axis=0)].drop(columns=self.group_col)
             treated, untreated = self._get_split(temp)
 
-            std_treated_np, std_untreated_np = _transform_to_np(treated, untreated)
+            std_treated_np, std_untreated_np = _transform_to_np(treated, untreated, self.weights)
 
             if self.pbar:
                 self.tqdm.set_description(desc=f"Get untreated index by group {group}")
@@ -562,7 +564,7 @@ class FaissMatcher:
         df = self.df[self.columns_match]
         treated, untreated = self._get_split(df)
 
-        std_treated_np, std_untreated_np = _transform_to_np(treated, untreated)
+        std_treated_np, std_untreated_np = _transform_to_np(treated, untreated, self.weights)
 
         if self.pbar:
             self.tqdm = tqdm(total=len(std_treated_np) + len(std_untreated_np))
@@ -661,7 +663,7 @@ def _get_index(base: np.ndarray, new: np.ndarray, n_neighbors: int) -> list:
     return indexes
 
 
-def _transform_to_np(treated: pd.DataFrame, untreated: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:
+def _transform_to_np(treated: pd.DataFrame, untreated: pd.DataFrame, weights: dict) -> Tuple[np.ndarray, np.ndarray]:
     """Transforms df to numpy and transform via Cholesky decomposition.
 
     Args:
@@ -685,6 +687,11 @@ def _transform_to_np(treated: pd.DataFrame, untreated: pd.DataFrame) -> Tuple[np
 
     L = np.linalg.cholesky(cov)
     mahalanobis_transform = np.linalg.inv(L)
+    if weights is not None:
+        features = treated.columns
+        w_list = np.array([weights[col] if col in weights.keys() else 1 for col in features])
+        w_matrix = np.sqrt(np.diag(w_list / w_list.sum()))
+        mahalanobis_transform = np.dot(w_matrix, mahalanobis_transform)
     yc = np.dot(xc, mahalanobis_transform.T)
     yt = np.dot(xt, mahalanobis_transform.T)
 
