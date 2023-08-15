@@ -357,7 +357,7 @@ class MeanPooling(nn.Module):
         n_out: int, output dim.
         dim: int: the dimension to be averaged.
 <<<<<<< HEAD
-    
+
 =======
 
 >>>>>>> autoint++
