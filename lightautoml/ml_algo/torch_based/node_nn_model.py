@@ -258,26 +258,29 @@ entmax15 = lambda input, dim=-1: Entmax15Function.apply(input, dim)  # noqa: E73
 entmoid15 = Entmoid15.apply  # noqa: E731
 
 
-class Lambda(nn.Module):
-    """Pytorch implementation of lambda.
+class MeanPooling(nn.Module):
+    """Pytorch implementation of MeanPooling head.
 
     Args:
-        func : returned func
+        n_out: int, output dim.
+        dim: int: the dimension to be averaged.
+    
     """
 
-    def __init__(self, func):
+    def __init__(self, n_out, dim=-1):
         super().__init__()
-        self.func = func
+        self.n_out = n_out
+        self.dim = dim
 
-    def forward(self, *args, **kwargs):
+    def forward(self, x: torch.Tensor):
         """Forward-pass.
 
         # noqa: DAR101
 
         Returns:
-            f(*args, **kwargs)
+            x[..., :self.n_out].mean(dim=self.dim)
         """
-        return self.func(*args, **kwargs)
+        return x[..., :self.n_out].mean(dim=self.dim)
 
 
 class ModuleWithInit(nn.Module):
