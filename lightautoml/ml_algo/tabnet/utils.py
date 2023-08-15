@@ -2,7 +2,7 @@
 import torch
 import numpy as np
 import torch.nn as nn
-from lightautoml.ml_algo.torch_based.node_nn_model import Entmax15, Sparsemax, sparsemax,entmax15
+from lightautoml.ml_algo.torch_based.node_nn_model import Entmax15, Sparsemax, sparsemax, entmax15
 from lightautoml.ml_algo.torch_based.autoint.ghost_norm import GhostBatchNorm
 
 
@@ -18,9 +18,6 @@ def initialize_glu(module, input_dim, output_dim):
     torch.nn.init.xavier_normal_(module.weight, gain=gain_value)
     # torch.nn.init.zeros_(module.bias)
     return
-
-
-
 
 
 class TabNetEncoder(torch.nn.Module):
@@ -100,13 +97,9 @@ class TabNetEncoder(torch.nn.Module):
             shared_feat_transform = torch.nn.ModuleList()
             for i in range(self.n_shared):
                 if i == 0:
-                    shared_feat_transform.append(
-                        nn.Linear(self.input_dim, 2 * (n_d + n_a), bias=False)
-                    )
+                    shared_feat_transform.append(nn.Linear(self.input_dim, 2 * (n_d + n_a), bias=False))
                 else:
-                    shared_feat_transform.append(
-                        nn.Linear(n_d + n_a, 2 * (n_d + n_a), bias=False)
-                    )
+                    shared_feat_transform.append(nn.Linear(n_d + n_a, 2 * (n_d + n_a), bias=False))
 
         else:
             shared_feat_transform = None
@@ -155,9 +148,7 @@ class TabNetEncoder(torch.nn.Module):
         steps_output = []
         for step in range(self.n_steps):
             M = self.att_transformers[step](prior, att)
-            M_loss += torch.mean(
-                torch.sum(torch.mul(M, torch.log(M + self.epsilon)), dim=1)
-            )
+            M_loss += torch.mean(torch.sum(torch.mul(M, torch.log(M + self.epsilon)), dim=1))
             # update prior
             prior = torch.mul(self.gamma - M, prior)
             # output
@@ -197,7 +188,6 @@ class TabNetEncoder(torch.nn.Module):
             att = out[:, self.n_d :]
 
         return M_explain, masks
-    
 
 
 class FeatTransformer(torch.nn.Module):
@@ -257,15 +247,13 @@ class FeatTransformer(torch.nn.Module):
             self.specifics = torch.nn.Identity()
         else:
             spec_input_dim = input_dim if is_first else output_dim
-            self.specifics = GLU_Block(
-                spec_input_dim, output_dim, first=is_first, **params
-            )
+            self.specifics = GLU_Block(spec_input_dim, output_dim, first=is_first, **params)
 
     def forward(self, x):
         x = self.shared(x)
         x = self.specifics(x)
         return x
-    
+
 
 class GLU_Block(torch.nn.Module):
     """
@@ -308,13 +296,10 @@ class GLU_Block(torch.nn.Module):
             x = torch.add(x, self.glu_layers[glu_id](x))
             x = x * scale
         return x
-    
 
 
 class GLU_Layer(torch.nn.Module):
-    def __init__(
-        self, input_dim, output_dim, fc=None, virtual_batch_size=128, momentum=0.02
-    ):
+    def __init__(self, input_dim, output_dim, fc=None, virtual_batch_size=128, momentum=0.02):
         super(GLU_Layer, self).__init__()
 
         self.output_dim = output_dim
@@ -324,16 +309,13 @@ class GLU_Layer(torch.nn.Module):
             self.fc = nn.Linear(input_dim, 2 * output_dim, bias=False)
         initialize_glu(self.fc, input_dim, 2 * output_dim)
 
-        self.bn = GhostBatchNorm(
-            2 * output_dim, virtual_batch_size=virtual_batch_size, momentum=momentum
-        )
+        self.bn = GhostBatchNorm(2 * output_dim, virtual_batch_size=virtual_batch_size, momentum=momentum)
 
     def forward(self, x):
         x = self.fc(x)
         x = self.bn(x)
         out = torch.mul(x[:, : self.output_dim], torch.sigmoid(x[:, self.output_dim :]))
         return out
-    
 
 
 class AttentiveTransformer(torch.nn.Module):
@@ -365,9 +347,7 @@ class AttentiveTransformer(torch.nn.Module):
         super(AttentiveTransformer, self).__init__()
         self.fc = nn.Linear(input_dim, group_dim, bias=False)
         initialize_non_glu(self.fc, input_dim, group_dim)
-        self.bn = GhostBatchNorm(
-            group_dim, virtual_batch_size=virtual_batch_size, momentum=momentum
-        )
+        self.bn = GhostBatchNorm(group_dim, virtual_batch_size=virtual_batch_size, momentum=momentum)
 
         if mask_type == "sparsemax":
             # Sparsemax
@@ -376,9 +356,7 @@ class AttentiveTransformer(torch.nn.Module):
             # Entmax
             self.selector = Entmax15()
         else:
-            raise NotImplementedError(
-                "Please choose either sparsemax" + "or entmax as masktype"
-            )
+            raise NotImplementedError("Please choose either sparsemax" + "or entmax as masktype")
 
     def forward(self, priors, processed_feat):
         x = self.fc(processed_feat)
