@@ -122,11 +122,6 @@ class SparsemaxFunction(Function):
         return tau, support_size
 
 
-<<<<<<< HEAD
-sparsemax = lambda input, dim=-1: SparsemaxFunction.apply(input, dim)  # noqa: E731
-sparsemoid = lambda input: (0.5 * input + 0.5).clamp_(0, 1)  # noqa: E731
-class Sparsemax(nn.Module):
-=======
 class Sparsemax(nn.Module):
     """Py-Torch class for Sparsemax."""
 
@@ -162,7 +157,6 @@ class Sparsemoid(nn.Module):
             Sparsemoid(input)
         """
         return (0.5 * input + 0.5).clamp_(0, 1)
->>>>>>> autoint++
 
     def __init__(self, dim=-1):
         self.dim = dim
@@ -299,19 +293,6 @@ class Entmoid15Optimied(Function):
         return grad_input
 
 
-<<<<<<< HEAD
-entmax15 = lambda input, dim=-1: Entmax15Function.apply(input, dim)  # noqa: E731
-entmoid15 = Entmoid15.apply  # noqa: E731
-class Entmax15(nn.Module):
-
-    def __init__(self, dim=-1):
-        self.dim = dim
-        super(Entmax15, self).__init__()
-
-    def forward(self, input):
-        return Entmax15Function.apply(input, self.dim)
-
-=======
 class Entmax15(nn.Module):
     """Py-Torch class for Entmax15."""
 
@@ -349,18 +330,12 @@ class Entmoid15(nn.Module):
         return Entmoid15Optimied.apply(input)
 
 
->>>>>>> autoint++
 class MeanPooling(nn.Module):
     """Pytorch implementation of MeanPooling head.
 
     Args:
         n_out: int, output dim.
         dim: int: the dimension to be averaged.
-<<<<<<< HEAD
-
-=======
-
->>>>>>> autoint++
     """
 
     def __init__(self, n_out, dim=-1):
@@ -376,11 +351,7 @@ class MeanPooling(nn.Module):
         Returns:
             x[..., :self.n_out].mean(dim=self.dim)
         """
-<<<<<<< HEAD
-        return x[..., :self.n_out].mean(dim=self.dim)
-=======
         return x[..., : self.n_out].mean(dim=self.dim)
->>>>>>> autoint++
 
 
 class ModuleWithInit(nn.Module):
