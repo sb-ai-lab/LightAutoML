@@ -9,8 +9,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from lightautoml.ml_algo.torch_based.node_nn_model import DenseODSTBlock
-from lightautoml.ml_algo.torch_based.node_nn_model import Lambda
+from lightautoml.ml_algo.torch_based.node_nn_model import DenseODSTBlock, MeanPooling
 
 
 class GaussianNoise(nn.Module):
@@ -781,7 +780,7 @@ class NODE(nn.Module):
         self.features1.add_module("ODSTForestblock%d", block)
         self.features2 = nn.Sequential(OrderedDict([]))
         if use_original_head:
-            last_layer = Lambda(lambda x: x[..., :n_out].mean(dim=-2))
+            last_layer = MeanPooling(n_out, dim=-2)
             self.features2.add_module("head", last_layer)
         else:
             if use_bn:
