@@ -114,9 +114,9 @@ class TorchUniversalModel(nn.Module):
         task: Task,
         torch_model: nn.Module,
         n_out: int = 1,
-        cont_embedder: Optional[Any] = None,
+        cont_embedder_: Optional[Any] = None,
         cont_params: Optional[Dict] = None,
-        cat_embedder: Optional[Any] = None,
+        cat_embedder_: Optional[Any] = None,
         cat_params: Optional[Dict] = None,
         text_embedder: Optional[Any] = None,
         text_params: Optional[Dict] = None,
@@ -135,11 +135,11 @@ class TorchUniversalModel(nn.Module):
         self.text_embedder = None
 
         n_in = 0
-        if cont_embedder is not None:
-            self.cont_embedder = cont_embedder(**cont_params)
+        if cont_embedder_ is not None:
+            self.cont_embedder = cont_embedder_(**cont_params)
             n_in += self.cont_embedder.get_out_shape()
-        if cat_embedder is not None:
-            self.cat_embedder = cat_embedder(**cat_params)
+        if cat_embedder_ is not None:
+            self.cat_embedder = cat_embedder_(**cat_params)
             n_in += self.cat_embedder.get_out_shape()
         if text_embedder is not None:
             self.text_embedder = text_embedder(**text_params)

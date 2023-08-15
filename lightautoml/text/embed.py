@@ -8,7 +8,6 @@ from typing import Optional
 from typing import Sequence
 from typing import Union
 from functools import reduce
-import numpy as np
 import torch
 import torch.nn as nn
 from torch import Tensor
@@ -167,8 +166,10 @@ class ContEmbedder(nn.Module):
         return output
 
 
-class BasicEmbedding(nn.Module):
+class BasicCatEmbedding(nn.Module):
     """A basic embedding that creates an embedded vector for each field value from https://github.com/jrfiedler/xynn.
+
+    The same as CatEmbedder, but without dropout, and it can be presented as a sequance.
 
     Args:
         embedding_size : int, optional
@@ -180,7 +181,7 @@ class BasicEmbedding(nn.Module):
 
     def __init__(
         self,
-        cat_vc: Sequence[Dict],
+        cat_dims: Sequence[int],
         embedding_size: int = 10,
         device: Union[str, torch.device] = "cuda:0",
         flatten_output: bool = False,
@@ -189,37 +190,22 @@ class BasicEmbedding(nn.Module):
         super().__init__()
         self.flatten_output = flatten_output
         self._device = device
-        self._isfit = False
         self.num_fields = 0
         self.output_size = 0
-        self.lookup: Dict[Tuple[int, Any], int] = {}
-        self.lookup_nan: Dict[int, int] = {}
-        self.num_values = 0
         self.embedding: Optional[nn.Embedding] = None
         self.embedding_size = embedding_size
-        self._from_summary(cat_vc)
-        self.cat_len = len(cat_vc)
+        self._from_summary(cat_dims)
+        self.cat_len = len(cat_dims)
 
-    def _from_summary(self, uniques: List[Union[List, Tensor, np.ndarray]]):
-        lookup = {}
-        lookup_nan = {}
+    def _from_summary(self, cat_dims: Sequence[int]):
         num_values = 0
-        for fieldnum, field in enumerate(uniques):
-            for value in field:
-                if (fieldnum, value) in lookup:
-                    # extra defense against repeated values
-                    continue
-                lookup[(fieldnum, value)] = num_values
-                num_values += 1
 
-        self.num_fields = len(uniques)
+        self.emb_layers = nn.ModuleList([nn.Embedding(int(x), self.embedding_size) for x in cat_dims])
+        self.num_fields = len(cat_dims)
         self.output_size = self.num_fields * self.embedding_size
-        self.lookup = lookup
-        self.lookup_nan = lookup_nan
         self.num_values = num_values
-        self.embedding = nn.Embedding(num_values, self.embedding_size)
-        nn.init.xavier_uniform_(self.embedding.weight)
-        self._isfit = True
+        for emb in self.emb_layers:
+            nn.init.xavier_uniform_(emb.weight)
 
     def get_out_shape(self) -> int:
         """Output shape.
@@ -243,23 +229,17 @@ class BasicEmbedding(nn.Module):
             torch.Tensor
 
         """
-        if not self._isfit:
-            raise RuntimeError("need to call `fit` or `from_summary` first")
         X = X["cat"]
-        idxs: List[List[int]] = []
-        for row in X:
-            idxs.append([])
-            for col, val in enumerate(row):
-                val = val.item()
-                idx = self.lookup[(col, val)]
-                idxs[-1].append(idx)
-        x = self.embedding(torch.tensor(idxs, dtype=torch.int64, device=self._device))
+        x = torch.stack(
+            [emb_layer(X[:, i]) for i, emb_layer in enumerate(self.emb_layers)],
+            dim=1,
+        )
         if self.flatten_output:
             return x.view(x.shape[0], -1)
         return x
 
 
-class DefaultEmbedding(nn.Module):
+class WeightedCatEmbedding(nn.Module):
     """DefaultEmbedding from https://github.com/jrfiedler/xynn.
 
     An embedding with a default value for each field. The default is returned for
@@ -295,7 +275,6 @@ class DefaultEmbedding(nn.Module):
     ):
         super().__init__()
         self.flatten_output = flatten_output
-        self._isfit = False
         self._device = device
         self.num_fields = 0
         self.output_size = 0
@@ -327,8 +306,6 @@ class DefaultEmbedding(nn.Module):
         self.embedding = nn.Embedding(num_values, self.embedding_size)
         nn.init.xavier_uniform_(self.embedding.weight)
 
-        self._isfit = True
-
     def get_out_shape(self) -> int:
         """Output shape.
 
@@ -350,8 +327,6 @@ class DefaultEmbedding(nn.Module):
         Returns:
             torch.Tensor
         """
-        if not self._isfit:
-            raise RuntimeError("need to call `fit` or `from_summary` first")
         X = X["cat"]
         list_weights: List[List[List[float]]] = []
         idxs_primary: List[List[int]] = []
@@ -393,7 +368,6 @@ class LinearEmbedding(nn.Module):
     def __init__(self, num_dims: int, embedding_size: int = 10, flatten_output: bool = False, **kwargs):
         super().__init__()
         self.flatten_output = flatten_output
-        self._isfit = False
         self.num_fields = num_dims
         self.output_size = 0
         self.embedding: Optional[nn.Embedding] = None
@@ -405,7 +379,6 @@ class LinearEmbedding(nn.Module):
         self.output_size = num_fields * self.embedding_size
         self.embedding = nn.Embedding(num_fields, self.embedding_size)
         nn.init.xavier_uniform_(self.embedding.weight)
-        self._isfit = True
 
     def get_out_shape(self) -> int:
         """Output shape.
@@ -430,8 +403,6 @@ class LinearEmbedding(nn.Module):
 
         """
         X = X["cont"]
-        if not self._isfit:
-            raise RuntimeError("need to call `fit` or `from_summary` first")
         x = self.embedding.weight * X.unsqueeze(dim=-1)
         if self.flatten_output:
             return x.view(x.shape[0], -1)
@@ -468,7 +439,6 @@ class DenseEmbedding(nn.Module):
             embedding_size = (1, embedding_size)
         elif len(embedding_size) == 1:
             embedding_size = (1, embedding_size[0])
-        self._isfit = False
         self.num_fields = num_dims
         self.output_size = 0
         self.embedding_w = None
@@ -483,7 +453,6 @@ class DenseEmbedding(nn.Module):
         self.embedding_w = nn.Parameter(torch.zeros((num_fields, *self.dense_out_size)))
         self.embedding_b = nn.Parameter(torch.zeros(self.dense_out_size))
         nn.init.xavier_uniform_(self.embedding_w)
-        self._isfit = True
 
     def get_out_shape(self) -> int:
         """Output shape.
@@ -508,9 +477,7 @@ class DenseEmbedding(nn.Module):
 
         """
         X = X["cont"]
-        if not self._isfit:
-            raise RuntimeError("need to call `fit` or `from_summary` first")
-        embedded = self.embedding_w.T.matmul(X.T.to(dtype=torch.float)).T + self.embedding_b
+        embedded = self.embedding_w.T.matmul(X.T.float()).T + self.embedding_b
         embedded = self.activation(embedded.reshape((X.shape[0], -1)))
         x = embedded.reshape((X.shape[0], *self.dense_out_size))
         if self.flatten_output:
@@ -532,15 +499,15 @@ class LinearEmbeddingFlat(LinearEmbedding):
         super(LinearEmbeddingFlat, self).__init__(*args, **{**kwargs, **{"flatten_output": True}})
 
 
-class DefaultEmbeddingFlat(DefaultEmbedding):
-    """Flatten version of DefaultEmbedding."""
+class WeightedCatEmbeddingFlat(WeightedCatEmbedding):
+    """Flatten version of WeightedCatEmbedding."""
 
     def __init__(self, *args, **kwargs):
-        super(DefaultEmbeddingFlat, self).__init__(*args, **{**kwargs, **{"flatten_output": True}})
+        super(WeightedCatEmbeddingFlat, self).__init__(*args, **{**kwargs, **{"flatten_output": True}})
 
 
-class BasicEmbeddingFlat(BasicEmbedding):
-    """Flatten version of BasicEmbedding."""
+class BasicCatEmbeddingFlat(BasicCatEmbedding):
+    """Flatten version of BasicCatEmbedding."""
 
     def __init__(self, *args, **kwargs):
-        super(BasicEmbeddingFlat, self).__init__(*args, **{**kwargs, **{"flatten_output": True}})
+        super(BasicCatEmbeddingFlat, self).__init__(*args, **{**kwargs, **{"flatten_output": True}})

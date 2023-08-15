@@ -134,6 +134,10 @@ nn_params:
   model: denselight
   # embedding_size if needed
   embedding_size: 10
+  # str in ['cat', 'cat_no_dropout', 'weighted']
+  cat_embedder: "cat"
+  # str in ['cont', 'linear', 'dense']
+  cont_embedder: "cont"
   # use model with custom embeddings
   model_with_emb: false
   # tune custom network

@@ -130,6 +130,10 @@ nn_params:
   model: denselight
   # embedding_size if needed
   embedding_size: 10
+  # str in ['cat', 'cat_no_dropout', 'weighted']
+  cat_embedder: "cat"
+  # str in ['cont', 'linear', 'dense']
+  cont_embedder: "cont"
   # use model with custom embeddings
   model_with_emb: false
   # tune custom network
@@ -156,7 +160,7 @@ nn_params:
   # use BatchNorm
   use_bn: true
   # define hidden layer dimensions for models in ['mlp', 'denselight', 'snn']
-  hidden_size: [512, 256, 128, 64]
+  hidden_size: [512, 256, 128]
   # dim of intermediate fc is increased times this factor in ResnetModel layer
   hid_factor: [2, 2]
   # list of number of layers within each DenseModel block
