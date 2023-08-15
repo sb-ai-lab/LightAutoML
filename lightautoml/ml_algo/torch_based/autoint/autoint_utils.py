@@ -12,52 +12,6 @@ from torch.nn import functional as F
 EmbeddingInfo = namedtuple("EmbeddingInfo", ["num_fields", "output_size"])
 UniformEmbeddingInfo = namedtuple("EmbeddingInfo", ["num_fields", "embedding_size", "output_size"])
 
-MODULE_INIT_DOC = """
-Parameters
-----------
-output_size : int
-    number of final output values; i.e., number of targets for
-    regression or number of classes for classification
-embedding_num : EmbeddingBase or None
-    initialized and fit embedding for numeric fields
-embedding_cat : EmbeddingBase or None
-    initialized and fit embedding for categorical fields
-embedding_l1_reg : float, optional
-    value for l1 regularization of embedding vectors; default is 0.0
-embedding_l2_reg : float, optional
-    value for l2 regularization of embedding vectors; default is 0.0
-{}
-mlp_hidden_sizes : int or iterable of int, optional
-    sizes for the linear transformations between the MLP input and
-    the output size needed based on the target; default is (512, 256, 128, 64)
-mlp_activation : subclass of torch.nn.Module (uninitialized), optional
-    default is nn.LeakyReLU
-mlp_use_bn : boolean, optional
-    whether to use batch normalization between MLP linear layers;
-    default is True
-mlp_bn_momentum : float, optional
-    only used if `mlp_use_bn` is True; default is 0.01
-mlp_ghost_batch : int or None, optional
-    only used if `mlp_use_bn` is True; size of batch in "ghost batch norm";
-    if None, normal batch norm is used; defualt is None
-mlp_dropout : float, optional
-    whether and how much dropout to use between MLP linear layers;
-    `0.0 <= mlp_dropout < 1.0`; default is 0.0
-mlp_use_skip : boolean, optional
-    use a side path in the MLP containing just the optional leaky gate
-    plus single linear layer; default is True
-mlp_l1_reg : float, optional
-    value for l1 regularization of MLP weights; default is 0.0
-mlp_l2_reg : float, optional
-    value for l2 regularization of MLP weights; default is 0.0
-use_leaky_gate : boolean, optional
-    whether to include "leaky gate" layers; default is True
-loss_fn : "auto" or PyTorch loss function, optional
-    default is "auto"
-device : string or torch.device, optional
-    default is "cpu"
-
-"""
 
 
 class LeakyGate(nn.Module):

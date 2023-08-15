@@ -44,7 +44,7 @@ except:
 from ..ml_algo.base import TabularDataset
 from ..ml_algo.base import TabularMLAlgo
 from ..pipelines.utils import get_columns_by_role
-from ..text.embed import CatEmbedder, DefaultEmbedding, DenseEmbedding, LinearEmbedding, BasicEmbedding
+from ..text.embed import BasicEmbeddingFlat, CatEmbedder, DefaultEmbedding, DenseEmbedding, LinearEmbedding, BasicEmbedding, LinearEmbeddingFlat
 from ..text.embed import ContEmbedder
 from ..text.embed import TextBert
 from ..text.nn_model import TorchUniversalModel
@@ -56,7 +56,7 @@ from ..text.utils import inv_softmax
 from ..text.utils import is_shuffle
 from ..text.utils import parse_devices
 from ..text.utils import seed_everything
-from .torch_based.nn_models import MLP
+from .torch_based.nn_models import MLP, TabNet
 from .torch_based.nn_models import NODE
 from .torch_based.nn_models import SNN
 from .torch_based.nn_models import DenseLightModel
@@ -80,6 +80,7 @@ model_by_name = {
     "node": NODE,
     "autoint": AutoInt,
     "autoint_emb_v2": AutoInt,
+    "tabnet":TabNet,
 }
 cat_embedder_by_name = {
     "denselight": CatEmbedder,
@@ -92,6 +93,7 @@ cat_embedder_by_name = {
     "node": CatEmbedder,
     "autoint": BasicEmbedding,
     "autoint_emb_v2": DefaultEmbedding,
+    "tabnet":BasicEmbeddingFlat,
 }
 cont_embedder_params_by_name = {
     "denselight": ContEmbedder,
@@ -104,6 +106,7 @@ cont_embedder_params_by_name = {
     "node": ContEmbedder,
     "autoint": LinearEmbedding,
     "autoint_emb_v2": DenseEmbedding,
+    "tabnet":LinearEmbeddingFlat,
 }
 
 

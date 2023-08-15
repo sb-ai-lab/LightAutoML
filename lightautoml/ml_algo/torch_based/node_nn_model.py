@@ -124,7 +124,14 @@ class SparsemaxFunction(Function):
 
 sparsemax = lambda input, dim=-1: SparsemaxFunction.apply(input, dim)  # noqa: E731
 sparsemoid = lambda input: (0.5 * input + 0.5).clamp_(0, 1)  # noqa: E731
+class Sparsemax(nn.Module):
 
+    def __init__(self, dim=-1):
+        self.dim = dim
+        super(Sparsemax, self).__init__()
+
+    def forward(self, input):
+        return SparsemaxFunction.apply(input, self.dim)
 
 class Entmax15Function(Function):
     """An implementation of exact Entmax with alpha=1.5 (B. Peters, V. Niculae, A. Martins).
@@ -256,28 +263,38 @@ class Entmoid15(Function):
 
 entmax15 = lambda input, dim=-1: Entmax15Function.apply(input, dim)  # noqa: E731
 entmoid15 = Entmoid15.apply  # noqa: E731
+class Entmax15(nn.Module):
 
+    def __init__(self, dim=-1):
+        self.dim = dim
+        super(Entmax15, self).__init__()
 
-class Lambda(nn.Module):
-    """Pytorch implementation of lambda.
+    def forward(self, input):
+        return Entmax15Function.apply(input, self.dim)
+
+class MeanPooling(nn.Module):
+    """Pytorch implementation of MeanPooling head.
 
     Args:
-        func : returned func
+        n_out: int, output dim.
+        dim: int: the dimension to be averaged.
+    
     """
 
-    def __init__(self, func):
+    def __init__(self, n_out, dim=-1):
         super().__init__()
-        self.func = func
+        self.n_out = n_out
+        self.dim = dim
 
-    def forward(self, *args, **kwargs):
+    def forward(self, x: torch.Tensor):
         """Forward-pass.
 
         # noqa: DAR101
 
         Returns:
-            f(*args, **kwargs)
+            x[..., :self.n_out].mean(dim=self.dim)
         """
-        return self.func(*args, **kwargs)
+        return x[..., :self.n_out].mean(dim=self.dim)
 
 
 class ModuleWithInit(nn.Module):

@@ -8,11 +8,11 @@ from typing import Union
 import numpy as np
 import torch
 import torch.nn as nn
+from lightautoml.ml_algo.tabnet.utils import TabNetEncoder, initialize_non_glu
 from lightautoml.ml_algo.torch_based.autoint.autoint_utils import AttnInteractionBlock, LeakyGate
 from lightautoml.ml_algo.torch_based.autoint.ghost_norm import GhostBatchNorm
 
-from lightautoml.ml_algo.torch_based.node_nn_model import DenseODSTBlock
-from lightautoml.ml_algo.torch_based.node_nn_model import Lambda
+from lightautoml.ml_algo.torch_based.node_nn_model import DenseODSTBlock, MeanPooling
 
 
 class GaussianNoise(nn.Module):
@@ -840,7 +840,7 @@ class NODE(nn.Module):
         self.features1.add_module("ODSTForestblock%d", block)
         self.features2 = nn.Sequential(OrderedDict([]))
         if use_original_head:
-            last_layer = Lambda(lambda x: x[..., :n_out].mean(dim=-2))
+            last_layer = MeanPooling(n_out,dim=-2)
             self.features2.add_module("head", last_layer)
         else:
             if use_bn:
@@ -976,3 +976,115 @@ class AutoInt(nn.Module):
             mix = torch.sigmoid(self.mix)
             out = mix * out + (1 - mix) * self.mlp(embedded_2d)
         return out
+
+
+
+
+class TabNet(torch.nn.Module):
+    def __init__(
+        self,
+        n_in,
+        n_out,
+        n_d=8,
+        n_a=8,
+        n_steps=3,
+        gamma=1.3,
+        n_independent=2,
+        n_shared=2,
+        epsilon=1e-15,
+        virtual_batch_size=128,
+        momentum=0.02,
+        mask_type="sparsemax",
+        group_attention_matrix=None,
+        **kwargs,
+    ):
+        """
+        Defines main part of the TabNet network without the embedding layers.
+
+        Parameters
+        ----------
+        input_dim : int
+            Number of features
+        output_dim : int or list of int for multi task classification
+            Dimension of network output
+            examples : one for regression, 2 for binary classification etc...
+        n_d : int
+            Dimension of the prediction  layer (usually between 4 and 64)
+        n_a : int
+            Dimension of the attention  layer (usually between 4 and 64)
+        n_steps : int
+            Number of successive steps in the network (usually between 3 and 10)
+        gamma : float
+            Float above 1, scaling factor for attention updates (usually between 1.0 to 2.0)
+        n_independent : int
+            Number of independent GLU layer in each GLU block (default 2)
+        n_shared : int
+            Number of independent GLU layer in each GLU block (default 2)
+        epsilon : float
+            Avoid log(0), this should be kept very low
+        virtual_batch_size : int
+            Batch size for Ghost Batch Normalization
+        momentum : float
+            Float value between 0 and 1 which will be used for momentum in all batch norm
+        mask_type : str
+            Either "sparsemax" or "entmax" : this is the masking function to use
+        group_attention_matrix : torch matrix
+            Matrix of size (n_groups, input_dim), m_ij = importance within group i of feature j
+        """
+        super(TabNet, self).__init__()
+        self.input_dim = n_in
+        self.output_dim = n_out
+        self.is_multi_task = isinstance(n_out, list)
+        self.n_d = n_d
+        self.n_a = n_a
+        self.n_steps = n_steps
+        self.gamma = gamma
+        self.epsilon = epsilon
+        self.n_independent = n_independent
+        self.n_shared = n_shared
+        self.virtual_batch_size = virtual_batch_size
+        self.mask_type = mask_type
+        self.initial_bn = nn.BatchNorm1d(self.input_dim, momentum=0.01)
+
+        self.encoder = TabNetEncoder(
+            input_dim=n_in,
+            output_dim=n_out,
+            n_d=n_d,
+            n_a=n_a,
+            n_steps=n_steps,
+            gamma=gamma,
+            n_independent=n_independent,
+            n_shared=n_shared,
+            epsilon=epsilon,
+            virtual_batch_size=virtual_batch_size,
+            momentum=momentum,
+            mask_type=mask_type,
+            group_attention_matrix=group_attention_matrix
+        )
+
+        if self.is_multi_task:
+            self.multi_task_mappings = torch.nn.ModuleList()
+            for task_dim in n_out:
+                task_mapping = nn.Linear(n_d, task_dim, bias=False)
+                initialize_non_glu(task_mapping, n_d, task_dim)
+                self.multi_task_mappings.append(task_mapping)
+        else:
+            self.final_mapping = nn.Linear(n_d, n_out, bias=False)
+            initialize_non_glu(self.final_mapping, n_d, n_out)
+
+    def forward(self, x):
+        res = 0
+        steps_output, M_loss = self.encoder(x)
+        res = torch.sum(torch.stack(steps_output, dim=0), dim=0)
+
+        if self.is_multi_task:
+            # Result will be in list format
+            out = []
+            for task_mapping in self.multi_task_mappings:
+                out.append(task_mapping(res))
+        else:
+            out = self.final_mapping(res)
+        return out
+
+    def forward_masks(self, x):
+        return self.encoder.forward_masks(x)
