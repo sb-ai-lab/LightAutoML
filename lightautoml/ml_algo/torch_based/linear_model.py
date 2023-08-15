@@ -16,7 +16,7 @@ from torch import nn
 from torch import optim
 
 from ...tasks.losses import TorchLossWrapper
-from ..utils import MySoftmaxClip
+from ..utils import SoftmaxClip
 
 
 logger = logging.getLogger(__name__)
@@ -138,7 +138,7 @@ class CatMulticlass(CatLinear):
 
     def __init__(self, numeric_size: int, embed_sizes: Sequence[int] = (), output_size: int = 1):
         super().__init__(numeric_size, embed_sizes=embed_sizes, output_size=output_size)
-        self.final_act = MySoftmaxClip(dim=1)
+        self.final_act = SoftmaxClip(dim=1)
 
 
 class TorchBasedLinearEstimator:
