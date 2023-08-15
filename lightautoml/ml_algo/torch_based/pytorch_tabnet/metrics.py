@@ -157,9 +157,7 @@ class MetricContainer:
         logs = {}
         for metric in self.metrics:
             if isinstance(y_pred, list):
-                res = np.mean(
-                    [metric(y_true[:, i], y_pred[i]) for i in range(len(y_pred))]
-                )
+                res = np.mean([metric(y_true[:, i], y_pred[i]) for i in range(len(y_pred))])
             else:
                 res = metric(y_true, y_pred)
             logs[self.prefix + metric._name] = res
@@ -191,9 +189,7 @@ class Metric:
         available_names = [metric()._name for metric in available_metrics]
         metrics = []
         for name in names:
-            assert (
-                name in available_names
-            ), f"{name} is not available, choose in {available_names}"
+            assert name in available_names, f"{name} is not available, choose in {available_names}"
             idx = available_names.index(name)
             metric = available_metrics[idx]()
             metrics.append(metric)
@@ -463,11 +459,7 @@ class UnsupervisedNumpyMetric(Metric):
         float
             MSE of predictions vs targets.
         """
-        return UnsupervisedLossNumpy(
-            y_pred,
-            embedded_x,
-            obf_vars
-        )
+        return UnsupervisedLossNumpy(y_pred, embedded_x, obf_vars)
 
 
 class RMSE(Metric):

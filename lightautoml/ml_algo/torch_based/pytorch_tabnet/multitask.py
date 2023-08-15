@@ -11,9 +11,9 @@ import scipy
 class TabNetMultiTaskClassifier(TabModel):
     def __post_init__(self):
         super(TabNetMultiTaskClassifier, self).__post_init__()
-        self._task = 'classification'
+        self._task = "classification"
         self._default_loss = torch.nn.functional.cross_entropy
-        self._default_metric = 'logloss'
+        self._default_metric = "logloss"
 
     def prepare_target(self, y):
         y_mapped = y.copy()
@@ -43,9 +43,7 @@ class TabNetMultiTaskClassifier(TabModel):
         y_true = y_true.long()
         if isinstance(self.loss_fn, list):
             # if you specify a different loss for each task
-            for task_loss, task_output, task_id in zip(
-                self.loss_fn, y_pred, range(len(self.loss_fn))
-            ):
+            for task_loss, task_output, task_id in zip(self.loss_fn, y_pred, range(len(self.loss_fn))):
                 loss += task_loss(task_output, y_true[:, task_id])
         else:
             # same loss function is applied to all tasks
@@ -72,12 +70,10 @@ class TabNetMultiTaskClassifier(TabModel):
         self.output_dim = output_dim
         self.classes_ = train_labels
         self.target_mapper = [
-            {class_label: index for index, class_label in enumerate(classes)}
-            for classes in self.classes_
+            {class_label: index for index, class_label in enumerate(classes)} for classes in self.classes_
         ]
         self.preds_mapper = [
-            {str(index): str(class_label) for index, class_label in enumerate(classes)}
-            for classes in self.classes_
+            {str(index): str(class_label) for index, class_label in enumerate(classes)} for classes in self.classes_
         ]
         self.updated_weights = weights
         filter_weights(self.updated_weights)
@@ -116,11 +112,7 @@ class TabNetMultiTaskClassifier(TabModel):
             data = data.to(self.device).float()
             output, _ = self.network(data)
             predictions = [
-                torch.argmax(torch.nn.Softmax(dim=1)(task_output), dim=1)
-                .cpu()
-                .detach()
-                .numpy()
-                .reshape(-1)
+                torch.argmax(torch.nn.Softmax(dim=1)(task_output), dim=1).cpu().detach().numpy().reshape(-1)
                 for task_output in output
             ]
 
@@ -168,10 +160,7 @@ class TabNetMultiTaskClassifier(TabModel):
         for data in dataloader:
             data = data.to(self.device).float()
             output, _ = self.network(data)
-            predictions = [
-                torch.nn.Softmax(dim=1)(task_output).cpu().detach().numpy()
-                for task_output in output
-            ]
+            predictions = [torch.nn.Softmax(dim=1)(task_output).cpu().detach().numpy() for task_output in output]
             for task_idx in range(len(self.output_dim)):
                 results[task_idx] = results.get(task_idx, []) + [predictions[task_idx]]
         res = [np.vstack(task_res) for task_res in results.values()]

@@ -27,9 +27,9 @@ import scipy
 class TabNetPretrainer(TabModel):
     def __post_init__(self):
         super(TabNetPretrainer, self).__post_init__()
-        self._task = 'unsupervised'
+        self._task = "unsupervised"
         self._default_loss = UnsupervisedLoss
-        self._default_metric = 'unsup_loss_numpy'
+        self._default_metric = "unsup_loss_numpy"
 
     def prepare_target(self, y):
         return y
@@ -61,7 +61,7 @@ class TabNetPretrainer(TabModel):
         drop_last=True,
         callbacks=None,
         pin_memory=True,
-        warm_start=False
+        warm_start=False,
     ):
         """Train a neural network stored in self.network
         Using train_dataloader for training data and
@@ -130,9 +130,7 @@ class TabNetPretrainer(TabModel):
 
         # Validate and reformat eval set depending on training data
         eval_names = validate_eval_set(eval_set, eval_name, X_train)
-        train_dataloader, valid_dataloaders = self._construct_loaders(
-            X_train, eval_set
-        )
+        train_dataloader, valid_dataloaders = self._construct_loaders(X_train, eval_set)
 
         if not hasattr(self, "network") or not warm_start:
             # model has never been fitted before of warm_start is False
@@ -159,9 +157,7 @@ class TabNetPretrainer(TabModel):
                 self._predict_epoch(eval_name, valid_dataloader)
 
             # Call method on_epoch_end for all callbacks
-            self._callback_container.on_epoch_end(
-                epoch_idx, logs=self.history.epoch_metrics
-            )
+            self._callback_container.on_epoch_end(epoch_idx, logs=self.history.epoch_metrics)
 
             if self._stop_training:
                 break
@@ -172,7 +168,7 @@ class TabNetPretrainer(TabModel):
 
     def _set_network(self):
         """Setup the network and explain matrix."""
-        if not hasattr(self, 'pretraining_ratio'):
+        if not hasattr(self, "pretraining_ratio"):
             self.pretraining_ratio = 0.5
         torch.manual_seed(self.seed)
 
@@ -227,9 +223,7 @@ class TabNetPretrainer(TabModel):
         # Set metric container for each sets
         self._metric_container_dict = {}
         for name in eval_names:
-            self._metric_container_dict.update(
-                {name: UnsupMetricContainer(metrics, prefix=f"{name}_")}
-            )
+            self._metric_container_dict.update({name: UnsupMetricContainer(metrics, prefix=f"{name}_")})
 
         self._metrics = []
         self._metrics_names = []
@@ -238,9 +232,7 @@ class TabNetPretrainer(TabModel):
             self._metrics_names.extend(metric_container.names)
 
         # Early stopping metric is the last eval metric
-        self.early_stopping_metric = (
-            self._metrics_names[-1] if len(self._metrics_names) > 0 else None
-        )
+        self.early_stopping_metric = self._metrics_names[-1] if len(self._metrics_names) > 0 else None
 
     def _construct_loaders(self, X_train, eval_set):
         """Generate dataloaders for unsupervised train and eval set.
@@ -354,9 +346,7 @@ class TabNetPretrainer(TabModel):
             list_embedded_x.append(embedded_x.cpu().detach().numpy())
             list_obfuscation.append(obf_vars.cpu().detach().numpy())
 
-        output, embedded_x, obf_vars = self.stack_batches(list_output,
-                                                          list_embedded_x,
-                                                          list_obfuscation)
+        output, embedded_x, obf_vars = self.stack_batches(list_output, list_embedded_x, list_obfuscation)
 
         metrics_logs = self._metric_container_dict[name](output, embedded_x, obf_vars)
         self.network.train()

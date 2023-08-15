@@ -224,9 +224,9 @@ class History(Callback):
 
     def on_batch_end(self, batch, logs=None):
         batch_size = logs["batch_size"]
-        self.epoch_loss = (
-            self.samples_seen * self.epoch_loss + batch_size * logs["loss"]
-        ) / (self.samples_seen + batch_size)
+        self.epoch_loss = (self.samples_seen * self.epoch_loss + batch_size * logs["loss"]) / (
+            self.samples_seen + batch_size
+        )
         self.samples_seen += batch_size
 
     def __getitem__(self, name):

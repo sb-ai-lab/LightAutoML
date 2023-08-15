@@ -100,7 +100,6 @@ sparsemax = SparsemaxFunction.apply
 
 
 class Sparsemax(nn.Module):
-
     def __init__(self, dim=-1):
         self.dim = dim
         super(Sparsemax, self).__init__()
@@ -131,7 +130,7 @@ class Entmax15Function(Function):
 
     @staticmethod
     def backward(ctx, grad_output):
-        Y, = ctx.saved_tensors
+        (Y,) = ctx.saved_tensors
         gppr = Y.sqrt()  # = 1 / g'' (Y)
         dX = grad_output * gppr
         q = dX.sum(ctx.dim) / gppr.sum(ctx.dim)
@@ -195,7 +194,6 @@ entmoid15 = Entmoid15.apply
 
 
 class Entmax15(nn.Module):
-
     def __init__(self, dim=-1):
         self.dim = dim
         super(Entmax15, self).__init__()

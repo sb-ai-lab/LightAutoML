@@ -13,7 +13,6 @@ EmbeddingInfo = namedtuple("EmbeddingInfo", ["num_fields", "output_size"])
 UniformEmbeddingInfo = namedtuple("EmbeddingInfo", ["num_fields", "embedding_size", "output_size"])
 
 
-
 class LeakyGate(nn.Module):
     """LeakyGate from https://github.com/jrfiedler/xynn.
 

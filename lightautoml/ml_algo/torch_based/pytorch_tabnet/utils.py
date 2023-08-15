@@ -121,9 +121,7 @@ def create_sampler(weights, y_train):
             sampler = None
         elif weights == 1:
             need_shuffle = False
-            class_sample_count = np.array(
-                [len(np.where(y_train == t)[0]) for t in np.unique(y_train)]
-            )
+            class_sample_count = np.array([len(np.where(y_train == t)[0]) for t in np.unique(y_train)])
 
             weights = 1.0 / class_sample_count
 
@@ -149,9 +147,7 @@ def create_sampler(weights, y_train):
     return need_shuffle, sampler
 
 
-def create_dataloaders(
-    X_train, y_train, eval_set, weights, batch_size, num_workers, drop_last, pin_memory
-):
+def create_dataloaders(X_train, y_train, eval_set, weights, batch_size, num_workers, drop_last, pin_memory):
     """
     Create dataloaders with or without subsampling depending on weights and balanced.
 
@@ -271,9 +267,7 @@ def create_explain_matrix(input_dim, cat_emb_dim, cat_idxs, post_embed_dim):
         if i not in cat_idxs:
             indices_trick.append([i + acc_emb])
         else:
-            indices_trick.append(
-                range(i + acc_emb, i + acc_emb + all_emb_impact[nb_emb] + 1)
-            )
+            indices_trick.append(range(i + acc_emb, i + acc_emb + all_emb_impact[nb_emb] + 1))
             acc_emb += all_emb_impact[nb_emb]
             nb_emb += 1
 
@@ -420,43 +414,26 @@ def validate_eval_set(eval_set, eval_name, X_train, y_train):
     """
     eval_name = eval_name or [f"val_{i}" for i in range(len(eval_set))]
 
-    assert len(eval_set) == len(
-        eval_name
-    ), "eval_set and eval_name have not the same length"
+    assert len(eval_set) == len(eval_name), "eval_set and eval_name have not the same length"
     if len(eval_set) > 0:
-        assert all(
-            len(elem) == 2 for elem in eval_set
-        ), "Each tuple of eval_set need to have two elements"
+        assert all(len(elem) == 2 for elem in eval_set), "Each tuple of eval_set need to have two elements"
     for name, (X, y) in zip(eval_name, eval_set):
         check_input(X)
-        msg = (
-            f"Dimension mismatch between X_{name} "
-            + f"{X.shape} and X_train {X_train.shape}"
-        )
+        msg = f"Dimension mismatch between X_{name} " + f"{X.shape} and X_train {X_train.shape}"
         assert len(X.shape) == len(X_train.shape), msg
 
-        msg = (
-            f"Dimension mismatch between y_{name} "
-            + f"{y.shape} and y_train {y_train.shape}"
-        )
+        msg = f"Dimension mismatch between y_{name} " + f"{y.shape} and y_train {y_train.shape}"
         assert len(y.shape) == len(y_train.shape), msg
 
-        msg = (
-            f"Number of columns is different between X_{name} "
-            + f"({X.shape[1]}) and X_train ({X_train.shape[1]})"
-        )
+        msg = f"Number of columns is different between X_{name} " + f"({X.shape[1]}) and X_train ({X_train.shape[1]})"
         assert X.shape[1] == X_train.shape[1], msg
 
         if len(y_train.shape) == 2:
             msg = (
-                f"Number of columns is different between y_{name} "
-                + f"({y.shape[1]}) and y_train ({y_train.shape[1]})"
+                f"Number of columns is different between y_{name} " + f"({y.shape[1]}) and y_train ({y_train.shape[1]})"
             )
             assert y.shape[1] == y_train.shape[1], msg
-        msg = (
-            f"You need the same number of rows between X_{name} "
-            + f"({X.shape[0]}) and y_{name} ({y.shape[0]})"
-        )
+        msg = f"You need the same number of rows between X_{name} " + f"({X.shape[0]}) and y_{name} ({y.shape[0]})"
         assert X.shape[0] == y.shape[0], msg
 
     return eval_name, eval_set

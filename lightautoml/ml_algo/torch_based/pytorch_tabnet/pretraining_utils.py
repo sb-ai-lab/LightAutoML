@@ -1,16 +1,9 @@
 from torch.utils.data import DataLoader
-from pytorch_tabnet.utils import (
-    create_sampler,
-    SparsePredictDataset,
-    PredictDataset,
-    check_input
-)
+from pytorch_tabnet.utils import create_sampler, SparsePredictDataset, PredictDataset, check_input
 import scipy
 
 
-def create_dataloaders(
-    X_train, eval_set, weights, batch_size, num_workers, drop_last, pin_memory
-):
+def create_dataloaders(X_train, eval_set, weights, batch_size, num_workers, drop_last, pin_memory):
     """
     Create dataloaders with or without subsampling depending on weights and balanced.
 
@@ -114,9 +107,7 @@ def validate_eval_set(eval_set, eval_name, X_train):
 
     """
     eval_names = eval_name or [f"val_{i}" for i in range(len(eval_set))]
-    assert len(eval_set) == len(
-        eval_names
-    ), "eval_set and eval_name have not the same length"
+    assert len(eval_set) == len(eval_names), "eval_set and eval_name have not the same length"
 
     for set_nb, X in enumerate(eval_set):
         check_input(X)

@@ -32,12 +32,7 @@ def _assert_all_finite(X, allow_nan=False):
         pass
     elif is_float:
         msg_err = "Input contains {} or a value too large for {!r}."
-        if (
-            allow_nan
-            and np.isinf(X).any()
-            or not allow_nan
-            and not np.isfinite(X).all()
-        ):
+        if allow_nan and np.isinf(X).any() or not allow_nan and not np.isfinite(X).all():
             type_err = "infinity" if allow_nan else "NaN, infinity"
             raise ValueError(msg_err.format(type_err, X.dtype))
     # for object dtype data, we only check for NaNs (GH-13254)
@@ -183,17 +178,12 @@ def is_multilabel(y):
         return (
             len(y.data) == 0
             or np.unique(y.data).size == 1
-            and (
-                y.dtype.kind in "biu"
-                or _is_integral_float(np.unique(y.data))  # bool, int, uint
-            )
+            and (y.dtype.kind in "biu" or _is_integral_float(np.unique(y.data)))  # bool, int, uint
         )
     else:
         labels = np.unique(y)
 
-        return len(labels) < 3 and (
-            y.dtype.kind in "biu" or _is_integral_float(labels)  # bool, int, uint
-        )
+        return len(labels) < 3 and (y.dtype.kind in "biu" or _is_integral_float(labels))  # bool, int, uint
 
 
 def check_classification_targets(y):
@@ -282,14 +272,10 @@ def type_of_target(y):
     >>> type_of_target(np.array([[0, 1], [1, 1]]))
     'multilabel-indicator'
     """
-    valid = (
-        isinstance(y, (Sequence, spmatrix)) or hasattr(y, "__array__")
-    ) and not isinstance(y, str)
+    valid = (isinstance(y, (Sequence, spmatrix)) or hasattr(y, "__array__")) and not isinstance(y, str)
 
     if not valid:
-        raise ValueError(
-            "Expected array-like (array or non-string sequence), " "got %r" % y
-        )
+        raise ValueError("Expected array-like (array or non-string sequence), " "got %r" % y)
 
     sparseseries = y.__class__.__name__ == "SparseSeries"
     if sparseseries:
@@ -306,11 +292,7 @@ def type_of_target(y):
 
     # The old sequence of sequences format
     try:
-        if (
-            not hasattr(y[0], "__array__")
-            and isinstance(y[0], Sequence)
-            and not isinstance(y[0], str)
-        ):
+        if not hasattr(y[0], "__array__") and isinstance(y[0], Sequence) and not isinstance(y[0], str):
             raise ValueError(
                 "You appear to be using a legacy multi-label data"
                 " representation. Sequence of sequences are no"
@@ -348,9 +330,7 @@ def type_of_target(y):
 def check_unique_type(y):
     target_types = pd.Series(y).map(type).unique()
     if len(target_types) != 1:
-        raise TypeError(
-            f"Values on the target must have the same type. Target has types {target_types}"
-        )
+        raise TypeError(f"Values on the target must have the same type. Target has types {target_types}")
 
 
 def infer_output_dim(y_train):
@@ -408,10 +388,7 @@ def infer_multitask_output(y_train):
     """
 
     if len(y_train.shape) < 2:
-        raise ValueError(
-            "y_train should be of shape (n_examples, n_tasks)"
-            + f"but got {y_train.shape}"
-        )
+        raise ValueError("y_train should be of shape (n_examples, n_tasks)" + f"but got {y_train.shape}")
     nb_tasks = y_train.shape[1]
     tasks_dims = []
     tasks_labels = []
