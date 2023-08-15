@@ -122,9 +122,47 @@ class SparsemaxFunction(Function):
         return tau, support_size
 
 
+<<<<<<< HEAD
 sparsemax = lambda input, dim=-1: SparsemaxFunction.apply(input, dim)  # noqa: E731
 sparsemoid = lambda input: (0.5 * input + 0.5).clamp_(0, 1)  # noqa: E731
 class Sparsemax(nn.Module):
+=======
+class Sparsemax(nn.Module):
+    """Py-Torch class for Sparsemax."""
+
+    def __init__(self):
+        super(Sparsemax, self).__init__()
+
+    def forward(self, input, dim):
+        """Forward-pass.
+
+        Args:
+            input (Tensor): input Tensor.
+            dim (int): dimension which will be aggregatedю
+
+        Returns:
+            Entmax15(input,dim=dim)
+        """
+        return SparsemaxFunction.apply(input, dim)
+
+
+class Sparsemoid(nn.Module):
+    """Py-Torch class for Sparsemoid."""
+
+    def __init__(self):
+        super(Sparsemoid, self).__init__()
+
+    def forward(self, input):
+        """Forward-pass.
+
+        Args:
+            input (Tensor): input Tensor
+
+        Returns:
+            Sparsemoid(input)
+        """
+        return (0.5 * input + 0.5).clamp_(0, 1)
+>>>>>>> autoint++
 
     def __init__(self, dim=-1):
         self.dim = dim
@@ -211,8 +249,8 @@ class Entmax15Function(Function):
         return tau_star, support_size
 
 
-class Entmoid15(Function):
-    """A highly optimized equivalent of labda x: Entmax15([x, 0])."""
+class Entmoid15Optimied(Function):
+    """A highly optimized equivalent of lambda x: Entmax15([x, 0])."""
 
     @staticmethod
     def forward(ctx, input):
@@ -225,7 +263,7 @@ class Entmoid15(Function):
         Returns:
             output (Tensor): same shape as input
         """
-        output = Entmoid15._forward(input)
+        output = Entmoid15Optimied._forward(input)
         ctx.save_for_backward(output)
         return output
 
@@ -249,7 +287,7 @@ class Entmoid15(Function):
         Returns:
             grad output
         """
-        return Entmoid15._backward(ctx.saved_tensors[0], grad_output)
+        return Entmoid15Optimied._backward(ctx.saved_tensors[0], grad_output)
 
     @staticmethod
     @script
@@ -261,6 +299,7 @@ class Entmoid15(Function):
         return grad_input
 
 
+<<<<<<< HEAD
 entmax15 = lambda input, dim=-1: Entmax15Function.apply(input, dim)  # noqa: E731
 entmoid15 = Entmoid15.apply  # noqa: E731
 class Entmax15(nn.Module):
@@ -272,13 +311,56 @@ class Entmax15(nn.Module):
     def forward(self, input):
         return Entmax15Function.apply(input, self.dim)
 
+=======
+class Entmax15(nn.Module):
+    """Py-Torch class for Entmax15."""
+
+    def __init__(self):
+        super(Entmax15, self).__init__()
+
+    def forward(self, input, dim):
+        """Forward-pass.
+
+        Args:
+            input (Tensor): input Tensor.
+            dim (int): dimension which will be aggregatedю
+
+        Returns:
+            Entmax15(input,dim=dim)
+        """
+        return Entmax15Function.apply(input, dim)
+
+
+class Entmoid15(nn.Module):
+    """Py-Torch class for Entmoid15."""
+
+    def __init__(self):
+        super(Entmoid15, self).__init__()
+
+    def forward(self, input):
+        """Forward-pass.
+
+        Args:
+            input (Tensor): input Tensor
+
+        Returns:
+            Entmoid15(input)
+        """
+        return Entmoid15Optimied.apply(input)
+
+
+>>>>>>> autoint++
 class MeanPooling(nn.Module):
     """Pytorch implementation of MeanPooling head.
 
     Args:
         n_out: int, output dim.
         dim: int: the dimension to be averaged.
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> autoint++
     """
 
     def __init__(self, n_out, dim=-1):
@@ -294,7 +376,11 @@ class MeanPooling(nn.Module):
         Returns:
             x[..., :self.n_out].mean(dim=self.dim)
         """
+<<<<<<< HEAD
         return x[..., :self.n_out].mean(dim=self.dim)
+=======
+        return x[..., : self.n_out].mean(dim=self.dim)
+>>>>>>> autoint++
 
 
 class ModuleWithInit(nn.Module):
@@ -369,8 +455,8 @@ class ODST(ModuleWithInit):
         depth=6,
         tree_dim=1,
         flatten_output=True,
-        choice_function=entmax15,
-        bin_function=entmoid15,
+        choice_function=Entmax15(),
+        bin_function=Entmoid15(),
         initialize_response_=nn.init.normal_,
         initialize_selection_logits_=nn.init.uniform_,
         threshold_init_beta=1.0,
@@ -537,6 +623,11 @@ class DenseODSTBlock(nn.Sequential):
                 tail_features = min(self.max_features, layer_inp.shape[-1]) - initial_features
                 if tail_features != 0:
                     layer_inp = torch.cat([layer_inp[..., :initial_features], layer_inp[..., -tail_features:]], dim=-1)
+            """
+            Originally it was:
+                if self.training and self.input_dropout:
+                    layer_inp = F.dropout(layer_inp, self.input_dropout)
+            """
             if self.input_dropout:
                 layer_inp = F.dropout(layer_inp, self.input_dropout, self.training)
             h = layer(layer_inp)

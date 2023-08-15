@@ -83,7 +83,7 @@ def tune_and_fit_predict(
     return ml_algo, preds
 
 
-class MySoftmaxClip(nn.Module):
+class SoftmaxClip(nn.Module):
     """Softmax with clip-norm.
 
     Args:
@@ -92,7 +92,7 @@ class MySoftmaxClip(nn.Module):
     """
 
     def __init__(self, dim: Optional[int] = None) -> None:
-        super(MySoftmaxClip, self).__init__()
+        super(SoftmaxClip, self).__init__()
         self.dim = dim
         self.smax = nn.Softmax(dim=dim)
 

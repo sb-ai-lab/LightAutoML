@@ -840,7 +840,11 @@ class NODE(nn.Module):
         self.features1.add_module("ODSTForestblock%d", block)
         self.features2 = nn.Sequential(OrderedDict([]))
         if use_original_head:
+<<<<<<< HEAD
             last_layer = MeanPooling(n_out,dim=-2)
+=======
+            last_layer = MeanPooling(n_out, dim=-2)
+>>>>>>> autoint++
             self.features2.add_module("head", last_layer)
         else:
             if use_bn:

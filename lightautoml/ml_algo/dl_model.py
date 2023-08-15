@@ -44,7 +44,17 @@ except:
 from ..ml_algo.base import TabularDataset
 from ..ml_algo.base import TabularMLAlgo
 from ..pipelines.utils import get_columns_by_role
-from ..text.embed import BasicEmbeddingFlat, CatEmbedder, DefaultEmbedding, DenseEmbedding, LinearEmbedding, BasicEmbedding, LinearEmbeddingFlat
+from ..text.embed import (
+    BasicCatEmbeddingFlat,
+    CatEmbedder,
+    DenseEmbedding,
+    DenseEmbeddingFlat,
+    LinearEmbedding,
+    LinearEmbeddingFlat,
+    WeightedCatEmbedding,
+    BasicCatEmbedding,
+    WeightedCatEmbeddingFlat,
+)
 from ..text.embed import ContEmbedder
 from ..text.embed import TextBert
 from ..text.nn_model import TorchUniversalModel
@@ -79,35 +89,56 @@ model_by_name = {
     "snn": SNN,
     "node": NODE,
     "autoint": AutoInt,
-    "autoint_emb_v2": AutoInt,
-    "tabnet":TabNet,
 }
-cat_embedder_by_name = {
-    "denselight": CatEmbedder,
-    "dense": CatEmbedder,
-    "resnet": CatEmbedder,
-    "mlp": CatEmbedder,
-    "linear_layer": CatEmbedder,
-    "_linear_layer": CatEmbedder,
-    "snn": CatEmbedder,
-    "node": CatEmbedder,
-    "autoint": BasicEmbedding,
-    "autoint_emb_v2": DefaultEmbedding,
-    "tabnet":BasicEmbeddingFlat,
+input_type_by_name = {
+    "denselight": "flat",
+    "dense": "flat",
+    "resnet": "flat",
+    "mlp": "flat",
+    "linear_layer": "flat",
+    "_linear_layer": "flat",
+    "snn": "flat",
+    "node": "flat",
+    "autoint": "seq",
 }
-cont_embedder_params_by_name = {
-    "denselight": ContEmbedder,
-    "dense": ContEmbedder,
-    "resnet": ContEmbedder,
-    "mlp": ContEmbedder,
-    "linear_layer": ContEmbedder,
-    "_linear_layer": ContEmbedder,
-    "snn": ContEmbedder,
-    "node": ContEmbedder,
-    "autoint": LinearEmbedding,
-    "autoint_emb_v2": DenseEmbedding,
-    "tabnet":LinearEmbeddingFlat,
+cat_embedder_by_name_flat = {
+    "cat": CatEmbedder,
+    "cat_no_dropout": BasicCatEmbeddingFlat,
+    "weighted": WeightedCatEmbeddingFlat,
 }
+cat_embedder_by_name = {"cat_no_dropout": BasicCatEmbedding, "weighted": WeightedCatEmbedding}
+cont_embedder_by_name_flat = {"cont": ContEmbedder, "linear": LinearEmbeddingFlat, "dense": DenseEmbeddingFlat}
+cont_embedder_by_name = {"linear": LinearEmbedding, "dense": DenseEmbedding}
+
+
+def _get_embedder_cat(params):
+    if input_type_by_name[params["model"]] == "seq":
+        try:
+            out = cat_embedder_by_name[params["cat_embedder"]]
+        except KeyError:
+            out = BasicCatEmbedding
+        return out
+    else:
+        try:
+            out = cat_embedder_by_name_flat[params["cat_embedder"]]
+        except KeyError:
+            out = CatEmbedder
+        return out
+
+
+def _get_embedder_cont(params):
+    if input_type_by_name[params["model"]] == "seq":
+        try:
+            out = cont_embedder_by_name[params["cont_embedder"]]
+        except KeyError:
+            out = LinearEmbedding
+        return out
+    else:
+        try:
+            out = cont_embedder_by_name_flat[params["cont_embedder"]]
+        except KeyError:
+            out = ContEmbedder
+        return out
 
 
 class TorchModel(TabularMLAlgo):
@@ -281,7 +312,7 @@ class TorchModel(TabularMLAlgo):
             net=TorchUniversalModel if not params["model_with_emb"] else params["model"],
             net_params={
                 "task": self.task,
-                "cont_embedder": cont_embedder_params_by_name[params["model"]] if is_cont else None,
+                "cont_embedder_": _get_embedder_cont(params) if is_cont else None,
                 "cont_params": {
                     "num_dims": params["num_dims"],
                     "input_bn": params["input_bn"],
@@ -290,7 +321,7 @@ class TorchModel(TabularMLAlgo):
                 }
                 if is_cont
                 else None,
-                "cat_embedder": cat_embedder_by_name[params["model"]] if is_cat else None,
+                "cat_embedder_": _get_embedder_cat(params) if is_cat else None,
                 "cat_params": {
                     "cat_vc": params["cat_vc"],
                     "cat_dims": params["cat_dims"],
