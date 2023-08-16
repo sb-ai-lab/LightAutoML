@@ -978,8 +978,6 @@ class AutoInt(nn.Module):
         return out
 
 
-
-
 class TabNet(torch.nn.Module):
     def __init__(
         self,
@@ -1059,7 +1057,7 @@ class TabNet(torch.nn.Module):
             virtual_batch_size=virtual_batch_size,
             momentum=momentum,
             mask_type=mask_type,
-            group_attention_matrix=group_attention_matrix
+            group_attention_matrix=group_attention_matrix,
         )
 
         if self.is_multi_task:

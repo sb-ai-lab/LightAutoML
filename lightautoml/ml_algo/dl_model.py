@@ -51,6 +51,10 @@ from ..text.embed import (
     DenseEmbeddingFlat,
     LinearEmbedding,
     LinearEmbeddingFlat,
+    PLREmbedding,
+    PLREmbeddingFlat,
+    SoftEmbedding,
+    SoftEmbeddingFlat,
     WeightedCatEmbedding,
     BasicCatEmbedding,
     WeightedCatEmbeddingFlat,
@@ -89,6 +93,7 @@ model_by_name = {
     "snn": SNN,
     "node": NODE,
     "autoint": AutoInt,
+    "tabnet": TabNet,
 }
 input_type_by_name = {
     "denselight": "flat",
@@ -100,6 +105,7 @@ input_type_by_name = {
     "snn": "flat",
     "node": "flat",
     "autoint": "seq",
+    "tabnet": "flat",
 }
 cat_embedder_by_name_flat = {
     "cat": CatEmbedder,
@@ -107,8 +113,15 @@ cat_embedder_by_name_flat = {
     "weighted": WeightedCatEmbeddingFlat,
 }
 cat_embedder_by_name = {"cat_no_dropout": BasicCatEmbedding, "weighted": WeightedCatEmbedding}
-cont_embedder_by_name_flat = {"cont": ContEmbedder, "linear": LinearEmbeddingFlat, "dense": DenseEmbeddingFlat}
-cont_embedder_by_name = {"linear": LinearEmbedding, "dense": DenseEmbedding}
+
+cont_embedder_by_name_flat = {
+    "cont": ContEmbedder,
+    "linear": LinearEmbeddingFlat,
+    "dense": DenseEmbeddingFlat,
+    "plr": PLREmbeddingFlat,
+    "soft": SoftEmbeddingFlat,
+}
+cont_embedder_by_name = {"linear": LinearEmbedding, "dense": DenseEmbedding, "plr": PLREmbedding, "soft": SoftEmbedding}
 
 
 def _get_embedder_cat(params):

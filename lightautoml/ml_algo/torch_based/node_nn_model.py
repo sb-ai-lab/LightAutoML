@@ -128,7 +128,7 @@ class Sparsemax(nn.Module):
     def __init__(self):
         super(Sparsemax, self).__init__()
 
-    def forward(self, input, dim):
+    def forward(self, input, dim=-1):
         """Forward-pass.
 
         Args:
@@ -158,12 +158,6 @@ class Sparsemoid(nn.Module):
         """
         return (0.5 * input + 0.5).clamp_(0, 1)
 
-    def __init__(self, dim=-1):
-        self.dim = dim
-        super(Sparsemax, self).__init__()
-
-    def forward(self, input):
-        return SparsemaxFunction.apply(input, self.dim)
 
 class Entmax15Function(Function):
     """An implementation of exact Entmax with alpha=1.5 (B. Peters, V. Niculae, A. Martins).
@@ -243,7 +237,7 @@ class Entmax15Function(Function):
         return tau_star, support_size
 
 
-class Entmoid15Optimied(Function):
+class Entmoid15Optimized(Function):
     """A highly optimized equivalent of lambda x: Entmax15([x, 0])."""
 
     @staticmethod
@@ -257,7 +251,7 @@ class Entmoid15Optimied(Function):
         Returns:
             output (Tensor): same shape as input
         """
-        output = Entmoid15Optimied._forward(input)
+        output = Entmoid15Optimized._forward(input)
         ctx.save_for_backward(output)
         return output
 
@@ -281,7 +275,7 @@ class Entmoid15Optimied(Function):
         Returns:
             grad output
         """
-        return Entmoid15Optimied._backward(ctx.saved_tensors[0], grad_output)
+        return Entmoid15Optimized._backward(ctx.saved_tensors[0], grad_output)
 
     @staticmethod
     @script
@@ -299,7 +293,7 @@ class Entmax15(nn.Module):
     def __init__(self):
         super(Entmax15, self).__init__()
 
-    def forward(self, input, dim):
+    def forward(self, input, dim=-1):
         """Forward-pass.
 
         Args:
@@ -327,7 +321,7 @@ class Entmoid15(nn.Module):
         Returns:
             Entmoid15(input)
         """
-        return Entmoid15Optimied.apply(input)
+        return Entmoid15Optimized.apply(input)
 
 
 class MeanPooling(nn.Module):

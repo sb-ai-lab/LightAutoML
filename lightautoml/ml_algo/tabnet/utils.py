@@ -2,7 +2,7 @@
 import torch
 import numpy as np
 import torch.nn as nn
-from lightautoml.ml_algo.torch_based.node_nn_model import Entmax15, Sparsemax, sparsemax, entmax15
+from lightautoml.ml_algo.torch_based.node_nn_model import Entmax15, Sparsemax
 from lightautoml.ml_algo.torch_based.autoint.ghost_norm import GhostBatchNorm
 
 

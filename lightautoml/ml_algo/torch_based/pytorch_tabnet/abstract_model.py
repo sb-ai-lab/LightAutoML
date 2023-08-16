@@ -17,7 +17,7 @@ from pytorch_tabnet.utils import (
     check_input,
     check_warm_start,
     create_group_matrix,
-    check_embedding_parameters
+    check_embedding_parameters,
 )
 from pytorch_tabnet.callbacks import (
     CallbackContainer,
@@ -85,9 +85,7 @@ class TabModel(BaseEstimator):
         self.optimizer_fn = copy.deepcopy(self.optimizer_fn)
         self.scheduler_fn = copy.deepcopy(self.scheduler_fn)
 
-        updated_params = check_embedding_parameters(self.cat_dims,
-                                                    self.cat_idxs,
-                                                    self.cat_emb_dim)
+        updated_params = check_embedding_parameters(self.cat_dims, self.cat_idxs, self.cat_emb_dim)
         self.cat_dims, self.cat_idxs, self.cat_emb_dim = updated_params
 
     def __update__(self, **kwargs):
@@ -140,7 +138,7 @@ class TabModel(BaseEstimator):
         from_unsupervised=None,
         warm_start=False,
         augmentations=None,
-        compute_importance=True
+        compute_importance=True,
     ):
         """Train a neural network stored in self.network
         Using train_dataloader for training data and
@@ -227,9 +225,7 @@ class TabModel(BaseEstimator):
         # Validate and reformat eval set depending on training data
         eval_names, eval_set = validate_eval_set(eval_set, eval_name, X_train, y_train)
 
-        train_dataloader, valid_dataloaders = self._construct_loaders(
-            X_train, y_train, eval_set
-        )
+        train_dataloader, valid_dataloaders = self._construct_loaders(X_train, y_train, eval_set)
 
         if from_unsupervised is not None:
             # Update parameters to match self pretraining
@@ -262,9 +258,7 @@ class TabModel(BaseEstimator):
                 self._predict_epoch(eval_name, valid_dataloader)
 
             # Call method on_epoch_end for all callbacks
-            self._callback_container.on_epoch_end(
-                epoch_idx, logs=self.history.epoch_metrics
-            )
+            self._callback_container.on_epoch_end(epoch_idx, logs=self.history.epoch_metrics)
 
             if self._stop_training:
                 break
@@ -355,11 +349,8 @@ class TabModel(BaseEstimator):
 
             M_explain, masks = self.network.forward_masks(data)
             for key, value in masks.items():
-                masks[key] = csc_matrix.dot(
-                    value.cpu().detach().numpy(), self.reducing_matrix
-                )
-            original_feat_explain = csc_matrix.dot(M_explain.cpu().detach().numpy(),
-                                                   self.reducing_matrix)
+                masks[key] = csc_matrix.dot(value.cpu().detach().numpy(), self.reducing_matrix)
+            original_feat_explain = csc_matrix.dot(M_explain.cpu().detach().numpy(), self.reducing_matrix)
             res_explain.append(original_feat_explain)
 
             if batch_nb == 0:
@@ -417,9 +408,7 @@ class TabModel(BaseEstimator):
                 init_params[key] = val
         saved_params["init_params"] = init_params
 
-        class_attrs = {
-            "preds_mapper": self.preds_mapper
-        }
+        class_attrs = {"preds_mapper": self.preds_mapper}
         saved_params["class_attrs"] = class_attrs
 
         # Create folder
@@ -645,9 +634,7 @@ class TabModel(BaseEstimator):
         # Set metric container for each sets
         self._metric_container_dict = {}
         for name in eval_names:
-            self._metric_container_dict.update(
-                {name: MetricContainer(metrics, prefix=f"{name}_")}
-            )
+            self._metric_container_dict.update({name: MetricContainer(metrics, prefix=f"{name}_")})
 
         self._metrics = []
         self._metrics_names = []
@@ -656,9 +643,7 @@ class TabModel(BaseEstimator):
             self._metrics_names.extend(metric_container.names)
 
         # Early stopping metric is the last eval metric
-        self.early_stopping_metric = (
-            self._metrics_names[-1] if len(self._metrics_names) > 0 else None
-        )
+        self.early_stopping_metric = self._metrics_names[-1] if len(self._metrics_names) > 0 else None
 
     def _set_callbacks(self, custom_callbacks):
         """Setup the callbacks functions.
@@ -668,7 +653,7 @@ class TabModel(BaseEstimator):
         custom_callbacks : list of func
             List of callback functions.
 
-        """
+        """  
         # Setup default callbacks history, early stopping and scheduler
         callbacks = []
         self.history = History(self, verbose=self.verbose)
@@ -676,9 +661,7 @@ class TabModel(BaseEstimator):
         if (self.early_stopping_metric is not None) and (self.patience > 0):
             early_stopping = EarlyStopping(
                 early_stopping_metric=self.early_stopping_metric,
-                is_maximize=(
-                    self._metrics[-1]._maximize if len(self._metrics) > 0 else None
-                ),
+                is_maximize=(self._metrics[-1]._maximize if len(self._metrics) > 0 else None),
                 patience=self.patience,
             )
             callbacks.append(early_stopping)
@@ -705,9 +688,7 @@ class TabModel(BaseEstimator):
 
     def _set_optimizer(self):
         """Setup optimizer."""
-        self._optimizer = self.optimizer_fn(
-            self.network.parameters(), **self.optimizer_params
-        )
+        self._optimizer = self.optimizer_fn(self.network.parameters(), **self.optimizer_params)
 
     def _construct_loaders(self, X_train, y_train, eval_set):
         """Generate dataloaders for train and eval set.
@@ -781,9 +762,7 @@ class TabModel(BaseEstimator):
             0 for no balancing
             1 for automated balancing
         """
-        raise NotImplementedError(
-            "users must define update_fit_params to use this base class"
-        )
+        raise NotImplementedError("users must define update_fit_params to use this base class")
 
     @abstractmethod
     def compute_loss(self, y_score, y_true):
@@ -802,9 +781,7 @@ class TabModel(BaseEstimator):
         float
             Loss value
         """
-        raise NotImplementedError(
-            "users must define compute_loss to use this base class"
-        )
+        raise NotImplementedError("users must define compute_loss to use this base class")
 
     @abstractmethod
     def prepare_target(self, y):
@@ -821,6 +798,4 @@ class TabModel(BaseEstimator):
         `torch.Tensor`
             Converted target matrix.
         """
-        raise NotImplementedError(
-            "users must define prepare_target to use this base class"
-        )
+        raise NotImplementedError("users must define prepare_target to use this base class")
