@@ -16,6 +16,21 @@ from tqdm.auto import tqdm
 
 from ..utils.metrics import check_repeats
 from ..utils.metrics import matching_quality
+import functools
+import time
+
+
+def timer(func):
+    @functools.wraps(func)
+    def _wrapper(*args, **kwargs):
+        start = time.perf_counter()
+        result = func(*args, **kwargs)
+        runtime = time.perf_counter() - start
+        print(f"{func.__name__} took {runtime:.4f} secs")
+        return result
+
+    return _wrapper
+
 
 faiss.cvar.distance_compute_blas_threshold = 100000
 POSTFIX = "_matched"
@@ -31,23 +46,24 @@ logging.basicConfig(
 )
 
 
+@timer
 class FaissMatcher:
     """A class used to match instances using Faiss library."""
 
     def __init__(
-        self,
-        df: pd.DataFrame,
-        outcomes: str,
-        treatment: str,
-        info_col: list,
-        features: [list, pd.DataFrame] = None,
-        group_col: str = None,
-        weights: dict = None,
-        sigma: float = 1.96,
-        validation: bool = None,
-        n_neighbors: int = 10,
-        silent: bool = True,
-        pbar: bool = True,
+            self,
+            df: pd.DataFrame,
+            outcomes: str,
+            treatment: str,
+            info_col: list,
+            features: [list, pd.DataFrame] = None,
+            group_col: str = None,
+            weights: dict = None,
+            sigma: float = 1.96,
+            validation: bool = None,
+            n_neighbors: int = 10,
+            silent: bool = True,
+            pbar: bool = True,
     ):
         """Construct all the necessary attributes.
 
@@ -103,8 +119,8 @@ class FaissMatcher:
 
         self.features_quality = (
             self.df.drop(columns=[self.treatment] + self.outcomes + self.info_col)
-            .select_dtypes(include=["int16", "int32", "int64", "float16", "float32", "float64"])
-            .columns
+                .select_dtypes(include=["int16", "int32", "int64", "float16", "float32", "float64"])
+                .columns
         )
         self.dict_outcome_untreated = {}
         self.dict_outcome_treated = {}
@@ -299,8 +315,8 @@ class FaissMatcher:
             else:
                 ids = (
                     self.df[df[self.treatment] == int(not is_treated)]
-                    .sort_values([self.treatment, self.group_col])[self.info_col]
-                    .values.ravel()
+                        .sort_values([self.treatment, self.group_col])[self.info_col]
+                        .values.ravel()
                 )
                 converted_index = [ids[i] for i in index]
                 untreated_df["index"] = pd.Series(converted_index)
@@ -657,9 +673,12 @@ def _get_index(base: np.ndarray, new: np.ndarray, n_neighbors: int) -> list:
     """
     index = faiss.IndexFlatL2(base.shape[1])
     index.add(base)
-    dist, indexes = index.search(new, n_neighbors)
-    equal_dist = list(map(map_func, dist))
-    indexes = [f2(i, j) for i, j in zip(indexes, equal_dist)]
+    dist, indexes = index.search(new, 20)
+    if n_neighbors == 1:
+        equal_dist = list(map(map_func, dist))
+        indexes = [f2(i, j) for i, j in zip(indexes, equal_dist)]
+    else:
+        indexes = f3(indexes, dist, n_neighbors)
     return indexes
 
 
@@ -769,7 +788,7 @@ def calc_att_se(vars_c: np.ndarray, vars_t: np.ndarray, scaled_counts_c: np.ndar
 
 
 def calc_ate_se(
-    vars_c: np.ndarray, vars_t: np.ndarray, scaled_counts_c: np.ndarray, scaled_counts_t: np.ndarray
+        vars_c: np.ndarray, vars_t: np.ndarray, scaled_counts_c: np.ndarray, scaled_counts_t: np.ndarray
 ) -> float:
     """Calculates Average Treatment Effect for the control group (ATC) standard error.
 
@@ -890,3 +909,26 @@ def bias(X, X_m, coefs):
     bias_list = [(X_j - X_i).dot(coefs) for X_i, X_j in zip(X, X_m)]
 
     return np.array(bias_list)
+
+
+def f3(index: np.array, dist: np.array, k: int) -> list:
+    """Function returns list of n matches with equal distance in case n>1
+    Args:
+        index:
+            Array of matched indexes
+        dist:
+            Array of matched distances
+        k:
+            k of neareast neighbors with same distance
+
+    Returns:
+        Array of indexes for k neighbors with same distance
+    """
+    new = []
+    for i, val in enumerate(index):
+        eq_dist = sorted(set(dist[i]))
+        unit = []
+        for d in eq_dist[:k]:
+            unit.append(val[np.where(dist[i] == d)[0]])
+        new.append(np.concatenate(unit))
+    return new
