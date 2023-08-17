@@ -169,8 +169,8 @@ class Matcher:
         self.input_data = input_data
         self.outcomes = outcome if type(outcome) == list else [outcome]
         self.treatment = treatment
-        self.group_col = None
-        self.info_col = None
+        self.group_col = group_col
+        self.info_col = info_col
         self.outcome_type = outcome_type
         self.weights = weights
         self.generate_report = generate_report
