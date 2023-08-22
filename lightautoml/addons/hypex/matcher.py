@@ -11,7 +11,7 @@ from .algorithms.faiss_matcher import FaissMatcher
 from .selectors.lama_feature_selector import LamaFeatureSelector
 from .selectors.spearman_filter import SpearmanFilter
 from .selectors.outliers_filter import OutliersFilter
-from .selectors.base_filtration import const_filtration
+from .selectors.base_filtration import const_filtration, nan_filtration
 from .utils.validators import random_feature
 from .utils.validators import random_treatment
 from .utils.validators import subset_refuter
@@ -107,7 +107,7 @@ class Matcher:
         drop_outliers_by_percentile: bool = OUT_MODE_PERCENT,
         min_percentile: float = OUT_MIN_PERCENT,
         max_percentile: float = OUT_MAX_PERCENT,
-        n_neighbors: int = 10,
+        n_neighbors: int = 1,
         silent: bool = True,
         pbar: bool = True,
     ):
@@ -126,6 +126,9 @@ class Matcher:
                 Column for grouping. Defaults to None.
             info_col:
                 Columns with id, date or metadata, not taking part in calculations. Defaults to None
+            weights:
+                weights for numeric columns in order to increase matching quality by weighted feature.
+                By default is Non (all features have the same weight equal to 1). Example: {'feature_1': 10}
             base_filtration
                 To use or not base filtration of features in order to remove all constant or almost all constant, bool.
                 Default is False.
@@ -154,7 +157,8 @@ class Matcher:
             max_percentile:
                 Maximum percentile to drop outliers. Defaults to 0.98
             n_neighbors:
-                Number of neighbors to match. Defaults to 10
+                Number of neighbors to match (in fact you may see more then n matches as every match may have more then
+                one neighbor with the same distance). Default value is 1.
             silent:
                 Write logs in debug mode
             pbar:
@@ -166,7 +170,7 @@ class Matcher:
         self.outcomes = outcome if type(outcome) == list else [outcome]
         self.treatment = treatment
         self.group_col = group_col
-        self.info_col = info_col if info_col is not None else []
+        self.info_col = info_col
         self.outcome_type = outcome_type
         self.weights = weights
         self.generate_report = generate_report
@@ -181,7 +185,6 @@ class Matcher:
         self.mode_percentile = drop_outliers_by_percentile
         self.min_percentile = min_percentile
         self.max_percentile = max_percentile
-        self.info_col = info_col
         self.base_filtration = base_filtration
         self.features_importance = None
         self.matcher = None
@@ -214,6 +217,14 @@ class Matcher:
 
     def _preprocessing_data(self):
         """Converts categorical features into dummy variables."""
+
+        info_col = self.info_col if self.info_col is not None else []
+        group_col = [self.group_col] if self.group_col is not None else []
+        columns_to_drop = info_col + group_col + self.outcomes
+        if self.base_filtration:
+            filtered_features = nan_filtration(self.input_data.drop(columns=columns_to_drop))
+            self.dropped_features = [f for f in self.input_data.columns if f not in filtered_features + columns_to_drop]
+            self.input_data = self.input_data[filtered_features + columns_to_drop]
         nan_counts = self.input_data.isna().sum().sum()
         if nan_counts != 0:
             self._log(f"Number of NaN values filled with zeros: {nan_counts}", silent=False)
@@ -232,9 +243,8 @@ class Matcher:
             self.input_data = pd.concat([self.input_data, info_col], axis=1)
 
         if self.base_filtration:
-            columns_to_drop = self.info_col + self.group_col + self.outcomes
-            filtered_features = const_filtration(self.input_data.drop(columns_to_drop))
-            self.dropped_features = [f for f in self.input_data.columns if f not in filtered_features+columns_to_drop]
+            filtered_features = const_filtration(self.input_data.drop(columns=columns_to_drop))
+            self.dropped_features = np.concatenate((self.dropped_features, [f for f in self.input_data.columns if f not in filtered_features+columns_to_drop]))
             self.input_data = self.input_data[filtered_features + columns_to_drop]
 
         self._log("Categorical features turned into dummy")
