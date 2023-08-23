@@ -144,6 +144,7 @@ class Matcher:
         self.n_neighbors = n_neighbors
         self.silent = silent
         self.pbar = pbar
+        self.results = None
 
     def _preprocessing_data(self):
         """Converts categorical features into dummy variables.
@@ -359,6 +360,9 @@ class Matcher:
 
             for key in self.val_dict.keys():
                 self.val_dict[key].append(sim[key][0])
+
+        if self.results is None:
+            raise AttributeError(f"There is no estimated results ({self.results}). Please, use 'estimate()' func")
 
         for outcome in [self.outcome]:
             self.pval_dict.update({outcome: [np.mean(self.val_dict[outcome])]})

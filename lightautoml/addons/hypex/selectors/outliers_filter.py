@@ -36,7 +36,7 @@ class OutliersFilter:
         self.min_percentile = min_percentile
         self.max_percentile = max_percentile
 
-    def perform_filter(self, df: pd.DataFrame, interquartile: bool = True) -> set:
+    def perform_filter(self, data: pd.DataFrame, interquartile: bool = True) -> set:
         """Identifies rows with outliers.
 
         This method creates a set of row indices to be removed, which contains values less than
@@ -44,7 +44,7 @@ class OutliersFilter:
         smaller than the 0.2 and larget than 0.8 (if `mode_percentile` is False)
 
         Args:
-            df: pd.DataFrame
+            data: pd.DataFrame
                 The input DataFrame
             interquartile: bool, optional
                 If True, uses the interquartile range to determine outliers. Defaults to True
@@ -52,29 +52,29 @@ class OutliersFilter:
         Returns:
             set: The set of row indices with outliers
         """
-        columns_names = df.select_dtypes(include="number").columns
+        columns_names = data.select_dtypes(include="number").columns
         rows_for_del = []
         for column in columns_names:
             if self.mode_percentile:
-                min_value = df[column].quantile(self.min_percentile)
-                max_value = df[column].quantile(self.max_percentile)
+                min_value = data[column].quantile(self.min_percentile)
+                max_value = data[column].quantile(self.max_percentile)
             elif interquartile:
-                upper_quantile = df[column].quantile(0.8)
-                lower_quantile = df[column].quantile(0.2)
+                upper_quantile = data[column].quantile(0.8)
+                lower_quantile = data[column].quantile(0.2)
 
                 interquartile_range = upper_quantile - lower_quantile
                 min_value = lower_quantile - self.interquartile_coeff * interquartile_range
                 max_value = upper_quantile + self.interquartile_coeff * interquartile_range
             else:
-                mean_value = df[column].mean()
-                standard_deviation = df[column].std()
+                mean_value = data[column].mean()
+                standard_deviation = data[column].std()
                 nstd_lower, nstd_upper = 3, 3
 
                 min_value = mean_value - nstd_lower * standard_deviation
                 max_value = mean_value + nstd_upper * standard_deviation
 
-            rows_for_del_column = (df[column] < min_value) | (df[column] > max_value)
-            rows_for_del_column = df.index[rows_for_del_column].tolist()
+            rows_for_del_column = (data[column] < min_value) | (data[column] > max_value)
+            rows_for_del_column = data.index[rows_for_del_column].tolist()
             rows_for_del.extend(rows_for_del_column)
         rows_for_del = set(rows_for_del)
         logger.info(f"Drop {len(rows_for_del)} rows")
