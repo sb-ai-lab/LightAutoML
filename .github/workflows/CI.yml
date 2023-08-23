@@ -26,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - uses: actions/setup-python@v4
         with:
           python-version: "3.9"
       - uses: pre-commit/action@v2.0.3
@@ -44,7 +44,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-20.04, windows-latest, macos-latest]  # FIX: 'ubuntu-latest'(ubunut-22.04) -> 'ubuntu-20.04': Python version 3.6 was not found in the local cache
-        python-version: [3.6, 3.7, 3.8, 3.9]
+        python-version: ["3.6", "3.7", "3.8", "3.9", "3.10"]
 
     steps:
       - uses: actions/checkout@v2
@@ -58,14 +58,19 @@ jobs:
         with:
           poetry-version: 1.1.7
 
-      - name: install libomp for MacOS
+      - name: install deps for MacOS
         if: ${{ matrix.os == 'macos-latest' }}
-        run: brew install libomp
+        run: brew install libomp cairo pango gdk-pixbuf libffi
+
+      - name: install deps for Ubuntu
+        if: ${{ matrix.os == 'ubuntu-20.04' }}
+        run: sudo apt-get install build-essential libcairo2 libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf2.0-0 libffi-dev shared-mime-info
 
       - name: install tox
         run: |
-          pip3 install tox==3.24.4
-          pip3 install tox-gh-actions==2.8.1
+          python3 -m pip install --upgrade pip
+          pip3 install tox==3.28.0
+          pip3 install tox-gh-actions==2.12.0
 
       - name: test with tox
         run: |

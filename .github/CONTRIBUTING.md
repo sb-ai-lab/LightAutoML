@@ -1,10 +1,18 @@
 # Table of contents
 
-- [Contributing to LightAutoML](#contriburing-to-lightautoml)
-- [Codebase Structure](#codebase-structure)
-- [Developing LightAutoML](#developing-lightautoml)
-- [Writing Documentation](#writing-documentation)
-- [Style Guide](#style-guide)
+- [Table of contents](#table-of-contents)
+  - [Contributing to LightAutoML](#contributing-to-lightautoml)
+  - [Codebase structure](#codebase-structure)
+  - [Developing LightAutoML](#developing-lightautoml)
+    - [Installation](#installation)
+    - [Style Guide](#style-guide)
+      - [Automated code checking](#automated-code-checking)
+    - [Testing](#testing)
+  - [Documentation](#documentation)
+    - [Building Documentation](#building-documentation)
+    - [Writing Documentation](#writing-documentation)
+    - [Adding new submodules](#adding-new-submodules)
+    - [Adding Tutorials](#adding-tutorials)
 
 ## Contributing to LightAutoML
 
@@ -78,8 +86,19 @@ to work with environments.
 
 4. Install LightAutoML (**warning**: it may take a long time, check the ```script/poetry_fix.py``` to shorten the installation time.):
 
+    To install only necessary dependencies, without extras:
     ```bash
     poetry install
+    ```
+
+    To install all dependencies:
+    ```bash
+    poetry install --all-extras
+    ```
+
+    To install only specific dependency groups:
+    ```
+    poetry install -E cv -E report
     ```
 
 After that, there is virtual environment, where you can test and implement your own code.
@@ -120,16 +139,26 @@ usual help channels.
 ### Testing
 
 Before making a pull request (despite changing only the documentation or writing new code), please check your code on tests:
-
 ```bash
-poetry run pytest tests
+tox --parallel 6
 ```
 
-To run tests with different Python versions, run tox
 
+To run all tests with specific Python versions:
 ```bash
-poetry run tox
+tox -e py37
 ```
+
+To run specific test:
+```
+tox -e py37 -- -x tests/unit/test_utils
+```
+
+To run tests for specific Python versions (for example python 3.6):
+```bash
+poetry run tox -e py36
+```
+
 
 Also if you develop new functionality, please add your own tests.
 

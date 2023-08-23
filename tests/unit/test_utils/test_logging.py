@@ -18,7 +18,7 @@ from lightautoml.automl.presets.tabular_presets import TabularAutoML
 )
 def test_logging(
     capsys,
-    tmpdir,
+    tmp_path,
     sampled_app_train_test,
     sampled_app_roles,
     binary_task,
@@ -28,7 +28,7 @@ def test_logging(
     train, _ = sampled_app_train_test
 
     if log_file:
-        log_file = os.path.join(tmpdir, "log_file.log")
+        log_file = os.path.join(tmp_path, "log_file.log")
 
     automl = TabularAutoML(
         task=binary_task,

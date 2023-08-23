@@ -192,7 +192,8 @@ class AutoTS:
 
         if hasattr(self.TM, "automl_trend"):
             self.datetime_step = (
-                pd.to_datetime(train_data[self.datetime_key]).iloc[1] - pd.to_datetime(train_data[self.datetime_key]).iloc[0]
+                pd.to_datetime(train_data[self.datetime_key]).iloc[1]
+                - pd.to_datetime(train_data[self.datetime_key]).iloc[0]
             )
         # fit main
         train_detrend = train_data.copy()
