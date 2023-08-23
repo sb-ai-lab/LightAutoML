@@ -64,10 +64,6 @@ autowoe = ">=1.2"
 jinja2 = "*"
 json2html = "*"
 seaborn = "*"
-nbconvert = {version = "7.7.3", python = ">=3.8"}
-defusedxml = "0.7.1"
-tinycss2 = {version = "1.2.1", python = ">=3.7"}
-webencodings = "0.5.1"
 
 
 
