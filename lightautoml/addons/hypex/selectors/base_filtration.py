@@ -6,12 +6,12 @@ import numpy as np
 def const_filtration(X: pd.DataFrame, threshold: float = 0.95) -> list:
     """Function removes features consist of constant value on 95%.
 
-        Args:
-            X: related dataset
-            threshold: constant fill rate, default is 0.95
+    Args:
+        X: related dataset
+        threshold: constant fill rate, default is 0.95
 
-        Returns:
-            List of filtered columns
+    Returns:
+        List of filtered columns
     """
     is_const = pd.Series(0, index=X.columns, dtype=np.dtype(bool))
     for col in X.columns:
@@ -32,12 +32,12 @@ def const_filtration(X: pd.DataFrame, threshold: float = 0.95) -> list:
 def nan_filtration(X: pd.DataFrame, threshold: float = 0.8):
     """Function removes features consist of NaN value on 80%.
 
-            Args:
-                X: related dataset
-                threshold: constant fill rate, default is 0.95
+    Args:
+        X: related dataset
+        threshold: constant fill rate, default is 0.95
 
-            Returns:
-                List of filtered columns
+    Returns:
+        List of filtered columns
     """
     nan_freqs = np.mean(pd.isnull(X), axis=0)
     is_sparse = nan_freqs > threshold
