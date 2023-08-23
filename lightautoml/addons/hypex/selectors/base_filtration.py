@@ -1,18 +1,18 @@
+"""Function for base filtration of data"""
 import pandas as pd
 import numpy as np
 
 
 def const_filtration(X: pd.DataFrame, threshold: float = 0.95) -> list:
-    """Function removes features consist of constant value on 95%
+    """Function removes features consist of constant value on 95%.
 
         Args:
-            X - related dataset
-            threshold - constant fill rate, default is 0.95
+            X: related dataset
+            threshold: constant fill rate, default is 0.95
 
         Returns:
             List of filtered columns
     """
-
     is_const = pd.Series(0, index=X.columns, dtype=np.dtype(bool))
     for col in X.columns:
         # NaNs are not counted using unique (since np.nan != np.nan). Fill them with a unique value:
@@ -29,12 +29,12 @@ def const_filtration(X: pd.DataFrame, threshold: float = 0.95) -> list:
         return X.loc[:, selected_features].columns.to_list()
 
 
-def nan_filtration(X: pd.DataFrame, threshold=0.8):
-    """Function removes features consist of NaN value on 80%
+def nan_filtration(X: pd.DataFrame, threshold: float = 0.8):
+    """Function removes features consist of NaN value on 80%.
 
             Args:
-                X - related dataset
-                threshold - constant fill rate, default is 0.95
+                X: related dataset
+                threshold: constant fill rate, default is 0.95
 
             Returns:
                 List of filtered columns

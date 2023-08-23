@@ -127,9 +127,9 @@ class Matcher:
             info_col:
                 Columns with id, date or metadata, not taking part in calculations. Defaults to None
             weights:
-                weights for numeric columns in order to increase matching quality by weighted feature.
-                By default is Non (all features have the same weight equal to 1). Example: {'feature_1': 10}
-            base_filtration
+                Weights for numeric columns in order to increase matching quality by weighted feature.
+                By default is None (all features have the same weight equal to 1). Example: {'feature_1': 10}
+            base_filtration:
                 To use or not base filtration of features in order to remove all constant or almost all constant, bool.
                 Default is False.
             generate_report:
@@ -217,7 +217,6 @@ class Matcher:
 
     def _preprocessing_data(self):
         """Converts categorical features into dummy variables."""
-
         info_col = self.info_col if self.info_col is not None else []
         group_col = [self.group_col] if self.group_col is not None else []
         columns_to_drop = info_col + group_col + self.outcomes
