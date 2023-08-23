@@ -21,6 +21,23 @@ import time
 
 
 def timer(func):
+    """Decorator to measure the execution time of a function.
+
+    Uses time.perf_counter() to determine the start and end times
+    of the decorated function and then prints the total execution time
+
+    Usage Example:
+
+        @timer
+        def example_function():
+            ...
+
+    Args:
+        func: The function whose execution time is to be measured
+
+    Returns:
+        Wrapped version of the original function with added time measurement
+    """
     @functools.wraps(func)
     def _wrapper(*args, **kwargs):
         start = time.perf_counter()
@@ -51,19 +68,19 @@ class FaissMatcher:
     """A class used to match instances using Faiss library."""
 
     def __init__(
-            self,
-            df: pd.DataFrame,
-            outcomes: str,
-            treatment: str,
-            info_col: list,
-            features: [list, pd.DataFrame] = None,
-            group_col: str = None,
-            weights: dict = None,
-            sigma: float = 1.96,
-            validation: bool = None,
-            n_neighbors: int = 10,
-            silent: bool = True,
-            pbar: bool = True,
+        self,
+        df: pd.DataFrame,
+        outcomes: str,
+        treatment: str,
+        info_col: list,
+        features: [list, pd.DataFrame] = None,
+        group_col: str = None,
+        weights: dict = None,
+        sigma: float = 1.96,
+        validation: bool = None,
+        n_neighbors: int = 10,
+        silent: bool = True,
+        pbar: bool = True,
     ):
         """Construct all the necessary attributes.
 
@@ -80,6 +97,9 @@ class FaissMatcher:
                 A list with names of feature using to matching. Defaults to None
             group_col:
                 The column for stratification. Defaults to None
+            weights:
+                Dict with wight of features to matching. If you would like that matching will be more for
+                1 feature and less for another one
             sigma:
                 The significant level for confidence interval calculation Defaults to 1.96
             validation:
@@ -119,8 +139,8 @@ class FaissMatcher:
 
         self.features_quality = (
             self.df.drop(columns=[self.treatment] + self.outcomes + self.info_col)
-                .select_dtypes(include=["int16", "int32", "int64", "float16", "float32", "float64"])
-                .columns
+            .select_dtypes(include=["int16", "int32", "int64", "float16", "float32", "float64"])
+            .columns
         )
         self.dict_outcome_untreated = {}
         self.dict_outcome_treated = {}
@@ -315,8 +335,8 @@ class FaissMatcher:
             else:
                 ids = (
                     self.df[df[self.treatment] == int(not is_treated)]
-                        .sort_values([self.treatment, self.group_col])[self.info_col]
-                        .values.ravel()
+                    .sort_values([self.treatment, self.group_col])[self.info_col]
+                    .values.ravel()
                 )
                 converted_index = [ids[i] for i in index]
                 untreated_df["index"] = pd.Series(converted_index)
@@ -788,7 +808,7 @@ def calc_att_se(vars_c: np.ndarray, vars_t: np.ndarray, scaled_counts_c: np.ndar
 
 
 def calc_ate_se(
-        vars_c: np.ndarray, vars_t: np.ndarray, scaled_counts_c: np.ndarray, scaled_counts_t: np.ndarray
+    vars_c: np.ndarray, vars_t: np.ndarray, scaled_counts_c: np.ndarray, scaled_counts_t: np.ndarray
 ) -> float:
     """Calculates Average Treatment Effect for the control group (ATC) standard error.
 
@@ -912,7 +932,8 @@ def bias(X, X_m, coefs):
 
 
 def f3(index: np.array, dist: np.array, k: int) -> list:
-    """Function returns list of n matches with equal distance in case n>1
+    """Function returns list of n matches with equal distance in case n>1.
+
     Args:
         index:
             Array of matched indexes
