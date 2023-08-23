@@ -8,6 +8,7 @@ import pandas as pd
 from tqdm.auto import tqdm
 
 from .algorithms.faiss_matcher import FaissMatcher
+from .algorithms.no_replacement_matching import no_replacement_match
 from .selectors.lama_feature_selector import LamaFeatureSelector
 from .selectors.spearman_filter import SpearmanFilter
 from .selectors.outliers_filter import OutliersFilter
@@ -88,8 +89,8 @@ class Matcher:
     def __init__(
         self,
         input_data: pd.DataFrame,
-        outcome: str,
         treatment: str,
+        outcome: str = None,
         outcome_type: str = "numeric",
         group_col: str = None,
         info_col: list = None,
@@ -127,7 +128,8 @@ class Matcher:
             info_col:
                 Columns with id, date or metadata, not taking part in calculations. Defaults to None
             weights:
-                Weights for numeric columns in order to increase matching quality by weighted feature.
+
+                weights for numeric columns in order to increase matching quality by weighted feature.
                 By default is None (all features have the same weight equal to 1). Example: {'feature_1': 10}
             base_filtration:
                 To use or not base filtration of features in order to remove all constant or almost all constant, bool.
@@ -167,6 +169,8 @@ class Matcher:
         if use_algos is None:
             use_algos = USE_ALGOS
         self.input_data = input_data
+        if outcome is None:
+            outcome = list()
         self.outcomes = outcome if type(outcome) == list else [outcome]
         self.treatment = treatment
         self.group_col = group_col
@@ -292,6 +296,29 @@ class Matcher:
         self._apply_filter(
             OutliersFilter, self.interquartile_coeff, self.mode_percentile, self.min_percentile, self.max_percentile
         )
+
+
+    def match_no_rep(self):
+        """ Matching groups with no replacement and optimize the linear sum of
+            distances between pairs of treatment and
+            control samples.
+            Args:
+                X - features dataframe
+                a - series of treatment value
+                weights -  weights for numeric columns in order to increase matching quality by weighted feature.
+            Returns:
+                 Matched dataframe shape of min(N treated + N control), n_features used for matching."""
+        a = self.input_data[self.treatment]
+        X = self.input_data.drop(columns=self.treatment)
+        if self.info_col is not None:
+            X = X.drop(columns=self.info_col)
+
+        index_matched = no_replacement_match(X, a, self.weights).match()
+
+        matched_data = pd.concat([self.input_data[a == 1],
+                                   self.input_data.loc[np.concatenate(index_matched.loc[1].iloc[self.input_data[a == 1].index].matches.values)]])
+        return matched_data
+
 
     def lama_feature_select(self) -> pd.DataFrame:
         """Calculates the importance of each feature.
