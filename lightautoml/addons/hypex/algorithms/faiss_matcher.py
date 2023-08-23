@@ -21,6 +21,23 @@ import time
 
 
 def timer(func):
+    """Decorator to measure the execution time of a function.
+
+    Uses time.perf_counter() to determine the start and end times
+    of the decorated function and then prints the total execution time
+
+    Usage Example:
+
+        @timer
+        def example_function():
+            ...
+
+    Args:
+        func: The function whose execution time is to be measured
+
+    Returns:
+        Wrapped version of the original function with added time measurement
+    """
     @functools.wraps(func)
     def _wrapper(*args, **kwargs):
         start = time.perf_counter()
@@ -80,6 +97,9 @@ class FaissMatcher:
                 A list with names of feature using to matching. Defaults to None
             group_col:
                 The column for stratification. Defaults to None
+            weights:
+                Dict with wight of features to matching. If you would like that matching will be more for
+                1 feature and less for another one
             sigma:
                 The significant level for confidence interval calculation Defaults to 1.96
             validation:
@@ -912,7 +932,8 @@ def bias(X, X_m, coefs):
 
 
 def f3(index: np.array, dist: np.array, k: int) -> list:
-    """Function returns list of n matches with equal distance in case n>1
+    """Function returns list of n matches with equal distance in case n>1.
+
     Args:
         index:
             Array of matched indexes
