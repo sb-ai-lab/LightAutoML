@@ -85,7 +85,13 @@ def test_matcher_pos():
     assert list(model.quality_result.keys()) == ["psi", "ks_test", "smd", "repeats"], "metrics renamed"
 
     assert list(model.results.index) == ["ATE", "ATC", "ATT"], "format of results is changed: type of effects"
-    assert list(model.results.columns) == ["effect_size", "std_err", "p-val", "ci_lower", "ci_upper"], "format of results is changed: columns in report"
+    assert list(model.results.columns) == [
+        "effect_size",
+        "std_err",
+        "p-val",
+        "ci_lower",
+        "ci_upper",
+    ], "format of results is changed: columns in report"
     assert model.results["p-val"].values[0] <= 0.1, "p-value on ATE is greater than 0.1"
     assert model.results["p-val"].values[1] <= 0.1, "p-value on ATC is greater than 0.1"
     assert model.results["p-val"].values[2] <= 0.1, "p-value on ATT is greater than 0.1"
@@ -99,11 +105,25 @@ def test_matcher_group_pos():
     res = model.estimate()
 
     assert len(model.quality_result.keys()) == 4, "quality results return not 4 metrics"
-    assert list(model.quality_result.keys()) == ["psi", "ks_test", "smd", "repeats"], "metrics renamed, there should be ['psi', 'ks_test', 'smd', 'repeats']"
+    assert list(model.quality_result.keys()) == [
+        "psi",
+        "ks_test",
+        "smd",
+        "repeats",
+    ], "metrics renamed, there should be ['psi', 'ks_test', 'smd', 'repeats']"
 
-    assert list(model.results.index) == ["ATE", "ATC", "ATT"], "format of results is changed: type of effects (ATE, ATC, ATT)"
-    assert list(model.results.columns) == ["effect_size", "std_err", "p-val", "ci_lower", "ci_upper"], \
-        "format of results is changed: columns in report ['effect_size', 'std_err', 'p-val', 'ci_lower', 'ci_upper']"
+    assert list(model.results.index) == [
+        "ATE",
+        "ATC",
+        "ATT",
+    ], "format of results is changed: type of effects (ATE, ATC, ATT)"
+    assert list(model.results.columns) == [
+        "effect_size",
+        "std_err",
+        "p-val",
+        "ci_lower",
+        "ci_upper",
+    ], "format of results is changed: columns in report ['effect_size', 'std_err', 'p-val', 'ci_lower', 'ci_upper']"
     assert model.results["p-val"].values[0] <= 0.05, "p-value on ATE is greater than 0.1"
     assert model.results["p-val"].values[1] <= 0.05, "p-value on ATC is greater than 0.1"
     assert model.results["p-val"].values[2] <= 0.05, "p-value on ATT is greater than 0.1"
@@ -112,18 +132,18 @@ def test_matcher_group_pos():
     assert len(res) == 3, "tuple does not return 3 values"
 
 
-# def test_matcher_big_data_pos():
-#     data = create_test_data(1_000_000)
-#     info_col = ["user_id", "signup_month"]
-#     outcome = "post_spends"
-#     treatment = "treat"
-#
-#     model = Matcher(input_data=data, outcome=outcome, treatment=treatment, info_col=info_col)
-#     results, quality_results, df_matched = model.estimate()
-#
-#     assert isinstance(model.estimate(), tuple), "result of function estimate is not tuple"
-#     assert len(model.estimate()) == 3, "tuple does not return 3 values"
-#     assert len(quality_results.keys()) == 4, "quality results return not four metrics"
+def test_matcher_big_data_pos():
+    data = create_test_data(1_000_000)
+    info_col = ["user_id", "signup_month"]
+    outcome = "post_spends"
+    treatment = "treat"
+
+    model = Matcher(input_data=data, outcome=outcome, treatment=treatment, info_col=info_col)
+    results, quality_results, df_matched = model.estimate()
+
+    assert isinstance(model.estimate(), tuple), "result of function estimate is not tuple"
+    assert len(model.estimate()) == 3, "tuple does not return 3 values"
+    assert len(quality_results.keys()) == 4, "quality results return not four metrics"
 
 
 def test_lama_feature_pos():
