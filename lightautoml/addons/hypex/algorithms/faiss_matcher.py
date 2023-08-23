@@ -20,17 +20,6 @@ import functools
 import time
 
 
-def timer(func):
-    @functools.wraps(func)
-    def _wrapper(*args, **kwargs):
-        start = time.perf_counter()
-        result = func(*args, **kwargs)
-        runtime = time.perf_counter() - start
-        print(f"{func.__name__} took {runtime:.4f} secs")
-        return result
-
-    return _wrapper
-
 
 faiss.cvar.distance_compute_blas_threshold = 100000
 POSTFIX = "_matched"
@@ -46,7 +35,6 @@ logging.basicConfig(
 )
 
 
-@timer
 class FaissMatcher:
     """A class used to match instances using Faiss library."""
 
@@ -697,9 +685,7 @@ def _transform_to_np(treated: pd.DataFrame, untreated: pd.DataFrame, weights: di
     xc = untreated.to_numpy()
     xt = treated.to_numpy()
 
-    cov_c = np.cov(xc, rowvar=False, ddof=0)
-    cov_t = np.cov(xt, rowvar=False, ddof=0)
-    cov = (cov_c + cov_t) / 2
+    cov = conditional_covariance(xc, xt)
 
     epsilon = 1e-6
     cov = cov + epsilon * np.eye(cov.shape[0])
@@ -763,6 +749,13 @@ def calc_atc_se(vars_c: np.ndarray, vars_t: np.ndarray, scaled_counts_t: np.ndar
 
     return np.sqrt(var)
 
+def conditional_covariance(xc, xt):
+    """Calculates covariance according to Imbens, Rubin model."""
+    cov_c = np.cov(xc, rowvar=False, ddof=0)
+    cov_t = np.cov(xt, rowvar=False, ddof=0)
+    cov = (cov_c + cov_t) / 2
+
+    return cov
 
 def calc_att_se(vars_c: np.ndarray, vars_t: np.ndarray, scaled_counts_c: np.ndarray) -> float:
     """Calculates Average Treatment Effect for the treated (ATT) standard error.
