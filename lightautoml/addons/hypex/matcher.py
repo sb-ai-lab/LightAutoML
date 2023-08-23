@@ -128,9 +128,10 @@ class Matcher:
             info_col:
                 Columns with id, date or metadata, not taking part in calculations. Defaults to None
             weights:
+
                 weights for numeric columns in order to increase matching quality by weighted feature.
                 By default is None (all features have the same weight equal to 1). Example: {'feature_1': 10}
-            base_filtration
+            base_filtration:
                 To use or not base filtration of features in order to remove all constant or almost all constant, bool.
                 Default is False.
             generate_report:
@@ -220,7 +221,6 @@ class Matcher:
 
     def _preprocessing_data(self):
         """Converts categorical features into dummy variables."""
-
         info_col = self.info_col if self.info_col is not None else []
         group_col = [self.group_col] if self.group_col is not None else []
         columns_to_drop = info_col + group_col + self.outcomes
@@ -247,7 +247,12 @@ class Matcher:
 
         if self.base_filtration:
             filtered_features = const_filtration(self.input_data.drop(columns=columns_to_drop))
-            self.dropped_features = np.concatenate((self.dropped_features, [f for f in self.input_data.columns if f not in filtered_features+columns_to_drop]))
+            self.dropped_features = np.concatenate(
+                (
+                    self.dropped_features,
+                    [f for f in self.input_data.columns if f not in filtered_features+columns_to_drop]
+                )
+            )
             self.input_data = self.input_data[filtered_features + columns_to_drop]
 
         self._log("Categorical features turned into dummy")
@@ -418,7 +423,9 @@ class Matcher:
 
         return self.results, self.quality_result, df_matched
 
-    def validate_result(self, refuter: str = "random_feature", effect_type: str = 'ate', n_sim: int = 10, fraction: float = 0.8) -> dict:
+    def validate_result(
+        self, refuter: str = "random_feature", effect_type: str = 'ate', n_sim: int = 10, fraction: float = 0.8
+    ) -> dict:
         """Validates estimated ATE (Average Treatment Effect).
 
         Validates estimated effect:
@@ -448,7 +455,7 @@ class Matcher:
         self.val_dict = {k: [] for k in self.outcomes}
         self.pval_dict = dict()
 
-        effect_dict = {'ate': 0, 'atc': 1, 'att': 2}
+        effect_dict = {"ate": 0, "atc": 1, "att": 2}
 
         assert effect_type in effect_dict.keys()
 
@@ -502,7 +509,10 @@ class Matcher:
         for outcome in self.outcomes:
             self.pval_dict.update({outcome: [np.mean(self.val_dict[outcome])]})
             self.pval_dict[outcome].append(
-                test_significance(self.results.query('outcome==@outcome').loc[effect_type.upper()]["effect_size"], self.val_dict[outcome])
+                test_significance(
+                    self.results.query('outcome==@outcome').loc[effect_type.upper()]["effect_size"],
+                    self.val_dict[outcome]
+                )
             )
         if refuter == "random_treatment":
             self.input_data[self.treatment] = orig_treatment
@@ -512,7 +522,6 @@ class Matcher:
                 self.features_importance.remove("random_feature")
 
         return self.pval_dict
-      
 
     def estimate(self, features: list = None) -> tuple:
         """Performs matching via Mahalanobis distance.
