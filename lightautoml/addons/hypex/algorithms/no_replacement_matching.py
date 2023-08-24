@@ -5,26 +5,27 @@ import numpy as np
 import pandas as pd
 
 
-class no_replacement_match():
+class MatcherNoReplacement:
     """ Matching groups with no replacement by optimizing the linear sum of
         distances between pairs of treatment and
         control samples.
+
         Args:
-            X - features dataframe.
-            a - series of treatment value.
-            weights -  weights for numeric columns in order to increase matching quality by weighted feature.
+            X: features dataframe.
+            a: series of treatment value.
+            weights:  weights for numeric columns in order to increase matching quality by weighted feature.
         Returns:
              Matched dataframe shape of min(N treated + N control), n_features used for matching.
     """
 
     def __init__(self, X: pd.DataFrame, a: pd.Series, weights: dict = None):
-
         self.treatment = a
         self.X = X
         self.weights = weights
 
     def match(self):
         """Function run matching with no replacement.
+
         Returns:
             Dataframe of matched indexes."""
         matches = {}
@@ -44,13 +45,14 @@ class no_replacement_match():
         match_df = pd.concat(matches, sort=True)
         return match_df
 
-    def create_match_df(self,base_series, source_df, target_df, distances) -> pd.DataFrame:
+    def create_match_df(self, base_series, source_df, target_df, distances) -> pd.DataFrame:
         """Function creates matching dataframe.
+
         Args:
-            base_series - series of treatment value.
-            source_df - dataframe of sources indexes.
-            target_df - dataframe of target indexes.
-            distances - matrix of calculated distances.
+            base_series: series of treatment value.
+            source_df: dataframe of sources indexes.
+            target_df: dataframe of target indexes.
+            distances: matrix of calculated distances.
         Returns:
             Matched dataframe of indexes.
         """
@@ -83,12 +85,12 @@ class no_replacement_match():
         )
         return match_sub_df
 
-
     def _get_metric_dict(self, cov):
         """Function calculates correct feature space and generate metrics dist for
             cdist calculation.
+
         Args:
-            cov -  matrix of covariations.
+            cov: matrix of covariations.
         Return:
             Metric dictionary.
         """
@@ -110,12 +112,13 @@ class no_replacement_match():
         Combines metric and source/target data into a
         precalculated distance matrix which can be passed to
         scipy.optimize.linear_sum_assignment.
+
         Args:
-            source_df - source feature dataframe.
-            target_df - target feature dataframe.
-            cov - matrix of covariations.
+            source_df: source feature dataframe.
+            target_df: target feature dataframe.
+            cov: matrix of covariations.
         Returns:
-            distance_matrix - Matrix of distances.
+            Matrix of distances.
         """
         cdist_args = dict(XA=_ensure_array_columnlike(source_df.values),
                           XB=_ensure_array_columnlike(target_df.values))
@@ -125,15 +128,15 @@ class no_replacement_match():
         return distance_matrix
 
 
-
 def optimally_match_distance_matrix(distance_matrix):
     """Functions finds optimal neighbor with no replacement.
+
     Args:
-        distance_matrix - matrix of distances.
+        distance_matrix: matrix of distances.
     Returns:
-        source_array - indexes of source dataframe.
-        neighbor_array_indices - optimal neighbors array for source array.
-        distances - distances of optimal neighbors.
+        - indexes of source dataframe.
+        - optimal neighbors array for source array.
+        - distances of optimal neighbors.
     """
     source_array, neighbor_array_indices = linear_sum_assignment(
         distance_matrix
@@ -147,13 +150,12 @@ def optimally_match_distance_matrix(distance_matrix):
 
 def _ensure_array_columnlike(target_array):
     """Function checks if array is column like and reshape it in order it is not.
+
     Args:
-        target_array - checked array.
+        target_array: checked array.
     Returns:
-        target_array - column like target array.
+        column like target array.
     """
     if len(target_array.shape) < 2 or target_array.shape[1] == 1:
         target_array = target_array.reshape(-1, 1)
     return target_array
-
-

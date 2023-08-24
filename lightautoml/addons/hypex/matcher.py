@@ -8,7 +8,7 @@ import pandas as pd
 from tqdm.auto import tqdm
 
 from .algorithms.faiss_matcher import FaissMatcher
-from .algorithms.no_replacement_matching import no_replacement_match
+from .algorithms.no_replacement_matching import MatcherNoReplacement
 from .selectors.lama_feature_selector import LamaFeatureSelector
 from .selectors.spearman_filter import SpearmanFilter
 from .selectors.outliers_filter import OutliersFilter
@@ -313,7 +313,7 @@ class Matcher:
         if self.info_col is not None:
             X = X.drop(columns=self.info_col)
 
-        index_matched = no_replacement_match(X, a, self.weights).match()
+        index_matched = MatcherNoReplacement(X, a, self.weights).match()
         index_matched = np.concatenate(index_matched.loc[1].iloc[self.input_data[a == 1].index].matches.values)
 
         if self.weights is not None:
