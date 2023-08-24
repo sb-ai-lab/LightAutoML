@@ -298,25 +298,37 @@ class Matcher:
         )
 
 
-    def match_no_rep(self):
-        """ Matching groups with no replacement and optimize the linear sum of
+    def match_no_rep(self, threshold=0.1):
+        """ Matching groups with no replacement by optimizing the linear sum of
             distances between pairs of treatment and
             control samples.
             Args:
-                X - features dataframe
-                a - series of treatment value
-                weights -  weights for numeric columns in order to increase matching quality by weighted feature.
+                threshold - caliper for minimum deviation between test and control groups.
+                in case weights is not None.
             Returns:
-                 Matched dataframe shape of min(N treated + N control), n_features used for matching."""
+                  Matched dataframe with no replacements.
+        """
         a = self.input_data[self.treatment]
         X = self.input_data.drop(columns=self.treatment)
         if self.info_col is not None:
             X = X.drop(columns=self.info_col)
 
         index_matched = no_replacement_match(X, a, self.weights).match()
+        index_matched = np.concatenate(index_matched.loc[1].iloc[self.input_data[a == 1].index].matches.values)
 
-        matched_data = pd.concat([self.input_data[a == 1],
-                                   self.input_data.loc[np.concatenate(index_matched.loc[1].iloc[self.input_data[a == 1].index].matches.values)]])
+        if self.weights is not None:
+            weighted_features = [f for f in self.weights.keys()]
+            index_dict = dict()
+            for w in weighted_features:
+                source = self.input_data.loc[index_matched][w].values
+                target = self.input_data[a == 1][w].values
+                index = abs(source - target) <= abs(source) * threshold
+                index_dict.update({w: index})
+            index_filtered = sum(index_dict.values()) == len(self.weights)
+            matched_data = pd.concat(
+                [self.input_data[a == 1].iloc[index_filtered], self.input_data.loc[index_matched].iloc[index_filtered]])
+        else:
+            matched_data = pd.concat([self.input_data[a == 1], self.input_data.loc[index_matched]])
         return matched_data
 
 
