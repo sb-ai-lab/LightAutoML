@@ -250,7 +250,7 @@ class Matcher:
             self.dropped_features = np.concatenate(
                 (
                     self.dropped_features,
-                    [f for f in self.input_data.columns if f not in filtered_features+columns_to_drop]
+                    [f for f in self.input_data.columns if f not in filtered_features+columns_to_drop],
                 )
             )
             self.input_data = self.input_data[filtered_features + columns_to_drop]
@@ -297,16 +297,16 @@ class Matcher:
             OutliersFilter, self.interquartile_coeff, self.mode_percentile, self.min_percentile, self.max_percentile
         )
 
+    def match_no_rep(self, threshold: float = 0.1) -> pd.DataFrame:
+        """Matching groups with no replacement.
+        It's done by optimizing the linear sum of
+        distances between pairs of treatment and control samples.
 
-    def match_no_rep(self, threshold=0.1):
-        """ Matching groups with no replacement by optimizing the linear sum of
-            distances between pairs of treatment and
-            control samples.
-            Args:
-                threshold - caliper for minimum deviation between test and control groups.
-                in case weights is not None.
-            Returns:
-                  Matched dataframe with no replacements.
+        Args:
+            threshold - caliper for minimum deviation between test and control groups.
+            in case weights is not None.
+        Returns:
+              Matched dataframe with no replacements.
         """
         a = self.input_data[self.treatment]
         X = self.input_data.drop(columns=self.treatment)
@@ -326,11 +326,11 @@ class Matcher:
                 index_dict.update({w: index})
             index_filtered = sum(index_dict.values()) == len(self.weights)
             matched_data = pd.concat(
-                [self.input_data[a == 1].iloc[index_filtered], self.input_data.loc[index_matched].iloc[index_filtered]])
+                [self.input_data[a == 1].iloc[index_filtered], self.input_data.loc[index_matched].iloc[index_filtered]]
+            )
         else:
             matched_data = pd.concat([self.input_data[a == 1], self.input_data.loc[index_matched]])
         return matched_data
-
 
     def lama_feature_select(self) -> pd.DataFrame:
         """Calculates the importance of each feature.
@@ -339,8 +339,7 @@ class Matcher:
         The features are then sorted by their importance with the most important feature first
 
         Returns:
-            pd.DataFrame
-                The feature importances, sorted in descending order
+            The feature importances, sorted in descending order
         """
         self._log("Counting feature importance")
 
@@ -424,7 +423,6 @@ class Matcher:
 
         Returns:
             Results of matching and matching quality metrics
-
         """
         self._create_faiss_matcher()
         self._log("Applying matching")
@@ -436,7 +434,7 @@ class Matcher:
         return self.results, self.quality_result, df_matched
 
     def validate_result(
-        self, refuter: str = "random_feature", effect_type: str = 'ate', n_sim: int = 10, fraction: float = 0.8
+        self, refuter: str = "random_feature", effect_type: str = "ate", n_sim: int = 10, fraction: float = 0.8
     ) -> dict:
         """Validates estimated ATE (Average Treatment Effect).
 
@@ -449,15 +447,17 @@ class Matcher:
                                     shouldn't change significantly, p-val > 0.05.
 
         Args:
-            refuter: str
+            refuter:
                 Refuter type (`random_treatment`, `random_feature`, `subset_refuter`)
-            n_sim: int
+            effect_type:
+                Which effect to validate (`ate`, `att`, `atc`)
+            n_sim:
                 Number of simulations
-            fraction: float
+            fraction:
                 Subset fraction for subset refuter only
 
         Returns:
-            dict: Dictionary of outcome_name: (mean_effect on validation, p-value)
+            Dictionary of outcome_name: (mean_effect on validation, p-value)
         """
         if self.silent:
             logger.debug("Applying validation of result")
@@ -522,8 +522,8 @@ class Matcher:
             self.pval_dict.update({outcome: [np.mean(self.val_dict[outcome])]})
             self.pval_dict[outcome].append(
                 test_significance(
-                    self.results.query('outcome==@outcome').loc[effect_type.upper()]["effect_size"],
-                    self.val_dict[outcome]
+                    self.results.query("outcome==@outcome").loc[effect_type.upper()]["effect_size"],
+                    self.val_dict[outcome],
                 )
             )
         if refuter == "random_treatment":

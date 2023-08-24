@@ -1,24 +1,33 @@
-from .faiss_matcher import conditional_covariance
-from scipy.optimize import linear_sum_assignment
-from scipy.spatial import distance
+"""Here is the realization of Matching without replacement."""
 import numpy as np
 import pandas as pd
+from scipy.optimize import linear_sum_assignment
+from scipy.spatial import distance
+
+from .faiss_matcher import conditional_covariance
 
 
 class MatcherNoReplacement:
-    """ Matching groups with no replacement by optimizing the linear sum of
-        distances between pairs of treatment and
-        control samples.
+    """Matching groups with no replacement.
 
-        Args:
-            X: features dataframe.
-            a: series of treatment value.
-            weights:  weights for numeric columns in order to increase matching quality by weighted feature.
-        Returns:
-             Matched dataframe shape of min(N treated + N control), n_features used for matching.
+     Realized by optimizing the linear sum of distances between pairs of treatment and
+     control samples.
+
+    Args:
+        X: features dataframe.
+        a: series of treatment value.
+        weights: weights for numeric columns in order to increase matching quality by weighted feature.
+    Returns:
+         Matched dataframe shape of min(N treated + N control), n_features used for matching.
     """
 
     def __init__(self, X: pd.DataFrame, a: pd.Series, weights: dict = None):
+        """Initialize matching.
+
+        Args:
+            X: features dataframe
+            a: series of treatment value
+            weights: weights for numeric columns in order to increase matching quality by weighted feature."""
         self.treatment = a
         self.X = X
         self.weights = weights
@@ -35,17 +44,14 @@ class MatcherNoReplacement:
         source_df = self.X[self.treatment == 1].iloc[np.array(source_array)]
         target_df = self.X[self.treatment == 0].iloc[np.array(neighbor_array_indices)]
 
-        matches[1] = self.create_match_df(
-            self.treatment, source_df, target_df, distances
-        )
-        matches[0] = self.create_match_df(
-            self.treatment, target_df, source_df, distances
-        )
+        matches[1] = self.create_match_df(self.treatment, source_df, target_df, distances)
+        matches[0] = self.create_match_df(self.treatment, target_df, source_df, distances)
 
         match_df = pd.concat(matches, sort=True)
         return match_df
 
-    def create_match_df(self, base_series, source_df, target_df, distances) -> pd.DataFrame:
+    def create_match_df(self, base_series: pd.Series, source_df: pd.DataFrame,
+                        target_df: pd.DataFrame, distances: np.ndarray) -> pd.DataFrame:
         """Function creates matching dataframe.
 
         Args:
@@ -94,7 +100,7 @@ class MatcherNoReplacement:
         Return:
             Metric dictionary.
         """
-        metric_dict = dict(metric='mahalanobis')
+        metric_dict = dict(metric="mahalanobis")
         mahalanobis_transform = np.linalg.inv(cov)
         if self.weights is not None:
             features = self.X.columns
@@ -120,15 +126,14 @@ class MatcherNoReplacement:
         Returns:
             Matrix of distances.
         """
-        cdist_args = dict(XA=_ensure_array_columnlike(source_df.values),
-                          XB=_ensure_array_columnlike(target_df.values))
+        cdist_args = dict(XA=_ensure_array_columnlike(source_df.values), XB=_ensure_array_columnlike(target_df.values))
         cdist_args.update(self._get_metric_dict(cov))
         distance_matrix = distance.cdist(**cdist_args)
 
         return distance_matrix
 
 
-def optimally_match_distance_matrix(distance_matrix):
+def optimally_match_distance_matrix(distance_matrix: np.ndarray):
     """Functions finds optimal neighbor with no replacement.
 
     Args:
@@ -138,17 +143,12 @@ def optimally_match_distance_matrix(distance_matrix):
         - optimal neighbors array for source array.
         - distances of optimal neighbors.
     """
-    source_array, neighbor_array_indices = linear_sum_assignment(
-        distance_matrix
-    )
-    distances = [
-        [distance_matrix[s_idx, t_idx]]
-        for s_idx, t_idx in zip(source_array, neighbor_array_indices)
-    ]
+    source_array, neighbor_array_indices = linear_sum_assignment(distance_matrix)
+    distances = [[distance_matrix[s_idx, t_idx]] for s_idx, t_idx in zip(source_array, neighbor_array_indices)]
     return source_array, neighbor_array_indices, distances
 
 
-def _ensure_array_columnlike(target_array):
+def _ensure_array_columnlike(target_array: np.ndarray) -> np.ndarray:
     """Function checks if array is column like and reshape it in order it is not.
 
     Args:
