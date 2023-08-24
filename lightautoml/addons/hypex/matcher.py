@@ -128,9 +128,8 @@ class Matcher:
             info_col:
                 Columns with id, date or metadata, not taking part in calculations. Defaults to None
             weights:
-
                 weights for numeric columns in order to increase matching quality by weighted feature.
-                By default is None (all features have the same weight equal to 1). Example: {'feature_1': 10}
+                By default, is None (all features have the same weight equal to 1). Example: {'feature_1': 10}
             base_filtration:
                 To use or not base filtration of features in order to remove all constant or almost all constant, bool.
                 Default is False.
@@ -305,6 +304,7 @@ class Matcher:
         Args:
             threshold - caliper for minimum deviation between test and control groups.
             in case weights is not None.
+
         Returns:
               Matched dataframe with no replacements.
         """

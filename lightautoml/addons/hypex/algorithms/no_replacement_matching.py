@@ -1,4 +1,6 @@
 """Here is the realization of Matching without replacement."""
+from typing import Tuple
+
 import numpy as np
 import pandas as pd
 from scipy.optimize import linear_sum_assignment
@@ -50,8 +52,9 @@ class MatcherNoReplacement:
         match_df = pd.concat(matches, sort=True)
         return match_df
 
-    def create_match_df(self, base_series: pd.Series, source_df: pd.DataFrame,
-                        target_df: pd.DataFrame, distances: np.ndarray) -> pd.DataFrame:
+    def create_match_df(
+            self, base_series: pd.Series, source_df: pd.DataFrame, target_df: pd.DataFrame, distances: np.ndarray
+    ) -> pd.DataFrame:
         """Function creates matching dataframe.
 
         Args:
@@ -59,6 +62,7 @@ class MatcherNoReplacement:
             source_df: dataframe of sources indexes.
             target_df: dataframe of target indexes.
             distances: matrix of calculated distances.
+
         Returns:
             Matched dataframe of indexes.
         """
@@ -91,12 +95,12 @@ class MatcherNoReplacement:
         )
         return match_sub_df
 
-    def _get_metric_dict(self, cov):
+    def _get_metric_dict(self, cov: np.ndarray) -> dict:
         """Function calculates correct feature space and generate metrics dist for
             cdist calculation.
 
         Args:
-            cov: matrix of covariations.
+            cov: Matrix of covariations.
         Return:
             Metric dictionary.
         """
@@ -111,7 +115,9 @@ class MatcherNoReplacement:
         metric_dict["VI"] = mahalanobis_transform
         return metric_dict
 
-    def _get_distance_matrix(self, source_df, target_df, cov):
+    def _get_distance_matrix(
+            self, source_df: pd.DataFrame, target_df: pd.DataFrame, cov: np.ndarray
+    ) -> np.ndarray:
         """
         Create distance matrix for no replacement match.
 
@@ -123,6 +129,7 @@ class MatcherNoReplacement:
             source_df: source feature dataframe.
             target_df: target feature dataframe.
             cov: matrix of covariations.
+
         Returns:
             Matrix of distances.
         """
@@ -133,11 +140,12 @@ class MatcherNoReplacement:
         return distance_matrix
 
 
-def optimally_match_distance_matrix(distance_matrix: np.ndarray):
+def optimally_match_distance_matrix(distance_matrix: np.ndarray) -> Tuple[np.ndarray, np.ndarray, list[list]]:
     """Functions finds optimal neighbor with no replacement.
 
     Args:
         distance_matrix: matrix of distances.
+
     Returns:
         - indexes of source dataframe.
         - optimal neighbors array for source array.
@@ -153,6 +161,7 @@ def _ensure_array_columnlike(target_array: np.ndarray) -> np.ndarray:
 
     Args:
         target_array: checked array.
+
     Returns:
         column like target array.
     """

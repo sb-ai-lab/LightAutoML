@@ -38,6 +38,7 @@ def timer(func):
     Returns:
         Wrapped version of the original function with added time measurement
     """
+
     @functools.wraps(func)
     def _wrapper(*args, **kwargs):
         start = time.perf_counter()
@@ -709,6 +710,8 @@ def _transform_to_np(treated: pd.DataFrame, untreated: pd.DataFrame, weights: di
             Test subset DataFrame to be transformed
         untreated:
             Control subset DataFrame to be transformed
+        weights:
+            Dict with weights for each feature. By default is 1
 
     Returns:
         A tuple of transformed numpy arrays for treated and untreated data respectively
@@ -780,6 +783,7 @@ def calc_atc_se(vars_c: np.ndarray, vars_t: np.ndarray, scaled_counts_t: np.ndar
 
     return np.sqrt(var)
 
+
 def conditional_covariance(xc, xt):
     """Calculates covariance according to Imbens, Rubin model."""
     cov_c = np.cov(xc, rowvar=False, ddof=0)
@@ -787,6 +791,7 @@ def conditional_covariance(xc, xt):
     cov = (cov_c + cov_t) / 2
 
     return cov
+
 
 def calc_att_se(vars_c: np.ndarray, vars_t: np.ndarray, scaled_counts_c: np.ndarray) -> float:
     """Calculates Average Treatment Effect for the treated (ATT) standard error.
