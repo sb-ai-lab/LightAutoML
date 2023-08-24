@@ -1,13 +1,14 @@
-from .faiss_matcher import conditional_covariance
-from scipy.optimize import linear_sum_assignment
-from scipy.spatial import distance
 import numpy as np
 import pandas as pd
+from scipy.optimize import linear_sum_assignment
+from scipy.spatial import distance
+
+from .faiss_matcher import conditional_covariance
 
 
 class no_replacement_match():
 
-    def __init__(self, X: pd.DataFrame, a: pd.Series, weights: dict = None) -> pd.DataFrame:
+    def __init__(self, X: pd.DataFrame, a: pd.Series, weights: dict = None):
 
         self.treatment = a
         self.X = X
@@ -31,9 +32,9 @@ class no_replacement_match():
 
         match_df = pd.concat(matches, sort=True)
         return match_df
-        #return np.concatenate(match_df.loc[0].iloc[self.X[self.treatment == 1].index].matches.values)
+        # return np.concatenate(match_df.loc[0].iloc[self.X[self.treatment == 1].index].matches.values)
 
-    def create_match_df(self,base_series, source_df, target_df, distances):
+    def create_match_df(self, base_series, source_df, target_df, distances):
         match_sub_df = pd.DataFrame(
             index=base_series.index,
             columns=[
@@ -62,7 +63,6 @@ class no_replacement_match():
             index=target_df.index,
         )
         return match_sub_df
-
 
     def _get_metric_dict(self, cov, VI_in_metric_params=True):
 
@@ -96,7 +96,6 @@ class no_replacement_match():
         return distance_matrix
 
 
-
 def optimally_match_distance_matrix(distance_matrix):
     source_array, neighbor_array_indices = linear_sum_assignment(
         distance_matrix
@@ -112,5 +111,3 @@ def _ensure_array_columnlike(target_array):
     if len(target_array.shape) < 2 or target_array.shape[1] == 1:
         target_array = target_array.reshape(-1, 1)
     return target_array
-
-
