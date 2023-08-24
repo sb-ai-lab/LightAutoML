@@ -303,8 +303,7 @@ class Matcher:
         distances between pairs of treatment and control samples.
 
         Args:
-            threshold: caliper for minimum deviation between test and control groups.
-            in case weights is not None.
+            threshold: caliper for minimum deviation between test and control groups. in case weights is not None.
 
         Returns:
               Matched dataframe with no replacements.
@@ -458,7 +457,7 @@ class Matcher:
                 Subset fraction for subset refuter only
 
         Returns:
-            Dictionary of outcome_name: (mean_effect on validation, p-value)
+            Dictionary of outcome_name (mean_effect on validation, p-value)
         """
         if self.silent:
             logger.debug("Applying validation of result")

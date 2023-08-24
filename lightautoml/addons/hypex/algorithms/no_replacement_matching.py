@@ -12,8 +12,8 @@ from .faiss_matcher import conditional_covariance
 class MatcherNoReplacement:
     """Matching groups with no replacement.
 
-     Realized by optimizing the linear sum of distances between pairs of treatment and
-     control samples.
+    Realized by optimizing the linear sum of distances between pairs of treatment and
+    control samples.
     """
 
     def __init__(self, X: pd.DataFrame, a: pd.Series, weights: dict = None):
