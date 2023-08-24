@@ -303,7 +303,7 @@ class Matcher:
         distances between pairs of treatment and control samples.
 
         Args:
-            threshold - caliper for minimum deviation between test and control groups.
+            threshold: caliper for minimum deviation between test and control groups.
             in case weights is not None.
 
         Returns:

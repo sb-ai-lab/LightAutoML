@@ -32,7 +32,8 @@ class MatcherNoReplacement:
         """Function run matching with no replacement.
 
         Returns:
-            Dataframe of matched indexes."""
+            Dataframe of matched indexes.
+        """
         matches = {}
         cov = conditional_covariance(self.X[self.treatment == 1].values, self.X[self.treatment == 0].values)
         distance_matrix = self._get_distance_matrix(self.X[self.treatment == 1], self.X[self.treatment == 0], cov)
@@ -90,14 +91,13 @@ class MatcherNoReplacement:
         return match_sub_df
 
     def _get_metric_dict(self, cov: np.ndarray) -> dict:
-        """Function calculates correct feature space and generate metrics dist for
-        cdist calculation.
+        """Function calculates correct feature space and generate metrics dist for cdist calculation.
 
         Args:
             cov: Matrix of covariations.
 
         Returns:
-            Metric dictionary.
+            Metric dictionary
         """
         metric_dict = dict(metric="mahalanobis")
         mahalanobis_transform = np.linalg.inv(cov)
