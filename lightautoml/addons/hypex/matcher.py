@@ -249,7 +249,7 @@ class Matcher:
             self.dropped_features = np.concatenate(
                 (
                     self.dropped_features,
-                    [f for f in self.input_data.columns if f not in filtered_features+columns_to_drop],
+                    [f for f in self.input_data.columns if f not in filtered_features + columns_to_drop],
                 )
             )
             self.input_data = self.input_data[filtered_features + columns_to_drop]
@@ -298,6 +298,7 @@ class Matcher:
 
     def match_no_rep(self, threshold: float = 0.1) -> pd.DataFrame:
         """Matching groups with no replacement.
+
         It's done by optimizing the linear sum of
         distances between pairs of treatment and control samples.
 

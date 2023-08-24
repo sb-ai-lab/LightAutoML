@@ -14,13 +14,6 @@ class MatcherNoReplacement:
 
      Realized by optimizing the linear sum of distances between pairs of treatment and
      control samples.
-
-    Args:
-        X: features dataframe.
-        a: series of treatment value.
-        weights: weights for numeric columns in order to increase matching quality by weighted feature.
-    Returns:
-         Matched dataframe shape of min(N treated + N control), n_features used for matching.
     """
 
     def __init__(self, X: pd.DataFrame, a: pd.Series, weights: dict = None):
@@ -29,7 +22,8 @@ class MatcherNoReplacement:
         Args:
             X: features dataframe
             a: series of treatment value
-            weights: weights for numeric columns in order to increase matching quality by weighted feature."""
+            weights: weights for numeric columns in order to increase matching quality.
+        """
         self.treatment = a
         self.X = X
         self.weights = weights
@@ -53,7 +47,7 @@ class MatcherNoReplacement:
         return match_df
 
     def create_match_df(
-            self, base_series: pd.Series, source_df: pd.DataFrame, target_df: pd.DataFrame, distances: np.ndarray
+        self, base_series: pd.Series, source_df: pd.DataFrame, target_df: pd.DataFrame, distances: list[list]
     ) -> pd.DataFrame:
         """Function creates matching dataframe.
 
@@ -97,11 +91,12 @@ class MatcherNoReplacement:
 
     def _get_metric_dict(self, cov: np.ndarray) -> dict:
         """Function calculates correct feature space and generate metrics dist for
-            cdist calculation.
+        cdist calculation.
 
         Args:
             cov: Matrix of covariations.
-        Return:
+
+        Returns:
             Metric dictionary.
         """
         metric_dict = dict(metric="mahalanobis")
@@ -115,11 +110,8 @@ class MatcherNoReplacement:
         metric_dict["VI"] = mahalanobis_transform
         return metric_dict
 
-    def _get_distance_matrix(
-            self, source_df: pd.DataFrame, target_df: pd.DataFrame, cov: np.ndarray
-    ) -> np.ndarray:
-        """
-        Create distance matrix for no replacement match.
+    def _get_distance_matrix(self, source_df: pd.DataFrame, target_df: pd.DataFrame, cov: np.ndarray) -> np.ndarray:
+        """Create distance matrix for no replacement match.
 
         Combines metric and source/target data into a
         precalculated distance matrix which can be passed to

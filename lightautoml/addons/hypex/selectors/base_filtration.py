@@ -1,4 +1,4 @@
-"""Function for base filtration of data"""
+"""Function for base filtration of data."""
 import pandas as pd
 import numpy as np
 
