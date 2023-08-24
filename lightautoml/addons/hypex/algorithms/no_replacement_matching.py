@@ -6,6 +6,16 @@ import pandas as pd
 
 
 class no_replacement_match():
+    """ Matching groups with no replacement by optimizing the linear sum of
+        distances between pairs of treatment and
+        control samples.
+        Args:
+            X - features dataframe.
+            a - series of treatment value.
+            weights -  weights for numeric columns in order to increase matching quality by weighted feature.
+        Returns:
+             Matched dataframe shape of min(N treated + N control), n_features used for matching.
+    """
 
     def __init__(self, X: pd.DataFrame, a: pd.Series, weights: dict = None) -> pd.DataFrame:
 
@@ -14,7 +24,9 @@ class no_replacement_match():
         self.weights = weights
 
     def match(self):
-
+        """Function run matching with no replacement.
+        Returns:
+            Dataframe of matched indexes."""
         matches = {}
         cov = conditional_covariance(self.X[self.treatment == 1].values, self.X[self.treatment == 0].values)
         distance_matrix = self._get_distance_matrix(self.X[self.treatment == 1], self.X[self.treatment == 0], cov)
@@ -31,9 +43,17 @@ class no_replacement_match():
 
         match_df = pd.concat(matches, sort=True)
         return match_df
-        #return np.concatenate(match_df.loc[0].iloc[self.X[self.treatment == 1].index].matches.values)
 
     def create_match_df(self,base_series, source_df, target_df, distances):
+        """Function creates matching dataframe.
+        Args:
+            base_series - series of treatment value.
+            source_df - dataframe of sources indexes.
+            target_df - dataframe of target indexes.
+            distances - matrix of calculated distances.
+        Returns:
+            Matched dataframe of indexes.
+        """
         match_sub_df = pd.DataFrame(
             index=base_series.index,
             columns=[
@@ -64,8 +84,14 @@ class no_replacement_match():
         return match_sub_df
 
 
-    def _get_metric_dict(self, cov, VI_in_metric_params=True):
-
+    def _get_metric_dict(self, cov):
+        """Function calculates correct feature space and generate metrics dist for
+            cdist calculation.
+        Args:
+            cov -  matrix of covariations.
+        Return:
+            Metric dictionary.
+        """
         metric_dict = dict(metric='mahalanobis')
         mahalanobis_transform = np.linalg.inv(cov)
         if self.weights is not None:
@@ -73,24 +99,27 @@ class no_replacement_match():
             w_list = np.array([self.weights[col] if col in self.weights.keys() else 1 for col in features])
             w_matrix = np.sqrt(np.diag(w_list / w_list.sum()))
             mahalanobis_transform = np.dot(w_matrix, mahalanobis_transform)
-        if VI_in_metric_params:
-            metric_dict["metric_params"] = {"VI": mahalanobis_transform}
-        else:
-            metric_dict["VI"] = mahalanobis_transform
 
+        metric_dict["VI"] = mahalanobis_transform
         return metric_dict
 
     def _get_distance_matrix(self, source_df, target_df, cov):
         """
         Create distance matrix for no replacement match.
 
-        Combines metric, caliper and source/target data into a
+        Combines metric and source/target data into a
         precalculated distance matrix which can be passed to
         scipy.optimize.linear_sum_assignment.
+        Args:
+            source_df - source feature dataframe.
+            target_df - target feature dataframe.
+            cov - matrix of covariations.
+        Returns:
+            distance_matrix - Matrix of distances.
         """
         cdist_args = dict(XA=_ensure_array_columnlike(source_df.values),
                           XB=_ensure_array_columnlike(target_df.values))
-        cdist_args.update(self._get_metric_dict(cov, False))
+        cdist_args.update(self._get_metric_dict(cov))
         distance_matrix = distance.cdist(**cdist_args)
 
         return distance_matrix
@@ -98,6 +127,14 @@ class no_replacement_match():
 
 
 def optimally_match_distance_matrix(distance_matrix):
+    """Functions finds optimal neighbor with no replacement.
+    Args:
+        distance_matrix - matrix of distances.
+    Returns:
+        source_array - indexes of source dataframe.
+        neighbor_array_indices - optimal neighbors array for source array.
+        distances - distances of optimal neighbors.
+    """
     source_array, neighbor_array_indices = linear_sum_assignment(
         distance_matrix
     )
@@ -109,6 +146,12 @@ def optimally_match_distance_matrix(distance_matrix):
 
 
 def _ensure_array_columnlike(target_array):
+    """Function checks if array is column like and reshape it in order it is not.
+    Args:
+        target_array - checked array.
+    Returns:
+        target_array - column like target array.
+    """
     if len(target_array.shape) < 2 or target_array.shape[1] == 1:
         target_array = target_array.reshape(-1, 1)
     return target_array
