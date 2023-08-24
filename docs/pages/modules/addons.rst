@@ -30,6 +30,7 @@ HypEx -- Hypothesises and Experiments
 
     ~matcher.Matcher
     algorithms.faiss_matcher.FaissMatcher
+    algorithms.no_replacement_matching.MatcherNoReplacement
     selectors.lama_feature_selector.LamaFeatureSelector
     selectors.outliers_filter.OutliersFilter
     selectors.spearman_filter.SpearmanFilter
