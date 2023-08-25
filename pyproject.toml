@@ -50,7 +50,6 @@ torch = [
     {platform = "win32", python = "3.6.1", version = "1.7.0"},
     {version = ">=1.0.0"}
 ]
-faiss-cpu="*"
 dataclasses = {version = "0.6", python = "<3.7"}
 holidays = "*"
 statsmodels = "<=0.14.0"
@@ -64,7 +63,6 @@ autowoe = ">=1.2"
 jinja2 = "*"
 json2html = "*"
 seaborn = "*"
-
 
 
 # NLP
@@ -89,6 +87,9 @@ featuretools = {version = ">=1.11.1", python = ">=3.7", optional = true}
 weasyprint = {version = "52.5", optional = true}
 cffi = {version = "1.14.5", optional = true}
 
+# HypEx
+faiss-cpu = {version = "*", optional = true}
+
 
 [tool.poetry.extras]
 cv = [
@@ -112,6 +113,11 @@ report = [
 afg = [
     "featuretools"
 ]
+
+hypex = [
+    "faiss-cpu"
+]
+
 all = [
     "albumentations",
     "efficientnet-pytorch",
@@ -124,7 +130,8 @@ all = [
     "transformers",
     "cffi",
     "weasyprint",
-    "featuretools"
+    "featuretools",
+    "faiss-cpu"
 ]
 
 
