@@ -10,6 +10,7 @@ import torch
 import torch.nn as nn
 from lightautoml.ml_algo.torch_based.autoint.autoint_utils import AttnInteractionBlock, LeakyGate
 from lightautoml.ml_algo.torch_based.autoint.ghost_norm import GhostBatchNorm
+from lightautoml.ml_algo.torch_based.fttransformer.fttransformer_utils import Transformer
 
 from lightautoml.ml_algo.torch_based.node_nn_model import DenseODSTBlock, MeanPooling
 
@@ -975,3 +976,85 @@ class AutoInt(nn.Module):
             mix = torch.sigmoid(self.mix)
             out = mix * out + (1 - mix) * self.mlp(embedded_2d)
         return out
+
+class FTTransformer(nn.Module):
+    """FT Transformer (https://arxiv.org/abs/2106.11959v2) from https://github.com/lucidrains/tab-transformer-pytorch/tree/main
+        Args:
+                pooling: Pooling used for the last layer.
+                embedding_size: Transformer dimension.
+                heads: Number of heads in Transformer. # ADD PARAMETER TO CONFIG
+                attn_dropout: Post-Attention dropout.
+                ff_dropout: Feed-Forward Dropout.
+                dim_head: Attention head dimension.
+                return_attn: Return attention scores or not.
+    """
+    def __init__(
+        self,
+        *,
+        pooling: str = 'cls', 
+        n_out: int = 1,
+        embedding_size: int = 32,
+        depth: int = 6,
+        heads: int = 8,
+        attn_dropout: float = 0.1,
+        ff_dropout: float = 0.1,
+        dim_head: int = 16,
+        return_attn: bool = False,
+        device: Union[str, torch.device] = "cuda:0",
+        **kwargs,
+    ):
+        super(FTTransformer, self).__init__()
+        self.return_attn = return_attn
+        self.device = device
+        if pooling == 'cls':
+            self.pooling = SequenceClsPooler()
+        elif pooling == 'mean':
+            self.pooling = SequenceAvgPooler()
+        elif pooling == 'sum':
+            self.pooling == SequenceMeanPooler()
+        elif pooling == 'concat':
+            raise NotImplementedError
+
+
+        # transformer
+        self.transformer = Transformer(
+            dim = embedding_size,
+            depth = depth,
+            heads = heads,
+            dim_head = dim_head,
+            attn_dropout = attn_dropout,
+            ff_dropout = ff_dropout,
+            return_attn = self.return_attn
+        )
+
+        # to logits
+        self.to_logits = nn.Sequential(
+            nn.BatchNorm1d(embedding_size),
+            nn.Linear(embedding_size, n_out)
+        )
+
+    def forward(self, embedded):
+
+        if not self.return_attn:
+            x = self.transformer(embedded)
+        else:
+            x, attns = self.transformer(x)
+
+        b = x.shape[0]
+        x_mask = torch.ones(x.shape, dtype=torch.bool).to(self.device)
+        pool_tokens = torch.unsqueeze(
+            self.pooling(x=x, x_mask=x_mask),
+            dim=1
+        )
+    
+        x = torch.cat((pool_tokens, x), dim = 1)
+        x = x[:, 0] # CONCAT pooling??
+
+        # out in the paper is linear(relu(ln(cls)))
+        logits = self.to_logits(x)
+#         print(logits.shape)
+
+        if not self.return_attn:
+            return logits
+
+        return logits, attns

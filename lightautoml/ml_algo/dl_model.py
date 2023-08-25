@@ -75,6 +75,7 @@ from .torch_based.nn_models import LinearLayer
 from .torch_based.nn_models import ResNetModel
 from .torch_based.nn_models import _LinearLayer
 from .torch_based.nn_models import AutoInt
+from .torch_based.nn_models import FTTransformer
 
 
 logger = logging.getLogger(__name__)
@@ -89,6 +90,7 @@ model_by_name = {
     "snn": SNN,
     "node": NODE,
     "autoint": AutoInt,
+    "fttransformer": FTTransformer
 }
 input_type_by_name = {
     "denselight": "flat",
@@ -100,6 +102,7 @@ input_type_by_name = {
     "snn": "flat",
     "node": "flat",
     "autoint": "seq",
+    "fttransformer": "seq"
 }
 cat_embedder_by_name_flat = {
     "cat": CatEmbedder,
