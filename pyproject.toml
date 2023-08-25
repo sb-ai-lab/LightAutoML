@@ -50,7 +50,7 @@ torch = [
     {platform = "win32", python = "3.6.1", version = "1.7.0"},
     {version = ">=1.0.0"}
 ]
-faiss-cpu="*"
+faiss-cpu = {version = "*", optional = true}
 dataclasses = {version = "0.6", python = "<3.7"}
 holidays = "*"
 statsmodels = "<=0.14.0"
@@ -112,6 +112,11 @@ report = [
 afg = [
     "featuretools"
 ]
+
+hypex = [
+    "faiss-cpu"
+]
+
 all = [
     "albumentations",
     "efficientnet-pytorch",
@@ -124,7 +129,8 @@ all = [
     "transformers",
     "cffi",
     "weasyprint",
-    "featuretools"
+    "featuretools",
+    "faiss-cpu"
 ]
 
 
