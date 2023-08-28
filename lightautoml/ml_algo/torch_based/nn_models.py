@@ -791,6 +791,21 @@ class SequenceIndentityPooler(SequenceAbstractPooler):
         """Forward-pass."""
         return x
 
+class SequenceConcatPooler(SequenceAbstractPooler):
+    """Concat pooling."""
+
+    def __init__(self):
+        super(SequenceConcatPooler, self).__init__()
+
+    def forward(self, x: torch.Tensor, x_mask: torch.Tensor) -> torch.Tensor:
+        """Forward-pass."""
+        pooler1 = SequenceClsPooler()
+        pooler2 = SequenceAvgPooler()
+        x1 = pooler1(x, x_mask)
+        x2 = pooler2(x, x_mask)
+        values = torch.cat((x1, x2), dim = 1)
+        return values
+
 
 class NODE(nn.Module):
     """The NODE model from https://github.com/Qwicen.
@@ -982,7 +997,7 @@ class FTTransformer(nn.Module):
         Args:
                 pooling: Pooling used for the last layer.
                 embedding_size: Transformer dimension.
-                heads: Number of heads in Transformer. # ADD PARAMETER TO CONFIG
+                heads: Number of heads in Transformer.
                 attn_dropout: Post-Attention dropout.
                 ff_dropout: Feed-Forward Dropout.
                 dim_head: Attention head dimension.
@@ -991,7 +1006,7 @@ class FTTransformer(nn.Module):
     def __init__(
         self,
         *,
-        pooling: str = 'cls', 
+        pooling: str = 'concat', 
         n_out: int = 1,
         embedding_size: int = 32,
         depth: int = 6,
@@ -1000,59 +1015,68 @@ class FTTransformer(nn.Module):
         ff_dropout: float = 0.1,
         dim_head: int = 16,
         return_attn: bool = False,
+        num_enc_layers: int = 5,
         device: Union[str, torch.device] = "cuda:0",
         **kwargs,
     ):
         super(FTTransformer, self).__init__()
         self.return_attn = return_attn
+        # self.num_enc_layers = num_enc_layers
         self.device = device
         if pooling == 'cls':
             self.pooling = SequenceClsPooler()
         elif pooling == 'mean':
             self.pooling = SequenceAvgPooler()
         elif pooling == 'sum':
-            self.pooling == SequenceMeanPooler()
+            self.pooling = SequenceSumPooler()
         elif pooling == 'concat':
-            raise NotImplementedError
-
+            self.pooling = SequenceConcatPooler()
+        elif pooling == 'none':
+            self.pooling = SequenceIndentityPooler()
 
         # transformer
-        self.transformer = Transformer(
-            dim = embedding_size,
-            depth = depth,
-            heads = heads,
-            dim_head = dim_head,
-            attn_dropout = attn_dropout,
-            ff_dropout = ff_dropout,
-            return_attn = self.return_attn
-        )
+
+        self.transformer = nn.Sequential(*nn.ModuleList([
+            Transformer(
+                dim = embedding_size,
+                depth = depth,
+                heads = heads,
+                dim_head = dim_head,
+                attn_dropout = attn_dropout,
+                ff_dropout = ff_dropout,
+                return_attn = self.return_attn
+            ) for _ in range(num_enc_layers)
+        ]))
 
         # to logits
-        self.to_logits = nn.Sequential(
-            nn.BatchNorm1d(embedding_size),
-            nn.Linear(embedding_size, n_out)
-        )
+        if pooling == 'concat':
+            self.to_logits = nn.Sequential(
+                nn.BatchNorm1d(embedding_size * 2),
+                nn.Linear(embedding_size * 2, n_out)
+            )
+        else:            
+            self.to_logits = nn.Sequential(
+                nn.BatchNorm1d(embedding_size),
+                nn.Linear(embedding_size, n_out)
+            )
+
+        self.cls_token = nn.Embedding(2, embedding_size)
 
     def forward(self, embedded):
 
+        cls_token = torch.unsqueeze(self.cls_token(torch.ones(embedded.shape[0], dtype=torch.int).to(self.device)), dim = 1)
+        x = torch.cat((cls_token, embedded), dim = 1)
+
         if not self.return_attn:
-            x = self.transformer(embedded)
+            x = self.transformer(x)
         else:
             x, attns = self.transformer(x)
 
         b = x.shape[0]
         x_mask = torch.ones(x.shape, dtype=torch.bool).to(self.device)
-        pool_tokens = torch.unsqueeze(
-            self.pooling(x=x, x_mask=x_mask),
-            dim=1
-        )
-    
-        x = torch.cat((pool_tokens, x), dim = 1)
-        x = x[:, 0] # CONCAT pooling??
+        pool_tokens = self.pooling(x=x, x_mask=x_mask)
 
-        # out in the paper is linear(relu(ln(cls)))
-        logits = self.to_logits(x)
-#         print(logits.shape)
+        logits = self.to_logits(pool_tokens)
 
         if not self.return_attn:
             return logits
