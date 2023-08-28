@@ -998,13 +998,17 @@ class FTTransformer(nn.Module):
     """FT Transformer (https://arxiv.org/abs/2106.11959v2) from https://github.com/lucidrains/tab-transformer-pytorch/tree/main.
 
     Args:
-            pooling: Pooling used for the last layer.
-            embedding_size: Transformer dimension.
-            heads: Number of heads in Transformer.
+            pooling: Pooling used for the last step.
+            n_out: Output dimension, 1 for binary prediction.
+            embedding_size: Embeddings size.
+            depth: Number of Attention Blocks inside Transformer.
+            heads: Number of heads in Attention.
             attn_dropout: Post-Attention dropout.
             ff_dropout: Feed-Forward Dropout.
             dim_head: Attention head dimension.
             return_attn: Return attention scores or not.
+            num_enc_layers: Number of Transformer layers.
+            device: Device to compute on.
     """
 
     def __init__(

@@ -1,24 +1,36 @@
+"""Feedforward and Attention blocks for FTTransformer (https://arxiv.org/abs/2106.11959v2) from https://github.com/lucidrains/tab-transformer-pytorch/tree/main."""
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-# from https://github.com/lucidrains/tab-transformer-pytorch/tree/main
-# feedforward and attention
-
 
 class GEGLU(nn.Module):
+    """GEGLU activation for Attention block."""
+
     def forward(self, x):
         x, gates = x.chunk(2, dim=-1)
         return x * F.gelu(gates)
 
 
 def FeedForward(dim, mult=4, dropout=0.0):
+    """FeedForward for Transformer block."""
+
     return nn.Sequential(
         nn.LayerNorm(dim), nn.Linear(dim, dim * mult * 2), GEGLU(), nn.Dropout(dropout), nn.Linear(dim * mult, dim)
     )
 
 
 class Attention(nn.Module):
+    """Attention Block.
+
+    Args:
+            dim: Embeddings dimension.
+            heads: Number of heads in Attention.
+            dim_head: Attention head dimension.
+            dropout: Post-Attention dropout.
+    """
+
     def __init__(self, dim, heads=8, dim_head=64, dropout=0.0):
         super().__init__()
         inner_dim = dim_head * heads
@@ -55,6 +67,18 @@ class Attention(nn.Module):
 
 # transformer
 class Transformer(nn.Module):
+    """Transformer Block.
+
+    Args:
+            dim: Embeddings dimension.
+            depth: Number of Attention Blocks.
+            heads: Number of heads in Attention.
+            dim_head: Attention head dimension.
+            attn_dropout: Post-Attention dropout.
+            ff_dropout: Feed-Forward Dropout.
+            return_attn: Return attention scores or not.
+    """
+
     def __init__(self, dim, depth, heads, dim_head, attn_dropout, ff_dropout, return_attn=False):
         super().__init__()
         self.layers = nn.ModuleList([])
