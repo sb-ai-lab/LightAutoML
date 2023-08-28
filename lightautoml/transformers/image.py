@@ -19,7 +19,7 @@ from ..dataset.np_pd_dataset import NumpyDataset
 from ..dataset.np_pd_dataset import PandasDataset
 from ..dataset.roles import NumericRole
 from ..image.image import CreateImageFeatures
-from ..image.image import DeepImageEmbedder
+from ..image.image import DeepTimmImageEmbedder
 from ..image.utils import pil_loader
 from ..text.utils import get_textarr_hash
 from ..text.utils import single_text_hash
@@ -154,7 +154,6 @@ class AutoCVWrap(LAMLTransformer):
         device: Torch device.
         n_jobs: Number of threads for dataloader.
         random_state: Random state to take subsample and set torch seed.
-        is_advprop: Use adversarial training.
         batch_size: Batch size for embedding model.
         verbose: Verbose data processing.
 
@@ -177,14 +176,13 @@ class AutoCVWrap(LAMLTransformer):
 
     def __init__(
         self,
-        model="efficientnet-b0",
+        model="efficientnet_b0.ra_in1k",
         weights_path: Optional[str] = None,
         cache_dir: str = "./cache_CV",
         subs: Optional[Any] = None,
         device: torch.device = torch.device("cuda:0"),
         n_jobs: int = 4,
         random_state: int = 42,
-        is_advprop: bool = True,
         batch_size: int = 128,
         verbose: bool = True,
     ):
@@ -194,11 +192,10 @@ class AutoCVWrap(LAMLTransformer):
         self.dicts = {}
         self.cache_dir = cache_dir
 
-        self.transformer = DeepImageEmbedder(
+        self.transformer = DeepTimmImageEmbedder(
             device,
             n_jobs,
             random_state,
-            is_advprop,
             model,
             weights_path,
             batch_size,

@@ -6,6 +6,11 @@ import traceback
 from typing import Optional
 from typing import Tuple
 
+import torch.nn as nn
+
+from torch import Tensor
+from torch import finfo
+
 from ..dataset.base import LAMLDataset
 from ..validation.base import TrainValidIterator
 from .base import MLAlgo
@@ -76,3 +81,33 @@ def tune_and_fit_predict(
             return None, None
 
     return ml_algo, preds
+
+
+class SoftmaxClip(nn.Module):
+    """Softmax with clip-norm.
+
+    Args:
+        dim : A dimension along which Softmax will be computed (so every slice
+            along dim will sum to 1).
+    """
+
+    def __init__(self, dim: Optional[int] = None) -> None:
+        super(SoftmaxClip, self).__init__()
+        self.dim = dim
+        self.smax = nn.Softmax(dim=dim)
+
+    def forward(self, inputs: Tensor) -> Tensor:
+        """Inference phase.
+
+        Args:
+            inputs: data to softmax and clip.
+
+        Returns:
+            transformed values.
+
+        """
+        inputs = self.smax(inputs)
+        eps = 2 * finfo(inputs.dtype).eps
+        inputs = inputs.clip(eps, 1 - eps)
+        inputs /= inputs.sum(dim=self.dim)[:, None]
+        return inputs
