@@ -9,6 +9,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+from lightautoml.ml_algo.torch_based.node_nn_model import DenseODSTBlock, MeanPooling
+
 
 class GaussianNoise(nn.Module):
     """Adds gaussian noise.
@@ -389,7 +391,6 @@ class DenseModel(nn.Module):
             bn_factor: Dim of intermediate fc is increased times `bn_factor` in DenseModel layer.
             act_fun: Activation function.
             use_bn: Use BatchNorm.
-
     """
 
     def __init__(
@@ -729,3 +730,68 @@ class SequenceIndentityPooler(SequenceAbstractPooler):
     def forward(self, x: torch.Tensor, x_mask: torch.Tensor) -> torch.Tensor:
         """Forward-pass."""
         return x
+
+
+class NODE(nn.Module):
+    """The NODE model from https://github.com/Qwicen.
+
+    Args:
+            n_in: Input dim.
+            n_out: Output dim.
+            layer_dim: num trees in one layer.
+            num_layers: number of forests.
+            tree_dim: number of response channels in the response of individual tree.
+            use_original_head use averaging as a head or put linear layer instead.
+            depth: number of splits in every tree.
+            drop_rate: Dropout rate for each layer altogether.
+            act_fun: Activation function.
+            num_init_features: If not none add fc layer before model with certain dim.
+            use_bn: Use BatchNorm.
+    """
+
+    def __init__(
+        self,
+        n_in: int,
+        n_out: int = 1,
+        layer_dim: int = 2048,
+        num_layers: int = 1,
+        tree_dim: int = 1,
+        use_original_head: bool = False,
+        depth: int = 6,
+        drop_rate: float = 0.0,
+        act_fun: nn.Module = nn.ReLU,
+        num_init_features: Optional[int] = None,
+        use_bn: bool = True,
+        **kwargs,
+    ):
+        super(NODE, self).__init__()
+        num_features = n_in if num_init_features is None else num_init_features
+        self.dense0 = nn.Linear(n_in, num_features) if num_init_features is not None else nn.Identity()
+        self.features1 = nn.Sequential(OrderedDict([]))
+        block = DenseODSTBlock(
+            input_dim=num_features,
+            layer_dim=layer_dim,
+            num_layers=num_layers,
+            tree_dim=tree_dim if not use_original_head else n_out,
+            depth=depth,
+            input_dropout=drop_rate,
+            flatten_output=not use_original_head,
+        )
+        self.features1.add_module("ODSTForestblock%d", block)
+        self.features2 = nn.Sequential(OrderedDict([]))
+        if use_original_head:
+            last_layer = MeanPooling(n_out, dim=-2)
+            self.features2.add_module("head", last_layer)
+        else:
+            if use_bn:
+                self.features2.add_module("norm", nn.BatchNorm1d(layer_dim * num_layers * tree_dim))
+            self.features2.add_module("act", act_fun())
+            fc = nn.Linear(layer_dim * num_layers * tree_dim, n_out)
+            self.features2.add_module("fc", fc)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward-pass."""
+        x = self.dense0(x)
+        x = self.features1(x)
+        x = self.features2(x)
+        return x.view(x.shape[0], -1)
