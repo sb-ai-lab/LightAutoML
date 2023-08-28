@@ -90,7 +90,7 @@ model_by_name = {
     "snn": SNN,
     "node": NODE,
     "autoint": AutoInt,
-    "fttransformer": FTTransformer
+    "fttransformer": FTTransformer,
 }
 input_type_by_name = {
     "denselight": "flat",
@@ -102,7 +102,7 @@ input_type_by_name = {
     "snn": "flat",
     "node": "flat",
     "autoint": "seq",
-    "fttransformer": "seq"
+    "fttransformer": "seq",
 }
 cat_embedder_by_name_flat = {
     "cat": CatEmbedder,

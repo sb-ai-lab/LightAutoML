@@ -791,6 +791,7 @@ class SequenceIndentityPooler(SequenceAbstractPooler):
         """Forward-pass."""
         return x
 
+
 class SequenceConcatPooler(SequenceAbstractPooler):
     """Concat pooling."""
 
@@ -803,7 +804,7 @@ class SequenceConcatPooler(SequenceAbstractPooler):
         pooler2 = SequenceAvgPooler()
         x1 = pooler1(x, x_mask)
         x2 = pooler2(x, x_mask)
-        values = torch.cat((x1, x2), dim = 1)
+        values = torch.cat((x1, x2), dim=1)
         return values
 
 
@@ -992,21 +993,24 @@ class AutoInt(nn.Module):
             out = mix * out + (1 - mix) * self.mlp(embedded_2d)
         return out
 
+
 class FTTransformer(nn.Module):
-    """FT Transformer (https://arxiv.org/abs/2106.11959v2) from https://github.com/lucidrains/tab-transformer-pytorch/tree/main
-        Args:
-                pooling: Pooling used for the last layer.
-                embedding_size: Transformer dimension.
-                heads: Number of heads in Transformer.
-                attn_dropout: Post-Attention dropout.
-                ff_dropout: Feed-Forward Dropout.
-                dim_head: Attention head dimension.
-                return_attn: Return attention scores or not.
+    """FT Transformer (https://arxiv.org/abs/2106.11959v2) from https://github.com/lucidrains/tab-transformer-pytorch/tree/main.
+
+    Args:
+            pooling: Pooling used for the last layer.
+            embedding_size: Transformer dimension.
+            heads: Number of heads in Transformer.
+            attn_dropout: Post-Attention dropout.
+            ff_dropout: Feed-Forward Dropout.
+            dim_head: Attention head dimension.
+            return_attn: Return attention scores or not.
     """
+
     def __init__(
         self,
         *,
-        pooling: str = 'concat', 
+        pooling: str = "concat",
         n_out: int = 1,
         embedding_size: int = 32,
         depth: int = 6,
@@ -1023,56 +1027,56 @@ class FTTransformer(nn.Module):
         self.return_attn = return_attn
         # self.num_enc_layers = num_enc_layers
         self.device = device
-        if pooling == 'cls':
+        if pooling == "cls":
             self.pooling = SequenceClsPooler()
-        elif pooling == 'mean':
+        elif pooling == "mean":
             self.pooling = SequenceAvgPooler()
-        elif pooling == 'sum':
+        elif pooling == "sum":
             self.pooling = SequenceSumPooler()
-        elif pooling == 'concat':
+        elif pooling == "concat":
             self.pooling = SequenceConcatPooler()
-        elif pooling == 'none':
+        elif pooling == "none":
             self.pooling = SequenceIndentityPooler()
 
         # transformer
 
-        self.transformer = nn.Sequential(*nn.ModuleList([
-            Transformer(
-                dim = embedding_size,
-                depth = depth,
-                heads = heads,
-                dim_head = dim_head,
-                attn_dropout = attn_dropout,
-                ff_dropout = ff_dropout,
-                return_attn = self.return_attn
-            ) for _ in range(num_enc_layers)
-        ]))
+        self.transformer = nn.Sequential(
+            *nn.ModuleList(
+                [
+                    Transformer(
+                        dim=embedding_size,
+                        depth=depth,
+                        heads=heads,
+                        dim_head=dim_head,
+                        attn_dropout=attn_dropout,
+                        ff_dropout=ff_dropout,
+                        return_attn=self.return_attn,
+                    )
+                    for _ in range(num_enc_layers)
+                ]
+            )
+        )
 
         # to logits
-        if pooling == 'concat':
-            self.to_logits = nn.Sequential(
-                nn.BatchNorm1d(embedding_size * 2),
-                nn.Linear(embedding_size * 2, n_out)
-            )
-        else:            
-            self.to_logits = nn.Sequential(
-                nn.BatchNorm1d(embedding_size),
-                nn.Linear(embedding_size, n_out)
-            )
+        if pooling == "concat":
+            self.to_logits = nn.Sequential(nn.BatchNorm1d(embedding_size * 2), nn.Linear(embedding_size * 2, n_out))
+        else:
+            self.to_logits = nn.Sequential(nn.BatchNorm1d(embedding_size), nn.Linear(embedding_size, n_out))
 
         self.cls_token = nn.Embedding(2, embedding_size)
 
     def forward(self, embedded):
 
-        cls_token = torch.unsqueeze(self.cls_token(torch.ones(embedded.shape[0], dtype=torch.int).to(self.device)), dim = 1)
-        x = torch.cat((cls_token, embedded), dim = 1)
+        cls_token = torch.unsqueeze(
+            self.cls_token(torch.ones(embedded.shape[0], dtype=torch.int).to(self.device)), dim=1
+        )
+        x = torch.cat((cls_token, embedded), dim=1)
 
         if not self.return_attn:
             x = self.transformer(x)
         else:
             x, attns = self.transformer(x)
 
-        b = x.shape[0]
         x_mask = torch.ones(x.shape, dtype=torch.bool).to(self.device)
         pool_tokens = self.pooling(x=x, x_mask=x_mask)
         if isinstance(self.pooling, SequenceIndentityPooler):
