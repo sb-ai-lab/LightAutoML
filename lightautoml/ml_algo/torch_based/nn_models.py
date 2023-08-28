@@ -1075,6 +1075,8 @@ class FTTransformer(nn.Module):
         b = x.shape[0]
         x_mask = torch.ones(x.shape, dtype=torch.bool).to(self.device)
         pool_tokens = self.pooling(x=x, x_mask=x_mask)
+        if isinstance(self.pooling, SequenceIndentityPooler):
+            pool_tokens = pool_tokens[:, 0]
 
         logits = self.to_logits(pool_tokens)
 
