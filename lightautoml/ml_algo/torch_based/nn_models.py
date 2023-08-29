@@ -14,6 +14,8 @@ from lightautoml.ml_algo.torch_based.autoint.ghost_norm import GhostBatchNorm
 
 from lightautoml.ml_algo.torch_based.node_nn_model import DenseODSTBlock, MeanPooling
 
+from lightautoml.ml_algo.torch_based.node_nn_model import DenseODSTBlock, MeanPooling
+
 
 class GaussianNoise(nn.Module):
     """Adds gaussian noise.
