@@ -9,7 +9,7 @@ class GEGLU(nn.Module):
     """GEGLU activation for Attention block."""
 
     def forward(self, x):
-        """Transform the input tensor with GEGLU activation."""
+        """Forward pass."""
         x, gates = x.chunk(2, dim=-1)
         return x * F.gelu(gates)
 
@@ -110,7 +110,7 @@ class Transformer(nn.Module):
 
         Args:
             x : torch.Tensor
-                3-d tensor; for example, embedded numeric and/or categorical values,
+                3-d tensor; embedded numeric and/or categorical values,
                 or the output of a previous Transformer layer.
 
         Returns:
