@@ -124,24 +124,6 @@ cont_embedder_by_name_flat = {
 cont_embedder_by_name = {"linear": LinearEmbedding, "dense": DenseEmbedding, "plr": PLREmbedding, "soft": SoftEmbedding}
 
 
-def _get_embedder_cat(params):
-    if input_type_by_name[params["model"]] == "seq":
-        out = cat_embedder_by_name.get(params["cat_embedder"], BasicCatEmbedding)
-        return out
-    else:
-        out = cat_embedder_by_name_flat.get(params["cat_embedder"], CatEmbedder)
-        return out
-
-
-def _get_embedder_cont(params):
-    if input_type_by_name[params["model"]] == "seq":
-        out = cont_embedder_by_name.get(params["cat_embedder"], LinearEmbedding)
-        return out
-    else:
-        out = cont_embedder_by_name_flat.get(params["cat_embedder"], ContEmbedder)
-        return out
-
-
 class TorchModel(TabularMLAlgo):
     """Neural net for tabular datasets.
 
@@ -313,7 +295,11 @@ class TorchModel(TabularMLAlgo):
             net=TorchUniversalModel if not params["model_with_emb"] else params["model"],
             net_params={
                 "task": self.task,
-                "cont_embedder_": _get_embedder_cont(params) if is_cont else None,
+                "cont_embedder_": cont_embedder_by_name.get(params["cont_embedder"], LinearEmbedding)
+                if input_type_by_name[params["model"]] == "seq"
+                else cont_embedder_by_name_flat.get(params["cont_embedder"], ContEmbedder)
+                if is_cont
+                else None,
                 "cont_params": {
                     "num_dims": params["num_dims"],
                     "input_bn": params["input_bn"],
@@ -322,7 +308,11 @@ class TorchModel(TabularMLAlgo):
                 }
                 if is_cont
                 else None,
-                "cat_embedder_": _get_embedder_cat(params) if is_cat else None,
+                "cat_embedder_": cat_embedder_by_name.get(params["cat_embedder"], BasicCatEmbedding)
+                if input_type_by_name[params["model"]] == "seq"
+                else cat_embedder_by_name_flat.get(params["cat_embedder"], CatEmbedder)
+                if is_cat
+                else None,
                 "cat_params": {
                     "cat_vc": params["cat_vc"],
                     "cat_dims": params["cat_dims"],
