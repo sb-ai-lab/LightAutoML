@@ -405,7 +405,10 @@ class TorchModel(TabularMLAlgo):
                 )
                 + 1
             )
-            values, counts = np.unique(train_valid_iterator.train[:, cat_feature].data, return_counts=True)
+            values, counts = np.unique(
+                np.concatenate([train_valid_iterator.train[:, cat_feature].data, valid[:, cat_feature].data]),
+                return_counts=True,
+            )
             cat_value_counts.append(dict(zip(values, counts)))
             cat_dims.append(num_unique_categories)
         new_params["cat_dims"] = cat_dims
