@@ -13,16 +13,11 @@ import scipy.stats as stats
 from scipy.stats import norm, ttest_ind, ks_2samp
 
 
-def calc_mde(
-        test_group: pd.Series,
-        control_group: pd.Series,
-        reliability: float = 0.95,
-        power: float = 0.8,
-) -> float:
+#  Методика рачета описана в Campaign Perfomance Management – Методика A/B-тестирования v.2.0 (стр.29)
+def calc_mde(test_group: pd.Series, control_group: pd.Series, reliability: float = 0.95, power: float = 0.8,) -> float:
     """
     Minimum detectable effect
     Минимальный эффект, который можно статистически обосновать при сравнении двух групп
-    Методика рачета описана в Campaign Perfomance Management – Методика A/B-тестирования v.2.0 (стр.29)
 
     :param test_group: целевая группа
     :param control_group: контрольная группа
@@ -43,11 +38,7 @@ def calc_mde(
 
 
 def calc_sample_size(
-        test_group: pd.Series,
-        control_group: pd.Series,
-        mde,
-        significance: float = 0.05,
-        power: float = 0.8,
+    test_group: pd.Series, control_group: pd.Series, mde, significance: float = 0.05, power: float = 0.8,
 ) -> float:
     """
     Минимально требуемуе количество объектов тестирования в общей группе
@@ -60,17 +51,26 @@ def calc_sample_size(
     :param power: мощность статистического критерия
     :return: минимальный размер общей группы
     """
-    test_std = test_group.std()
-    control_std = control_group.std()
+    if isinstance(mde, Iterable):
+        z_alpha = norm.ppf((2 - significance) / 2)
+        z_betta = norm.ppf(power)
 
-    test_proportion = len(test_group) / (len(test_group) + len(control_group))
-    control_proportion = 1 - test_proportion
+        p1 = mde[0]
+        p2 = mde[1]
 
-    d = ((norm.ppf(1 - significance / 2) + norm.ppf(power)) / mde) ** 2
+        return (z_alpha + z_betta) ** 2 * (p1 * (1 - p1) + p2 * (1 - p2)) / (p1 - p2) ** 2
+    else:
+        test_std = test_group.std()
+        control_std = control_group.std()
 
-    s = test_std ** 2 / test_proportion + control_std ** 2 / control_proportion
+        test_proportion = len(test_group) / (len(test_group) + len(control_group))
+        control_proportion = 1 - test_proportion
 
-    return d * s
+        d = ((norm.ppf(1 - significance / 2) + norm.ppf(power)) / mde) ** 2
+
+        s = test_std ** 2 / test_proportion + control_std ** 2 / control_proportion
+
+        return d * s
 
 
 # --------------------- Classes ---------------------
@@ -86,18 +86,15 @@ class ABSplitter:
 
     @staticmethod
     def merge_groups(
-            test_group: Union[Iterable[pd.DataFrame], pd.DataFrame],
-            control_group: Union[Iterable[pd.DataFrame], pd.DataFrame],
+        test_group: Union[Iterable[pd.DataFrame], pd.DataFrame],
+        control_group: Union[Iterable[pd.DataFrame], pd.DataFrame],
     ):
         """
         Объединяет test и control в один df
 
         :return: объединенный датафрейм
         """
-        if not (
-                isinstance(test_group, pd.DataFrame)
-                and isinstance(test_group, pd.DataFrame)
-        ):
+        if not (isinstance(test_group, pd.DataFrame) and isinstance(test_group, pd.DataFrame)):
             test_group = pd.concat(test_group, ignore_index=True)
             control_group = pd.concat(control_group, ignore_index=True)
 
@@ -106,10 +103,7 @@ class ABSplitter:
         return pd.concat([test_group, control_group], ignore_index=True)
 
     def __simple_mode(self, data, random_state):
-        result = {
-            "test_indexes": [],
-            "control_indexes": []
-        }
+        result = {"test_indexes": [], "control_indexes": []}
 
         if self.quant_field:
             random_ids = shuffle(data[self.quant_field].unique(), random_state=random_state)
@@ -126,17 +120,16 @@ class ABSplitter:
         return result
 
     def split_ab(self, data, random_state: int = None) -> Dict:
-        result = {
-            "test_indexes": [],
-            "control_indexes": []
-        }
+        result = {"test_indexes": [], "control_indexes": []}
 
         if self.by_group:
             groups = data.groupby()
             for _, gd in groups:
                 if self.mode not in ("balanced", "simple"):
-                    warnings.warn(f"Не предусмотрено режима '{self.mode}' для группового разделения. "
-                                  f"Был использован режим 'stratification'.")
+                    warnings.warn(
+                        f"Не предусмотрено режима '{self.mode}' для группового разделения. "
+                        f"Был использован режим 'stratification'."
+                    )
                     self.mode = "simple"
 
                 if self.mode == "simple":
@@ -158,8 +151,10 @@ class ABSplitter:
 
         else:
             if self.mode != "simple":
-                warnings.warn(f"Не предусмотрено режима '{self.mode}' для обычного разделения. "
-                              f"Был использован режим 'simple'.")
+                warnings.warn(
+                    f"Не предусмотрено режима '{self.mode}' для обычного разделения. "
+                    f"Был использован режим 'simple'."
+                )
 
             t_result = self.__simple_mode(data, random_state)
             result["test_indexes"] = t_result["test_indexes"]
@@ -170,16 +165,16 @@ class ABSplitter:
         return result
 
     def search_dist_uniform_sampling(
-            self,
-            data,
-            target_fields: Union[List[str], str],
-            n: int = None,
-            random_states: Iterable[int] = None,
-            alpha: float = 0.05,
-            file_name: Union[Path, str] = None,
-            write_mode: str = "full",
-            write_step: int = 10,
-            pbar: bool = True,
+        self,
+        data,
+        target_fields: Union[List[str], str],
+        n: int = None,
+        random_states: Iterable[int] = None,
+        alpha: float = 0.05,
+        file_name: Union[Path, str] = None,
+        write_mode: str = "full",
+        write_step: int = 10,
+        pbar: bool = True,
     ) -> Optional[pd.DataFrame]:
         """
         Подбирает random_state для поиска однородного распределения
@@ -203,9 +198,7 @@ class ABSplitter:
         results = []
 
         if write_mode not in ("full", "all", "any"):
-            warnings.warn(
-                f"Режим записи '{write_mode}' не поддерживается. Будет использован режим 'full'"
-            )
+            warnings.warn(f"Режим записи '{write_mode}' не поддерживается. Будет использован режим 'full'")
             write_mode = "full"
 
         if isinstance(target_fields, str):
@@ -213,9 +206,7 @@ class ABSplitter:
 
         for i, random_state in tqdm(enumerate(random_states), total=len(random_states), display=pbar):
             split = self.split_ab(data, random_state)
-            t_result = {
-                "random_state": random_state
-            }
+            t_result = {"random_state": random_state}
             a = data.loc[split["test_indexes"]]
             b = data.loc[split["control_indexes"]]
             scores = []
@@ -248,9 +239,7 @@ class ABSplitter:
                 if i == write_step:
                     pd.DataFrame(results).to_csv(file_name, index=False)
                 elif i % write_step == 0:
-                    pd.DataFrame(results).to_csv(
-                        file_name, index=False, header=False, mode="a"
-                    )
+                    pd.DataFrame(results).to_csv(file_name, index=False, header=False, mode="a")
                     results = []
         if file_name and write_step:
             pd.DataFrame(results).to_csv(file_name, index=False, header=False, mode="a")
@@ -271,9 +260,7 @@ class ABExperiment(ABC):
         self.label = label
 
     @abstractmethod
-    def calc_effect(
-            self, test_data: pd.DataFrame, control_data: pd.DataFrame, target_field: str
-    ) -> float:
+    def calc_effect(self, test_data: pd.DataFrame, control_data: pd.DataFrame, target_field: str) -> float:
         pass
 
 
@@ -289,12 +276,7 @@ class ABTester:
     }
 
     def __init__(
-            self,
-            splitter: ABSplitter,
-            target_field: str,
-            reliability=0.95,
-            power=0.8,
-            mde=None,
+        self, splitter: ABSplitter, target_field: str, reliability=0.95, power=0.8, mde=None,
     ):
         """
         :param splitter: класс разделителя на A|B
@@ -310,10 +292,7 @@ class ABTester:
         self.mde = mde
 
     def sampling_test(
-            self,
-            data,
-            experiments: Union[ABExperiment, Iterable[ABExperiment]],
-            random_state: int = None,
+        self, data, experiments: Union[ABExperiment, Iterable[ABExperiment]], random_state: int = None,
     ) -> Dict:
         """
         Тест на определенном разбиении
@@ -328,14 +307,14 @@ class ABTester:
             experiments = [experiments]
 
         mde = self.mde or calc_mde(
-            data.loc[split['test'], self.target_field],
-            data.loc[split['control'], self.target_field],
+            data.loc[split["test"], self.target_field],
+            data.loc[split["control"], self.target_field],
             reliability=self.reliability,
             power=self.power,
         )
         sample_size = calc_sample_size(
-            data.loc[split['test'], self.target_field],
-            data.loc[split['control'], self.target_field],
+            data.loc[split["test"], self.target_field],
+            data.loc[split["control"], self.target_field],
             mde,
             significance=(1 - self.reliability),
             power=self.power,
@@ -345,25 +324,25 @@ class ABTester:
             "rs": random_state,
             "mde": mde,
             "sample_size": sample_size,
-            "a_len": len(split['test']),
-            "b_len": len(split['control']),
-            "a_mean": data.loc[split['test'], self.target_field].mean(),
-            "b_mean": data.loc[split['control'], self.target_field].mean(),
+            "a_len": len(split["test"]),
+            "b_len": len(split["control"]),
+            "a_mean": data.loc[split["test"], self.target_field].mean(),
+            "b_mean": data.loc[split["control"], self.target_field].mean(),
         }
 
         for e in experiments:
             result[f"effect {e.label}"] = e.calc_effect(
-                data.loc[split['test']], data.loc[split['control']], self.target_field
+                data.loc[split["test"]], data.loc[split["control"]], self.target_field
             )
 
         return result
 
     def multisampling_test(
-            self,
-            data,
-            experiments: Union[ABExperiment, Iterable[ABExperiment]],
-            random_states: Iterable[int],
-            pbar: bool = False,
+        self,
+        data,
+        experiments: Union[ABExperiment, Iterable[ABExperiment]],
+        random_states: Iterable[int],
+        pbar: bool = False,
     ) -> tuple[pd.DataFrame, pd.DataFrame]:
         """
         Проводит множественные эксперименты по случайным состояниям
@@ -373,22 +352,14 @@ class ABTester:
         :return: статистики экспериментов
         """
 
-        results = pd.DataFrame(
-            [
-                self.sampling_test(data, experiments, rs)
-                for rs in tqdm(random_states, display=pbar)
-            ]
-        )
+        results = pd.DataFrame([self.sampling_test(data, experiments, rs) for rs in tqdm(random_states, display=pbar)])
 
         stats = results.describe()
         stats.loc["cv %"] = (stats.loc["std"] / stats.loc["mean"] * 100).round(2)
         return results, stats
 
     def format_stat(
-            self,
-            stat: pd.DataFrame,
-            experiments: Union[ABExperiment, Iterable[ABExperiment]],
-            rename_map: Dict = None,
+        self, stat: pd.DataFrame, experiments: Union[ABExperiment, Iterable[ABExperiment]], rename_map: Dict = None,
     ):
         """
         Редактирует формат вывода статистик
@@ -401,9 +372,7 @@ class ABTester:
         """
         rename_map = rename_map or self.DEFAULT_FORMAT_MAPPING
 
-        rename_map.update(
-            {f"effect {e.label}": f"Эффект {e.label}" for e in experiments}
-        )
+        rename_map.update({f"effect {e.label}": f"Эффект {e.label}" for e in experiments})
 
         result = stat.rename(columns=rename_map)
         result = result.applymap(lambda x: f"{x:,.2f}")
