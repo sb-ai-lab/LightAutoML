@@ -9,13 +9,13 @@ class GEGLU(nn.Module):
     """GEGLU activation for Attention block."""
 
     def forward(self, x):
+        """Transform the input tensor with GEGLU activation."""
         x, gates = x.chunk(2, dim=-1)
         return x * F.gelu(gates)
 
 
 def FeedForward(dim, mult=4, dropout=0.0):
-    """FeedForward for Transformer block."""
-
+    """Feedforward for Transformer block."""
     return nn.Sequential(
         nn.LayerNorm(dim), nn.Linear(dim, dim * mult * 2), GEGLU(), nn.Dropout(dropout), nn.Linear(dim * mult, dim)
     )
@@ -42,6 +42,17 @@ class Attention(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
+        """Transform the input tensor with attention.
+
+        Args:
+            x : torch.Tensor
+                3-d tensor; for example, embedded numeric and/or categorical values,
+                or the output of a previous attention layer.
+
+        Returns:
+            torch.Tensor
+
+        """
         batch_size, seq_len, dim = x.shape
         h = self.heads
 
@@ -95,6 +106,17 @@ class Transformer(nn.Module):
             )
 
     def forward(self, x):
+        """Transform the input embeddings tensor with Transformer module.
+
+        Args:
+            x : torch.Tensor
+                3-d tensor; for example, embedded numeric and/or categorical values,
+                or the output of a previous Transformer layer.
+
+        Returns:
+            torch.Tensor
+
+        """
         post_softmax_attns = []
 
         for attn, ff in self.layers:

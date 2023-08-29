@@ -1070,7 +1070,16 @@ class FTTransformer(nn.Module):
         self.cls_token = nn.Embedding(2, embedding_size)
 
     def forward(self, embedded):
+        """Transform the input tensor.
 
+        Args:
+            embedded : torch.Tensor
+                embedded fields
+
+        Returns:
+            torch.Tensor
+
+        """
         cls_token = torch.unsqueeze(
             self.cls_token(torch.ones(embedded.shape[0], dtype=torch.int).to(self.device)), dim=1
         )
