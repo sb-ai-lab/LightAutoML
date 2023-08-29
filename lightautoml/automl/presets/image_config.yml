@@ -240,7 +240,7 @@ nn_pipeline_params:
 
 nn_params:
   # Look for NN train params here.
-  # str in ['nn', 'mlp', 'dense', 'denselight', 'resnet', 'snn'] or custom torch model
+  # str in ['nn', 'mlp', 'dense', 'denselight', 'resnet', 'snn', 'node', 'autoint'] or custom torch model
   model: denselight
   # embedding_size if needed
   embedding_size: 10
@@ -266,7 +266,7 @@ nn_params:
   # add fc layer before model with certain dim
   num_init_features: null
   # activation function (str in torch.nn activation functions or custom nn.Module)
-  act_fun: ReLU
+  act_fun: LeakyReLU
   # add noise after dropout layer for more regularization
   use_noise: false
   # noise parameter
@@ -274,7 +274,7 @@ nn_params:
   # use BatchNorm
   use_bn: true
   # define hidden layer dimensions for models in ['mlp', 'denselight', 'snn']
-  hidden_size: [512, 512, 512]
+  hidden_size: [512, 256]
   # dim of intermediate fc is increased times this factor in ResnetModel layer
   hid_factor: [2, 2]
   # list of number of layers within each DenseModel block

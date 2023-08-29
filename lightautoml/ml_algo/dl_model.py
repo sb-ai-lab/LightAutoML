@@ -113,31 +113,19 @@ cont_embedder_by_name = {"linear": LinearEmbedding, "dense": DenseEmbedding}
 
 def _get_embedder_cat(params):
     if input_type_by_name[params["model"]] == "seq":
-        try:
-            out = cat_embedder_by_name[params["cat_embedder"]]
-        except KeyError:
-            out = BasicCatEmbedding
+        out = cat_embedder_by_name.get(params["cat_embedder"], BasicCatEmbedding)
         return out
     else:
-        try:
-            out = cat_embedder_by_name_flat[params["cat_embedder"]]
-        except KeyError:
-            out = CatEmbedder
+        out = cat_embedder_by_name_flat.get(params["cat_embedder"], CatEmbedder)
         return out
 
 
 def _get_embedder_cont(params):
     if input_type_by_name[params["model"]] == "seq":
-        try:
-            out = cont_embedder_by_name[params["cont_embedder"]]
-        except KeyError:
-            out = LinearEmbedding
+        out = cont_embedder_by_name.get(params["cat_embedder"], LinearEmbedding)
         return out
     else:
-        try:
-            out = cont_embedder_by_name_flat[params["cont_embedder"]]
-        except KeyError:
-            out = ContEmbedder
+        out = cont_embedder_by_name_flat.get(params["cat_embedder"], ContEmbedder)
         return out
 
 
