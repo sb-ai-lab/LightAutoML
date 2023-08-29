@@ -217,6 +217,7 @@ class Matcher:
 
     def _preprocessing_data(self):
         """Converts categorical features into dummy variables."""
+        # чекать бинарность колонки treatment
 
         info_col = self.info_col if self.info_col is not None else []
         group_col = [self.group_col] if self.group_col is not None else []

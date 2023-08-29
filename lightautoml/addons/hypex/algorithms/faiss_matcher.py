@@ -287,7 +287,7 @@ class FaissMatcher:
             filtered = df.loc[df[self.treatment] == int(not is_treated)].values
             untreated_df = pd.DataFrame(
                 data=np.array([filtered[idx].mean(axis=0) for idx in index]), columns=df.columns
-            )
+            ) #добавить дату в данные и пофиксить баги с этим (тут ломалось)
             if self.info_col is not None and len(self.info_col) != 1:
                 untreated_df["index"] = pd.Series(converted_index)
                 treated_df = df[df[self.treatment] == int(is_treated)].reset_index()
