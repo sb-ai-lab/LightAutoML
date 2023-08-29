@@ -410,7 +410,7 @@ class TorchModel(TabularMLAlgo):
         target = train_valid_iterator.train.target
 
         if params["n_out"] is None:
-            new_params["n_out"] = 1 if task_name != "multiclass" else np.max(target) + 1
+            new_params["n_out"] = 1 if task_name != "multiclass" else (np.max(target) + 1).astype(int)
             new_params["n_out"] = target.shape[1] if task_name in ["multi:reg", "multilabel"] else new_params["n_out"]
 
         cat_dims = []
