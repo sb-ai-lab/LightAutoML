@@ -266,6 +266,7 @@ class WeightedCatEmbedding(nn.Module):
 
     def __init__(
         self,
+        cat_dims: Sequence[int],
         cat_vc: Sequence[Dict],
         embedding_size: int = 10,
         alpha: int = 20,
@@ -284,27 +285,29 @@ class WeightedCatEmbedding(nn.Module):
         self.num_values = 0
         self.embedding: Optional[nn.Embedding] = None
         self.embedding_size = embedding_size
-        self._from_summary(cat_vc)
+        self._from_summary(cat_vc, cat_dims)
         self.cat_len = len(cat_vc)
+        self.cat_dims = cat_dims
 
-    def _from_summary(self, unique_counts: List[Dict[Any, int]]):
-        lookup = {}
-        lookup_default = {}
-        num_values = 0
+    def _from_summary(self, unique_counts: List[Dict[Any, int]], cat_dims: Sequence[int]):
+        self.emb_layers = nn.ModuleList([nn.Embedding(int(x), self.embedding_size) for x in cat_dims])
+        self.def_layers = nn.ModuleList([nn.Embedding(1, self.embedding_size) for _ in cat_dims])
+        weights_list = []
         for fieldnum, counts in enumerate(unique_counts):
-            lookup_default[fieldnum] = (num_values, 0)
-            num_values += 1
-            for value, count in counts.items():
-                lookup[(fieldnum, value)] = (num_values, count)
-                num_values += 1
-
+            weights = []
+            for i, vc in enumerate(sorted(counts.items())):
+                value, count = vc
+                if i == 0 and value != 0.0:
+                    weights.append([0])
+                weights.append([count / (count + self.alpha)])
+            weights_list.append(weights)
+        self.w_emb_layers = nn.ModuleList(
+            [nn.Embedding.from_pretrained(torch.tensor(x, dtype=torch.float32)) for x in weights_list]
+        )
         self.num_fields = len(unique_counts)
         self.output_size = self.num_fields * self.embedding_size
-        self.lookup = lookup
-        self.lookup_default = lookup_default
-        self.num_values = num_values
-        self.embedding = nn.Embedding(num_values, self.embedding_size)
-        nn.init.xavier_uniform_(self.embedding.weight)
+        for emb in self.emb_layers:
+            nn.init.xavier_uniform_(emb.weight)
 
     def get_out_shape(self) -> int:
         """Output shape.
@@ -328,23 +331,23 @@ class WeightedCatEmbedding(nn.Module):
             torch.Tensor
         """
         X = X["cat"]
-        list_weights: List[List[List[float]]] = []
-        idxs_primary: List[List[int]] = []
-        idxs_default: List[List[int]] = []
-        for row in X:
-            list_weights.append([])
-            idxs_primary.append([])
-            idxs_default.append([])
-            for col, val in enumerate(row):
-                val = val.item()
-                default = self.lookup_default[col]
-                idx, count = self.lookup.get((col, val), default)
-                list_weights[-1].append([count / (count + self.alpha)])
-                idxs_primary[-1].append(idx)
-                idxs_default[-1].append(default[0])
-        tsr_weights = torch.tensor(list_weights, dtype=torch.float32, device=self._device)
-        emb_primary = self.embedding(torch.tensor(idxs_primary, dtype=torch.int64, device=self._device))
-        emb_default = self.embedding(torch.tensor(idxs_default, dtype=torch.int64, device=self._device))
+        emb_primary = torch.stack(
+            [emb_layer(X[:, i]) for i, emb_layer in enumerate(self.emb_layers)],
+            dim=1,
+        )
+        tsr_weights = torch.stack(
+            [emb_layer(X[:, i]) for i, emb_layer in enumerate(self.w_emb_layers)],
+            dim=1,
+        )
+
+        emb_default = torch.stack(
+            [
+                emb_layer(torch.tensor([0] * len(X[:, i]), device=self._device))
+                for i, emb_layer in enumerate(self.def_layers)
+            ],
+            dim=1,
+        )
+
         x = tsr_weights * emb_primary + (1 - tsr_weights) * emb_default
         if self.flatten_output:
             return x.view(x.shape[0], -1)
