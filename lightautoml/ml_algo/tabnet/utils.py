@@ -6,14 +6,14 @@ from lightautoml.ml_algo.torch_based.node_nn_model import Entmax15, Sparsemax
 from lightautoml.ml_algo.torch_based.autoint.ghost_norm import GhostBatchNorm
 
 
-def initialize_non_glu(module, input_dim, output_dim):
+def _initialize_non_glu(module, input_dim, output_dim):
     gain_value = np.sqrt((input_dim + output_dim) / np.sqrt(4 * input_dim))
     torch.nn.init.xavier_normal_(module.weight, gain=gain_value)
     # torch.nn.init.zeros_(module.bias)
     return
 
 
-def initialize_glu(module, input_dim, output_dim):
+def _initialize_glu(module, input_dim, output_dim):
     gain_value = np.sqrt((input_dim + output_dim) / np.sqrt(input_dim))
     torch.nn.init.xavier_normal_(module.weight, gain=gain_value)
     # torch.nn.init.zeros_(module.bias)
@@ -21,27 +21,11 @@ def initialize_glu(module, input_dim, output_dim):
 
 
 class TabNetEncoder(torch.nn.Module):
-    def __init__(
-        self,
-        input_dim,
-        output_dim,
-        n_d=8,
-        n_a=8,
-        n_steps=3,
-        gamma=1.3,
-        n_independent=2,
-        n_shared=2,
-        epsilon=1e-15,
-        virtual_batch_size=128,
-        momentum=0.02,
-        mask_type="sparsemax",
-        group_attention_matrix=None,
-    ):
-        """
-        Defines main part of the TabNet network without the embedding layers.
+    """Defines main part of the TabNet network without the embedding layers.
 
-        Parameters
-        ----------
+    Code from https://github.com/dreamquark-ai/tabnet
+
+    Args:
         input_dim : int
             Number of features
         output_dim : int or list of int for multi task classification
@@ -69,7 +53,24 @@ class TabNetEncoder(torch.nn.Module):
             Either "sparsemax" or "entmax" : this is the masking function to use
         group_attention_matrix : torch matrix
             Matrix of size (n_groups, input_dim), m_ij = importance within group i of feature j
-        """
+    """
+
+    def __init__(
+        self,
+        input_dim,
+        output_dim,
+        n_d=8,
+        n_a=8,
+        n_steps=3,
+        gamma=1.3,
+        n_independent=2,
+        n_shared=2,
+        epsilon=1e-15,
+        virtual_batch_size=128,
+        momentum=0.02,
+        mask_type="sparsemax",
+        group_attention_matrix=None,
+    ):
         super(TabNetEncoder, self).__init__()
         self.input_dim = input_dim
         self.output_dim = output_dim
@@ -137,6 +138,15 @@ class TabNetEncoder(torch.nn.Module):
             self.att_transformers.append(attention)
 
     def forward(self, x, prior=None):
+        """Forward-pass of encoder.
+
+        Args:
+            x : input Tensor
+            prior : mask for AttentiveTransformer
+
+        Returns:
+            sequence of outputs, regulariztion loss
+        """
         x = self.initial_bn(x)
 
         bs = x.shape[0]  # batch size
@@ -164,6 +174,14 @@ class TabNetEncoder(torch.nn.Module):
         return steps_output, M_loss
 
     def forward_masks(self, x):
+        """Magic forward-pass of encoder that returns masks.
+
+        Args:
+            x : input Tensor
+
+        Returns:
+            new and old masks.
+        """
         x = self.initial_bn(x)
         bs = x.shape[0]  # batch size
         prior = torch.ones((bs, self.attention_dim)).to(x.device)
@@ -191,21 +209,9 @@ class TabNetEncoder(torch.nn.Module):
 
 
 class FeatTransformer(torch.nn.Module):
-    def __init__(
-        self,
-        input_dim,
-        output_dim,
-        shared_layers,
-        n_glu_independent,
-        virtual_batch_size=128,
-        momentum=0.02,
-    ):
-        super(FeatTransformer, self).__init__()
-        """
-        Initialize a feature transformer.
+    """Feature transformer from https://github.com/dreamquark-ai/tabnet.
 
-        Parameters
-        ----------
+    Args:
         input_dim : int
             Input size
         output_dim : int
@@ -218,8 +224,18 @@ class FeatTransformer(torch.nn.Module):
             Batch size for Ghost Batch Normalization within GLU block(s)
         momentum : float
             Float value between 0 and 1 which will be used for momentum in batch norm
-        """
+    """
 
+    def __init__(
+        self,
+        input_dim,
+        output_dim,
+        shared_layers,
+        n_glu_independent,
+        virtual_batch_size=128,
+        momentum=0.02,
+    ):
+        super(FeatTransformer, self).__init__()
         params = {
             "n_glu": n_glu_independent,
             "virtual_batch_size": virtual_batch_size,
@@ -250,14 +266,32 @@ class FeatTransformer(torch.nn.Module):
             self.specifics = GLU_Block(spec_input_dim, output_dim, first=is_first, **params)
 
     def forward(self, x):
+        """Forward-pass."""
         x = self.shared(x)
         x = self.specifics(x)
         return x
 
 
 class GLU_Block(torch.nn.Module):
-    """
-    Independent GLU block, specific to each step
+    """Independent GLU block, specific to each step.
+
+    Code from https://github.com/dreamquark-ai/tabnet.
+
+    Args:
+        input_dim : int
+            Input size
+        output_dim : int
+            Output_size
+        shared_layers : torch.nn.ModuleList
+            The shared block that should be common to every step
+        n_glu : int
+            Number of independent GLU layers
+        virtual_batch_size : int
+            Batch size for Ghost Batch Normalization within GLU block(s)
+        momentum : float
+            Float value between 0 and 1 which will be used for momentum in batch norm
+        first : bool
+            if the first layer of the block has no scale multiplication or not
     """
 
     def __init__(
@@ -285,6 +319,7 @@ class GLU_Block(torch.nn.Module):
             self.glu_layers.append(GLU_Layer(output_dim, output_dim, fc=fc, **params))
 
     def forward(self, x):
+        """Forward-pass."""
         scale = torch.sqrt(torch.FloatTensor([0.5]).to(x.device))
         if self.first:  # the first layer of the block has no scale multiplication
             x = self.glu_layers[0](x)
@@ -299,6 +334,22 @@ class GLU_Block(torch.nn.Module):
 
 
 class GLU_Layer(torch.nn.Module):
+    """GLU layer implementation.
+
+    Args:
+        input_dim : int
+            Input size
+        output_dim : int
+            Output_size
+        fc : torch.nn.Module
+            Optional fully-connected layer
+        virtual_batch_size : int
+            Batch size for Ghost Batch Normalization within GLU block(s)
+        momentum : float
+            Float value between 0 and 1 which will be used for momentum in batch norm
+
+    """
+
     def __init__(self, input_dim, output_dim, fc=None, virtual_batch_size=128, momentum=0.02):
         super(GLU_Layer, self).__init__()
 
@@ -307,11 +358,12 @@ class GLU_Layer(torch.nn.Module):
             self.fc = fc
         else:
             self.fc = nn.Linear(input_dim, 2 * output_dim, bias=False)
-        initialize_glu(self.fc, input_dim, 2 * output_dim)
+        _initialize_glu(self.fc, input_dim, 2 * output_dim)
 
         self.bn = GhostBatchNorm(2 * output_dim, virtual_batch_size=virtual_batch_size, momentum=momentum)
 
     def forward(self, x):
+        """Forward-pass."""
         x = self.fc(x)
         x = self.bn(x)
         out = torch.mul(x[:, : self.output_dim], torch.sigmoid(x[:, self.output_dim :]))
@@ -319,20 +371,11 @@ class GLU_Layer(torch.nn.Module):
 
 
 class AttentiveTransformer(torch.nn.Module):
-    def __init__(
-        self,
-        input_dim,
-        group_dim,
-        group_matrix,
-        virtual_batch_size=128,
-        momentum=0.02,
-        mask_type="sparsemax",
-    ):
-        """
-        Initialize an attention transformer.
+    """Attention transformer.
 
-        Parameters
-        ----------
+    Code from https://github.com/dreamquark-ai/tabnet.
+
+    Args:
         input_dim : int
             Input size
         group_dim : int
@@ -343,10 +386,20 @@ class AttentiveTransformer(torch.nn.Module):
             Float value between 0 and 1 which will be used for momentum in batch norm
         mask_type : str
             Either "sparsemax" or "entmax" : this is the masking function to use
-        """
+    """
+
+    def __init__(
+        self,
+        input_dim,
+        group_dim,
+        group_matrix,
+        virtual_batch_size=128,
+        momentum=0.02,
+        mask_type="sparsemax",
+    ):
         super(AttentiveTransformer, self).__init__()
         self.fc = nn.Linear(input_dim, group_dim, bias=False)
-        initialize_non_glu(self.fc, input_dim, group_dim)
+        _initialize_non_glu(self.fc, input_dim, group_dim)
         self.bn = GhostBatchNorm(group_dim, virtual_batch_size=virtual_batch_size, momentum=momentum)
 
         if mask_type == "sparsemax":
@@ -359,6 +412,7 @@ class AttentiveTransformer(torch.nn.Module):
             raise NotImplementedError("Please choose either sparsemax" + "or entmax as masktype")
 
     def forward(self, priors, processed_feat):
+        """Forward-pass."""
         x = self.fc(processed_feat)
         x = self.bn(x)
         x = torch.mul(x, priors)

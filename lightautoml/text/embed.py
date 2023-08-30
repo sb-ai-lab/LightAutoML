@@ -530,6 +530,7 @@ class NLinearMemoryEfficient(nn.Module):
         self.layers = nn.ModuleList([nn.Linear(d_in, d_out) for _ in range(n)])
 
     def forward(self, x):
+        """Forward-pass."""
         return torch.stack([l(x[:, i]) for i, l in enumerate(self.layers)], 1)
 
 
@@ -570,6 +571,7 @@ class Periodic(nn.Module):
             return self.n_features
 
     def forward(self, x: Tensor) -> Tensor:
+        """Forward-pass."""
         x = self._cos_sin(2 * torch.pi * self.coefficients[None] * x[..., None])
         if self.flatten_output:
             return x.view(x.shape[0], -1)
@@ -642,23 +644,20 @@ class PLREmbeddingFlat(PLREmbedding):
 
 
 class SoftEmbedding(torch.nn.Module):
-    """
-    Soft-one hot encoding embedding technique, from https://arxiv.org/pdf/1708.00065.pdf
+    """Soft-one hot encoding embedding technique, from https://arxiv.org/pdf/1708.00065.pdf.
+
     In a nutshell, it represents a continuous feature as a weighted average of embeddings
-    """
 
-    def __init__(self, num_dims, embedding_size=10, flatten_output: bool = False, **kwargs) -> None:
-        """
-
-        Parameters
-        ----------
+    Args:
         num_embeddings: Number of embeddings to use (cardinality of the embedding table).
         embeddings_dim: The dimension of the vector space for projecting the scalar value.
         embeddings_init_std: The standard deviation factor for normal initialization of the
             embedding matrix weights.
         emb_initializer: Dict where keys are feature names and values are callable to initialize
             embedding tables
-        """
+    """
+
+    def __init__(self, num_dims, embedding_size=10, flatten_output: bool = False, **kwargs) -> None:
         super(SoftEmbedding, self).__init__()
         self.embedding_table = torch.nn.Embedding(num_dims, embedding_size)
         nn.init.xavier_uniform_(self.embedding_table.weight)

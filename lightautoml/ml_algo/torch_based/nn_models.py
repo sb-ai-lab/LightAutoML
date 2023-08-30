@@ -979,28 +979,9 @@ class AutoInt(nn.Module):
 
 
 class TabNet(torch.nn.Module):
-    def __init__(
-        self,
-        n_in,
-        n_out,
-        n_d=8,
-        n_a=8,
-        n_steps=3,
-        gamma=1.3,
-        n_independent=2,
-        n_shared=2,
-        epsilon=1e-15,
-        virtual_batch_size=128,
-        momentum=0.02,
-        mask_type="sparsemax",
-        group_attention_matrix=None,
-        **kwargs,
-    ):
-        """
-        Defines main part of the TabNet network without the embedding layers.
+    """Implementation of TabNet from https://github.com/dreamquark-ai/tabnet.
 
-        Parameters
-        ----------
+    Args:
         input_dim : int
             Number of features
         output_dim : int or list of int for multi task classification
@@ -1028,7 +1009,25 @@ class TabNet(torch.nn.Module):
             Either "sparsemax" or "entmax" : this is the masking function to use
         group_attention_matrix : torch matrix
             Matrix of size (n_groups, input_dim), m_ij = importance within group i of feature j
-        """
+    """
+
+    def __init__(
+        self,
+        n_in,
+        n_out,
+        n_d=8,
+        n_a=8,
+        n_steps=3,
+        gamma=1.3,
+        n_independent=2,
+        n_shared=2,
+        epsilon=1e-15,
+        virtual_batch_size=128,
+        momentum=0.02,
+        mask_type="sparsemax",
+        group_attention_matrix=None,
+        **kwargs,
+    ):
         super(TabNet, self).__init__()
         self.input_dim = n_in
         self.output_dim = n_out
@@ -1071,6 +1070,7 @@ class TabNet(torch.nn.Module):
             initialize_non_glu(self.final_mapping, n_d, n_out)
 
     def forward(self, x):
+        """Forward-pass."""
         res = 0
         steps_output, M_loss = self.encoder(x)
         res = torch.sum(torch.stack(steps_output, dim=0), dim=0)
@@ -1085,4 +1085,5 @@ class TabNet(torch.nn.Module):
         return out
 
     def forward_masks(self, x):
+        """Magic forward-pass of encoder that returns masks."""
         return self.encoder.forward_masks(x)
