@@ -62,8 +62,8 @@ class PSI:
         """
         self.expected = expected[column_name].values
         self.actual = actual[column_name].values
-        self.actual_len = len(self.actual)
         self.expected_len = len(self.expected)
+        self.actual_len = len(self.actual)
         self.column_name = column_name
         self.column_type = self.expected.dtype
         self.expected_shape = self.expected.shape
@@ -91,7 +91,9 @@ class PSI:
 
         logger.info(f"Jacquard similarity is {len(x.intersection(y)) / len(x.union(y)): .6f}")
 
-        return len(x.intersection(y)) / len(x.union(y))
+        jac_sim_index = len(x.intersection(y)) / len(x.union(y))
+
+        return jac_sim_index
 
     # в функции нет аргумента nulls, а был и испольовался далее в коде
     def plots(self, expected_percents, actual_percents, breakpoints, intervals):
@@ -146,11 +148,11 @@ class PSI:
         if e_perc == 0:
             e_perc = 0.0001
 
-        value = (e_perc - a_perc) * np.log(e_perc / a_perc)
+        sub_psi = (e_perc - a_perc) * np.log(e_perc / a_perc)
 
         logger.debug(f"sub_psi value is {value: .6f}")
 
-        return value
+        return sub_psi
 
     def psi_num(self):
         """Calculate the PSI for a single variable.
@@ -450,7 +452,7 @@ def report(expected: pd.DataFrame, actual: pd.DataFrame, plot: bool = False, sil
     data_cols = expected.columns
     score_dict = {}
     new_cat_dict = {}
-    dfs = []
+    datas = []
 
     for col in data_cols:
         psi_res = PSI(expected, actual, col, plot=plot, silent=silent)
@@ -476,7 +478,7 @@ def report(expected: pd.DataFrame, actual: pd.DataFrame, plot: bool = False, sil
                 failed_buckets = None
         else:
             metric_name = "stability_index"
-        df_tmp = pd.DataFrame(
+        data_tmp = pd.DataFrame(
             {
                 "column": col,
                 "anomaly_score": score,
@@ -488,8 +490,8 @@ def report(expected: pd.DataFrame, actual: pd.DataFrame, plot: bool = False, sil
             },
             index=[1],
         )
-        dfs.append(df_tmp)
+        datas.append(data_tmp)
 
-    df = pd.concat(dfs, ignore_index=True)
+    data = pd.concat(datas, ignore_index=True)
 
-    return df
+    return data
