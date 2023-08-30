@@ -857,7 +857,7 @@ class NODE(nn.Module):
 
 
 class AutoInt(nn.Module):
-    """The NODE model from https://github.com/Qwicen.
+    """The AutoInt model from https://github.com/jrfiedler/xynn.
 
     Args:
             n_in: Input dim.
