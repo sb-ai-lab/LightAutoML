@@ -291,7 +291,7 @@ class WeightedCatEmbedding(nn.Module):
 
     def _from_summary(self, unique_counts: List[Dict[Any, int]], cat_dims: Sequence[int]):
         self.emb_layers = nn.ModuleList([nn.Embedding(int(x), self.embedding_size) for x in cat_dims])
-        self.def_layers = nn.ModuleList([nn.Embedding(1, 1) for _ in cat_dims])
+        self.def_layers = nn.ModuleList([nn.Embedding(1, self.embedding_size) for _ in cat_dims])
         weights_list = []
         for fieldnum, counts in enumerate(unique_counts):
             weights = []
