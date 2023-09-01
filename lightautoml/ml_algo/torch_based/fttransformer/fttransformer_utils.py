@@ -90,10 +90,9 @@ class Transformer(nn.Module):
             return_attn: Return attention scores or not.
     """
 
-    def __init__(self, dim, depth, heads, dim_head, attn_dropout, ff_dropout, return_attn=False):
+    def __init__(self, dim, depth, heads, dim_head, attn_dropout, ff_dropout):
         super().__init__()
         self.layers = nn.ModuleList([])
-        self.return_attn = return_attn
 
         for _ in range(depth):
             self.layers.append(
@@ -125,7 +124,4 @@ class Transformer(nn.Module):
             x = attn_out + x
             x = ff(x) + x
 
-        if not self.return_attn:
-            return x
-
-        return x, torch.stack(post_softmax_attns)
+        return x

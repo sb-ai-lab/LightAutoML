@@ -808,6 +808,16 @@ class SequenceConcatPooler(SequenceAbstractPooler):
         return values
 
 
+pooling_by_name = {
+    "mean": SequenceAvgPooler,
+    "sum": SequenceSumPooler,
+    "max": SequenceMaxPooler,
+    "concat": SequenceConcatPooler,
+    "cls": SequenceClsPooler,
+    "none": SequenceIndentityPooler,
+}
+
+
 class NODE(nn.Module):
     """The NODE model from https://github.com/Qwicen.
 
@@ -1006,7 +1016,6 @@ class FTTransformer(nn.Module):
             attn_dropout: Post-Attention dropout.
             ff_dropout: Feed-Forward Dropout.
             dim_head: Attention head dimension.
-            return_attn: Return attention scores or not.
             num_enc_layers: Number of Transformer layers.
             device: Device to compute on.
     """
@@ -1022,28 +1031,15 @@ class FTTransformer(nn.Module):
         attn_dropout: float = 0.1,
         ff_dropout: float = 0.1,
         dim_head: int = 64,
-        return_attn: bool = False,
         num_enc_layers: int = 2,
         device: Union[str, torch.device] = "cuda:0",
         **kwargs,
     ):
         super(FTTransformer, self).__init__()
-        self.return_attn = return_attn
-        # self.num_enc_layers = num_enc_layers
         self.device = device
-        if pooling == "cls":
-            self.pooling = SequenceClsPooler()
-        elif pooling == "mean":
-            self.pooling = SequenceAvgPooler()
-        elif pooling == "sum":
-            self.pooling = SequenceSumPooler()
-        elif pooling == "concat":
-            self.pooling = SequenceConcatPooler()
-        elif pooling == "none":
-            self.pooling = SequenceIndentityPooler()
+        self.pooling = pooling_by_name[pooling]()
 
         # transformer
-
         self.transformer = nn.Sequential(
             *nn.ModuleList(
                 [
@@ -1054,7 +1050,6 @@ class FTTransformer(nn.Module):
                         dim_head=dim_head,
                         attn_dropout=attn_dropout,
                         ff_dropout=ff_dropout,
-                        return_attn=self.return_attn,
                     )
                     for _ in range(num_enc_layers)
                 ]
@@ -1084,20 +1079,11 @@ class FTTransformer(nn.Module):
             self.cls_token(torch.ones(embedded.shape[0], dtype=torch.int).to(self.device)), dim=1
         )
         x = torch.cat((cls_token, embedded), dim=1)
-
-        if not self.return_attn:
-            x = self.transformer(x)
-        else:
-            x, attns = self.transformer(x)
-
+        x = self.transformer(x)
         x_mask = torch.ones(x.shape, dtype=torch.bool).to(self.device)
         pool_tokens = self.pooling(x=x, x_mask=x_mask)
         if isinstance(self.pooling, SequenceIndentityPooler):
             pool_tokens = pool_tokens[:, 0]
 
         logits = self.to_logits(pool_tokens)
-
-        if not self.return_attn:
-            return logits
-
-        return logits, attns
+        return logits
