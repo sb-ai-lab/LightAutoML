@@ -8,7 +8,7 @@ from typing import Union
 import numpy as np
 import torch
 import torch.nn as nn
-from lightautoml.ml_algo.tabnet.utils import TabNetEncoder, initialize_non_glu
+from lightautoml.ml_algo.tabnet.utils import TabNetEncoder, _initialize_non_glu
 from lightautoml.ml_algo.torch_based.autoint.autoint_utils import AttnInteractionBlock, LeakyGate
 from lightautoml.ml_algo.torch_based.autoint.ghost_norm import GhostBatchNorm
 
@@ -1063,11 +1063,11 @@ class TabNet(torch.nn.Module):
             self.multi_task_mappings = torch.nn.ModuleList()
             for task_dim in n_out:
                 task_mapping = nn.Linear(n_d, task_dim, bias=False)
-                initialize_non_glu(task_mapping, n_d, task_dim)
+                _initialize_non_glu(task_mapping, n_d, task_dim)
                 self.multi_task_mappings.append(task_mapping)
         else:
             self.final_mapping = nn.Linear(n_d, n_out, bias=False)
-            initialize_non_glu(self.final_mapping, n_d, n_out)
+            _initialize_non_glu(self.final_mapping, n_d, n_out)
 
     def forward(self, x):
         """Forward-pass."""
