@@ -169,9 +169,8 @@ class AutoTS:
         self.kwargs = kwargs
 
         if "config_path" not in kwargs:
-            self.kwargs["config_path"] = (
-                "/".join(os.path.dirname(__file__).split("/")[:-2]) + "/automl/presets/time_series_config.yml"
-            )
+            _base_dir = os.path.split(os.path.split(os.path.dirname(__file__))[0])[0]
+            self.kwargs["config_path"] = os.path.join(_base_dir, "automl", "presets", "time_series_config.yml")
 
         with open(self.kwargs["config_path"]) as f:
             params = yaml.safe_load(f)

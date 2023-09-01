@@ -114,36 +114,6 @@ cont_embedder_by_name_flat = {"cont": ContEmbedder, "linear": LinearEmbeddingFla
 cont_embedder_by_name = {"linear": LinearEmbedding, "dense": DenseEmbedding}
 
 
-def _get_embedder_cat(params):
-    if input_type_by_name[params["model"]] == "seq":
-        try:
-            out = cat_embedder_by_name[params["cat_embedder"]]
-        except KeyError:
-            out = BasicCatEmbedding
-        return out
-    else:
-        try:
-            out = cat_embedder_by_name_flat[params["cat_embedder"]]
-        except KeyError:
-            out = CatEmbedder
-        return out
-
-
-def _get_embedder_cont(params):
-    if input_type_by_name[params["model"]] == "seq":
-        try:
-            out = cont_embedder_by_name[params["cont_embedder"]]
-        except KeyError:
-            out = LinearEmbedding
-        return out
-    else:
-        try:
-            out = cont_embedder_by_name_flat[params["cont_embedder"]]
-        except KeyError:
-            out = ContEmbedder
-        return out
-
-
 class TorchModel(TabularMLAlgo):
     """Neural net for tabular datasets.
 
@@ -315,7 +285,11 @@ class TorchModel(TabularMLAlgo):
             net=TorchUniversalModel if not params["model_with_emb"] else params["model"],
             net_params={
                 "task": self.task,
-                "cont_embedder_": _get_embedder_cont(params) if is_cont else None,
+                "cont_embedder_": cont_embedder_by_name.get(params["cont_embedder"], LinearEmbedding)
+                if input_type_by_name[params["model"]] == "seq"
+                else cont_embedder_by_name_flat.get(params["cont_embedder"], ContEmbedder)
+                if is_cont
+                else None,
                 "cont_params": {
                     "num_dims": params["num_dims"],
                     "input_bn": params["input_bn"],
@@ -324,7 +298,11 @@ class TorchModel(TabularMLAlgo):
                 }
                 if is_cont
                 else None,
-                "cat_embedder_": _get_embedder_cat(params) if is_cat else None,
+                "cat_embedder_": cat_embedder_by_name.get(params["cat_embedder"], BasicCatEmbedding)
+                if input_type_by_name[params["model"]] == "seq"
+                else cat_embedder_by_name_flat.get(params["cat_embedder"], CatEmbedder)
+                if is_cat
+                else None,
                 "cat_params": {
                     "cat_vc": params["cat_vc"],
                     "cat_dims": params["cat_dims"],
@@ -413,7 +391,7 @@ class TorchModel(TabularMLAlgo):
         target = train_valid_iterator.train.target
 
         if params["n_out"] is None:
-            new_params["n_out"] = 1 if task_name != "multiclass" else np.max(target) + 1
+            new_params["n_out"] = 1 if task_name != "multiclass" else (np.max(target) + 1).astype(int)
             new_params["n_out"] = target.shape[1] if task_name in ["multi:reg", "multilabel"] else new_params["n_out"]
 
         cat_dims = []
@@ -430,7 +408,10 @@ class TorchModel(TabularMLAlgo):
                 )
                 + 1
             )
-            values, counts = np.unique(train_valid_iterator.train[:, cat_feature].data, return_counts=True)
+            values, counts = np.unique(
+                np.concatenate([train_valid_iterator.train[:, cat_feature].data, valid[:, cat_feature].data]),
+                return_counts=True,
+            )
             cat_value_counts.append(dict(zip(values, counts)))
             cat_dims.append(num_unique_categories)
         new_params["cat_dims"] = cat_dims
