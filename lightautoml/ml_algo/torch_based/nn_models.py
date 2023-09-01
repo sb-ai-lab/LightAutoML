@@ -8,11 +8,11 @@ from typing import Union
 import numpy as np
 import torch
 import torch.nn as nn
-from lightautoml.ml_algo.tabnet.utils import TabNetEncoder, _initialize_non_glu
-from lightautoml.ml_algo.torch_based.autoint.autoint_utils import AttnInteractionBlock, LeakyGate
-from lightautoml.ml_algo.torch_based.autoint.ghost_norm import GhostBatchNorm
+from ..tabnet.utils import TabNetEncoder, _initialize_non_glu
+from .autoint.autoint_utils import AttnInteractionBlock, LeakyGate
+from .autoint.ghost_norm import GhostBatchNorm
 
-from lightautoml.ml_algo.torch_based.node_nn_model import DenseODSTBlock, MeanPooling
+from .node_nn_model import DenseODSTBlock, MeanPooling
 
 
 class GaussianNoise(nn.Module):
