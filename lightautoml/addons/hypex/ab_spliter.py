@@ -15,15 +15,25 @@ from scipy.stats import norm, ttest_ind, ks_2samp
 
 #  Методика рачета описана в Campaign Perfomance Management – Методика A/B-тестирования v.2.0 (стр.29)
 def calc_mde(test_group: pd.Series, control_group: pd.Series, reliability: float = 0.95, power: float = 0.8,) -> float:
-    """
-    Minimum detectable effect
-    Минимальный эффект, который можно статистически обосновать при сравнении двух групп
+    """Calculates MDE (Minimum Detectable Effect).
 
-    :param test_group: целевая группа
-    :param control_group: контрольная группа
-    :param reliability: уровень статистической достоверности. Обычно равен 0.95
-    :param power: мощность статистического критерия
-    :return: минимально детерминируемый эффект
+    MDE - minimal effect that can be statistically substantiated comparing the two groups
+    Calculation method is described in "Campaign Performance Management" - A/B-testing methodology v.2.0 (p.29)
+
+    Args:
+        test_group: pd.Series
+            Target group
+        control_group: pd.Series
+            Control group
+        reliability: float
+            Level of statistical reliability, usually equals 0.95
+        power: float
+            Statistical criterion power
+
+    Returns:
+         mde: float
+            Minimum detectable effect
+
     """
     m = stats.norm.ppf((1 + reliability) / 2) + stats.norm.ppf(power)
 
@@ -40,16 +50,26 @@ def calc_mde(test_group: pd.Series, control_group: pd.Series, reliability: float
 def calc_sample_size(
     test_group: pd.Series, control_group: pd.Series, mde, significance: float = 0.05, power: float = 0.8,
 ) -> float:
-    """
-    Минимально требуемуе количество объектов тестирования в общей группе
-    Методика расчета описана в Campaign Perfomance Management – Методика A/B-тестирования v.2.0 (стр.14)
+    """Calculates minimal required number of test objects for test in the general group.
 
-    :param test_group: целевая группа
-    :param control_group: контрольная группа
-    :param mde: минимальное детерменируемое значение
-    :param significance: уровень статистической значимости - вероятность ошибки первого рода (обычно 0.05)
-    :param power: мощность статистического критерия
-    :return: минимальный размер общей группы
+    Calculation method is described in "Campaign Performance Management" - A/B-testing methodology v.2.0 (p.14)
+
+    Args:
+        test_group: pd.Series
+            Target group
+        control_group: pd.Series
+            Control group
+        mde: float
+            Minimal detectable effect
+        significance: float
+            Statistical significance level - type I error probability (usually 0.05)
+        power: float
+            Statistical criterion power
+
+    Returns:
+        min_sample_size: float
+            Minimal size of the general group
+
     """
     if isinstance(mde, Iterable):
         z_alpha = norm.ppf((2 - significance) / 2)
@@ -75,9 +95,7 @@ def calc_sample_size(
 
 # --------------------- Classes ---------------------
 class ABSplitter:
-    """
-    Класс разделителя на A|B группы
-    """
+    """Abstract class - divider on A and B groups."""
 
     def __init__(self, mode="simple", by_group=None, quant_field=None):
         self.mode = mode
@@ -89,10 +107,18 @@ class ABSplitter:
         test_group: Union[Iterable[pd.DataFrame], pd.DataFrame],
         control_group: Union[Iterable[pd.DataFrame], pd.DataFrame],
     ):
-        """
-        Объединяет test и control в один df
+        """Merges test and control groups in one DataFrame.
 
-        :return: объединенный датафрейм
+        Args:
+            test_group: pd.DataFrame
+                Data of target group
+            control_group: pd.DataFrame
+                Data of control group
+
+        Returns:
+            merged_data: pd.DataFrame
+                Concatted DataFrame
+
         """
         if not (isinstance(test_group, pd.DataFrame) and isinstance(test_group, pd.DataFrame)):
             test_group = pd.concat(test_group, ignore_index=True)
@@ -127,8 +153,8 @@ class ABSplitter:
             for _, gd in groups:
                 if self.mode not in ("balanced", "simple"):
                     warnings.warn(
-                        f"Не предусмотрено режима '{self.mode}' для группового разделения. "
-                        f"Был использован режим 'stratification'."
+                        f"The mode '{self.mode}' is not supported for group division. "
+                        f"Implemented mode 'stratification'."
                     )
                     self.mode = "simple"
 
@@ -152,8 +178,8 @@ class ABSplitter:
         else:
             if self.mode != "simple":
                 warnings.warn(
-                    f"Не предусмотрено режима '{self.mode}' для обычного разделения. "
-                    f"Был использован режим 'simple'."
+                    f"The mode '{self.mode}' is not supported for regular division. "
+                    f"Implemented mode 'simple'."
                 )
 
             t_result = self.__simple_mode(data, random_state)
@@ -176,21 +202,36 @@ class ABSplitter:
         write_step: int = 10,
         pbar: bool = True,
     ) -> Optional[pd.DataFrame]:
-        """
-        Подбирает random_state для поиска однородного распределения
+        """Chooses random_state for finding homogeneous distribution.
 
-        :param target_field: поле с целевым значением
-        :param n: количество итераций поиска
-        :param random_states: случайные состояния по которым проводится поиск (альтернатива n, если введено, то n игнорируется)
-        :param alpha: порог для проверки статистических гипотез
-        :param file_name: имя файла, в котором будет сохраняться результат (если не заполнено, функция вернет результат, а не будет сохранять его в файл)
-        :param write_mode: режим записи. Поддерживаются следующие:
-            'full' - записывает все эксперименты
-            'all' - записывает те эксперименты, которые прошли все статистические тесты
-            'any' - записывает те эксперименты, которые прошли любой из статистических тестов
-        :param write_step: шаг записи экспериментов в файл (если не указано, пошаговая запись не используется)
-        :param pbar: отображать ли progress bar
-        :return: DataFrame, если не использовалась пошаговая запись, иначе None
+        Args:
+            data: pd.DataFrame
+                Input data
+            target_fields: str or list[str]
+                Field with target value
+            n: int
+                Number of searching iterations
+            random_states: Iterable
+                Random states from searching (if given, n is ignoring)
+            alpha: float, default = 0.05
+                Threshold to check statistical hypothesis; usually 0.05
+            file_name: str or Path
+                Name of file to save results (if None - no results will be saved,
+                func returns result)
+            write_mode: str, default = 'full'
+                Mode to write:
+                    'full' - save all experiments
+                    'all' - save experiments that passed all statistical tests
+                    'any' - save experiments that passed any statistical test
+            write_step: int, default = 10
+                Step to write experiments to file
+            pbar: bool, default = True
+                Flag to show progress bar
+
+        Returns:
+             results: pd.DataFrame or None
+                If no saving (no file_name, no write mode and no write_step) returns dataframe
+                else None and saves file to csv
         """
         if random_states is None and n:
             random_states = range(n)
@@ -198,7 +239,9 @@ class ABSplitter:
         results = []
 
         if write_mode not in ("full", "all", "any"):
-            warnings.warn(f"Режим записи '{write_mode}' не поддерживается. Будет использован режим 'full'")
+            warnings.warn(
+                f"Write mode '{write_mode}' is not supported. Mode 'full' will be used"
+            )
             write_mode = "full"
 
         if isinstance(target_fields, str):
@@ -252,9 +295,7 @@ class ABSplitter:
 
 
 class ABExperiment(ABC):
-    """
-    Абстрактный класс A|B эксперимента
-    """
+    """Abstract class of A/B experiment."""
 
     def __init__(self, label: str):
         self.label = label
@@ -268,22 +309,29 @@ class ABTester:
     DEFAULT_FORMAT_MAPPING = {
         "rs": "random state",
         "mde": "MDE",
-        "sample_size": "Размер выборки для тестирования",
-        "a_len": "Размер целевой группы",
-        "b_len": "Размер контрольной группы",
-        "a_mean": "Среднее целевой группы",
-        "b_mean": "Среднее контрольной группы",
+        "sample_size": "Size of test sample",
+        "a_len": "Size of target group",
+        "b_len": "Size of control group",
+        "a_mean": "Mean of target group",
+        "b_mean": "Mean of control group",
     }
 
     def __init__(
         self, splitter: ABSplitter, target_field: str, reliability=0.95, power=0.8, mde=None,
     ):
         """
-        :param splitter: класс разделителя на A|B
-        :param target_field: поле с целевыми значениями
-        :param reliability: уровень статистической достоверности. Обычно равен 0.95
-        :param power: мощность статистического критерия. Обычно равен 0.8
-        :param mde: предпосчитанный mde, если None, то считается
+        Args:
+            splitter: ABSplitter
+                Class of divider on A and B groups
+            target_field: str
+                Field with target values
+            reliability: float, default = 0.95
+                Level of statistical reliability, usually equals 0.95
+            power: float, default = 0.8
+                Statistical criterion power, usually equals 0.8
+            mde:
+                Calculated mde (minimal detected effect),
+                if none - calculates inside
         """
         self.splitter = splitter
         self.target_field = target_field
@@ -294,12 +342,20 @@ class ABTester:
     def sampling_test(
         self, data, experiments: Union[ABExperiment, Iterable[ABExperiment]], random_state: int = None,
     ) -> Dict:
-        """
-        Тест на определенном разбиении
-        :param experiments: эксперимент или набор экспериментов, проводимых на разбиении
-        :random_state: seed рандома
+        """Test on specific sample
 
-        :return: dict с результатами теста
+        Args:
+            data: pd.DataFrame
+                Input data
+            experiments:
+                Experiment or set of experiments applied on sample
+            random_state: int
+                Seed of random
+
+        Returns:
+            result: dict
+                Test results
+
         """
 
         split = self.splitter.split_ab(data, random_state)
@@ -344,12 +400,24 @@ class ABTester:
         random_states: Iterable[int],
         pbar: bool = False,
     ) -> tuple[pd.DataFrame, pd.DataFrame]:
-        """
-        Проводит множественные эксперименты по случайным состояниям
-        :param experiments: набор экспериментов, проводимых на разбиении
-        :param random_states: случайные состояния
-        :param pbar: активация прогресс бара
-        :return: статистики экспериментов
+        """Implements multiple experiments on random states.
+
+        Args:
+            data: pd.DataFrame
+                Input data
+            experiments:
+                Set of experiments applied on sample
+            random_states: Iterable[int]
+                Random_states
+            pbar: bool, default = False
+                Flag to show progress bar
+
+        Returns:
+            results: pd.DataFrame
+                Experiment test results
+            stats: pd.DataFrame
+                Description statistics
+
         """
 
         results = pd.DataFrame([self.sampling_test(data, experiments, rs) for rs in tqdm(random_states, display=pbar)])
@@ -361,14 +429,20 @@ class ABTester:
     def format_stat(
         self, stat: pd.DataFrame, experiments: Union[ABExperiment, Iterable[ABExperiment]], rename_map: Dict = None,
     ):
-        """
-        Редактирует формат вывода статистик
+        """Corrects format of output statistics
 
-        :param stat: статистики экспериментов
-        :param experiments: набор экспериментов, проводимых на разбиении
-        :param rename_map: маппинг переименования полей
+        Args:
+            stat: pd.DataFrame
+                Experiment statistics
+            experiments:
+                Set of experiments applied on sample
+            rename_map: dict
+                Mapping of renaming fields
 
-        :return: форматирует датафрейм со статистиками
+        Returns:
+            result: pd.DataFrame
+                Formatted values
+
         """
         rename_map = rename_map or self.DEFAULT_FORMAT_MAPPING
 
