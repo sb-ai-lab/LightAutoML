@@ -3,9 +3,11 @@ import logging
 
 import numpy as np
 import pandas as pd
+
 from scipy.stats import ks_2samp
 
 from ..utils.psi_pandas import report
+
 
 logger = logging.getLogger("metrics")
 console_out = logging.StreamHandler()
@@ -21,15 +23,15 @@ def smd(orig: pd.DataFrame, matched: pd.DataFrame, silent=False) -> pd.DataFrame
     """Calculates the standardised mean difference to evaluate matching quality.
 
     Args:
-        orig: pd.DataFrame
+        orig:
             Initial dataframe
-        matched: pd.DataFrame
+        matched:
             Matched dataframe
-        silent: bool, optional
+        silent:
             If silent, logger in info mode
 
     Returns:
-        pd.DataFrame: The standard mean deviation between initial and matched dataframes
+        The standard mean deviation between initial and matched dataframes
     """
     smd_data = abs(orig.mean(0) - matched.mean(0)) / orig.std(0)
 
@@ -45,16 +47,16 @@ def ks(orig: pd.DataFrame, matched: pd.DataFrame, silent=False) -> dict:
     """Performs a Kolmogorov-Smirnov test to evaluate matching quality per columns.
 
     Args:
-        orig: pd.DataFrame
+        orig:
             Initial dataframe
-        matched: pd.DataFrame
+        matched:
             Matched dataframe
-         silent: bool, optional
+         silent:
             If silent, logger in info mode
 
 
     Returns:
-        dict: dict of p-values
+        dict of p-values
 
     """
     ks_dict = dict()
@@ -74,25 +76,26 @@ def ks(orig: pd.DataFrame, matched: pd.DataFrame, silent=False) -> dict:
     return ks_dict
 
 
-def matching_quality(data: pd.DataFrame, treatment: str, features: list, features_psi: list,
-                     silent: bool = False) -> tuple:
+def matching_quality(
+    data: pd.DataFrame, treatment: str, features: list, features_psi: list, silent: bool = False
+) -> tuple:
     """Wraps the functionality for estimating matching quality.
 
     Args:
-        data: pd.DataFrame
+        data:
             The dataframe of matched data
-        treatment: str
+        treatment:
             The column determining control and test groups
-        features: list
+        features:
             The list of features, ks-test and smd accept only numeric values
-        features_psi: list
+        features_psi:
             The list of features for calculating Population Stability Index (PSI)
-         silent: bool, optional
+         silent:
             If silent, logger in info mode
 
 
     Returns:
-        tuple: A tuple of dataframes with estimated metrics for matched treated to control and control to treated
+        A tuple of dataframes with estimated metrics for matched treated to control and control to treated
 
     """
     orig_treated = data[data[treatment] == 1][features]
@@ -139,13 +142,12 @@ def check_repeats(index: np.array, silent: bool = False) -> float:
     """Checks the fraction of duplicated indexes in the given array.
 
      Args:
-        index: np.ndarray
+        index:
             The array of indexes to check for duplicates
-        silent: bool, optional
+        silent:
             If silent, logger in info mode
 
     Returns:
-        float:
             The fraction of duplicated index
     """
     unique, counts = np.unique(index, return_counts=True)

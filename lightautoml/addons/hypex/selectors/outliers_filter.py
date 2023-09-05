@@ -3,6 +3,7 @@ import logging
 
 import pandas as pd
 
+
 logger = logging.getLogger("outliers_filter")
 console_out = logging.StreamHandler()
 logging.basicConfig(
@@ -14,21 +15,19 @@ logging.basicConfig(
 
 
 class OutliersFilter:
-    """The main class of Outliers Filter.
+    """Class of Outliers Filter. It creates a row indices that should be deleted by percentile."""
 
-    It creates a row indices that should be deleted by percentile."""
     def __init__(self, interquartile_coeff, mode_percentile, min_percentile, max_percentile):
-        """
-        Initializes the OutliersFilter.
+        """Initializes the OutliersFilter.
 
         Args:
-            interquartile_coeff: float
+            interquartile_coeff:
                 Coefficient for the interquartile range to determine outliers
-            mode_percentile: bool
+            mode_percentile:
                 If True, outliers are determined by custom percentiles
-            min_percentile: float
+            min_percentile:
                 The lower percentile. Values below this percentile are considered outliers.
-            max_percentile: float
+            max_percentile:
                 The upper percentile. Values above this percentile are considered outliers
         """
         self.interquartile_coeff = interquartile_coeff
@@ -44,13 +43,13 @@ class OutliersFilter:
         smaller than the 0.2 and larget than 0.8 (if `mode_percentile` is False)
 
         Args:
-            df: pd.DataFrame
+            df:
                 The input DataFrame
-            interquartile: bool, optional
+            interquartile:
                 If True, uses the interquartile range to determine outliers. Defaults to True
 
         Returns:
-            set: The set of row indices with outliers
+            The set of row indices with outliers
         """
         columns_names = df.select_dtypes(include="number").columns
         rows_for_del = []

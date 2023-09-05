@@ -7,6 +7,8 @@ import pytest
 
 from sklearn.model_selection import train_test_split
 
+from lightautoml.dataset.np_pd_dataset import NumpyDataset
+
 # from lightautoml.dataset.np_pd_dataset import *
 from lightautoml.dataset.roles import CategoryRole
 from lightautoml.dataset.roles import DatetimeRole
@@ -29,8 +31,13 @@ def jobs_train_test(nrows=None):
 
 
 @pytest.fixture()
+def jobs_roles():
+    return {"target": "target"}
+
+
+@pytest.fixture()
 def avito1k_train_test(nrows=None):
-    data = pd.read_csv("./data/avito1k_train.csv")
+    data = pd.read_csv("./examples/data/avito1k_train.csv")
     train_data, test_data = train_test_split(data, test_size=500, random_state=42)
 
     return train_data, test_data
@@ -49,15 +56,6 @@ def avito1k_roles():
 def sampled_app_train_test(nrows=None):
     data = pd.read_csv(
         "./examples/data/sampled_app_train.csv",
-        usecols=[
-            "TARGET",
-            "NAME_CONTRACT_TYPE",
-            "AMT_CREDIT",
-            "NAME_TYPE_SUITE",
-            "AMT_GOODS_PRICE",
-            "DAYS_BIRTH",
-            "DAYS_EMPLOYED",
-        ],
         nrows=nrows,
     )
 
@@ -65,7 +63,7 @@ def sampled_app_train_test(nrows=None):
     data["EMP_DATE"] = np.datetime64("2018-01-01") + np.clip(data["DAYS_EMPLOYED"], None, 0).astype(
         np.dtype("timedelta64[D]")
     )
-    data.drop(["DAYS_BIRTH", "DAYS_EMPLOYED"], axis=1, inplace=True)
+    data.drop(["DAYS_BIRTH", "DAYS_EMPLOYED", "SK_ID_CURR"], axis=1, inplace=True)
 
     data["__fold__"] = np.random.randint(0, 5, len(data))
 
@@ -98,3 +96,64 @@ def multiclass_task():
 @pytest.fixture()
 def regression_task():
     return Task("reg")
+
+
+@pytest.fixture()
+def lamldataset_with_na():
+    return NumpyDataset(
+        data=np.array([[1, 2, np.nan], [4, np.nan, np.nan], [7, 8, np.nan]]),
+        features=["column0", "column1", "column2"],
+        roles={
+            "column0": NumericRole(np.float32),
+            "column1": NumericRole(np.float32),
+            "column2": NumericRole(np.float32)
+            # 'target': TargetRole()
+        },
+        task=Task("binary"),
+    )
+
+
+@pytest.fixture()
+def lamldataset_30_2():
+    return NumpyDataset(
+        data=np.array(
+            [
+                [-0.13824745, 0.00480088],
+                [0.07343245, 0.13640858],
+                [0.09652554, 0.14499552],
+                [0.18680116, 0.20484195],
+                [0.23786176, 0.25568053],
+                [0.27613336, 0.28647607],
+                [0.27805356, 0.31445874],
+                [0.34141948, 0.39048142],
+                [0.37229872, 0.40931471],
+                [0.37258695, 0.42442431],
+                [0.4031683, 0.44681493],
+                [0.41302196, 0.44871043],
+                [0.47419529, 0.45320404],
+                [0.49295444, 0.4621607],
+                [0.51143963, 0.53041875],
+                [0.51662931, 0.53908724],
+                [0.53601089, 0.57561797],
+                [0.53873686, 0.58341858],
+                [0.57826693, 0.59454063],
+                [0.61096581, 0.59672562],
+                [0.69025943, 0.6000393],
+                [0.71610905, 0.60264963],
+                [0.7375221, 0.60708297],
+                [0.7446845, 0.66340465],
+                [0.80757267, 0.69437259],
+                [0.87351977, 0.80059496],
+                [0.8831948, 0.86356838],
+                [0.94101309, 0.86733969],
+                [0.9668895, 0.98769385],
+                [1.06743866, 1.0602233],
+            ]
+        ),
+        features=["column0", "column1"],
+        roles={
+            "column0": NumericRole(np.float32),
+            "column1": NumericRole(np.float32),
+        },
+        task=Task("binary"),
+    )

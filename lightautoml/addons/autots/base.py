@@ -169,9 +169,8 @@ class AutoTS:
         self.kwargs = kwargs
 
         if "config_path" not in kwargs:
-            self.kwargs["config_path"] = (
-                "/".join(os.path.dirname(__file__).split("/")[:-2]) + "/automl/presets/time_series_config.yml"
-            )
+            _base_dir = os.path.split(os.path.split(os.path.dirname(__file__))[0])[0]
+            self.kwargs["config_path"] = os.path.join(_base_dir, "automl", "presets", "time_series_config.yml")
 
         with open(self.kwargs["config_path"]) as f:
             params = yaml.safe_load(f)
@@ -192,7 +191,8 @@ class AutoTS:
 
         if hasattr(self.TM, "automl_trend"):
             self.datetime_step = (
-                pd.to_datetime(train_data[self.datetime_key]).iloc[1] - pd.to_datetime(train_data[self.datetime_key]).iloc[0]
+                pd.to_datetime(train_data[self.datetime_key]).iloc[1]
+                - pd.to_datetime(train_data[self.datetime_key]).iloc[0]
             )
         # fit main
         train_detrend = train_data.copy()

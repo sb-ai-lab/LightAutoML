@@ -1,5 +1,6 @@
 """Pipeline for tree based models."""
 
+from typing import List
 from typing import Optional
 from typing import Union
 
@@ -29,6 +30,7 @@ from ...transformers.seq import SeqLagTransformer
 from ...transformers.seq import SeqNumCountsTransformer
 from ...transformers.seq import SeqStatisticsTransformer
 from ..selection.base import ImportanceEstimator
+from ..selection.base import SelectionPipeline
 from ..utils import get_columns_by_role
 from .base import FeaturesPipeline
 from .base import TabularDataFeatures
@@ -488,14 +490,21 @@ class LGBAdvancedPipeline(FeaturesPipeline, TabularDataFeatures):
 
     def __init__(
         self,
-        feats_imp: Optional[ImportanceEstimator] = None,
+        feats_imp: Optional[Union[ImportanceEstimator, SelectionPipeline]] = None,
         top_intersections: int = 5,
         max_intersection_depth: int = 3,
         subsample: Optional[Union[int, float]] = None,
         multiclass_te_co: int = 3,
         auto_unique_co: int = 10,
         output_categories: bool = False,
-        fill_na=False,
+        fill_na: bool = False,
+        ascending_by_cardinality: bool = False,
+        use_groupby: bool = False,
+        groupby_types: List[str] = ["delta_median", "delta_mean", "min", "max", "std", "mode", "is_mode"],
+        groupby_triplets: list = [],
+        groupby_top_based_on: str = "cardinality",
+        groupby_top_categorical: int = 3,
+        groupby_top_numerical: int = 3,
         **kwargs
     ):
         super().__init__(
@@ -506,9 +515,15 @@ class LGBAdvancedPipeline(FeaturesPipeline, TabularDataFeatures):
             feats_imp=feats_imp,
             auto_unique_co=auto_unique_co,
             output_categories=output_categories,
-            ascending_by_cardinality=False,
+            ascending_by_cardinality=ascending_by_cardinality,
+            groupby_types=groupby_types,
+            groupby_triplets=groupby_triplets,
+            groupby_top_based_on=groupby_top_based_on,
+            groupby_top_categorical=groupby_top_categorical,
+            groupby_top_numerical=groupby_top_numerical,
         )
         self.fill_na = fill_na
+        self.use_groupby = use_groupby
 
     def create_pipeline(self, train: NumpyOrPandas) -> LAMLTransformer:
         """Create tree pipeline.
@@ -592,6 +607,9 @@ class LGBAdvancedPipeline(FeaturesPipeline, TabularDataFeatures):
         transformer_list.append(self.get_datetime_diffs(train))
         # add datetime seasonality
         transformer_list.append(self.get_datetime_seasons(train, NumericRole(np.float32)))
+
+        if self.use_groupby:
+            transformer_list.append(self.get_groupby(train))
 
         # final pipeline
         union_all = UnionTransformer([x for x in transformer_list if x is not None])
