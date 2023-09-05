@@ -21,19 +21,13 @@ def calc_mde(test_group: pd.Series, control_group: pd.Series, reliability: float
     Calculation method is described in "Campaign Performance Management" - A/B-testing methodology v.2.0 (p.29)
 
     Args:
-        test_group: pd.Series
-            Target group
-        control_group: pd.Series
-            Control group
-        reliability: float
-            Level of statistical reliability, usually equals 0.95
-        power: float
-            Statistical criterion power
+        test_group: Target group
+        control_group: Control group
+        reliability: Level of statistical reliability, usually equals 0.95
+        power: Statistical criterion power
 
     Returns:
-         mde: float
-            Minimum detectable effect
-
+         mde: Minimum detectable effect
     """
     m = stats.norm.ppf((1 + reliability) / 2) + stats.norm.ppf(power)
 
@@ -44,32 +38,27 @@ def calc_mde(test_group: pd.Series, control_group: pd.Series, reliability: float
     var_test, var_control = test_group.var(ddof=1), control_group.var(ddof=1)
     s = np.sqrt((var_test / n_test) + (var_control / n_control))
 
-    return m * p * s
+    mde = m * p * s
+
+    return mde
 
 
 def calc_sample_size(
-    test_group: pd.Series, control_group: pd.Series, mde, significance: float = 0.05, power: float = 0.8,
+    test_group: pd.Series, control_group: pd.Series, mde: Union[Iterable[float], float], significance: float = 0.05, power: float = 0.8,
 ) -> float:
     """Calculates minimal required number of test objects for test in the general group.
 
     Calculation method is described in "Campaign Performance Management" - A/B-testing methodology v.2.0 (p.14)
 
     Args:
-        test_group: pd.Series
-            Target group
-        control_group: pd.Series
-            Control group
-        mde: float
-            Minimal detectable effect
-        significance: float
-            Statistical significance level - type I error probability (usually 0.05)
-        power: float
-            Statistical criterion power
+        test_group: Target group
+        control_group: Control group
+        mde: Minimal detectable effect
+        significance: Statistical significance level - type I error probability (usually 0.05)
+        power: Statistical criterion power
 
     Returns:
-        min_sample_size: float
-            Minimal size of the general group
-
+        min_sample_size: Minimal size of the general group
     """
     if isinstance(mde, Iterable):
         z_alpha = norm.ppf((2 - significance) / 2)
@@ -78,7 +67,7 @@ def calc_sample_size(
         p1 = mde[0]
         p2 = mde[1]
 
-        return (z_alpha + z_betta) ** 2 * (p1 * (1 - p1) + p2 * (1 - p2)) / (p1 - p2) ** 2
+        min_sample_size = (z_alpha + z_betta) ** 2 * (p1 * (1 - p1) + p2 * (1 - p2)) / (p1 - p2) ** 2
     else:
         test_std = test_group.std()
         control_std = control_group.std()
@@ -90,7 +79,9 @@ def calc_sample_size(
 
         s = test_std ** 2 / test_proportion + control_std ** 2 / control_proportion
 
-        return d * s
+        min_sample_size = d * s
+
+    return min_sample_size
 
 
 # --------------------- Classes ---------------------
@@ -110,15 +101,11 @@ class ABSplitter:
         """Merges test and control groups in one DataFrame.
 
         Args:
-            test_group: pd.DataFrame
-                Data of target group
-            control_group: pd.DataFrame
-                Data of control group
+            test_group: Data of target group
+            control_group: Data of control group
 
         Returns:
-            merged_data: pd.DataFrame
-                Concatted DataFrame
-
+            merged_data: Concatted DataFrame
         """
         if not (isinstance(test_group, pd.DataFrame) and isinstance(test_group, pd.DataFrame)):
             test_group = pd.concat(test_group, ignore_index=True)
@@ -126,9 +113,12 @@ class ABSplitter:
 
         test_group.loc[:, "group"] = "test"
         control_group.loc[:, "group"] = "control"
-        return pd.concat([test_group, control_group], ignore_index=True)
 
-    def __simple_mode(self, data, random_state):
+        merged_data = pd.concat([test_group, control_group], ignore_index=True)
+
+        return merged_data
+
+    def __simple_mode(self, data: pd.DataFrame, random_state: int = None):
         result = {"test_indexes": [], "control_indexes": []}
 
         if self.quant_field:
@@ -145,7 +135,16 @@ class ABSplitter:
 
         return result
 
-    def split_ab(self, data, random_state: int = None) -> Dict:
+    def split_ab(self, data: pd.DataFrame, random_state: int = None) -> Dict:
+        """Divides sample on two groups.
+
+        Args:
+            data: input data
+            random_state: one integer to fix split
+
+        Returns:
+            result: dict of indexes with division on test and control group
+        """
         result = {"test_indexes": [], "control_indexes": []}
 
         if self.by_group:
@@ -188,11 +187,12 @@ class ABSplitter:
 
         result["test_indexes"] = list(set(result["test_indexes"]))
         result["control_indexes"] = list(set(result["test_indexes"]))
+
         return result
 
     def search_dist_uniform_sampling(
         self,
-        data,
+        data: pd.DataFrame,
         target_fields: Union[List[str], str],
         n: int = None,
         random_states: Iterable[int] = None,
@@ -205,31 +205,30 @@ class ABSplitter:
         """Chooses random_state for finding homogeneous distribution.
 
         Args:
-            data: pd.DataFrame
+            data:
                 Input data
-            target_fields: str or list[str]
+            target_fields:
                 Field with target value
-            n: int
+            n:
                 Number of searching iterations
-            random_states: Iterable
+            random_states:
                 Random states from searching (if given, n is ignoring)
-            alpha: float, default = 0.05
+            alpha:
                 Threshold to check statistical hypothesis; usually 0.05
-            file_name: str or Path
-                Name of file to save results (if None - no results will be saved,
-                func returns result)
-            write_mode: str, default = 'full'
+            file_name:
+                Name of file to save results (if None - no results will be saved, func returns result)
+            write_mode:
                 Mode to write:
                     'full' - save all experiments
                     'all' - save experiments that passed all statistical tests
                     'any' - save experiments that passed any statistical test
-            write_step: int, default = 10
+            write_step:
                 Step to write experiments to file
-            pbar: bool, default = True
+            pbar:
                 Flag to show progress bar
 
         Returns:
-             results: pd.DataFrame or None
+             results:
                 If no saving (no file_name, no write mode and no write_step) returns dataframe
                 else None and saves file to csv
         """
@@ -284,6 +283,7 @@ class ABSplitter:
                 elif i % write_step == 0:
                     pd.DataFrame(results).to_csv(file_name, index=False, header=False, mode="a")
                     results = []
+
         if file_name and write_step:
             pd.DataFrame(results).to_csv(file_name, index=False, header=False, mode="a")
         elif file_name:
@@ -321,13 +321,13 @@ class ABTester:
     ):
         """
         Args:
-            splitter: ABSplitter
+            splitter:
                 Class of divider on A and B groups
-            target_field: str
+            target_field:
                 Field with target values
-            reliability: float, default = 0.95
+            reliability:
                 Level of statistical reliability, usually equals 0.95
-            power: float, default = 0.8
+            power:
                 Statistical criterion power, usually equals 0.8
             mde:
                 Calculated mde (minimal detected effect),
@@ -340,22 +340,17 @@ class ABTester:
         self.mde = mde
 
     def sampling_test(
-        self, data, experiments: Union[ABExperiment, Iterable[ABExperiment]], random_state: int = None,
+        self, data: pd.DataFrame, experiments: Union[ABExperiment, Iterable[ABExperiment]], random_state: int = None,
     ) -> Dict:
-        """Test on specific sample
+        """Test on specific sample.
 
         Args:
-            data: pd.DataFrame
-                Input data
-            experiments:
-                Experiment or set of experiments applied on sample
-            random_state: int
-                Seed of random
+            data: Input data
+            experiments: Experiment or set of experiments applied on sample
+            random_state: Seed of random
 
         Returns:
-            result: dict
-                Test results
-
+            result: Test results
         """
 
         split = self.splitter.split_ab(data, random_state)
@@ -395,7 +390,7 @@ class ABTester:
 
     def multisampling_test(
         self,
-        data,
+        data: pd.DataFrame,
         experiments: Union[ABExperiment, Iterable[ABExperiment]],
         random_states: Iterable[int],
         pbar: bool = False,
@@ -403,50 +398,44 @@ class ABTester:
         """Implements multiple experiments on random states.
 
         Args:
-            data: pd.DataFrame
+            data:
                 Input data
             experiments:
                 Set of experiments applied on sample
-            random_states: Iterable[int]
-                Random_states
-            pbar: bool, default = False
+            random_states:
+                Seeds of random
+            pbar:
                 Flag to show progress bar
 
         Returns:
-            results: pd.DataFrame
+            results:
                 Experiment test results
-            stats: pd.DataFrame
+            statistics:
                 Description statistics
-
         """
 
         results = pd.DataFrame([self.sampling_test(data, experiments, rs) for rs in tqdm(random_states, display=pbar)])
 
-        stats = results.describe()
-        stats.loc["cv %"] = (stats.loc["std"] / stats.loc["mean"] * 100).round(2)
-        return results, stats
+        statistics = results.describe()
+        statistics.loc["cv %"] = (statistics.loc["std"] / statistics.loc["mean"] * 100).round(2)
+        return results, statistics
 
     def format_stat(
         self, stat: pd.DataFrame, experiments: Union[ABExperiment, Iterable[ABExperiment]], rename_map: Dict = None,
     ):
-        """Corrects format of output statistics
+        """Corrects format of output statistics.
 
         Args:
-            stat: pd.DataFrame
-                Experiment statistics
-            experiments:
-                Set of experiments applied on sample
-            rename_map: dict
-                Mapping of renaming fields
+            stat: Experiment statistics
+            experiments: Set of experiments applied on sample
+            rename_map: Mapping of renaming fields
 
         Returns:
-            result: pd.DataFrame
-                Formatted values
-
+            result: Formatted values
         """
         rename_map = rename_map or self.DEFAULT_FORMAT_MAPPING
 
-        rename_map.update({f"effect {e.label}": f"Эффект {e.label}" for e in experiments})
+        rename_map.update({f"effect {e.label}": f"Effect {e.label}" for e in experiments})
 
         result = stat.rename(columns=rename_map)
         result = result.applymap(lambda x: f"{x:,.2f}")
