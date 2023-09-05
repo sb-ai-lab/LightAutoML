@@ -48,7 +48,7 @@ class MatcherNoReplacement:
         return match_df
 
     def create_match_df(
-        self, base_series: pd.Series, source_df: pd.DataFrame, target_df: pd.DataFrame, distances: list[list]
+        self, base_series: pd.Series, source_df: pd.DataFrame, target_df: pd.DataFrame, distances: list
     ) -> pd.DataFrame:
         """Function creates matching dataframe.
 
