@@ -51,6 +51,10 @@ from ..text.embed import (
     DenseEmbeddingFlat,
     LinearEmbedding,
     LinearEmbeddingFlat,
+    PLREmbedding,
+    PLREmbeddingFlat,
+    SoftEmbedding,
+    SoftEmbeddingFlat,
     WeightedCatEmbedding,
     BasicCatEmbedding,
     WeightedCatEmbeddingFlat,
@@ -66,7 +70,7 @@ from ..text.utils import inv_softmax
 from ..text.utils import is_shuffle
 from ..text.utils import parse_devices
 from ..text.utils import seed_everything
-from .torch_based.nn_models import MLP
+from .torch_based.nn_models import MLP, TabNet
 from .torch_based.nn_models import NODE
 from .torch_based.nn_models import SNN
 from .torch_based.nn_models import DenseLightModel
@@ -90,6 +94,7 @@ model_by_name = {
     "snn": SNN,
     "node": NODE,
     "autoint": AutoInt,
+    "tabnet": TabNet,
     "fttransformer": FTTransformer,
 }
 input_type_by_name = {
@@ -102,6 +107,7 @@ input_type_by_name = {
     "snn": "flat",
     "node": "flat",
     "autoint": "seq",
+    "tabnet": "flat",
     "fttransformer": "seq",
 }
 cat_embedder_by_name_flat = {
@@ -110,6 +116,15 @@ cat_embedder_by_name_flat = {
     "weighted": WeightedCatEmbeddingFlat,
 }
 cat_embedder_by_name = {"cat_no_dropout": BasicCatEmbedding, "weighted": WeightedCatEmbedding}
+
+cont_embedder_by_name_flat = {
+    "cont": ContEmbedder,
+    "linear": LinearEmbeddingFlat,
+    "dense": DenseEmbeddingFlat,
+    "plr": PLREmbeddingFlat,
+    "soft": SoftEmbeddingFlat,
+}
+cont_embedder_by_name = {"linear": LinearEmbedding, "dense": DenseEmbedding, "plr": PLREmbedding, "soft": SoftEmbedding}
 cont_embedder_by_name_flat = {"cont": ContEmbedder, "linear": LinearEmbeddingFlat, "dense": DenseEmbeddingFlat}
 cont_embedder_by_name = {"linear": LinearEmbedding, "dense": DenseEmbedding}
 

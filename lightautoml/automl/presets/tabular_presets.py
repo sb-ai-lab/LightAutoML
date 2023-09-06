@@ -555,7 +555,6 @@ class TabularAutoML(AutoMLPreset):
             self.infer_auto_params(train_data, multilevel_avail)
             reader = PandasToPandasReader(task=self.task, **self.reader_params)
             pre_selector = self.get_selector()
-
         levels = []
 
         for n, names in enumerate(self.general_params["use_algos"]):
@@ -608,6 +607,7 @@ class TabularAutoML(AutoMLPreset):
                 "_linear_layer",
                 "node",
                 "autoint",
+                "tabnet",
                 "fttransformer",
             ]
             available_nn_models = available_nn_models + [x + "_tuned" for x in available_nn_models]

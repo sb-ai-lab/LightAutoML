@@ -514,3 +514,193 @@ class BasicCatEmbeddingFlat(BasicCatEmbedding):
 
     def __init__(self, *args, **kwargs):
         super(BasicCatEmbeddingFlat, self).__init__(*args, **{**kwargs, **{"flatten_output": True}})
+
+
+class NLinearMemoryEfficient(nn.Module):
+    """Linear multi-dim embedding from https://github.com/yandex-research/tabular-dl-num-embeddings/tree/c1d9eb63c0685b51d7e1bc081cdce6ffdb8886a8.
+
+    Args:
+        n : num of features.
+        d_in: input size.
+        d_out: output size.
+    """
+
+    def __init__(self, n: int, d_in: int, d_out: int) -> None:
+        super().__init__()
+        self.layers = nn.ModuleList([nn.Linear(d_in, d_out) for _ in range(n)])
+
+    def forward(self, x):
+        """Forward-pass."""
+        return torch.stack([l(x[:, i]) for i, l in enumerate(self.layers)], 1)
+
+
+class Periodic(nn.Module):
+    """Periodic positional embedding for numeric features from https://github.com/yandex-research/tabular-dl-num-embeddings/tree/c1d9eb63c0685b51d7e1bc081cdce6ffdb8886a8.
+
+    Args:
+        n_features: num of numeric features
+        emb_size: output size will be 2*emb_size
+        sigma: weights will be initialized with N(0,sigma)
+        flatten_output: if flatten output or not.
+    """
+
+    def __init__(
+        self, n_features: int, emb_size: int = 64, sigma: float = 0.05, flatten_output: bool = False, **kwargs
+    ) -> None:
+        super().__init__()
+        self.n_features = n_features
+        self.emb_size = emb_size
+        coefficients = torch.normal(0.0, sigma, (n_features, emb_size))
+        self.coefficients = nn.Parameter(coefficients)
+        self.flatten_output = flatten_output
+
+    @staticmethod
+    def _cos_sin(x: Tensor) -> Tensor:
+        return torch.cat([torch.cos(x), torch.sin(x)], -1)
+
+    def get_out_shape(self) -> int:
+        """Output shape.
+
+        Returns:
+            int with module output shape.
+
+        """
+        if self.flatten_output:
+            return self.emb_size * 2 * self.n_features
+        else:
+            return self.n_features
+
+    def forward(self, x: Tensor) -> Tensor:
+        """Forward-pass."""
+        x = self._cos_sin(2 * torch.pi * self.coefficients[None] * x[..., None])
+        if self.flatten_output:
+            return x.view(x.shape[0], -1)
+        return x
+
+
+class PLREmbedding(nn.Module):
+    """ReLU ◦ Linear ◦ Periodic embedding for numeric features from https://arxiv.org/pdf/2203.05556.pdf.
+
+    Args:
+        num_dims: int
+        emb_size: int
+        sigma: float
+        flatten_output : bool
+    """
+
+    def __init__(
+        self,
+        num_dims: int,
+        embedding_size: Union[int, Tuple[int, ...], List[int]] = 64,
+        emb_size_periodic: int = 64,
+        sigma_periodic: float = 0.05,
+        flatten_output: bool = False,
+        **kwargs,
+    ) -> None:
+        super().__init__()
+        self.num_dims = num_dims
+        self.embedding_size = embedding_size
+        self.layers: list[nn.Module] = []
+        self.layers.append(Periodic(num_dims, emb_size_periodic, sigma_periodic))
+        self.layers.append(NLinearMemoryEfficient(num_dims, 2 * emb_size_periodic, embedding_size))
+        self.layers.append(nn.ReLU())
+        self.layers = nn.Sequential(*self.layers)
+        self.flatten_output = flatten_output
+
+    def get_out_shape(self) -> int:
+        """Output shape.
+
+        Returns:
+            int with module output shape.
+
+        """
+        if self.flatten_output:
+            return self.num_dims * self.embedding_size
+        else:
+            return self.num_dims
+
+    def forward(self, X: Dict) -> Tensor:
+        """Produce embedding for each value in input.
+
+        Args:
+            X : Dict
+
+        Returns:
+            torch.Tensor
+
+        """
+        X = X["cont"]
+        x = self.layers(X)
+        if self.flatten_output:
+            return x.view(x.shape[0], -1)
+        return x
+
+
+class PLREmbeddingFlat(PLREmbedding):
+    """Flatten version of BasicCatEmbedding."""
+
+    def __init__(self, *args, **kwargs):
+        super(PLREmbeddingFlat, self).__init__(*args, **{**kwargs, **{"flatten_output": True}})
+
+
+class SoftEmbedding(torch.nn.Module):
+    """Soft-one hot encoding embedding technique, from https://arxiv.org/pdf/1708.00065.pdf.
+
+    In a nutshell, it represents a continuous feature as a weighted average of embeddings
+
+    Args:
+        num_embeddings: Number of embeddings to use (cardinality of the embedding table).
+        embeddings_dim: The dimension of the vector space for projecting the scalar value.
+        embeddings_init_std: The standard deviation factor for normal initialization of the
+            embedding matrix weights.
+        emb_initializer: Dict where keys are feature names and values are callable to initialize
+            embedding tables
+    """
+
+    def __init__(self, num_dims, embedding_size=10, flatten_output: bool = False, **kwargs) -> None:
+        super(SoftEmbedding, self).__init__()
+        self.embedding_table = torch.nn.Embedding(num_dims, embedding_size)
+        nn.init.xavier_uniform_(self.embedding_table.weight)
+
+        self.projection_layer = torch.nn.Linear(1, num_dims, bias=True)
+        self.softmax = torch.nn.Softmax(dim=-1)
+        self.emb_size = embedding_size
+        self.num_dims = num_dims
+        self.flatten_output = flatten_output
+
+    def get_out_shape(self) -> int:
+        """Output shape.
+
+        Returns:
+            int with module output shape.
+
+        """
+        if self.flatten_output:
+            return self.num_dims * self.emb_size
+        else:
+            return self.num_dims
+
+    def forward(self, X: Dict) -> Tensor:
+        """Produce embedding for each value in input.
+
+        Args:
+            X : Dict
+
+        Returns:
+            torch.Tensor
+
+        """
+        X = X["cont"]
+        input_numeric = X.unsqueeze(-1)
+        weights = self.softmax(self.projection_layer(input_numeric))
+        x = (weights.unsqueeze(-1) * self.embedding_table.weight).sum(-2)
+        if self.flatten_output:
+            return x.view(x.shape[0], -1)
+        return x
+
+
+class SoftEmbeddingFlat(SoftEmbedding):
+    """Flatten version of BasicCatEmbedding."""
+
+    def __init__(self, *args, **kwargs):
+        super(SoftEmbeddingFlat, self).__init__(*args, **{**kwargs, **{"flatten_output": True}})
