@@ -1143,7 +1143,6 @@ class TabNet(torch.nn.Module):
         super(TabNet, self).__init__()
         self.input_dim = n_in
         self.output_dim = n_out
-        self.is_multi_task = isinstance(n_out, list)
         self.n_d = n_d
         self.n_a = n_a
         self.n_steps = n_steps
@@ -1171,29 +1170,15 @@ class TabNet(torch.nn.Module):
             group_attention_matrix=group_attention_matrix,
         )
 
-        if self.is_multi_task:
-            self.multi_task_mappings = torch.nn.ModuleList()
-            for task_dim in n_out:
-                task_mapping = nn.Linear(n_d, task_dim, bias=False)
-                _initialize_non_glu(task_mapping, n_d, task_dim)
-                self.multi_task_mappings.append(task_mapping)
-        else:
-            self.final_mapping = nn.Linear(n_d, n_out, bias=False)
-            _initialize_non_glu(self.final_mapping, n_d, n_out)
+        self.final_mapping = nn.Linear(n_d, n_out, bias=True)
+        _initialize_non_glu(self.final_mapping, n_d, n_out)
 
     def forward(self, x):
         """Forward-pass."""
         res = 0
         steps_output, M_loss = self.encoder(x)
         res = torch.sum(torch.stack(steps_output, dim=0), dim=0)
-
-        if self.is_multi_task:
-            # Result will be in list format
-            out = []
-            for task_mapping in self.multi_task_mappings:
-                out.append(task_mapping(res))
-        else:
-            out = self.final_mapping(res)
+        out = self.final_mapping(res)
         return out
 
     def forward_masks(self, x):
