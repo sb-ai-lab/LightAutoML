@@ -88,7 +88,19 @@ def calc_sample_size(
 class ABSplitter:
     """Abstract class - divider on A and B groups."""
 
-    def __init__(self, mode="simple", by_group=None, quant_field=None):
+    def __init__(self, mode: str = "simple", by_group: Union[str, Iterable[str]] = None, quant_field: str = None):
+        """
+
+        Args:
+            mode:
+                Regime to divide sample on A and B samples:
+                    'simple' - divides by groups, placing equal amount of records (clients | groups of clients) in samples
+                    'balanced' - divides by size of samples, placing full groups depending on the size of group to balance size of A and B. Can not be applied without groups
+            by_group:
+                Name of field(s) for division by groups
+            quant_field:
+                Name of field by which division should take in account common features besides groups
+        """
         self.mode = mode
         self.by_group = by_group
         self.quant_field = quant_field
@@ -119,6 +131,17 @@ class ABSplitter:
         return merged_data
 
     def __simple_mode(self, data: pd.DataFrame, random_state: int = None):
+        """Separates data on A and B samples.
+
+        Separation performed to divide groups of equal sizes - equal amount of records or equal amount of groups in each sample
+
+        Args:
+            data: Input data
+            random_state: Seed of random
+
+        Returns:
+            result: Test and control samples of indexes dictionary
+        """
         result = {"test_indexes": [], "control_indexes": []}
 
         if self.quant_field:
@@ -153,7 +176,7 @@ class ABSplitter:
                 if self.mode not in ("balanced", "simple"):
                     warnings.warn(
                         f"The mode '{self.mode}' is not supported for group division. "
-                        f"Implemented mode 'stratification'."
+                        f"Implemented mode 'simple'."
                     )
                     self.mode = "simple"
 
@@ -306,6 +329,8 @@ class ABExperiment(ABC):
 
 
 class ABTester:
+    """Separates data to homogeneous groups and calculate metrics - sizes of groups and MDE."""
+
     DEFAULT_FORMAT_MAPPING = {
         "rs": "random state",
         "mde": "MDE",
@@ -317,7 +342,7 @@ class ABTester:
     }
 
     def __init__(
-        self, splitter: ABSplitter, target_field: str, reliability=0.95, power=0.8, mde=None,
+        self, splitter: ABSplitter, target_field: str, reliability: float = 0.95, power: float = 0.8, mde: float = None,
     ):
         """
         Args:
