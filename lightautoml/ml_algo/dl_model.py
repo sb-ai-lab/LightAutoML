@@ -79,6 +79,7 @@ from .torch_based.nn_models import LinearLayer
 from .torch_based.nn_models import ResNetModel
 from .torch_based.nn_models import _LinearLayer
 from .torch_based.nn_models import AutoInt
+from .torch_based.nn_models import FTTransformer
 
 
 logger = logging.getLogger(__name__)
@@ -94,6 +95,7 @@ model_by_name = {
     "node": NODE,
     "autoint": AutoInt,
     "tabnet": TabNet,
+    "fttransformer": FTTransformer,
 }
 input_type_by_name = {
     "denselight": "flat",
@@ -106,6 +108,7 @@ input_type_by_name = {
     "node": "flat",
     "autoint": "seq",
     "tabnet": "flat",
+    "fttransformer": "seq",
 }
 cat_embedder_by_name_flat = {
     "cat": CatEmbedder,
@@ -122,6 +125,8 @@ cont_embedder_by_name_flat = {
     "soft": SoftEmbeddingFlat,
 }
 cont_embedder_by_name = {"linear": LinearEmbedding, "dense": DenseEmbedding, "plr": PLREmbedding, "soft": SoftEmbedding}
+cont_embedder_by_name_flat = {"cont": ContEmbedder, "linear": LinearEmbeddingFlat, "dense": DenseEmbeddingFlat}
+cont_embedder_by_name = {"linear": LinearEmbedding, "dense": DenseEmbedding}
 
 
 class TorchModel(TabularMLAlgo):
