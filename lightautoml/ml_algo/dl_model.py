@@ -1,5 +1,6 @@
 """Neural net for tabular datasets."""
 
+
 from lightautoml.utils.installation import __validate_extra_deps
 
 
@@ -43,9 +44,19 @@ except:
 from ..ml_algo.base import TabularDataset
 from ..ml_algo.base import TabularMLAlgo
 from ..pipelines.utils import get_columns_by_role
-from ..text.nn_model import CatEmbedder
-from ..text.nn_model import ContEmbedder
-from ..text.nn_model import TextBert
+from ..text.embed import (
+    BasicCatEmbeddingFlat,
+    CatEmbedder,
+    DenseEmbedding,
+    DenseEmbeddingFlat,
+    LinearEmbedding,
+    LinearEmbeddingFlat,
+    WeightedCatEmbedding,
+    BasicCatEmbedding,
+    WeightedCatEmbeddingFlat,
+)
+from ..text.embed import ContEmbedder
+from ..text.embed import TextBert
 from ..text.nn_model import TorchUniversalModel
 from ..text.nn_model import UniversalDataset
 from ..text.trainer import Trainer
@@ -63,6 +74,8 @@ from .torch_based.nn_models import DenseModel
 from .torch_based.nn_models import LinearLayer
 from .torch_based.nn_models import ResNetModel
 from .torch_based.nn_models import _LinearLayer
+from .torch_based.nn_models import AutoInt
+from .torch_based.nn_models import FTTransformer
 
 
 logger = logging.getLogger(__name__)
@@ -76,7 +89,29 @@ model_by_name = {
     "_linear_layer": _LinearLayer,
     "snn": SNN,
     "node": NODE,
+    "autoint": AutoInt,
+    "fttransformer": FTTransformer,
 }
+input_type_by_name = {
+    "denselight": "flat",
+    "dense": "flat",
+    "resnet": "flat",
+    "mlp": "flat",
+    "linear_layer": "flat",
+    "_linear_layer": "flat",
+    "snn": "flat",
+    "node": "flat",
+    "autoint": "seq",
+    "fttransformer": "seq",
+}
+cat_embedder_by_name_flat = {
+    "cat": CatEmbedder,
+    "cat_no_dropout": BasicCatEmbeddingFlat,
+    "weighted": WeightedCatEmbeddingFlat,
+}
+cat_embedder_by_name = {"cat_no_dropout": BasicCatEmbedding, "weighted": WeightedCatEmbedding}
+cont_embedder_by_name_flat = {"cont": ContEmbedder, "linear": LinearEmbeddingFlat, "dense": DenseEmbeddingFlat}
+cont_embedder_by_name = {"linear": LinearEmbedding, "dense": DenseEmbedding}
 
 
 class TorchModel(TabularMLAlgo):
@@ -245,23 +280,37 @@ class TorchModel(TabularMLAlgo):
             if isinstance(params[p_name], str):
                 params[p_name] = getattr(module, params[p_name])
 
+        # params = self._select_params(params)
         model = Trainer(
             net=TorchUniversalModel if not params["model_with_emb"] else params["model"],
             net_params={
                 "task": self.task,
-                "cont_embedder": ContEmbedder if is_cont else None,
+                "cont_embedder_": cont_embedder_by_name.get(params["cont_embedder"], LinearEmbedding)
+                if input_type_by_name[params["model"]] == "seq"
+                else cont_embedder_by_name_flat.get(params["cont_embedder"], ContEmbedder)
+                if is_cont
+                else None,
                 "cont_params": {
-                    "num_dims": params["cont_dim"],
+                    "num_dims": params["num_dims"],
                     "input_bn": params["input_bn"],
+                    "device": params["device"],
+                    "embedding_size": params["embedding_size"],
                 }
                 if is_cont
                 else None,
-                "cat_embedder": CatEmbedder if is_cat else None,
+                "cat_embedder_": cat_embedder_by_name.get(params["cat_embedder"], BasicCatEmbedding)
+                if input_type_by_name[params["model"]] == "seq"
+                else cat_embedder_by_name_flat.get(params["cat_embedder"], CatEmbedder)
+                if is_cat
+                else None,
                 "cat_params": {
+                    "cat_vc": params["cat_vc"],
                     "cat_dims": params["cat_dims"],
                     "emb_dropout": params["emb_dropout"],
                     "emb_ratio": params["emb_ratio"],
                     "max_emb_size": params["max_emb_size"],
+                    "embedding_size": params["embedding_size"],
+                    "device": params["device"],
                 }
                 if is_cat
                 else None,
@@ -350,6 +399,7 @@ class TorchModel(TabularMLAlgo):
 
         # Cat_features are needed to be preprocessed with LE, where 0 = not known category
         valid = train_valid_iterator.get_validation_data()
+        cat_value_counts = []
         for cat_feature in new_params["cat_features"]:
             num_unique_categories = (
                 max(
@@ -358,18 +408,23 @@ class TorchModel(TabularMLAlgo):
                 )
                 + 1
             )
+            values, counts = np.unique(
+                np.concatenate([train_valid_iterator.train[:, cat_feature].data, valid[:, cat_feature].data]),
+                return_counts=True,
+            )
+            cat_value_counts.append(dict(zip(values, counts)))
             cat_dims.append(num_unique_categories)
         new_params["cat_dims"] = cat_dims
-
+        new_params["cat_vc"] = cat_value_counts
         new_params["cont_features"] = get_columns_by_role(train_valid_iterator.train, "Numeric")
-        new_params["cont_dim"] = len(new_params["cont_features"])
+        new_params["num_dims"] = len(new_params["cont_features"])
 
         new_params["text_features"] = get_columns_by_role(train_valid_iterator.train, "Text")
         new_params["bias"] = self.get_mean_target(target, task_name) if params["init_bias"] else None
 
         logger.debug(f'number of text features: {len(new_params["text_features"])} ')
         logger.debug(f'number of categorical features: {len(new_params["cat_features"])} ')
-        logger.debug(f'number of continuous features: {new_params["cont_dim"]} ')
+        logger.debug(f'number of continuous features: {new_params["num_dims"]} ')
 
         return new_params
 

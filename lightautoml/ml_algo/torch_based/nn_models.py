@@ -1,15 +1,18 @@
 """Torch models."""
 
 from collections import OrderedDict
-from typing import List
+from typing import List, Tuple, Type
 from typing import Optional
 from typing import Union
 
 import numpy as np
 import torch
 import torch.nn as nn
+from .autoint.autoint_utils import AttnInteractionBlock, LeakyGate
+from .autoint.ghost_norm import GhostBatchNorm
+from .fttransformer.fttransformer_utils import Transformer
 
-from lightautoml.ml_algo.torch_based.node_nn_model import DenseODSTBlock, MeanPooling
+from .node_nn_model import DenseODSTBlock, MeanPooling
 
 
 class GaussianNoise(nn.Module):
@@ -79,20 +82,28 @@ class DenseLightBlock(nn.Module):
         use_bn: bool = True,
         use_noise: bool = False,
         device: torch.device = torch.device("cuda:0"),
+        bn_momentum: float = 0.1,
+        ghost_batch: Optional[int] = None,
         **kwargs,
     ):
         super(DenseLightBlock, self).__init__()
         self.features = nn.Sequential(OrderedDict([]))
-
+        self.features.add_module("dense", nn.Linear(n_in, n_out, bias=(not use_bn)))
         if use_bn:
-            self.features.add_module("norm", nn.BatchNorm1d(n_in))
+            if ghost_batch is None:
+                self.features.add_module("norm", nn.BatchNorm1d(n_out, momentum=bn_momentum))
+            else:
+                self.features.add_module("norm", GhostBatchNorm(n_out, ghost_batch, momentum=bn_momentum))
+
+        self.features.add_module("act", act_fun())
+
         if drop_rate:
             self.features.add_module("dropout", nn.Dropout(p=drop_rate))
         if use_noise:
             self.features.add_module("noise", GaussianNoise(noise_std, device))
 
-        self.features.add_module("dense", nn.Linear(n_in, n_out))
-        self.features.add_module("act", act_fun())
+        # self.features.add_module("dense", nn.Linear(n_in, n_out))
+        # self.features.add_module("act", act_fun())
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward-pass."""
@@ -114,9 +125,14 @@ class DenseLightModel(nn.Module):
             num_init_features: If not none add fc layer before model with certain dim.
             use_bn: Use BatchNorm.
             use_noise: Use noise.
-            concat_input: Concatenate input to all hidden layers.
+            concat_input: Concatenate input to all hidden layers. # MLP False
+            dropout_first: Use dropout in the first layer or not.
+            bn_momentum: BatchNorm momentum
+            ghost_batch: If not none use GhoastNorm with ghost_batch.
+            leaky_gate: Use LeakyGate or not.
+            use_skip: Use another Linear model to blend them after.
+            weighted_sum: Use weighted blender or half-half.
             device: Device to compute on.
-
     """
 
     def __init__(
@@ -128,21 +144,32 @@ class DenseLightModel(nn.Module):
             750,
         ],
         drop_rate: Union[float, List[float]] = 0.1,
-        act_fun: nn.Module = nn.ReLU,
+        act_fun: nn.Module = nn.LeakyReLU,
         noise_std: float = 0.05,
         num_init_features: Optional[int] = None,
         use_bn: bool = True,
         use_noise: bool = False,
         concat_input: bool = True,
+        dropout_first: bool = True,
+        bn_momentum: float = 0.1,
+        ghost_batch: Optional[int] = 64,
+        leaky_gate: bool = True,
+        use_skip: bool = True,
+        weighted_sum: bool = True,
         device: torch.device = torch.device("cuda:0"),
         **kwargs,
     ):
         super(DenseLightModel, self).__init__()
 
-        if isinstance(drop_rate, float):
-            drop_rate = [drop_rate] * len(hidden_size)
+        if isinstance(hidden_size, int):
+            hidden_size = [hidden_size]
 
-        assert len(hidden_size) == len(drop_rate), "Wrong number hidden_sizes/drop_rates. Must be equal."
+        if isinstance(drop_rate, float):
+            drop_rate = [drop_rate] * (len(hidden_size) + (1 if dropout_first else 0))
+
+        assert (
+            len(hidden_size) == len(drop_rate) if not dropout_first else 1 + len(hidden_size) == len(drop_rate)
+        ), "Wrong number hidden_sizes/drop_rates. Must be equal."
 
         self.concat_input = concat_input
         num_features = n_in if num_init_features is None else num_init_features
@@ -150,6 +177,13 @@ class DenseLightModel(nn.Module):
         self.features = nn.Sequential(OrderedDict([]))
         if num_init_features is not None:
             self.features.add_module("dense0", nn.Linear(n_in, num_features))
+
+        if leaky_gate:
+            self.features.add_module("leakygate0", LeakyGate(n_in))
+
+        if dropout_first and drop_rate[0] > 0:
+            self.features.add_module("dropout0", nn.Dropout(drop_rate[0]))
+            drop_rate = drop_rate[1:]
 
         for i, hid_size in enumerate(hidden_size):
             block = DenseLightBlock(
@@ -161,6 +195,8 @@ class DenseLightModel(nn.Module):
                 use_bn=use_bn,
                 use_noise=use_noise,
                 device=device,
+                bn_momentum=bn_momentum,
+                ghost_batch=ghost_batch,
             )
             self.features.add_module("denseblock%d" % (i + 1), block)
 
@@ -171,16 +207,35 @@ class DenseLightModel(nn.Module):
 
         num_features = hidden_size[-1]
         self.fc = nn.Linear(num_features, n_out)
+        self.use_skip = use_skip
+        if use_skip:
+            skip_linear = nn.Linear(n_in, n_out)
+            if leaky_gate:
+                self.skip_layers = nn.Sequential(LeakyGate(n_in), skip_linear)
+            else:
+                self.skip_layers = skip_linear
+            if weighted_sum:
+                self.mix = nn.Parameter(torch.tensor([0.0]))
+            else:
+                self.mix = torch.tensor([0.0], device=device)
+        else:
+            self.skip_layers = None
+            self.mix = None
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, X: torch.Tensor) -> torch.Tensor:
         """Forward-pass."""
+        x = X
         input = x.detach().clone()
         for name, layer in self.features.named_children():
             if name != "denseblock1" and name != "dense0" and self.concat_input:
                 x = torch.cat([x, input], 1)
             x = layer(x)
-        x = self.fc(x)
-        return x
+        out = self.fc(x)
+        if self.use_skip:
+            mix = torch.sigmoid(self.mix)
+            skip_out = self.skip_layers(X)
+            out = mix * skip_out + (1 - mix) * out
+        return out
 
 
 class MLP(DenseLightModel):
@@ -196,8 +251,13 @@ class MLP(DenseLightModel):
             num_init_features: If not none add fc layer before model with certain dim.
             use_bn: Use BatchNorm.
             use_noise: Use noise.
+            dropout_first: Use dropout in the first layer or not.
+            bn_momentum: BatchNorm momentum
+            ghost_batch: If not none use GhoastNorm with ghost_batch.
+            leaky_gate: Use LeakyGate or not.
+            use_skip: Use another Linear model to blend them after.
+            weighted_sum: Use weighted blender or half-half.
             device: Device to compute on.
-
     """
 
     def __init__(self, *args, **kwargs):
@@ -732,6 +792,32 @@ class SequenceIndentityPooler(SequenceAbstractPooler):
         return x
 
 
+class SequenceConcatPooler(SequenceAbstractPooler):
+    """Concat pooling."""
+
+    def __init__(self):
+        super(SequenceConcatPooler, self).__init__()
+
+    def forward(self, x: torch.Tensor, x_mask: torch.Tensor) -> torch.Tensor:
+        """Forward-pass."""
+        pooler1 = SequenceClsPooler()
+        pooler2 = SequenceAvgPooler()
+        x1 = pooler1(x, x_mask)
+        x2 = pooler2(x, x_mask)
+        values = torch.cat((x1, x2), dim=1)
+        return values
+
+
+pooling_by_name = {
+    "mean": SequenceAvgPooler,
+    "sum": SequenceSumPooler,
+    "max": SequenceMaxPooler,
+    "concat": SequenceConcatPooler,
+    "cls": SequenceClsPooler,
+    "none": SequenceIndentityPooler,
+}
+
+
 class NODE(nn.Module):
     """The NODE model from https://github.com/Qwicen.
 
@@ -795,3 +881,209 @@ class NODE(nn.Module):
         x = self.features1(x)
         x = self.features2(x)
         return x.view(x.shape[0], -1)
+
+
+class AutoInt(nn.Module):
+    """The AutoInt model from https://github.com/jrfiedler/xynn.
+
+    Args:
+            n_in: Input dim.
+            n_out: Output dim.
+            layer_dim: num trees in one layer.
+            num_layers: number of forests.
+            tree_dim: number of response channels in the response of individual tree.
+            use_original_head use averaging as a head or put linear layer instead.
+            depth: number of splits in every tree.
+            drop_rate: Dropout rate for each layer altogether.
+            act_fun: Activation function.
+            num_init_features: If not none add fc layer before model with certain dim.
+            use_bn: Use BatchNorm.
+    """
+
+    def __init__(
+        self,
+        n_in: int,
+        embedding_size: int,
+        n_out: int = 1,
+        attn_embedding_size: int = 8,
+        attn_num_layers: int = 3,
+        attn_num_heads: int = 2,
+        attn_activation: Optional[Type[nn.Module]] = None,
+        attn_use_residual: bool = True,
+        attn_dropout: float = 0.1,
+        attn_normalize: bool = True,
+        attn_use_mlp: bool = True,
+        mlp_hidden_sizes: Union[int, Tuple[int, ...], List[int]] = (512, 256, 128, 64),
+        mlp_activation: Type[nn.Module] = nn.LeakyReLU,
+        mlp_use_bn: bool = True,
+        mlp_bn_momentum: float = 0.1,
+        mlp_ghost_batch: Optional[int] = 16,
+        mlp_dropout: float = 0.0,
+        mlp_use_skip: bool = True,
+        use_leaky_gate: bool = True,
+        weighted_sum: bool = True,
+        device: Union[str, torch.device] = "cpu",
+        **kwargs,
+    ):
+        super(AutoInt, self).__init__()
+        super().__init__()
+        device = torch.device(device)
+
+        if use_leaky_gate:
+            self.attn_gate = LeakyGate(n_in * embedding_size, device=device)
+        else:
+            self.attn_gate = nn.Identity()
+
+        self.attn_interact = AttnInteractionBlock(
+            field_input_size=embedding_size,
+            field_output_size=attn_embedding_size,
+            num_layers=attn_num_layers,
+            num_heads=attn_num_heads,
+            activation=attn_activation,
+            use_residual=attn_use_residual,
+            dropout=attn_dropout,
+            normalize=attn_normalize,
+            ghost_batch_size=mlp_ghost_batch,
+            device=device,
+        )
+
+        self.attn_final = MLP(
+            n_in=n_in * attn_embedding_size * attn_num_heads,
+            hidden_size=(mlp_hidden_sizes if mlp_hidden_sizes and attn_use_mlp else []),
+            n_out=n_out,
+            act_fun=mlp_activation,
+            drop_rate=mlp_dropout,
+            use_bn=mlp_use_bn,
+            bn_momentum=mlp_bn_momentum,
+            ghost_batch=mlp_ghost_batch,
+            leaky_gate=use_leaky_gate,
+            use_skip=mlp_use_skip,
+            device=device,
+        )
+
+        if mlp_hidden_sizes:
+            self.mlp = MLP(
+                n_in=n_in * embedding_size,
+                hidden_size=mlp_hidden_sizes,
+                n_out=n_out,
+                act_fun=mlp_activation,
+                drop_rate=mlp_dropout,
+                use_bn=mlp_use_bn,
+                bn_momentum=mlp_bn_momentum,
+                ghost_batch=mlp_ghost_batch,
+                leaky_gate=use_leaky_gate,
+                use_skip=mlp_use_skip,
+                device=device,
+            )
+            if weighted_sum:
+                self.mix = nn.Parameter(torch.tensor([0.0], device=device))
+            else:
+                self.mix = torch.tensor([0.0], device=device)
+        else:
+            self.mlp = None
+            self.mix = None
+
+    def forward(self, embedded: torch.Tensor) -> torch.Tensor:
+        """Transform the input tensor.
+
+        Args:
+            embedded : torch.Tensor
+                embedded fields
+
+        Returns:
+            torch.Tensor
+
+        """
+        out = self.attn_gate(embedded)
+        out = self.attn_interact(out)
+        out = self.attn_final(out.reshape((out.shape[0], -1)))
+        if self.mlp is not None:
+            embedded_2d = embedded.reshape((embedded.shape[0], -1))
+            mix = torch.sigmoid(self.mix)
+            out = mix * out + (1 - mix) * self.mlp(embedded_2d)
+        return out
+
+
+class FTTransformer(nn.Module):
+    """FT Transformer (https://arxiv.org/abs/2106.11959v2) from https://github.com/lucidrains/tab-transformer-pytorch/tree/main.
+
+    Args:
+            pooling: Pooling used for the last step.
+            n_out: Output dimension, 1 for binary prediction.
+            embedding_size: Embeddings size.
+            depth: Number of Attention Blocks inside Transformer.
+            heads: Number of heads in Attention.
+            attn_dropout: Post-Attention dropout.
+            ff_dropout: Feed-Forward Dropout.
+            dim_head: Attention head dimension.
+            num_enc_layers: Number of Transformer layers.
+            device: Device to compute on.
+    """
+
+    def __init__(
+        self,
+        *,
+        pooling: str = "concat",
+        n_out: int = 1,
+        embedding_size: int = 16,
+        depth: int = 2,
+        heads: int = 1,
+        attn_dropout: float = 0.1,
+        ff_dropout: float = 0.1,
+        dim_head: int = 64,
+        num_enc_layers: int = 2,
+        device: Union[str, torch.device] = "cuda:0",
+        **kwargs,
+    ):
+        super(FTTransformer, self).__init__()
+        self.device = device
+        self.pooling = pooling_by_name[pooling]()
+
+        # transformer
+        self.transformer = nn.Sequential(
+            *nn.ModuleList(
+                [
+                    Transformer(
+                        dim=embedding_size,
+                        depth=depth,
+                        heads=heads,
+                        dim_head=dim_head,
+                        attn_dropout=attn_dropout,
+                        ff_dropout=ff_dropout,
+                    )
+                    for _ in range(num_enc_layers)
+                ]
+            )
+        )
+
+        # to logits
+        if pooling == "concat":
+            self.to_logits = nn.Sequential(nn.BatchNorm1d(embedding_size * 2), nn.Linear(embedding_size * 2, n_out))
+        else:
+            self.to_logits = nn.Sequential(nn.BatchNorm1d(embedding_size), nn.Linear(embedding_size, n_out))
+
+        self.cls_token = nn.Embedding(2, embedding_size)
+
+    def forward(self, embedded):
+        """Transform the input tensor.
+
+        Args:
+            embedded : torch.Tensor
+                embedded fields
+
+        Returns:
+            torch.Tensor
+
+        """
+        cls_token = torch.unsqueeze(
+            self.cls_token(torch.ones(embedded.shape[0], dtype=torch.int).to(self.device)), dim=1
+        )
+        x = torch.cat((cls_token, embedded), dim=1)
+        x = self.transformer(x)
+        x_mask = torch.ones(x.shape, dtype=torch.bool).to(self.device)
+        pool_tokens = self.pooling(x=x, x_mask=x_mask)
+        if isinstance(self.pooling, SequenceIndentityPooler):
+            pool_tokens = pool_tokens[:, 0]
+
+        logits = self.to_logits(pool_tokens)
+        return logits

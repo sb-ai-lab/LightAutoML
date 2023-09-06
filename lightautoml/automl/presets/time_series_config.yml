@@ -132,6 +132,12 @@ nn_params:
   # Look for NN train params here.
   # str in ['nn', 'mlp', 'dense', 'denselight', 'resnet', 'snn'] or custom torch model
   model: denselight
+  # embedding_size if needed
+  embedding_size: 10
+  # str in ['cat', 'cat_no_dropout', 'weighted']
+  cat_embedder: "cat"
+  # str in ['cont', 'linear', 'dense']
+  cont_embedder: "cont"
   # use model with custom embeddings
   model_with_emb: false
   # tune custom network
