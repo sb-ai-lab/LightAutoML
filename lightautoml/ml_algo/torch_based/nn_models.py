@@ -10,6 +10,7 @@ import torch
 import torch.nn as nn
 from .autoint.autoint_utils import AttnInteractionBlock, LeakyGate
 from .autoint.ghost_norm import GhostBatchNorm
+from .fttransformer.fttransformer_utils import Transformer
 
 from .node_nn_model import DenseODSTBlock, MeanPooling
 
@@ -791,6 +792,32 @@ class SequenceIndentityPooler(SequenceAbstractPooler):
         return x
 
 
+class SequenceConcatPooler(SequenceAbstractPooler):
+    """Concat pooling."""
+
+    def __init__(self):
+        super(SequenceConcatPooler, self).__init__()
+
+    def forward(self, x: torch.Tensor, x_mask: torch.Tensor) -> torch.Tensor:
+        """Forward-pass."""
+        pooler1 = SequenceClsPooler()
+        pooler2 = SequenceAvgPooler()
+        x1 = pooler1(x, x_mask)
+        x2 = pooler2(x, x_mask)
+        values = torch.cat((x1, x2), dim=1)
+        return values
+
+
+pooling_by_name = {
+    "mean": SequenceAvgPooler,
+    "sum": SequenceSumPooler,
+    "max": SequenceMaxPooler,
+    "concat": SequenceConcatPooler,
+    "cls": SequenceClsPooler,
+    "none": SequenceIndentityPooler,
+}
+
+
 class NODE(nn.Module):
     """The NODE model from https://github.com/Qwicen.
 
@@ -975,3 +1002,88 @@ class AutoInt(nn.Module):
             mix = torch.sigmoid(self.mix)
             out = mix * out + (1 - mix) * self.mlp(embedded_2d)
         return out
+
+
+class FTTransformer(nn.Module):
+    """FT Transformer (https://arxiv.org/abs/2106.11959v2) from https://github.com/lucidrains/tab-transformer-pytorch/tree/main.
+
+    Args:
+            pooling: Pooling used for the last step.
+            n_out: Output dimension, 1 for binary prediction.
+            embedding_size: Embeddings size.
+            depth: Number of Attention Blocks inside Transformer.
+            heads: Number of heads in Attention.
+            attn_dropout: Post-Attention dropout.
+            ff_dropout: Feed-Forward Dropout.
+            dim_head: Attention head dimension.
+            num_enc_layers: Number of Transformer layers.
+            device: Device to compute on.
+    """
+
+    def __init__(
+        self,
+        *,
+        pooling: str = "concat",
+        n_out: int = 1,
+        embedding_size: int = 16,
+        depth: int = 2,
+        heads: int = 1,
+        attn_dropout: float = 0.1,
+        ff_dropout: float = 0.1,
+        dim_head: int = 64,
+        num_enc_layers: int = 2,
+        device: Union[str, torch.device] = "cuda:0",
+        **kwargs,
+    ):
+        super(FTTransformer, self).__init__()
+        self.device = device
+        self.pooling = pooling_by_name[pooling]()
+
+        # transformer
+        self.transformer = nn.Sequential(
+            *nn.ModuleList(
+                [
+                    Transformer(
+                        dim=embedding_size,
+                        depth=depth,
+                        heads=heads,
+                        dim_head=dim_head,
+                        attn_dropout=attn_dropout,
+                        ff_dropout=ff_dropout,
+                    )
+                    for _ in range(num_enc_layers)
+                ]
+            )
+        )
+
+        # to logits
+        if pooling == "concat":
+            self.to_logits = nn.Sequential(nn.BatchNorm1d(embedding_size * 2), nn.Linear(embedding_size * 2, n_out))
+        else:
+            self.to_logits = nn.Sequential(nn.BatchNorm1d(embedding_size), nn.Linear(embedding_size, n_out))
+
+        self.cls_token = nn.Embedding(2, embedding_size)
+
+    def forward(self, embedded):
+        """Transform the input tensor.
+
+        Args:
+            embedded : torch.Tensor
+                embedded fields
+
+        Returns:
+            torch.Tensor
+
+        """
+        cls_token = torch.unsqueeze(
+            self.cls_token(torch.ones(embedded.shape[0], dtype=torch.int).to(self.device)), dim=1
+        )
+        x = torch.cat((cls_token, embedded), dim=1)
+        x = self.transformer(x)
+        x_mask = torch.ones(x.shape, dtype=torch.bool).to(self.device)
+        pool_tokens = self.pooling(x=x, x_mask=x_mask)
+        if isinstance(self.pooling, SequenceIndentityPooler):
+            pool_tokens = pool_tokens[:, 0]
+
+        logits = self.to_logits(pool_tokens)
+        return logits
