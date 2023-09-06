@@ -125,8 +125,6 @@ cont_embedder_by_name_flat = {
     "soft": SoftEmbeddingFlat,
 }
 cont_embedder_by_name = {"linear": LinearEmbedding, "dense": DenseEmbedding, "plr": PLREmbedding, "soft": SoftEmbedding}
-cont_embedder_by_name_flat = {"cont": ContEmbedder, "linear": LinearEmbeddingFlat, "dense": DenseEmbeddingFlat}
-cont_embedder_by_name = {"linear": LinearEmbedding, "dense": DenseEmbedding}
 
 
 class TorchModel(TabularMLAlgo):
