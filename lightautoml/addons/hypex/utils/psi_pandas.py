@@ -150,7 +150,7 @@ class PSI:
 
         sub_psi = (e_perc - a_perc) * np.log(e_perc / a_perc)
 
-        logger.debug(f"sub_psi value is {value: .6f}")
+        logger.debug(f"sub_psi value is {sub_psi: .6f}")
 
         return sub_psi
 

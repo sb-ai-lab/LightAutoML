@@ -132,7 +132,7 @@ class MatcherNoReplacement:
         return distance_matrix
 
 
-def optimally_match_distance_matrix(distance_matrix: np.ndarray) -> Tuple[np.ndarray, np.ndarray, list[list]]:
+def optimally_match_distance_matrix(distance_matrix: np.ndarray) -> Tuple[np.ndarray, np.ndarray, list]:
     """Functions finds optimal neighbor with no replacement.
 
     Args:
