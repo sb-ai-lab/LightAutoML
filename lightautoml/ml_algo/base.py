@@ -240,7 +240,9 @@ class TabularMLAlgo(MLAlgo):
         iterator_len = len(train_valid_iterator)
         if iterator_len > 1:
             logger.info("Start fitting \x1b[1m{}\x1b[0m ...".format(self._name))
-            logger.debug(f"Training params: {self.params}")
+            stop_params = ["cat_features", "cont_features", "cat_dims", "cat_vc"]
+            printable_params = {key: value for key, value in self.params.items() if key not in stop_params}
+            logger.debug(f"Training params: {printable_params}")
 
         # save features names
         self._features = train_valid_iterator.features

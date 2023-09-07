@@ -162,13 +162,34 @@ class TorchUniversalModel(nn.Module):
         )
 
         if bias is not None:
-            try:
-                last_layer = list(
-                    filter(
-                        lambda x: isinstance(x, nn.Linear) or isinstance(x, nn.Sequential),
-                        list(self.torch_model.children()),
-                    )
-                )[-1]
+            self._set_last_layer(self.torch_model, bias)
+
+        self.сlump = Clump()
+        self.sig = nn.Sigmoid()
+        self.softmax = nn.Softmax(dim=1)
+
+    def _set_last_layer(self, torch_model, bias):
+        try:
+            use_skip = torch_model.use_skip
+            self._init_last_layers(torch_model, bias, use_skip)
+        except:
+            self._init_last_layers(torch_model, bias, False)
+
+    def _init_last_layers(self, torch_model, bias, use_skip=False):
+        try:
+            all_layers = list(torch_model.children())
+            layers = list(
+                filter(
+                    lambda x: isinstance(x, nn.Linear) or isinstance(x, nn.Sequential),
+                    all_layers,
+                )
+            )
+            if len(layers) == 0:
+                last_layer = all_layers[-1]
+                self._set_last_layer(last_layer, bias)
+
+            else:
+                last_layer = layers[-1]
                 while isinstance(last_layer, nn.Sequential):
                     last_layer = list(
                         filter(lambda x: isinstance(x, nn.Linear) or isinstance(x, nn.Sequential), last_layer)
@@ -177,12 +198,22 @@ class TorchUniversalModel(nn.Module):
                 last_layer.bias.data = bias
                 shape = last_layer.weight.data.shape
                 last_layer.weight.data = torch.zeros(shape[0], shape[1], requires_grad=True)
-            except:
-                logger.info3("Last linear layer not founded, so init_bias=False")
-
-        self.сlump = Clump()
-        self.sig = nn.Sigmoid()
-        self.softmax = nn.Softmax(dim=1)
+            if use_skip:
+                if len(layers) <= 1:
+                    last_layer = all_layers[-2]
+                    self._set_last_layer(last_layer, bias)
+                else:
+                    pre_last_layer = layers[-2]
+                    while isinstance(last_layer, nn.Sequential):
+                        pre_last_layer = list(
+                            filter(lambda x: isinstance(x, nn.Linear) or isinstance(x, nn.Sequential), pre_last_layer)
+                        )[-1]
+                    bias = torch.Tensor(bias)
+                    pre_last_layer.bias.data = bias
+                    shape = pre_last_layer.weight.data.shape
+                    pre_last_layer.weight.data = torch.zeros(shape[0], shape[1], requires_grad=True)
+        except:
+            logger.info3("Last linear layer not founded, so init_bias=False")
 
     def get_logits(self, inp: Dict[str, torch.Tensor]) -> torch.Tensor:
         """Forward-pass of model with embeddings."""

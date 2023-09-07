@@ -12,6 +12,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 import operator
+import numpy as np
 
 try:
     from transformers import AutoModel
@@ -572,7 +573,7 @@ class Periodic(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
         """Forward-pass."""
-        x = self._cos_sin(2 * torch.pi * self.coefficients[None] * x[..., None])
+        x = self._cos_sin(2 * np.pi * self.coefficients[None] * x[..., None])
         if self.flatten_output:
             return x.view(x.shape[0], -1)
         return x
