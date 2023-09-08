@@ -115,7 +115,11 @@ cat_embedder_by_name_flat = {
     "cat_no_dropout": BasicCatEmbeddingFlat,
     "weighted": WeightedCatEmbeddingFlat,
 }
-cat_embedder_by_name = {"cat": BasicCatEmbedding, "cat_no_dropout": BasicCatEmbedding, "weighted": WeightedCatEmbedding}
+cat_embedder_by_name = {
+    "cat_no_dropout": BasicCatEmbedding,
+    "cat_no_dropout": BasicCatEmbedding,
+    "weighted": WeightedCatEmbedding,
+}
 
 cont_embedder_by_name_flat = {
     "cont": ContEmbedder,
