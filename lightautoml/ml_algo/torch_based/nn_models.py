@@ -815,7 +815,6 @@ pooling_by_name = {
     "max": SequenceMaxPooler,
     "concat": SequenceConcatPooler,
     "cls": SequenceClsPooler,
-    "none": SequenceIndentityPooler,
 }
 
 
