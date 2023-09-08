@@ -115,7 +115,7 @@ cat_embedder_by_name_flat = {
     "cat_no_dropout": BasicCatEmbeddingFlat,
     "weighted": WeightedCatEmbeddingFlat,
 }
-cat_embedder_by_name = {"cat_no_dropout": BasicCatEmbedding, "weighted": WeightedCatEmbedding}
+cat_embedder_by_name = {"cat": BasicCatEmbedding, "cat_no_dropout": BasicCatEmbedding, "weighted": WeightedCatEmbedding}
 
 cont_embedder_by_name_flat = {
     "cont": ContEmbedder,
@@ -124,7 +124,13 @@ cont_embedder_by_name_flat = {
     "plr": PLREmbeddingFlat,
     "soft": SoftEmbeddingFlat,
 }
-cont_embedder_by_name = {"linear": LinearEmbedding, "dense": DenseEmbedding, "plr": PLREmbedding, "soft": SoftEmbedding}
+cont_embedder_by_name = {
+    "cont": LinearEmbedding,
+    "linear": LinearEmbedding,
+    "dense": DenseEmbedding,
+    "plr": PLREmbedding,
+    "soft": SoftEmbedding,
+}
 
 
 class TorchModel(TabularMLAlgo):
@@ -299,7 +305,7 @@ class TorchModel(TabularMLAlgo):
             net_params={
                 "task": self.task,
                 "cont_embedder_": cont_embedder_by_name.get(params["cont_embedder"], LinearEmbedding)
-                if input_type_by_name[params["model"]] == "seq"
+                if input_type_by_name[params["model"]] == "seq" and is_cont
                 else cont_embedder_by_name_flat.get(params["cont_embedder"], ContEmbedder)
                 if is_cont
                 else None,
@@ -312,7 +318,7 @@ class TorchModel(TabularMLAlgo):
                 if is_cont
                 else None,
                 "cat_embedder_": cat_embedder_by_name.get(params["cat_embedder"], BasicCatEmbedding)
-                if input_type_by_name[params["model"]] == "seq"
+                if input_type_by_name[params["model"]] == "seq" and is_cat
                 else cat_embedder_by_name_flat.get(params["cat_embedder"], CatEmbedder)
                 if is_cat
                 else None,
