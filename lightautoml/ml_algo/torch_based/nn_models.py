@@ -1024,7 +1024,7 @@ class FTTransformer(nn.Module):
     def __init__(
         self,
         *,
-        pooling: str = "concat",
+        pooling: str = "mean",
         n_out: int = 1,
         embedding_size: int = 16,
         depth: int = 2,
