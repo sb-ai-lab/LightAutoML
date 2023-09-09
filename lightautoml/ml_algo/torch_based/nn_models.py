@@ -154,8 +154,8 @@ class DenseLightModel(nn.Module):
         dropout_first: bool = True,
         bn_momentum: float = 0.1,
         ghost_batch: Optional[int] = 64,
-        leaky_gate: bool = True,
         use_skip: bool = True,
+        leaky_gate: bool = True,
         weighted_sum: bool = True,
         device: torch.device = torch.device("cuda:0"),
         **kwargs,
@@ -180,7 +180,7 @@ class DenseLightModel(nn.Module):
             self.features.add_module("dense0", nn.Linear(n_in, num_features))
 
         if leaky_gate:
-            self.features.add_module("leakygate0", LeakyGate(n_in))
+            self.features.add_module("leakygate0", LeakyGate(num_features))
 
         if dropout_first and drop_rate[0] > 0:
             self.features.add_module("dropout0", nn.Dropout(drop_rate[0]))
@@ -228,7 +228,7 @@ class DenseLightModel(nn.Module):
         x = X
         input = x.detach().clone()
         for name, layer in self.features.named_children():
-            if name != "denseblock1" and name != "dense0" and self.concat_input:
+            if name not in ["dropout0", "leakygate0", "denseblock1", "dense0"] and self.concat_input:
                 x = torch.cat([x, input], 1)
             x = layer(x)
         out = self.fc(x)
@@ -976,6 +976,7 @@ class AutoInt(nn.Module):
                 use_skip=mlp_use_skip,
                 device=device,
             )
+            self.use_skip = True
             if weighted_sum:
                 self.mix = nn.Parameter(torch.tensor([0.0], device=device))
             else:
@@ -1127,16 +1128,16 @@ class TabNet(torch.nn.Module):
         self,
         n_in,
         n_out,
-        n_d=8,
-        n_a=8,
-        n_steps=3,
+        n_d=32,
+        n_a=32,
+        n_steps=1,
         gamma=1.3,
         n_independent=2,
         n_shared=2,
         epsilon=1e-15,
         virtual_batch_size=128,
         momentum=0.02,
-        mask_type="sparsemax",
+        mask_type="entemax",
         group_attention_matrix=None,
         **kwargs,
     ):

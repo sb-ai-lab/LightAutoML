@@ -115,7 +115,11 @@ cat_embedder_by_name_flat = {
     "cat_no_dropout": BasicCatEmbeddingFlat,
     "weighted": WeightedCatEmbeddingFlat,
 }
-cat_embedder_by_name = {"cat_no_dropout": BasicCatEmbedding, "weighted": WeightedCatEmbedding}
+cat_embedder_by_name = {
+    "cat_no_dropout": BasicCatEmbedding,
+    "cat_no_dropout": BasicCatEmbedding,
+    "weighted": WeightedCatEmbedding,
+}
 
 cont_embedder_by_name_flat = {
     "cont": ContEmbedder,
@@ -124,9 +128,13 @@ cont_embedder_by_name_flat = {
     "plr": PLREmbeddingFlat,
     "soft": SoftEmbeddingFlat,
 }
-cont_embedder_by_name = {"linear": LinearEmbedding, "dense": DenseEmbedding, "plr": PLREmbedding, "soft": SoftEmbedding}
-cont_embedder_by_name_flat = {"cont": ContEmbedder, "linear": LinearEmbeddingFlat, "dense": DenseEmbeddingFlat}
-cont_embedder_by_name = {"linear": LinearEmbedding, "dense": DenseEmbedding}
+cont_embedder_by_name = {
+    "cont": LinearEmbedding,
+    "linear": LinearEmbedding,
+    "dense": DenseEmbedding,
+    "plr": PLREmbedding,
+    "soft": SoftEmbedding,
+}
 
 
 class TorchModel(TabularMLAlgo):
@@ -301,7 +309,7 @@ class TorchModel(TabularMLAlgo):
             net_params={
                 "task": self.task,
                 "cont_embedder_": cont_embedder_by_name.get(params["cont_embedder"], LinearEmbedding)
-                if input_type_by_name[params["model"]] == "seq"
+                if input_type_by_name[params["model"]] == "seq" and is_cont
                 else cont_embedder_by_name_flat.get(params["cont_embedder"], ContEmbedder)
                 if is_cont
                 else None,
@@ -314,7 +322,7 @@ class TorchModel(TabularMLAlgo):
                 if is_cont
                 else None,
                 "cat_embedder_": cat_embedder_by_name.get(params["cat_embedder"], BasicCatEmbedding)
-                if input_type_by_name[params["model"]] == "seq"
+                if input_type_by_name[params["model"]] == "seq" and is_cat
                 else cat_embedder_by_name_flat.get(params["cat_embedder"], CatEmbedder)
                 if is_cat
                 else None,
@@ -423,11 +431,12 @@ class TorchModel(TabularMLAlgo):
                 )
                 + 1
             )
-            values, counts = np.unique(
-                np.concatenate([train_valid_iterator.train[:, cat_feature].data, valid[:, cat_feature].data]),
-                return_counts=True,
-            )
-            cat_value_counts.append(dict(zip(values, counts)))
+            if params["cat_embedder"] == "weighted":
+                values, counts = np.unique(
+                    np.concatenate([train_valid_iterator.train[:, cat_feature].data, valid[:, cat_feature].data]),
+                    return_counts=True,
+                )
+                cat_value_counts.append(dict(zip(values, counts)))
             cat_dims.append(num_unique_categories)
         new_params["cat_dims"] = cat_dims
         new_params["cat_vc"] = cat_value_counts

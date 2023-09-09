@@ -184,7 +184,7 @@ nn_params:
   # scheduler
   sch: ReduceLROnPlateau
   # params of ReduceLROnPlateau scheduler
-  scheduler_params: {} #{ 'patience': 5, 'factor': 0.5, 'min_lr': 0.00001 }
+  scheduler_params: { 'patience': 5, 'factor': 0.5, 'min_lr': 0.00001 }
   # using snapshot ensembles
   # https://arxiv.org/abs/1704.00109
   is_snap: false
