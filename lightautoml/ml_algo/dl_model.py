@@ -314,10 +314,11 @@ class TorchModel(TabularMLAlgo):
                 if is_cont
                 else None,
                 "cont_params": {
-                    "num_dims": params["num_dims"],
-                    "input_bn": params["input_bn"],
-                    "device": params["device"],
-                    "embedding_size": params["embedding_size"],
+                    # "num_dims": params["num_dims"],
+                    # "input_bn": params["input_bn"],
+                    # "device": params["device"],
+                    # "embedding_size": params["embedding_size"],
+                    **params
                 }
                 if is_cont
                 else None,
@@ -327,13 +328,14 @@ class TorchModel(TabularMLAlgo):
                 if is_cat
                 else None,
                 "cat_params": {
-                    "cat_vc": params["cat_vc"],
-                    "cat_dims": params["cat_dims"],
-                    "emb_dropout": params["emb_dropout"],
-                    "emb_ratio": params["emb_ratio"],
-                    "max_emb_size": params["max_emb_size"],
-                    "embedding_size": params["embedding_size"],
-                    "device": params["device"],
+                    # "cat_vc": params["cat_vc"],
+                    # "cat_dims": params["cat_dims"],
+                    # "emb_dropout": params["emb_dropout"],
+                    # "emb_ratio": params["emb_ratio"],
+                    # "max_emb_size": params["max_emb_size"],
+                    # "embedding_size": params["embedding_size"],
+                    # "device": params["device"],
+                    **params
                 }
                 if is_cat
                 else None,
