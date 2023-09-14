@@ -555,6 +555,7 @@ class TabularAutoML(AutoMLPreset):
             self.infer_auto_params(train_data, multilevel_avail)
             reader = PandasToPandasReader(task=self.task, **self.reader_params)
             pre_selector = self.get_selector()
+
         levels = []
 
         for n, names in enumerate(self.general_params["use_algos"]):
@@ -596,20 +597,7 @@ class TabularAutoML(AutoMLPreset):
                     selector = pre_selector
                 lvl.append(self.get_gbms(gbm_models, n + 1, selector))
 
-            available_nn_models = [
-                "nn",
-                "mlp",
-                "dense",
-                "denselight",
-                "resnet",
-                "snn",
-                "linear_layer",
-                "_linear_layer",
-                "node",
-                "autoint",
-                "tabnet",
-                "fttransformer",
-            ]
+            available_nn_models = ["nn", "mlp", "dense", "denselight", "resnet", "snn", "linear_layer", "_linear_layer"]
             available_nn_models = available_nn_models + [x + "_tuned" for x in available_nn_models]
             nn_models = [
                 x for x in names if x in available_nn_models or (isinstance(x, type) and issubclass(x, nn.Module))
@@ -1026,7 +1014,8 @@ class TabularUtilizedAutoML(TimeUtilization):
             n_feat_imps = len(feat_imps)
             if n_feat_imps == 0:
                 if not silent:
-                    logger.info2("No feature importances to show. Please use another calculation method")
+                    logger.info2("""No feature importances to show. 
+                                 Please use another calculation method or increase the timeout to use more presets.""")
                 return None
             return (
                 pd.concat(feat_imps).groupby("Feature")["Importance"].agg(sum).sort_values(ascending=False)
