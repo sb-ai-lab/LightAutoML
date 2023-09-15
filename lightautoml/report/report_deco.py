@@ -1139,7 +1139,25 @@ class ReportUtilized(ReportDeco):
         super().__init__(**kwargs)
 
         self._fi_section_path = "feature_importance_utillized_section.html"
+        self._model_section_path = "model_section_utilized.html"
+        self._preset_section_path = "preset_section.html"
+        self._preset_sections = None
 
+    def __call__(self, model):
+        self._model = model
+
+        # add informataion to report
+        self._model_name = model.__class__.__name__
+        self._model_summary = None
+
+        self._sections = {}
+        self._sections["intro"] = "<p>This report was generated automatically.</p>"
+        self._model_results = []
+        self._n_test_sample = 0
+
+        self._generate_model_section()
+        self.generate_report()
+        return self
 
     def fit_predict(self, *args, **kwargs):
         """
@@ -1150,6 +1168,10 @@ class ReportUtilized(ReportDeco):
         #TODO: parameters parsing in general case
 
         preds = self._model.fit_predict(*args, **kwargs)
+
+        # Generate sections describing presets used in `fit_predict`
+        self._generate_preset_sections()
+
         train_data = kwargs["train_data"] if "train_data" in kwargs else args[0]
         input_roles = kwargs["roles"] if "roles" in kwargs else args[1]
         self._target = input_roles["target"]
@@ -1236,6 +1258,39 @@ class ReportUtilized(ReportDeco):
     def mapping(self):
         return self._model.outer_pipes[0].ml_algos[0].models[0][0].reader.class_mapping
 
+
+    def _generate_model_section(self):
+        model_summary = None
+        if self._model_summary is not None:
+            model_summary = self._model_summary.to_html(
+                index=self.task == "multiclass",
+                justify="left",
+                float_format="{:.4f}".format,
+            )
+
+        env = Environment(loader=FileSystemLoader(searchpath=self.template_path))
+        model_section = env.get_template(self._model_section_path).render(
+            model_name=self._model_name,
+            model_presets=self._preset_sections,
+            model_summary=model_summary,
+        )
+        self._sections["model"] = model_section
+
+    def _generate_preset_sections(self):
+
+        self._preset_sections = []
+        env = Environment(loader=FileSystemLoader(searchpath=self.template_path))
+        for model in self._model.outer_pipes:
+            config_path = (model
+                           .ml_algos[0]
+                           .models[0][0]
+                           .config_path.split("/")[-1]
+                           .split(".")[0])
+            model_parameters = json2html.convert(extract_params(model.ml_algos[0].models[0][0]))
+            preset_section = env.get_template(self._preset_section_path).render(
+                title=config_path, model_parameters=model_parameters)
+            
+            self._preset_sections.append(preset_section)
 
     # def _generate_train_set_section(self):
     #     env = Environment(loader=FileSystemLoader(searchpath=self.template_path))
