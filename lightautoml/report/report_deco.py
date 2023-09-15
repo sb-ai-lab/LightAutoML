@@ -1133,6 +1133,139 @@ class ReportDeco:
             except ModuleNotFoundError:
                 print("Can't generate PDF report: check manual for installing pdf extras.")
 
+class ReportUtilized(ReportDeco):
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        self._fi_section_path = "feature_importance_utillized_section.html"
+
+
+    def fit_predict(self, *args, **kwargs):
+        """
+        Returns:
+            OOF predictions.
+
+        """
+        #TODO: parameters parsing in general case
+
+        preds = self._model.fit_predict(*args, **kwargs)
+        train_data = kwargs["train_data"] if "train_data" in kwargs else args[0]
+        input_roles = kwargs["roles"] if "roles" in kwargs else args[1]
+        self._target = input_roles["target"]
+        valid_data = kwargs.get("valid_data", None)
+        if valid_data is None:
+            data = self._collect_data(preds, train_data)
+        else:
+            data = self._collect_data(preds, valid_data)
+        self._inference_content = {}
+        if self.task == "binary":
+            # filling for html
+            self._inference_content = {}
+            self._inference_content["roc_curve"] = "valid_roc_curve.png"
+            self._inference_content["pr_curve"] = "valid_pr_curve.png"
+            self._inference_content["pie_f1_metric"] = "valid_pie_f1_metric.png"
+            self._inference_content["preds_distribution_by_bins"] = "valid_preds_distribution_by_bins.png"
+            self._inference_content["distribution_of_logits"] = "valid_distribution_of_logits.png"
+            # graphics and metrics
+            _, self._F1_thresh = f1_score_w_co(data)
+            auc_score, prec, rec, F1 = self._binary_classification_details(data)
+            # update model section
+            evaluation_parameters = ["AUC-score", "Precision", "Recall", "F1-score"]
+            self._model_summary = pd.DataFrame(
+                {
+                    "Evaluation parameter": evaluation_parameters,
+                    "Validation sample": [auc_score, prec, rec, F1],
+                }
+            )
+        elif self.task == "reg":
+            # filling for html
+            self._inference_content["target_distribution"] = "valid_target_distribution.png"
+            self._inference_content["error_hist"] = "valid_error_hist.png"
+            self._inference_content["scatter_plot"] = "valid_scatter_plot.png"
+            # graphics and metrics
+            mean_ae, median_ae, mse, r2, evs = self._regression_details(data)
+            # model section
+            evaluation_parameters = [
+                "Mean absolute error",
+                "Median absolute error",
+                "Mean squared error",
+                "R^2 (coefficient of determination)",
+                "Explained variance",
+            ]
+            self._model_summary = pd.DataFrame(
+                {
+                    "Evaluation parameter": evaluation_parameters,
+                    "Validation sample": [mean_ae, median_ae, mse, r2, evs],
+                }
+            )
+        elif self.task == "multiclass":
+            self._N_classes = len(train_data[self._target].drop_duplicates())
+            self._inference_content["confusion_matrix"] = "valid_confusion_matrix.png"
+
+            index_names = np.array([["Precision", "Recall", "F1-score"], ["micro", "macro", "weighted"]])
+            index = pd.MultiIndex.from_product(index_names, names=["Evaluation metric", "Average"])
+
+            summary = self._multiclass_details(data)
+            self._model_summary = pd.DataFrame({"Validation sample": summary}, index=index)
+
+        self._inference_content["title"] = "Results on validation sample"
+
+        self._generate_model_section()
+
+        # generate train data section
+        self._train_data_overview = self._data_genenal_info(train_data)
+        # self._describe_roles(train_data)
+        # self._describe_dropped_features(train_data)
+        # self._generate_train_set_section()
+        # generate fit_predict section
+        self._generate_inference_section()
+        # generate feature importance and interpretation sections
+        self._generate_fi_section(valid_data)
+        if self.interpretation:
+            self._generate_interpretation_section(valid_data)
+
+        self.generate_report()
+        return preds
+    
+    @property
+    def task(self):
+        return self._model.task.name
+    
+    @property
+    def mapping(self):
+        return self._model.outer_pipes[0].ml_algos[0].models[0][0].reader.class_mapping
+
+
+    # def _generate_train_set_section(self):
+    #     env = Environment(loader=FileSystemLoader(searchpath=self.template_path))
+    #     train_set_section = env.get_template(self._train_set_section_path).render(
+    #         train_data_overview=self._train_data_overview,
+    #         numerical_features_table=self._numerical_features_table,
+    #         categorical_features_table=self._categorical_features_table,
+    #         datetime_features_table=self._datetime_features_table,
+    #         text_features_table=self._text_features_table,
+    #         target=self._target,
+    #         max_nan_rate=self._max_nan_rate,
+    #         max_constant_rate=self._max_constant_rate,
+    #         dropped_features_table=self._dropped_features_table,
+    #     )
+    #     self._sections["train_set"] = train_set_section
+
+
+    def _data_genenal_info(self, data):
+        general_info = pd.DataFrame(columns=["Parameter", "Value"])
+        general_info.loc[0] = ("Number of records", data.shape[0])
+        general_info.loc[1] = ("Total number of features", data.shape[1])
+        # general_info.loc[2] = ("Used features", len(self._model.reader._used_features))
+        # general_info.loc[3] = (
+        #     "Dropped features",
+        #     len(self._model.reader._dropped_features),
+        # )
+        # general_info.loc[4] = ("Number of positive cases", np.sum(data[self._target] == 1))
+        # general_info.loc[5] = ("Number of negative cases", np.sum(data[self._target] == 0))
+        return general_info.to_html(index=False, justify="left")
+
 
 _default_wb_report_params = {
     "automl_date_column": "",
