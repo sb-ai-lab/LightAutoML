@@ -1014,8 +1014,8 @@ class TabularUtilizedAutoML(TimeUtilization):
             n_feat_imps = len(feat_imps)
             if n_feat_imps == 0:
                 if not silent:
-                    logger.info2("No feature importances to show. " + 
-                                 "Please use another calculation method or increase the timeout to use more presets.")
+                    logger.info2("No feature importances to show. "
+                                 + "Please use another calculation method or increase the timeout to use more presets.")
                 return None
             return (
                 pd.concat(feat_imps).groupby("Feature")["Importance"].agg(sum).sort_values(ascending=False)

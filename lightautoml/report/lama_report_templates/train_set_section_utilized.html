@@ -1,0 +1,15 @@
+<li>
+    <h2 class="caret caret-down" id="section2">Data overview</h2>
+    <ul class="nested active">
+        <p>The Reader parameters differ among presets, therefore
+            each preset has its own types guessing and feature selection. 
+        </p>
+        <p>Below is the list of applied presets.
+            Description of training data is provided for each preset.
+        </p>
+
+        {% for section in data_sections %}
+            {{ section }}
+        {% endfor %}
+    </ul>
+</li>

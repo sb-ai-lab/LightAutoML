@@ -7,7 +7,7 @@
                 <p>The following model is loaded: <b>{{ model_name }}</b>.</p>
 
                 {% if model_presets is not none %}
-                    <p>Applied presets:</p>
+                    <p>Parameters of applied presets are described below:</p>
                     {% for preset in model_presets %}
                         {{ preset }}
                     {% endfor %}
@@ -15,10 +15,6 @@
                     <p>Use fit_predict() for training model. 
                         Description of applied presets will appear in this section.</p>
                 {% endif %}
-
-                <!-- <p>Model parameters are described below:</p>
-
-                {{ model_parameters }} -->
             </ul>
         </li>
         <li>

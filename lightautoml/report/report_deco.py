@@ -1142,6 +1142,9 @@ class ReportUtilized(ReportDeco):
         self._model_section_path = "model_section_utilized.html"
         self._preset_section_path = "preset_section.html"
         self._preset_sections = None
+        self._preset_data_sections_path = "utilized_data_subsections.html"
+        self._data_sections = None
+        self._train_set_section_path = "train_set_section_utilized.html"
 
     def __call__(self, model):
         self._model = model
@@ -1236,10 +1239,21 @@ class ReportUtilized(ReportDeco):
         self._generate_model_section()
 
         # generate train data section
-        self._train_data_overview = self._data_genenal_info(train_data)
-        # self._describe_roles(train_data)
-        # self._describe_dropped_features(train_data)
-        # self._generate_train_set_section()
+        self._data_sections = []
+        for model in self._model.outer_pipes:
+            preset_name = (model.ml_algos[0]
+                           .models[0][0]
+                           .config_path.split("/")[-1]
+                           .split(".")[0])
+            reader = model.ml_algos[0].models[0][0].reader
+            self._train_data_overview = self._data_genenal_info(train_data, reader)
+            self._describe_roles(train_data, reader)
+            self._describe_dropped_features(train_data, reader)
+            train_set_section = self._generate_data_sections(preset_name)
+            self._data_sections.append(train_set_section)
+
+        self._generate_train_set_section()
+
         # generate fit_predict section
         self._generate_inference_section()
         # generate feature importance and interpretation sections
@@ -1257,7 +1271,13 @@ class ReportUtilized(ReportDeco):
     @property
     def mapping(self):
         return self._model.outer_pipes[0].ml_algos[0].models[0][0].reader.class_mapping
-
+    
+    def _generate_train_set_section(self):
+        env = Environment(loader=FileSystemLoader(searchpath=self.template_path))
+        train_set_section = env.get_template(self._train_set_section_path).render(
+            data_sections = self._data_sections
+        )
+        self._sections["train_set"] = train_set_section
 
     def _generate_model_section(self):
         model_summary = None
@@ -1281,45 +1301,135 @@ class ReportUtilized(ReportDeco):
         self._preset_sections = []
         env = Environment(loader=FileSystemLoader(searchpath=self.template_path))
         for model in self._model.outer_pipes:
-            config_path = (model
+            preset_name = (model
                            .ml_algos[0]
                            .models[0][0]
                            .config_path.split("/")[-1]
                            .split(".")[0])
             model_parameters = json2html.convert(extract_params(model.ml_algos[0].models[0][0]))
             preset_section = env.get_template(self._preset_section_path).render(
-                title=config_path, model_parameters=model_parameters)
+                preset_name=preset_name, model_parameters=model_parameters)
             
             self._preset_sections.append(preset_section)
 
-    # def _generate_train_set_section(self):
-    #     env = Environment(loader=FileSystemLoader(searchpath=self.template_path))
-    #     train_set_section = env.get_template(self._train_set_section_path).render(
-    #         train_data_overview=self._train_data_overview,
-    #         numerical_features_table=self._numerical_features_table,
-    #         categorical_features_table=self._categorical_features_table,
-    #         datetime_features_table=self._datetime_features_table,
-    #         text_features_table=self._text_features_table,
-    #         target=self._target,
-    #         max_nan_rate=self._max_nan_rate,
-    #         max_constant_rate=self._max_constant_rate,
-    #         dropped_features_table=self._dropped_features_table,
-    #     )
-    #     self._sections["train_set"] = train_set_section
-
-
-    def _data_genenal_info(self, data):
+    def _data_genenal_info(self, data, reader):
         general_info = pd.DataFrame(columns=["Parameter", "Value"])
         general_info.loc[0] = ("Number of records", data.shape[0])
         general_info.loc[1] = ("Total number of features", data.shape[1])
-        # general_info.loc[2] = ("Used features", len(self._model.reader._used_features))
-        # general_info.loc[3] = (
-        #     "Dropped features",
-        #     len(self._model.reader._dropped_features),
-        # )
+        general_info.loc[2] = ("Used features", len(reader._used_features))
+        general_info.loc[3] = (
+            "Dropped features",
+            len(reader._dropped_features),
+        )
         # general_info.loc[4] = ("Number of positive cases", np.sum(data[self._target] == 1))
         # general_info.loc[5] = ("Number of negative cases", np.sum(data[self._target] == 0))
         return general_info.to_html(index=False, justify="left")
+
+    def _describe_roles(self, train_data, reader):
+
+        # detect feature roles
+        roles = reader._roles
+        numerical_features = [feat_name for feat_name in roles if roles[feat_name].name == "Numeric"]
+        categorical_features = [feat_name for feat_name in roles if roles[feat_name].name == "Category"]
+        datetime_features = [feat_name for feat_name in roles if roles[feat_name].name == "Datetime"]
+        text_features = [feat_name for feat_name in roles if roles[feat_name].name == "Text"]
+
+        # numerical roles
+        numerical_features_df = []
+        for feature_name in numerical_features:
+            item = {"Feature name": feature_name}
+            item["NaN ratio"] = "{:.4f}".format(train_data[feature_name].isna().sum() / train_data.shape[0])
+            values = train_data[feature_name].dropna().values
+            item["min"] = np.min(values)
+            item["quantile_25"] = np.quantile(values, 0.25)
+            item["average"] = np.mean(values)
+            item["median"] = np.median(values)
+            item["quantile_75"] = np.quantile(values, 0.75)
+            item["max"] = np.max(values)
+            numerical_features_df.append(item)
+        self._numerical_features_table = list2table(numerical_features_df, {"float_format": "{:.2f}".format})
+
+        # categorical roles
+        categorical_features_df = []
+        for feature_name in categorical_features:
+            item = {"Feature name": feature_name}
+            item["NaN ratio"] = "{:.4f}".format(train_data[feature_name].isna().sum() / train_data.shape[0])
+            value_counts = train_data[feature_name].value_counts(normalize=True)
+            values = value_counts.index.values
+            counts = value_counts.values
+            item["Number of unique values"] = len(counts)
+            item["Most frequent value"] = values[0]
+            item["Occurance of most frequent"] = "{:.1f}%".format(100 * counts[0])
+            item["Least frequent value"] = values[-1]
+            item["Occurance of least frequent"] = "{:.1f}%".format(100 * counts[-1])
+            categorical_features_df.append(item)
+        self._categorical_features_table = list2table(categorical_features_df)
+
+        # datetime roles
+        datetime_features_df = []
+        for feature_name in datetime_features:
+            item = {"Feature name": feature_name}
+            item["NaN ratio"] = "{:.4f}".format(train_data[feature_name].isna().sum() / train_data.shape[0])
+            values = train_data[feature_name].dropna().values
+            item["min"] = np.min(values)
+            item["max"] = np.max(values)
+            item["base_date"] = reader._roles[feature_name].base_date
+            datetime_features_df.append(item)
+        self._datetime_features_table = list2table(datetime_features_df)
+
+        # text roles
+        text_features_df = []
+        for feature_name in text_features:
+            item = {"Feature name": feature_name}
+            feature_length = train_data[feature_name].str.len()
+            item["Amount of empty records"] = (feature_length == 0).sum(axis=0)
+            item["Length of the shortest sentence"] = feature_length.min()
+            item["Length of the longest sentence"] = feature_length.max()
+            text_features_df.append(item)
+        self._text_features_table = list2table(text_features_df)
+
+    def _describe_dropped_features(self, train_data, reader):
+        self._max_nan_rate = reader.max_nan_rate
+        self._max_constant_rate = reader.max_constant_rate
+        self._features_dropped_list = reader._dropped_features
+        # dropped features table
+        dropped_list = [col for col in self._features_dropped_list if col != self._target]
+        if dropped_list == []:
+            self._dropped_features_table = None
+        else:
+            dropped_nan_ratio = train_data[dropped_list].isna().sum() / train_data.shape[0]
+            dropped_most_occured = pd.Series(np.nan, index=dropped_list)
+            for col in dropped_list:
+                col_most_occured = train_data[col].value_counts(normalize=True).values
+                if len(col_most_occured) > 0:
+                    dropped_most_occured[col] = col_most_occured[0]
+            dropped_features_table = pd.DataFrame(
+                {"nan_rate": dropped_nan_ratio, "constant_rate": dropped_most_occured}
+            )
+            self._dropped_features_table = (
+                dropped_features_table.reset_index()
+                .rename(columns={"index": "Название переменной"})
+                .to_html(index=False, justify="left")
+            )
+
+    def _generate_data_sections(self, preset_name):
+        env = Environment(loader=FileSystemLoader(searchpath=self.template_path))
+        train_set_section = env.get_template(self._preset_data_sections_path).render(
+            train_data_overview=self._train_data_overview,
+            numerical_features_table=self._numerical_features_table,
+            categorical_features_table=self._categorical_features_table,
+            datetime_features_table=self._datetime_features_table,
+            text_features_table=self._text_features_table,
+            target=self._target,
+            max_nan_rate=self._max_nan_rate,
+            max_constant_rate=self._max_constant_rate,
+            dropped_features_table=self._dropped_features_table,
+            preset_name=preset_name
+        )
+        return train_set_section
+
+
+
 
 
 _default_wb_report_params = {
