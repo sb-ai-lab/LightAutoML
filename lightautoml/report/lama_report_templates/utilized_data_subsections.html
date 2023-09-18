@@ -1,17 +1,17 @@
 <li>
-    <h3 class="caret caret-down" id="section2">{{ preset_name }}</h2>
+    <h4 class="caret caret-down" id="section2">{{ preset_name }}</h4>
     <ul class="nested active">
         <li>
-            <h4 class="caret" id="section2_1">Train data summary</h3>
+            <h5 class="caret" id="section2_1">Train data summary</h5>
             <ul class="nested">
                 {{ train_data_overview }}
             </ul>
         </li>
         <li>
-            <h4 class="caret" id="section2_2">Train data details</h3>
+            <h5 class="caret" id="section2_2">Train data details</h5>
             <ul class="nested">
                 <li>
-                    <h4 class="caret" id="section2_2_1">Numerical features</h4>
+                    <h5 class="caret" id="section2_2_1">Numerical features</h5>
                     <ul class="nested">
                         {% if numerical_features_table is not none %}
                         {{ numerical_features_table }}
@@ -21,7 +21,7 @@
                     </ul>
                 </li>
                 <li>
-                    <h4 class="caret" id="section2_2_2">Categorical features</h4>
+                    <h5 class="caret" id="section2_2_2">Categorical features</h5>
                     <ul class="nested">
                         {% if categorical_features_table is not none %}
                         {{ categorical_features_table }}
@@ -31,7 +31,7 @@
                     </ul>
                 </li>
                 <li>
-                    <h4 class="caret" id="section2_2_3">Datetime features</h4>
+                    <h5 class="caret" id="section2_2_3">Datetime features</h5>
                     <ul class="nested">
                         {% if datetime_features_table is not none %}
                         {{ datetime_features_table }}
@@ -41,7 +41,7 @@
                     </ul>
                 </li>
                 <li>
-                    <h4 class="caret" id="section2_2_4">Textual features</h4>
+                    <h5 class="caret" id="section2_2_4">Textual features</h5>
                     <ul class="nested">
                         {% if text_features_table is not none %}
                         {{ text_features_table }}
@@ -51,7 +51,7 @@
                     </ul>
                 </li>
                 <li>
-                    <h4 class="caret" id="section2_2_5">Dropped features</h4>
+                    <h5 class="caret" id="section2_2_5">Dropped features</h5>
                     <ul class="nested">
                         {% if dropped_features_table is not none %}
                         <p>Some features were excluded from the training set.</p>

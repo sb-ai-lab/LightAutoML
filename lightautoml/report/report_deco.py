@@ -1186,6 +1186,9 @@ class ReportUtilized(ReportDeco):
         self._data_sections = None
         self._train_set_section_path = "train_set_section_utilized.html"
 
+        self._roles_df = pd.DataFrame()
+        self._pred_formula = None
+
     def __call__(self, model):
         self._model = model
 
@@ -1283,6 +1286,9 @@ class ReportUtilized(ReportDeco):
 
         self._inference_content["title"] = "Results on validation sample"
 
+        # wrap text in <pre> tag to display \n, \t 
+        self._pred_formula = "<pre>" + self._model.create_model_str_desc() + "</pre>"
+        
         self._generate_model_section()
 
         # generate train data section
@@ -1290,14 +1296,16 @@ class ReportUtilized(ReportDeco):
         for model in self._model.outer_pipes:
             preset_name = (model.ml_algos[0]
                            .models[0][0]
-                           .config_path.split("/")[-1])
+                           .config_path
+                           .split("/")[-1].split(".")[0])
             reader = model.ml_algos[0].models[0][0].reader
             self._train_data_overview = self._data_genenal_info(train_data, reader)
-            self._describe_roles(train_data, reader)
-            self._describe_dropped_features(train_data, reader)
+            self._describe_roles(train_data, reader, preset_name)
+            self._describe_dropped_features(train_data, reader, preset_name)
             train_set_section = self._generate_data_sections(preset_name)
             self._data_sections.append(train_set_section)
 
+        self._roles_df = self._roles_df.T.to_html(justify="left")
         self._generate_train_set_section()
 
         # generate fit_predict section
@@ -1323,7 +1331,7 @@ class ReportUtilized(ReportDeco):
         # general_info.loc[5] = ("Number of negative cases", np.sum(data[self._target] == 0))
         return general_info.to_html(index=False, justify="left")
 
-    def _describe_roles(self, train_data, reader):
+    def _describe_roles(self, train_data, reader, preset_name):
 
         # detect feature roles
         roles = reader._roles
@@ -1331,6 +1339,12 @@ class ReportUtilized(ReportDeco):
         categorical_features = [feat_name for feat_name in roles if roles[feat_name].name == "Category"]
         datetime_features = [feat_name for feat_name in roles if roles[feat_name].name == "Datetime"]
         text_features = [feat_name for feat_name in roles if roles[feat_name].name == "Text"]
+
+        # filling data frame with roles description
+        self._roles_df.loc[preset_name, numerical_features] = ["N" for _ in range(len(numerical_features))]
+        self._roles_df.loc[preset_name, categorical_features] = ["C" for _ in range(len(categorical_features))]
+        self._roles_df.loc[preset_name, datetime_features] = ["D" for _ in range(len(datetime_features))]
+        self._roles_df.loc[preset_name, text_features] = ["T" for _ in range(len(text_features))]
 
         # numerical roles
         numerical_features_df = []
@@ -1386,10 +1400,16 @@ class ReportUtilized(ReportDeco):
             text_features_df.append(item)
         self._text_features_table = list2table(text_features_df)
 
-    def _describe_dropped_features(self, train_data, reader):
+    def _describe_dropped_features(self, train_data, reader, preset_name):
         self._max_nan_rate = reader.max_nan_rate
         self._max_constant_rate = reader.max_constant_rate
         self._features_dropped_list = reader._dropped_features
+
+        # filling data frame with roles description
+        self._roles_df.loc[preset_name, reader._dropped_features] = ["-" for _ in
+                                                                     range(len(reader._dropped_features))]
+
+
         # dropped features table
         dropped_list = [col for col in self._features_dropped_list if col != self._target]
         if dropped_list == []:
@@ -1424,13 +1444,14 @@ class ReportUtilized(ReportDeco):
             model_name=self._model_name,
             model_presets=self._preset_sections,
             model_summary=model_summary,
+            pred_formula=self._pred_formula
         )
         self._sections["model"] = model_section
 
     def _generate_train_set_section(self):
         env = Environment(loader=FileSystemLoader(searchpath=self.template_path))
         train_set_section = env.get_template(self._train_set_section_path).render(
-            data_sections=self._data_sections
+            data_sections=self._data_sections, roles_table=self._roles_df
         )
         self._sections["train_set"] = train_set_section
 

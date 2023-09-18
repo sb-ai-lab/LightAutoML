@@ -29,5 +29,15 @@
                 {% endif %}
             </ul>
         </li>
+        <li>
+            <h3 class="caret" id="section1_2">Prediction formula</h3>
+            <ul class="nested">
+                {% if pred_formula is not none %}
+                   {{ pred_formula }}
+                {% else %}
+                    <p>Use fit_predict() for training model.</p>
+                {% endif %}
+            </ul>
+        </li>
     </ul>
 </li>
