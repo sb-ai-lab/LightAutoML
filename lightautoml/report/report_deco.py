@@ -50,12 +50,14 @@ def extract_params(input_struct):
         if key.startswith(("_", "autonlp_params")):
             continue
         value = iterator[key]
-        if type(value) in [bool, int, float, str]:
+        if type(value) in [bool, int, float, str, np.bool_]:
             params[key] = value
         elif value is None:
             params[key] = None
         elif hasattr(value, "__dict__") or isinstance(value, dict):
             params[key] = extract_params(value)
+        elif isinstance(value, list) or isinstance(value, np.ndarray):
+            params[key] = ", ".join([i.__str__() for i in value])
         else:
             params[key] = str(type(value))
     return params
@@ -1144,6 +1146,7 @@ _config_name_desc_dict = {
     "conf_6_sel_type_1_tuning_full_no_int_lgbm.yml": "Preset 6: Cutoff feature selection, accurate parameters tuner, no GBM categories intersections"
 }
 
+
 class ReportUtilized(ReportDeco):
     """
     Special report wrapper for :class:`~lightautoml.automl.presets.tabular_presets.TabularUtilizedAutoML`.
@@ -1286,9 +1289,9 @@ class ReportUtilized(ReportDeco):
 
         self._inference_content["title"] = "Results on validation sample"
 
-        # wrap text in <pre> tag to display \n, \t 
+        # wrap text in <pre> tag to display \n, \t
         self._pred_formula = "<pre>" + self._model.create_model_str_desc() + "</pre>"
-        
+
         self._generate_model_section()
 
         # generate train data section
@@ -1408,7 +1411,6 @@ class ReportUtilized(ReportDeco):
         # filling data frame with roles description
         self._roles_df.loc[preset_name, reader._dropped_features] = ["-" for _ in
                                                                      range(len(reader._dropped_features))]
-
 
         # dropped features table
         dropped_list = [col for col in self._features_dropped_list if col != self._target]
