@@ -1135,7 +1135,28 @@ class ReportDeco:
 
 
 class ReportUtilized(ReportDeco):
+    """
+    Special report wrapper for :class:`~lightautoml.automl.presets.tabular_presets.TabularUtilizedAutoML`.
+    Usage case is the same as main
+    :class:`~lightautoml.report.report_deco.ReportDeco` class.
+    It generates same report as :class:`~lightautoml.report.report_deco.ReportDeco` ,
+    but with info about each used preset.
 
+    Difference:
+
+        - the model parameters section appears only after fit_predict is called.
+          report_automl.__call__ and report_automl.fit_predict are changed.
+        - report_automl._generate_model_section and report_automl._generate_train_set_section obtain
+          the list of subsections of Model and Data overview and concatenate in one section.
+        - report_automl._generate_preset_sections and report_automl._generate_data_sections
+          are the new functions that generate Model overview and Data overview section for each preset individually.
+        - report_automl._data_genenal_info, report_automl._describe_roles,
+          report_automl._describe_dropped_features get on input additional reader
+          parameter. Each preset has its own reader configuration, so train data
+          summary is generated for each reader individually.
+        - new html templates are intoduced.
+
+    """
     @property
     def task(self):
         return self._model.task.name
@@ -1172,7 +1193,14 @@ class ReportUtilized(ReportDeco):
         return self
 
     def fit_predict(self, *args, **kwargs):
-        """
+        """Wrapped :meth:`TimeUtilization.fit_predict` method.
+
+        Valid args, kwargs are the same as wrapped automl.
+
+        Args:
+            *args: Arguments.
+            **kwargs: Additional parameters.
+
         Returns:
             OOF predictions.
 
