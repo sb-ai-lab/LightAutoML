@@ -1134,6 +1134,16 @@ class ReportDeco:
                 print("Can't generate PDF report: check manual for installing pdf extras.")
 
 
+_config_name_desc_dict = {
+    "conf_0_sel_type_0.yml": "Preset 0: No feature selection",
+    "conf_1_sel_type_1.yml": "Preset 1: Cutoff feature selection",
+    "conf_2_select_mode_1_no_typ.yml": "Preset 2: Cutoff feature selection, no advanced typisation",
+    "conf_3_sel_type_1_no_inter_lgbm.yml": "Preset 3: Cutoff feature selection, no GBM categories intersections",
+    "conf_4_sel_type_0_no_int.yml": "Preset 4: No feature selection, no Linear categories intersections, no GBM categories intersections",
+    "conf_5_sel_type_1_tuning_full.yml": "Preset 5: Cutoff feature selection, accurate parameters tuner",
+    "conf_6_sel_type_1_tuning_full_no_int_lgbm.yml": "Preset 6: Cutoff feature selection, accurate parameters tuner, no GBM categories intersections"
+}
+
 class ReportUtilized(ReportDeco):
     """
     Special report wrapper for :class:`~lightautoml.automl.presets.tabular_presets.TabularUtilizedAutoML`.
@@ -1280,8 +1290,7 @@ class ReportUtilized(ReportDeco):
         for model in self._model.outer_pipes:
             preset_name = (model.ml_algos[0]
                            .models[0][0]
-                           .config_path.split("/")[-1]
-                           .split(".")[0])
+                           .config_path.split("/")[-1])
             reader = model.ml_algos[0].models[0][0].reader
             self._train_data_overview = self._data_genenal_info(train_data, reader)
             self._describe_roles(train_data, reader)
@@ -1433,8 +1442,11 @@ class ReportUtilized(ReportDeco):
             preset_name = (model
                            .ml_algos[0]
                            .models[0][0]
-                           .config_path.split("/")[-1]
-                           .split(".")[0])
+                           .config_path.split("/")[-1])
+            preset_desc = _config_name_desc_dict.get(preset_name, None)
+            if preset_desc is not None:
+                preset_name = "{0} ({1})".format(preset_desc, preset_name)
+
             model_parameters = json2html.convert(extract_params(model.ml_algos[0].models[0][0]))
             preset_section = env.get_template(self._preset_section_path).render(
                 preset_name=preset_name, model_parameters=model_parameters)
