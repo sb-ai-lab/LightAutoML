@@ -1304,7 +1304,7 @@ class ReportUtilized(ReportDeco):
             reader = model.ml_algos[0].models[0][0].reader
             self._train_data_overview = self._data_genenal_info(train_data, reader)
             self._describe_roles(train_data, reader, preset_name)
-            self._describe_dropped_features(train_data, reader, preset_name)
+            self._describe_dropped_features(train_data, reader, model.ml_algos[0].models[0][0], preset_name)
             train_set_section = self._generate_data_sections(preset_name)
             self._data_sections.append(train_set_section)
 
@@ -1403,15 +1403,18 @@ class ReportUtilized(ReportDeco):
             text_features_df.append(item)
         self._text_features_table = list2table(text_features_df)
 
-    def _describe_dropped_features(self, train_data, reader, preset_name):
+    def _describe_dropped_features(self, train_data, reader, model, preset_name):
         self._max_nan_rate = reader.max_nan_rate
         self._max_constant_rate = reader.max_constant_rate
         self._features_dropped_list = reader._dropped_features
 
+        selector_dropped_features = list(set(list(reader._roles.keys())) - set(model.collect_used_feats()))
+
         # filling data frame with roles description
         self._roles_df.loc[preset_name, reader._dropped_features] = ["-" for _ in
                                                                      range(len(reader._dropped_features))]
-
+        self._roles_df.loc[preset_name, selector_dropped_features] = ["-" for _ in
+                                                                      range(len(selector_dropped_features))]
         # dropped features table
         dropped_list = [col for col in self._features_dropped_list if col != self._target]
         if dropped_list == []:
