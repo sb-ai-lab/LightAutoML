@@ -1147,7 +1147,7 @@ _config_name_desc_dict = {
 }
 
 
-class ReportUtilized(ReportDeco):
+class ReportDecoUtilized(ReportDeco):
     """
     Special report wrapper for :class:`~lightautoml.automl.presets.tabular_presets.TabularUtilizedAutoML`.
     Usage case is the same as main
