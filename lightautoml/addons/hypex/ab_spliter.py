@@ -406,7 +406,14 @@ class ABTester:
             "b_mean": data.loc[split["control"], self.target_field].mean(),
         }
 
-        for e in experiments:
+        for e in experiments: # как считается эффект написано в эксперименте, перенести в calc_effect
+            """
+            сделать разницу средних в наследнике класса (новый класс создать)
+            на альфе в к7м ABTesting, IncraceExperiment
+            передается эксперимент, (надо встроить эксперимент сюда)
+            целевая картинка - передать данные и получить результат
+            сейчас надо вшить эксперимент из ноутбука сюда
+            """
             result[f"effect {e.label}"] = e.calc_effect(
                 data.loc[split["test"]], data.loc[split["control"]], self.target_field
             )
