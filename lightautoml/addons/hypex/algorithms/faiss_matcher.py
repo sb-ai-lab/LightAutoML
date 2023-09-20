@@ -491,8 +491,8 @@ class FaissMatcher:
         else:
             logger.info("Estimating quality of matching")
 
-        psi_columns = self.columns_match
-        psi_columns.remove(self.treatment)
+        psi_columns = set(self.columns_match)
+        psi_columns = list(psi_columns - set([self.treatment] + self.outcomes))
         psi_data, ks_data, smd_data = matching_quality(
             df_matched, self.treatment, sorted(self.features_quality), sorted(psi_columns), self.silent
         )

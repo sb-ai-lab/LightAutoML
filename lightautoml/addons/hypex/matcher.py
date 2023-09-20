@@ -222,7 +222,7 @@ class Matcher:
         """Converts categorical features into dummy variables."""
         info_col = self.info_col if self.info_col is not None else []
         group_col = [self.group_col] if self.group_col is not None else []
-        columns_to_drop = info_col + group_col + self.outcomes
+        columns_to_drop = info_col + group_col + self.outcomes + [self.treatment]
         if self.base_filtration:
             filtered_features = nan_filtration(self.input_data.drop(columns=columns_to_drop))
             self.dropped_features = [f for f in self.input_data.columns if f not in filtered_features + columns_to_drop]
