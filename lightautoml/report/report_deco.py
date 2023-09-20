@@ -1143,7 +1143,7 @@ _config_name_desc_dict = {
     "conf_3_sel_type_1_no_inter_lgbm.yml": "Preset 3: Cutoff feature selection, no GBM categories intersections",
     "conf_4_sel_type_0_no_int.yml": "Preset 4: No feature selection, no Linear categories intersections, no GBM categories intersections",
     "conf_5_sel_type_1_tuning_full.yml": "Preset 5: Cutoff feature selection, accurate parameters tuner",
-    "conf_6_sel_type_1_tuning_full_no_int_lgbm.yml": "Preset 6: Cutoff feature selection, accurate parameters tuner, no GBM categories intersections"
+    "conf_6_sel_type_1_tuning_full_no_int_lgbm.yml": "Preset 6: Cutoff feature selection, accurate parameters tuner, no GBM categories intersections",
 }
 
 
@@ -1170,6 +1170,7 @@ class ReportDecoUtilized(ReportDeco):
         - new html templates are intoduced.
 
     """
+
     @property
     def task(self):
         return self._model.task.name
@@ -1297,10 +1298,7 @@ class ReportDecoUtilized(ReportDeco):
         # generate train data section
         self._data_sections = []
         for model in self._model.outer_pipes:
-            preset_name = (model.ml_algos[0]
-                           .models[0][0]
-                           .config_path
-                           .split("/")[-1].split(".")[0])
+            preset_name = model.ml_algos[0].models[0][0].config_path.split("/")[-1].split(".")[0]
             reader = model.ml_algos[0].models[0][0].reader
             self._train_data_overview = self._data_genenal_info(train_data, reader)
             self._describe_roles(train_data, reader, preset_name)
@@ -1411,10 +1409,10 @@ class ReportDecoUtilized(ReportDeco):
         selector_dropped_features = list(set(list(reader._roles.keys())) - set(model.collect_used_feats()))
 
         # filling data frame with roles description
-        self._roles_df.loc[preset_name, reader._dropped_features] = ["-" for _ in
-                                                                     range(len(reader._dropped_features))]
-        self._roles_df.loc[preset_name, selector_dropped_features] = ["-" for _ in
-                                                                      range(len(selector_dropped_features))]
+        self._roles_df.loc[preset_name, reader._dropped_features] = ["-" for _ in range(len(reader._dropped_features))]
+        self._roles_df.loc[preset_name, selector_dropped_features] = [
+            "-" for _ in range(len(selector_dropped_features))
+        ]
         # dropped features table
         dropped_list = [col for col in self._features_dropped_list if col != self._target]
         if dropped_list == []:
@@ -1449,7 +1447,7 @@ class ReportDecoUtilized(ReportDeco):
             model_name=self._model_name,
             model_presets=self._preset_sections,
             model_summary=model_summary,
-            pred_formula=self._pred_formula
+            pred_formula=self._pred_formula,
         )
         self._sections["model"] = model_section
 
@@ -1465,17 +1463,15 @@ class ReportDecoUtilized(ReportDeco):
         self._preset_sections = []
         env = Environment(loader=FileSystemLoader(searchpath=self.template_path))
         for model in self._model.outer_pipes:
-            preset_name = (model
-                           .ml_algos[0]
-                           .models[0][0]
-                           .config_path.split("/")[-1])
+            preset_name = model.ml_algos[0].models[0][0].config_path.split("/")[-1]
             preset_desc = _config_name_desc_dict.get(preset_name, None)
             if preset_desc is not None:
                 preset_name = "{0} ({1})".format(preset_desc, preset_name)
 
             model_parameters = json2html.convert(extract_params(model.ml_algos[0].models[0][0]))
             preset_section = env.get_template(self._preset_section_path).render(
-                preset_name=preset_name, model_parameters=model_parameters)
+                preset_name=preset_name, model_parameters=model_parameters
+            )
 
             self._preset_sections.append(preset_section)
 
@@ -1491,7 +1487,7 @@ class ReportDecoUtilized(ReportDeco):
             max_nan_rate=self._max_nan_rate,
             max_constant_rate=self._max_constant_rate,
             dropped_features_table=self._dropped_features_table,
-            preset_name=preset_name
+            preset_name=preset_name,
         )
         return train_set_section
 
