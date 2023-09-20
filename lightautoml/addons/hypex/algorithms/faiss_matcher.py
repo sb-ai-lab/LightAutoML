@@ -1,23 +1,21 @@
 """Class that searches indexes."""
 import datetime as dt
+import functools
 import logging
-
+import time
+from typing import Any
 from typing import Dict
 from typing import Tuple
 from typing import Union
-from typing import Any
 
 import faiss
 import numpy as np
 import pandas as pd
-
 from scipy.stats import norm
 from tqdm.auto import tqdm
 
 from ..utils.metrics import check_repeats
 from ..utils.metrics import matching_quality
-import functools
-import time
 
 
 def timer(func):
@@ -68,19 +66,19 @@ class FaissMatcher:
     """A class used to match instances using Faiss library."""
 
     def __init__(
-        self,
-        df: pd.DataFrame,
-        outcomes: str,
-        treatment: str,
-        info_col: list,
-        features: [list, pd.DataFrame] = None,
-        group_col: str = None,
-        weights: dict = None,
-        sigma: float = 1.96,
-        validation: bool = None,
-        n_neighbors: int = 10,
-        silent: bool = True,
-        pbar: bool = True,
+            self,
+            df: pd.DataFrame,
+            outcomes: str,
+            treatment: str,
+            info_col: list,
+            features: [list, pd.DataFrame] = None,
+            group_col: str = None,
+            weights: dict = None,
+            sigma: float = 1.96,
+            validation: bool = None,
+            n_neighbors: int = 10,
+            silent: bool = True,
+            pbar: bool = True,
     ):
         """Construct all the necessary attributes.
 
@@ -307,7 +305,7 @@ class FaissMatcher:
             filtered = df.loc[df[self.treatment] == int(not is_treated)].values
             untreated_df = pd.DataFrame(
                 data=np.array([filtered[idx].mean(axis=0) for idx in index]), columns=df.columns
-            ) #добавить дату в данные и пофиксить баги с этим (тут ломалось)
+            )  # добавить дату в данные и пофиксить баги с этим (тут ломалось)
             if self.info_col is not None and len(self.info_col) != 1:
                 untreated_df["index"] = pd.Series(converted_index)
                 treated_df = df[df[self.treatment] == int(is_treated)].reset_index()
@@ -721,8 +719,8 @@ def _transform_to_np(treated: pd.DataFrame, untreated: pd.DataFrame, weights: di
 
     cov = conditional_covariance(xc, xt)
 
-    epsilon = 1e-6
-    cov = cov + epsilon * np.eye(cov.shape[0])
+    epsilon = 1e-5
+    cov[cov <= epsilon] = epsilon
 
     L = np.linalg.cholesky(cov)
     mahalanobis_transform = np.linalg.inv(L)
@@ -817,7 +815,7 @@ def calc_att_se(vars_c: np.ndarray, vars_t: np.ndarray, scaled_counts_c: np.ndar
 
 
 def calc_ate_se(
-    vars_c: np.ndarray, vars_t: np.ndarray, scaled_counts_c: np.ndarray, scaled_counts_t: np.ndarray
+        vars_c: np.ndarray, vars_t: np.ndarray, scaled_counts_c: np.ndarray, scaled_counts_t: np.ndarray
 ) -> float:
     """Calculates Average Treatment Effect for the control group (ATC) standard error.
 
