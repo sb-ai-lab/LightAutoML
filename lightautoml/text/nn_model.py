@@ -228,8 +228,10 @@ class TorchUniversalModel(nn.Module):
             output = torch.cat(outputs, dim=1)
         else:
             output = outputs[0]
-
-        logits = self.torch_model(output)
+        if 'batch_size' in inp.keys():
+            logits = self.torch_model(output,inp['batch_size'])
+        else:
+            logits = self.torch_model(output)
         return logits
 
     def get_preds_from_logits(self, logits: torch.Tensor) -> torch.Tensor:

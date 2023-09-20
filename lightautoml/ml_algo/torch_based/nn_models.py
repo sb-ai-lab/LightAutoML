@@ -8,6 +8,8 @@ from typing import Union
 import numpy as np
 import torch
 import torch.nn as nn
+
+from .saint.saint import ColTransformer, RowColTransformer
 from ..tabnet.utils import TabNetEncoder, _initialize_non_glu
 from .autoint.autoint_utils import AttnInteractionBlock, LeakyGate
 from .autoint.ghost_norm import GhostBatchNorm
@@ -1187,3 +1189,91 @@ class TabNet(torch.nn.Module):
     def forward_masks(self, x):
         """Magic forward-pass of encoder that returns masks."""
         return self.encoder.forward_masks(x)
+
+
+class SAINT(nn.Module):
+    def __init__(
+        self,
+        n_in: int,
+        n_out: int = 1,
+        embedding_size: int = 10,
+        depth: int =2,
+        heads: int = 8,
+        dim_head = 16,
+        mlp_hidden_mults = (4, 2),
+        ffn_mult = 4,
+        attn_dropout = 0.,
+        ff_dropout = 0.,
+        mlp_dropout =0.,
+        attentiontype = 'colrow',
+        device: torch.device = torch.device("cuda:0"),
+        **kwargs
+        ):
+        super().__init__()
+        self.device = device
+        self.cls_token = nn.Embedding(2, embedding_size)
+        self.attentiontype = attentiontype
+        if attentiontype == 'col':
+            self.transformer = ColTransformer(
+                dim = embedding_size,
+                depth = depth,
+                heads = heads,
+                dim_head = dim_head,
+                attn_dropout = attn_dropout,
+                ff_dropout = ff_dropout
+            )
+        elif attentiontype in ['row','colrow'] :
+            self.transformer = RowColTransformer(
+                dim = embedding_size,
+                nfeats= n_in+1, #num featurs
+                depth = depth,
+                heads = heads,
+                dim_head = dim_head,
+                ffn_mult = ffn_mult,
+                attn_dropout = attn_dropout,
+                ff_dropout = ff_dropout,
+                style = attentiontype
+            )
+        
+        l = (n_in+1) // 8 #input_size = (dim * self.num_categories)  + (dim * num_continuous)
+        hidden_dimensions = list(map(lambda t: l * t, mlp_hidden_mults))
+
+        self.mlp = MLP(n_in = embedding_size,
+                       n_out = n_out,
+                       hidden_size = hidden_dimensions,
+                       drop_rate=mlp_dropout,
+                       use_bn = False,
+                       dropout_first= False)
+        # self.embeds = nn.Embedding(self.total_tokens, self.dim) #.to(device)
+
+
+
+    def forward(self, embedded: torch.Tensor, bs: int) -> torch.Tensor:
+        """Transform the input tensor.
+
+        Args:
+            embedded : torch.Tensor
+                embedded fields
+
+        Returns:
+            torch.Tensor
+
+        """
+        mask = torch.zeros((len(embedded),len(embedded)), device=self.device, dtype=torch.bool)
+        mask[torch.arange(bs), torch.arange(bs)] = 1
+        mask[:bs, bs:] = 1
+        mask[bs:, bs:] = 1
+
+        cls_token = torch.unsqueeze(
+            self.cls_token(torch.ones(embedded.shape[0], dtype=torch.int).to(self.device)), dim=1
+        )
+        x = torch.cat((cls_token, embedded), dim=1)
+        x = self.transformer(x, mask_samples=mask)
+
+        # NOTE modified to simple X -> Y supervised model
+
+        # cat_outs = self.mlp1(x[:,:self.num_categories,:])
+        # con_outs = self.mlp2(x[:,self.num_categories:,:])
+        # return cat_outs, con_outs
+
+        return self.mlp(x[:,0,:])

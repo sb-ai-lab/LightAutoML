@@ -1,6 +1,7 @@
 """Neural net for tabular datasets."""
 
 
+from itertools import cycle
 from lightautoml.utils.installation import __validate_extra_deps
 
 
@@ -73,6 +74,7 @@ from ..text.utils import seed_everything
 from .torch_based.nn_models import MLP, TabNet
 from .torch_based.nn_models import NODE
 from .torch_based.nn_models import SNN
+from .torch_based.nn_models import SAINT
 from .torch_based.nn_models import DenseLightModel
 from .torch_based.nn_models import DenseModel
 from .torch_based.nn_models import LinearLayer
@@ -83,6 +85,8 @@ from .torch_based.nn_models import FTTransformer
 
 
 logger = logging.getLogger(__name__)
+
+models_dependent_on_training_data = ["saint"]
 
 model_by_name = {
     "denselight": DenseLightModel,
@@ -96,7 +100,9 @@ model_by_name = {
     "autoint": AutoInt,
     "tabnet": TabNet,
     "fttransformer": FTTransformer,
+    "saint":SAINT,
 }
+
 input_type_by_name = {
     "denselight": "flat",
     "dense": "flat",
@@ -109,6 +115,7 @@ input_type_by_name = {
     "autoint": "seq",
     "tabnet": "flat",
     "fttransformer": "seq",
+    "saint": "seq",
 }
 cat_embedder_by_name_flat = {
     "cat": CatEmbedder,
@@ -255,7 +262,7 @@ class TorchModel(TabularMLAlgo):
         **_default_models_params,
     }
 
-    def _infer_params(self):
+    def _infer_params(self, train = None):
         if self.params["path_to_save"] is not None:
             self.path_to_save = os.path.relpath(self.params["path_to_save"])
             if not os.path.exists(self.path_to_save):
@@ -304,6 +311,22 @@ class TorchModel(TabularMLAlgo):
                 params[p_name] = getattr(module, params[p_name])
 
         # params = self._select_params(params)
+        if params['model'] in models_dependent_on_training_data:
+            self.use_sampler = True
+            if train is not None:
+                self.train = train
+        else:
+            self.use_sampler = False
+
+        self.train_params = {
+            "dataset": params["dataset"],
+            "bs": params["bs"],
+            "num_workers": params["num_workers"],
+            "pin_memory": params["pin_memory"],
+            "tokenizer": AutoTokenizer.from_pretrained(params["bert_name"], use_fast=False) if is_text else None,
+            "max_length": params["max_length"],
+        }
+
         model = Trainer(
             net=TorchUniversalModel if not params["model_with_emb"] else params["model"],
             net_params={
@@ -349,17 +372,10 @@ class TorchModel(TabularMLAlgo):
                 "torch_model": torch_model,
                 **params,
             },
-            **{"apex": False, **params},
+            
+            **{"apex": False,
+                **params},
         )
-
-        self.train_params = {
-            "dataset": params["dataset"],
-            "bs": params["bs"],
-            "num_workers": params["num_workers"],
-            "pin_memory": params["pin_memory"],
-            "tokenizer": AutoTokenizer.from_pretrained(params["bert_name"], use_fast=False) if is_text else None,
-            "max_length": params["max_length"],
-        }
 
         return model
 
@@ -553,8 +569,8 @@ class TorchModel(TabularMLAlgo):
             self.params = self.init_params_on_input(train_valid_iterator)
         self.params = self._init_params_on_input(train_valid_iterator)
         return super().fit_predict(train_valid_iterator)
-
-    def fit_predict_single_fold(self, train, valid):
+    
+    def fit_predict_single_fold(self, train: TabularDataset, valid: TabularDataset):
         """Implements training and prediction on single fold.
 
         Args:
@@ -570,14 +586,17 @@ class TorchModel(TabularMLAlgo):
         target = train.target
         self.params["bias"] = self.get_mean_target(target, task_name) if self.params["init_bias"] else None
 
-        model = self._infer_params()
+        model = self._infer_params(train)
 
         model_path = (
             os.path.join(self.path_to_save, f"{uuid.uuid4()}.pickle") if self.path_to_save is not None else None
         )
         # init datasets
-        dataloaders = self.get_dataloaders_from_dicts({"train": train.to_pandas(), "val": valid.to_pandas()})
-
+        if self.use_sampler:
+            dataloaders = self.get_dataloaders_from_dicts({"train": train.to_pandas(), "val": valid.to_pandas(),"sampler": train.to_pandas()})
+        else:
+            dataloaders = self.get_dataloaders_from_dicts({"train": train.to_pandas(), "val": valid.to_pandas()})
+            dataloaders['sampler'] = None
         val_pred = model.fit(dataloaders)
 
         if model_path is None:
@@ -603,12 +622,17 @@ class TorchModel(TabularMLAlgo):
 
         """
         seed_everything(self.params["random_state"], self.params["deterministic"])
-        dataloaders = self.get_dataloaders_from_dicts({"test": dataset.to_pandas()})
+        if self.use_sampler:
+            dataloaders = self.get_dataloaders_from_dicts({"test": dataset.to_pandas(),"sampler": self.train.to_pandas()})
+        else:
+            dataloaders = self.get_dataloaders_from_dicts({"test": dataset.to_pandas()})
+            dataloaders['sampler'] = None
+
 
         if isinstance(model, (str, dict)):
             model = self._infer_params().load_state(model)
 
-        pred = model.predict(dataloaders["test"], "test")
+        pred = model.predict(dataloaders, "test")
 
         model.clean()
         del dataloaders, model
