@@ -15,8 +15,7 @@ RANDOM_STATE = 52
 
 
 def merge_groups(
-        test_group: Union[Iterable[pd.DataFrame], pd.DataFrame],
-        control_group: Union[Iterable[pd.DataFrame], pd.DataFrame],
+    test_group: Union[Iterable[pd.DataFrame], pd.DataFrame], control_group: Union[Iterable[pd.DataFrame], pd.DataFrame],
 ):
     """Merges test and control groups in one DataFrame and creates column "group".
 
@@ -44,13 +43,13 @@ def merge_groups(
 
 class AATest:
     def __init__(
-            self,
-            data: pd.DataFrame,
-            target_fields: Union[Iterable[str], str],
-            info_cols: Union[Iterable[str], str] = None,
-            mode: str = "simple",
-            by_group: Union[str, Iterable[str]] = None,
-            quant_field: str = None
+        self,
+        data: pd.DataFrame,
+        target_fields: Union[Iterable[str], str],
+        info_cols: Union[Iterable[str], str] = None,
+        group_cols: Union[str, Iterable[str]] = None,
+        quant_field: str = None,
+        mode: str = "simple"
     ):
         """
 
@@ -61,9 +60,11 @@ class AATest:
                 Field with target value
             mode:
                 Regime to divide sample on A and B samples:
-                    'simple' - divides by groups, placing equal amount of records (clients | groups of clients) in samples
-                    'balanced' - divides by size of samples, placing full groups depending on the size of group to balance size of A and B. Can not be applied without groups
-            by_group:
+                    'simple' - divides by groups, placing equal amount
+                    of records (clients | groups of clients) in samples
+                    'balanced' - divides by size of samples, placing full groups depending on the size of group
+                    to balance size of A and B. Can not be applied without groups
+            group_cols:
                 Name of field(s) for division by groups
             quant_field:
                 Name of field by which division should take in account common features besides groups
@@ -72,9 +73,9 @@ class AATest:
         self.init_data = data
         self.target_fields = [target_fields] if isinstance(target_fields, str) else target_fields
         self.info_cols = [info_cols] if isinstance(info_cols, str) else info_cols
-        self.mode = mode
-        self.by_group = by_group
+        self.group_cols = [group_cols] if isinstance(group_cols, str) else group_cols
         self.quant_field = quant_field
+        self.mode = mode
         self._preprocessing_data()
 
     def _preprocessing_data(self):
@@ -87,18 +88,34 @@ class AATest:
 
         # categorical to dummies
         init_cols = data.columns
-        data = pd.get_dummies(data, dummy_na=True)
+
+        dont_binarize_cols = (  # collects names of columns that shouldn't be binarized
+            self.group_cols+[self.quant_field]
+            if (self.group_cols is not None) and (self.quant_field is not None)
+            else self.group_cols
+            if self.group_cols is not None
+            else [self.quant_field]
+            if self.quant_field is not None
+            else None
+        )
+        # if self.group_cols is not None:
+        if dont_binarize_cols is not None:
+            data = pd.get_dummies(data.drop(columns=dont_binarize_cols), dummy_na=True)
+            data = data.merge(self.data[dont_binarize_cols], left_index=True, right_index=True)
+        else:
+            data = pd.get_dummies(data, dummy_na=True)
 
         # fix if dummy_na is const=0
-        dummies_cols = [col for col in data.columns if col not in init_cols]  # choose only dummy columns
-        const_columns = [col for col in dummies_cols if data[col].sum() == 0]  # choose constant_columns
+        dummies_cols = set(data.columns) - set(init_cols)
+        const_columns = [col for col in dummies_cols if data[col].nunique() <= 1]  # choose constant_columns
         cols_to_drop = const_columns + (self.info_cols if self.info_cols is not None else [])
         self.data = data.drop(columns=cols_to_drop)
 
     def __simple_mode(self, data: pd.DataFrame, random_state: int = RANDOM_STATE):
-        """Separates data on A and B samples.
+        """Separates data on A and B samples within simple mode.
 
-        Separation performed to divide groups of equal sizes - equal amount of records or equal amount of groups in each sample.
+        Separation performed to divide groups of equal sizes - equal amount of records
+        or equal amount of groups in each sample.
 
         Args:
             data: Input data
@@ -135,13 +152,12 @@ class AATest:
         data = self.data
         result = {"test_indexes": [], "control_indexes": []}
 
-        if self.by_group:
-            groups = data.groupby()
+        if self.group_cols:
+            groups = data.groupby(self.group_cols)
             for _, gd in groups:
                 if self.mode not in ("balanced", "simple"):
                     warnings.warn(
-                        f"The mode '{self.mode}' is not supported for group division. "
-                        f"Implemented mode 'simple'."
+                        f"The mode '{self.mode}' is not supported for group division. Implemented mode 'simple'."
                     )
                     self.mode = "simple"
 
@@ -165,8 +181,7 @@ class AATest:
         else:
             if self.mode != "simple":
                 warnings.warn(
-                    f"The mode '{self.mode}' is not supported for regular division. "
-                    f"Implemented mode 'simple'."
+                    f"The mode '{self.mode}' is not supported for regular division. " f"Implemented mode 'simple'."
                 )
 
             t_result = self.__simple_mode(data, random_state)
@@ -188,17 +203,13 @@ class AATest:
             data: separated init data with column "group"
         """
         # prep data to show user (add info_cols and decode binary variables)
-        test = self.init_data.loc[spit_indexes['test_indexes']]
-        control = self.init_data.loc[spit_indexes['control_indexes']]
+        test = self.init_data.loc[spit_indexes["test_indexes"]]
+        control = self.init_data.loc[spit_indexes["control_indexes"]]
         data = merge_groups(test, control)
 
         return data
 
-    def sampling_metrics(
-            self,
-            alpha: float = 0.05,
-            random_state: int = RANDOM_STATE
-    ):
+    def sampling_metrics(self, alpha: float = 0.05, random_state: int = RANDOM_STATE):
         """
 
         Args:
@@ -215,10 +226,10 @@ class AATest:
         t_result = {"random_state": random_state}
 
         split = self.split_ab(random_state)
-        a = self.data.loc[split['test_indexes']]
-        b = self.data.loc[split['control_indexes']]
+        a = self.data.loc[split["test_indexes"]]
+        b = self.data.loc[split["control_indexes"]]
 
-        # prep data to show user (add info_cols and decode binary variables)
+        # prep data to show user (merge indexes and init data)
         data_from_sampling_dict[random_state] = self._postprep_data(split)
 
         for tf in self.target_fields:
@@ -235,21 +246,18 @@ class AATest:
             scores.append((t_result[f"{tf} t_test p_value"] + t_result[f"{tf} ks_test p_value"]) / 2)
 
         t_result["mean_tests_score"] = np.mean(scores)
-        result = {
-            'metrics': t_result,
-            'data_from_experiment': data_from_sampling_dict
-        }
+        result = {"metrics": t_result, "data_from_experiment": data_from_sampling_dict}
 
         return result
 
     def search_dist_uniform_sampling(
-            self,
-            alpha: float = 0.05,
-            iterations: int = 10,
-            file_name: Union[Path, str] = None,
-            write_mode: str = "full",
-            write_step: int = None,
-            pbar: bool = True
+        self,
+        alpha: float = 0.05,
+        iterations: int = 10,
+        file_name: Union[Path, str] = None,
+        write_mode: str = "full",
+        write_step: int = None,
+        pbar: bool = True,
     ) -> Optional[tuple[pd.DataFrame, dict[Any, dict]]]:
         """Chooses random_state for finding homogeneous distribution.
 
@@ -280,26 +288,24 @@ class AATest:
         data_from_sampling = {}
 
         if write_mode not in ("full", "all", "any"):
-            warnings.warn(
-                f"Write mode '{write_mode}' is not supported. Mode 'full' will be used"
-            )
+            warnings.warn(f"Write mode '{write_mode}' is not supported. Mode 'full' will be used")
             write_mode = "full"
 
         for i, rs in tqdm(enumerate(random_states), total=len(random_states), display=pbar):
             res = self.sampling_metrics(alpha=alpha, random_state=rs)
-            data_from_sampling.update(res['data_from_experiment'])
+            data_from_sampling.update(res["data_from_experiment"])
 
             # write to file
             passed = []
             for tf in self.target_fields:
-                passed += [res['metrics'][f"{tf} t_test passed"], res['metrics'][f"{tf} ks_test passed"]]
+                passed += [res["metrics"][f"{tf} t_test passed"], res["metrics"][f"{tf} ks_test passed"]]
 
             if write_mode == "all" and all(passed):
-                results.append(res['metrics'])
+                results.append(res["metrics"])
             if write_mode == "any" and any(passed):
-                results.append(res['metrics'])
+                results.append(res["metrics"])
             if write_mode == "full":
-                results.append(res['metrics'])
+                results.append(res["metrics"])
 
             if file_name and write_step:
                 if i == write_step:
@@ -316,6 +322,7 @@ class AATest:
             return results, data_from_sampling
         else:
             return pd.DataFrame(results), data_from_sampling
+
 
 # class ABTest:
 #     """Calculates metrics - MDE, ATE and p_value."""

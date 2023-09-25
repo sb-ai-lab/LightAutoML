@@ -70,7 +70,8 @@ def create_test_data(
         num_users: int = 10000,
         na_step: Union[Iterable[int], int] = None,
         nan_cols: Union[Iterable[str], str] = None,
-        file_name: str = None
+        file_name: str = None,
+        rs = None
 ):
     """Creates data for tutorial.
 
@@ -87,6 +88,8 @@ def create_test_data(
     Returns:
         data: dataframe with
     """
+    if rs is not None:
+        np.random.seed(rs)
     # Simulating dataset with known effect size
     num_months = 12
 
