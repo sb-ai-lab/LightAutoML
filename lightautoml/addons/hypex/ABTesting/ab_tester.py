@@ -291,7 +291,7 @@ class AATest:
             warnings.warn(f"Write mode '{write_mode}' is not supported. Mode 'full' will be used")
             write_mode = "full"
 
-        for i, rs in tqdm(enumerate(random_states), total=len(random_states), display=pbar):
+        for i, rs in tqdm(enumerate(random_states), total=len(random_states)):#, display=pbar):
             res = self.sampling_metrics(alpha=alpha, random_state=rs)
             data_from_sampling.update(res["data_from_experiment"])
 

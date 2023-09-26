@@ -8,7 +8,11 @@ def test_aa_simple():
     info_col = "user_id"
     iterations = 20
 
-    model = AATest(data=data, target_fields=["pre_spends", "post_spends"], info_col=info_col)
+    model = AATest(
+        data=data,
+        target_fields=["pre_spends", "post_spends"],
+        info_cols=info_col
+    )
     res, datas_dict = model.search_dist_uniform_sampling(iterations=iterations)
 
     assert isinstance(res, pd.DataFrame), "Metrics are not dataframes"
@@ -30,7 +34,7 @@ def test_aa_group():
     model = AATest(
         data=data,
         target_fields=["pre_spends", "post_spends"],
-        info_col=info_col,
+        info_cols=info_col,
         group_cols=group_cols
     )
     res, datas_dict = model.search_dist_uniform_sampling(iterations=iterations)
@@ -42,7 +46,8 @@ def test_aa_group():
     assert isinstance(datas_dict, dict), "Result is not dict"
     assert len(datas_dict) == iterations, "# of dataframes is not equal # of iterations"
     assert all(data.columns) == all(datas_dict[0].drop(columns=['group']).columns), "Columns in the result are not " \
-                                                                                    "the same as columns in initial data"
+                                                                                    "the same as columns in initial " \
+                                                                                    "data "
 
 
 def test_aa_quantfields():
@@ -55,7 +60,7 @@ def test_aa_quantfields():
     model = AATest(
         data=data,
         target_fields=["pre_spends", "post_spends"],
-        info_col=info_col,
+        info_cols=info_col,
         group_cols=group_cols,
         quant_field=quant_field
     )
