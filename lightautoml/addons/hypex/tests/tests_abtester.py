@@ -22,7 +22,8 @@ def test_aa_simple():
     assert isinstance(datas_dict, dict), "Result is not dict"
     assert len(datas_dict) == iterations, "# of dataframes is not equal # of iterations"
     assert all(data.columns) == all(datas_dict[0].drop(columns=['group']).columns), "Columns in the result are not " \
-                                                                                    "the same as columns in initial data"
+                                                                                    "the same as columns in initial " \
+                                                                                    "data "
 
 
 def test_aa_group():
@@ -73,4 +74,5 @@ def test_aa_quantfields():
     assert isinstance(datas_dict, dict), "Result is not dict"
     assert len(datas_dict) == iterations, "# of dataframes is not equal # of iterations"
     assert all(data.columns) == all(datas_dict[0].drop(columns=['group']).columns), "Columns in the result are not " \
-                                                                                    "the same as columns in initial data"
+                                                                                    "the same as columns in initial " \
+                                                                                    "data "
