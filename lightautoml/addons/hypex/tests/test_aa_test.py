@@ -76,3 +76,4 @@ def test_aa_quantfields():
     assert all(data.columns) == all(datas_dict[0].drop(columns=['group']).columns), "Columns in the result are not " \
                                                                                     "the same as columns in initial " \
                                                                                     "data "
+

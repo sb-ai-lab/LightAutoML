@@ -9,7 +9,7 @@ from tqdm.auto import tqdm
 import pandas as pd
 import numpy as np
 import scipy.stats as stats
-from scipy.stats import norm, ttest_ind, ks_2samp
+from scipy.stats import norm, ttest_ind, ks_2samp, mannwhitneyu
 
 RANDOM_STATE = 52
 
@@ -324,116 +324,106 @@ class AATest:
             return pd.DataFrame(results), data_from_sampling
 
 
-# class ABTest:
-#     """Calculates metrics - MDE, ATE and p_value."""
-#
-#     DEFAULT_FORMAT_MAPPING = {
-#         "rs": "random state",
-#         "mde": "MDE",
-#         "sample_size": "Size of test sample",
-#         "a_len": "Size of target group",
-#         "b_len": "Size of control group",
-#         "a_mean": "Mean of target group",
-#         "b_mean": "Mean of control group",
-#     }
-#
-#     def __init__(
-#         self, target_field: str, reliability: float = 0.95, power: float = 0.8, mde: float = None,
-#     ):
-#         """
-#         Args:
-#             splitter:
-#                 Class of divider on A and B groups
-#             target_field:
-#                 Field with target values
-#             reliability:
-#                 Level of statistical reliability, usually equals 0.95
-#             power:
-#                 Statistical criterion power, usually equals 0.8
-#             mde:
-#                 Calculated mde (minimal detected effect),
-#                 if none - calculates inside
-#         """
-#         self.test = test_data
-#         self.control = control_data
-#         self.target_field = target_field
-#         self.reliability = reliability
-#         self.power = power
-#         self.mde = mde
-#
-#     def sampling_test(
-#         self, data: pd.DataFrame, experiments = None, random_state: int = None,
-#     ) -> Dict:
-#         """Test on specific sample.
-#
-#         Args:
-#             data: Input data
-#             experiments: Experiment or set of experiments applied on sample
-#             random_state: Seed of random
-#
-#         Returns:
-#             result: Test results
-#         """
-#
-#         # split = self.splitter.split_ab(data, random_state)
-#         # if isinstance(experiments, ABExperiment):
-#         #     experiments = [experiments]
-#
-#         mde = self.mde or calc_mde(
-#             data.loc[self.test, self.target_field],
-#             data.loc[self.control, self.target_field],
-#             reliability=self.reliability,
-#             power=self.power,
-#         )
-#         sample_size = calc_sample_size(
-#             data.loc[self.test, self.target_field],
-#             data.loc[self.control, self.target_field],
-#             mde,
-#             significance=(1 - self.reliability),
-#             power=self.power,
-#         )
-#
-#         result = {
-#             "rs": random_state,
-#             "mde": mde,
-#             "sample_size": sample_size,
-#             "a_len": len(self.test),
-#             "b_len": len(self.control),
-#             "a_mean": data.loc[self.test, self.target_field].mean(),
-#             "b_mean": data.loc[self.control, self.target_field].mean(),
-#         }
-#         #  включить класс из ноута
-#         for e in experiments: #: как считается эффект написано в эксперименте, перенести в calc_effect
-#             """
-#             сделать разницу средних в наследнике класса (новый класс создать)
-#             на альфе в к7м ABTesting, IncraceExperiment
-#             передается эксперимент, (надо встроить эксперимент сюда)
-#             целевая картинка - передать данные и получить результат
-#             сейчас надо вшить эксперимент из ноутбука сюда
-#             """
-#             result[f"effect {e.label}"] = e.calc_effect(
-#                 data.loc[split["test"]], data.loc[split["control"]], self.target_field
-#             )
-#
-#         return result
-#
-#     def format_stat(
-#         self, stat: pd.DataFrame, experiments = None, rename_map: Dict = None,
-#     ):
-#         """Corrects format of output statistics.
-#
-#         Args:
-#             stat: Experiment statistics
-#             experiments: Set of experiments applied on sample
-#             rename_map: Mapping of renaming fields
-#
-#         Returns:
-#             result: Formatted values
-#         """
-#         rename_map = rename_map or self.DEFAULT_FORMAT_MAPPING
-#
-#         rename_map.update({f"effect {e.label}": f"Effect {e.label}" for e in experiments})
-#
-#         result = stat.rename(columns=rename_map)
-#         result = result.applymap(lambda x: f"{x:,.2f}")
-#         return result
+class ABTest:
+    def __init__(
+        self,
+        calc_difference_method: str = "all",
+        calc_p_value_method: str = "all",
+    ):
+        """
+        Initializes the ABTest class.
+        Parameters:
+            calc_difference_method (str, optional): The method used to calculate the difference. Defaults to 'all'.
+            calc_p_value_method (str, optional): The method used to calculate the p-value. Defaults to 'all'.
+        """
+        self.calc_difference_method = calc_difference_method
+        self.calc_p_value_method = calc_p_value_method
+
+    def split_ab(self, data: pd.DataFrame, group_field: str) -> Dict[str, pd.DataFrame]:
+        """
+        Splits a pandas DataFrame into two separate dataframes based on a specified group field.
+
+        Parameters:
+            data (pd.DataFrame): The input dataframe to be split.
+            group_field (str): The column name representing the group field.
+
+        Returns:
+            dict: A dictionary containing two dataframes, 'test' and 'control', where 'test' contains rows where the group field is 'test', and 'control' contains rows where the group field is 'control'.
+        """
+        return {
+            "test": data[data[group_field] == "test"],
+            "control": data[data[group_field] == "control"],
+        }
+
+    def calc_difference(
+        self, splitted_data: Dict[str, pd.DataFrame], target_field: str
+    ) -> Dict[str, float]:
+        """
+        Calculates the difference between the target field values of the 'test' and 'control' dataframes.
+
+        Parameters:
+            splitted_data (Dict[str, pd.DataFrame]): A dictionary containing the 'test' and 'control' dataframes.
+            target_field (str): The name of the target field.
+
+        Returns:
+            result (Dict[str, float]): A dictionary containing the difference between the target field values of the 'test' and 'control' dataframes.
+        """
+        result = {}
+        if self.calc_difference_method in {"all", "ate"}:
+            result["ate"] = (
+                splitted_data["test"][target_field]
+                - splitted_data["control"][target_field]
+            ).mean()
+        return result
+
+    def calc_p_value(
+        self, splitted_data: Dict[str, pd.DataFrame], target_field: str
+    ) -> Dict[str, float]:
+        """
+        Calculates the p-value for a given data set.
+
+        Args:
+            splitted_data (Dict[str, pd.DataFrame]): A dictionary containing the split data, where the keys are 'test' and 'control' and the values are pandas DataFrames.
+            target_field (str): The name of the target field.
+        Returns:
+            Dict[str, float]: A dictionary containing the calculated p-values, where the keys are 't_test' and 'mann_whitney' and the values are the corresponding p-values.
+        """
+        result = {}
+        if self.calc_p_value_method in {"all", "t_test"}:
+            result["t_test"] = ttest_ind(
+                splitted_data["test"][target_field],
+                splitted_data["control"][target_field],
+            ).pvalue
+        if self.calc_p_value_method in {"all", "mann_whitney"}:
+            result["mann_whitney"] = mannwhitneyu(
+                splitted_data["test"][target_field],
+                splitted_data["control"][target_field],
+            ).pvalue
+        return result
+
+    def execute(
+        self, data: pd.DataFrame, target_field: str, group_field: str
+    ) -> Dict[str, Dict[str, float]]:
+        """
+        Executes the function by splitting the input data based on the group field and calculating the size, difference, and p-value.
+
+        Parameters:
+            data (pd.DataFrame): The input data as a pandas DataFrame.
+            target_field (str): The target field to be analyzed.
+            group_field (str): The field used to split the data into groups.
+
+        Returns:
+            Dict[str, Dict[str, float]]: A dictionary containing the size, difference, and p-value of the split data.
+                - 'size': A dictionary with the sizes of the test and control groups.
+                - 'difference': A dictionary with the calculated differences between the groups.
+                - 'p_value': A dictionary with the calculated p-values for each group.
+        """
+        splitted_data = self.split_ab(data, group_field)
+        return {
+            "size": {
+                "test": len(splitted_data["test"]),
+                "control": len(splitted_data["control"]),
+            },
+            "difference": self.calc_difference(splitted_data, target_field),
+            "p_value": self.calc_p_value(splitted_data, target_field),
+        }
