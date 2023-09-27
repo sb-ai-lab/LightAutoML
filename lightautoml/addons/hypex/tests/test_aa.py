@@ -21,9 +21,8 @@ def test_aa_simple():
     assert info_col not in model.data, "Info_col is take part in experiment, it should be deleted in preprocess"
     assert isinstance(datas_dict, dict), "Result is not dict"
     assert len(datas_dict) == iterations, "# of dataframes is not equal # of iterations"
-    assert all(data.columns) == all(datas_dict[0].drop(columns=['group']).columns), "Columns in the result are not " \
-                                                                                    "the same as columns in initial " \
-                                                                                    "data "
+    assert all(data.columns) == all(datas_dict[0].drop(columns=['group']).columns), \
+        "Columns in the result are not the same as columns in initial data "
 
 
 def test_aa_group():

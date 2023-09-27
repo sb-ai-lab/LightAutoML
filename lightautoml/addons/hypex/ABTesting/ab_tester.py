@@ -1,4 +1,5 @@
 import warnings
+from collections import namedtuple
 from abc import ABC, abstractmethod
 from pathlib import Path
 from sklearn.utils import shuffle
@@ -8,10 +9,18 @@ from tqdm.auto import tqdm
 
 import pandas as pd
 import numpy as np
-import scipy.stats as stats
-from scipy.stats import norm, ttest_ind, ks_2samp, mannwhitneyu
+from scipy.stats import ttest_ind, ks_2samp, mannwhitneyu
 
 RANDOM_STATE = 52
+
+ExperimentComparisonResults_cuped = namedtuple(
+    'CUPED',
+    ['pvalue', 'effect', 'ci_length', 'left_bound', 'right_bound']
+)
+ExperimentComparisonResults_cuped_abs = namedtuple(
+    'CUPED_abs',
+    ['pvalue', 'effect', 'ci_length', 'left_bound', 'right_bound']
+)
 
 
 def merge_groups(
@@ -39,6 +48,97 @@ def merge_groups(
     merged_data = pd.concat([test_group, control_group], ignore_index=True)
 
     return merged_data
+
+
+def cuped(
+        test_data: pd.DataFrame,
+        control_data: pd.DataFrame,
+        target_field: str,
+        target_field_before: str
+):
+    """Counts CUPED (Controlled-Experiment using Pre-Experiment Data) in absolute values.
+
+    Metric uses pre-post analysis of target, uses to minimize variance of effect:
+    ATE = mean(test_cuped) - mean(control_cuped)
+        , where
+        test_cuped = target__test - theta * target_before__test
+        control_cuped = target__control - theta * target_before__control
+            , where
+            theta = (cov_test + cov_control) / (var_test + var_control)
+                , where
+                cov_test = cov(target__test, target_before__test)
+                cov_control = cov(target__control, target_before__control)
+                var_test = var(target_before__test)
+                var_control = var(target_before__control)
+
+    Args:
+        test_data: input data of test group
+                   Should include target before and after pilot
+        control_data: input data of control group
+                      Should include target before and after pilot
+        target_field: column name of target after pilot
+        target_field_before: column name of target before pilot
+
+    Returns:
+        result: named tuple with pvalue, effect, ci_length, left_bound and right_bound
+    """
+    control = control_data[target_field]
+    control_before = control_data[target_field_before]
+    test = test_data[target_field]
+    test_before = test_data[target_field_before]
+
+    theta = (np.cov(control, control_before)[0, 1] + np.cov(test, test_before)[0, 1]) \
+            / (np.var(control_before) + np.var(test_before))
+
+    control = control - theta * control_before
+    test = test - theta * test_before
+
+    mean_control = np.mean(control)
+    mean_test = np.mean(test)
+    var_mean_control = np.var(control) / len(control)
+    var_mean_test = np.var(test) / len(test)
+
+    difference_mean = mean_test - mean_control
+    difference_mean_var = var_mean_control + var_mean_test
+    difference_distribution = ss.norm(loc=difference_mean, scale=np.sqrt(difference_mean_var))
+
+    left_bound, right_bound = difference_distribution.ppf([0.025, 0.975])
+    ci_length = (right_bound - left_bound)
+    pvalue = 2 * min(difference_distribution.cdf(0), difference_distribution.sf(0))
+    effect = difference_mean
+    result = ExperimentComparisonResults_cuped(pvalue, effect, ci_length, left_bound, right_bound)
+
+    return result
+
+
+def diff_in_diff(
+        test_data: pd.DataFrame,
+        control_data: pd.DataFrame,
+        target_field: str,
+        target_field_before: str
+):
+    """Counts Difference in Difference.
+
+    Metric uses pre-post analysis and counts difference in means in data before and after pilot:
+    ATE = (y_test_after - y_control_after) - (y_test_before - y_control_before)
+
+    Args:
+        test_data: input data of test group
+        control_data: input data of control group
+        target_field: column name of target after pilot
+        target_field_before: column name of target before pilot
+
+    Returns:
+        did: value of difference in difference
+    """
+    mean_test = np.mean(test_data[target_field])
+    mean_control = np.mean(control_data[target_field])
+
+    mean_test_before = np.mean(test_data[target_field_before])
+    mean_control_before = np.mean(control_data[target_field_before])
+    did = (mean_test - mean_control) - (mean_test_before - mean_control_before)
+
+    return did
 
 
 class AATest:
@@ -140,7 +240,7 @@ class AATest:
 
         return result
 
-    def split_ab(self, random_state: int = RANDOM_STATE) -> Dict:
+    def split(self, random_state: int = RANDOM_STATE) -> Dict:
         """Divides sample on two groups.
 
         Args:
@@ -225,7 +325,7 @@ class AATest:
         scores = []
         t_result = {"random_state": random_state}
 
-        split = self.split_ab(random_state)
+        split = self.split(random_state)
         a = self.data.loc[split["test_indexes"]]
         b = self.data.loc[split["control_indexes"]]
 
@@ -291,7 +391,7 @@ class AATest:
             warnings.warn(f"Write mode '{write_mode}' is not supported. Mode 'full' will be used")
             write_mode = "full"
 
-        for i, rs in tqdm(enumerate(random_states), total=len(random_states)):#, display=pbar):
+        for i, rs in tqdm(enumerate(random_states), total=len(random_states), disable=not pbar):
             res = self.sampling_metrics(alpha=alpha, random_state=rs)
             data_from_sampling.update(res["data_from_experiment"])
 
@@ -330,50 +430,88 @@ class ABTest:
         calc_difference_method: str = "all",
         calc_p_value_method: str = "all",
     ):
-        """
-        Initializes the ABTest class.
-        Parameters:
-            calc_difference_method (str, optional): The method used to calculate the difference. Defaults to 'all'.
-            calc_p_value_method (str, optional): The method used to calculate the p-value. Defaults to 'all'.
+        """Initializes the ABTest class.
+
+        Args:
+            calc_difference_method:
+                The method used to calculate the difference:
+                    'all' [default] - all metrics
+                    'ate' - basic difference in means of targets in test and control group
+                    'diff_in_diff' - difference in difference value,
+                                     performs pre-post analysis (required values of target before pilot)
+                    'cuped' - Controlled-Experiment using Pre-Experiment Data value,
+                              performs pre-post analysis (required values of target before pilot)
+            calc_p_value_method:
+                The method used to calculate the p-value. Defaults to 'all'.
         """
         self.calc_difference_method = calc_difference_method
         self.calc_p_value_method = calc_p_value_method
 
-    def split_ab(self, data: pd.DataFrame, group_field: str) -> Dict[str, pd.DataFrame]:
+    @staticmethod
+    def split_ab(data: pd.DataFrame, group_field: str) -> Dict[str, pd.DataFrame]:
         """
         Splits a pandas DataFrame into two separate dataframes based on a specified group field.
 
         Parameters:
-            data (pd.DataFrame): The input dataframe to be split.
-            group_field (str): The column name representing the group field.
+            data: The input dataframe to be split.
+            group_field: The column name representing the group field.
 
         Returns:
-            dict: A dictionary containing two dataframes, 'test' and 'control', where 'test' contains rows where the group field is 'test', and 'control' contains rows where the group field is 'control'.
+            splitted_data:
+                A dictionary containing two dataframes, 'test' and 'control', where 'test' contains rows where the
+                group field is 'test', and 'control' contains rows where the group field is 'control'.
         """
-        return {
+        splitted_data = {
             "test": data[data[group_field] == "test"],
             "control": data[data[group_field] == "control"],
         }
+        return splitted_data
+
 
     def calc_difference(
-        self, splitted_data: Dict[str, pd.DataFrame], target_field: str
+            self,
+            splitted_data: Dict[str, pd.DataFrame],
+            target_field: str,
+            target_field_before: str = None
     ) -> Dict[str, float]:
         """
         Calculates the difference between the target field values of the 'test' and 'control' dataframes.
 
         Parameters:
-            splitted_data (Dict[str, pd.DataFrame]): A dictionary containing the 'test' and 'control' dataframes.
-            target_field (str): The name of the target field.
+            splitted_data: A dictionary containing the 'test' and 'control' dataframes
+            target_field: The name of the target field contains data after pilot
+            target_field_before: The name of the target field contains data before pilot
 
         Returns:
-            result (Dict[str, float]): A dictionary containing the difference between the target field values of the 'test' and 'control' dataframes.
+            result: A dictionary containing the difference between the target field
+                    values of the 'test' and 'control' dataframes.
         """
         result = {}
+        if self.calc_difference_method in {"all", "diff_in_diff", "cuped"}:
+            if target_field_before is None:
+                raise ValueError(
+                    "For calculation metrics 'cuped' or 'diff_in_diff' field 'target_field_before' is required"
+                )
         if self.calc_difference_method in {"all", "ate"}:
             result["ate"] = (
-                splitted_data["test"][target_field]
-                - splitted_data["control"][target_field]
+                    splitted_data["test"][target_field].values
+                    - splitted_data["control"][target_field].values
             ).mean()
+        if self.calc_difference_method in {"all", "cuped"}:
+            result['cuped'] = cuped(
+                test_data=splitted_data["test"],
+                control_data=splitted_data["control"],
+                target_field=target_field,
+                target_field_before=target_field_before
+            )
+        if self.calc_difference_method in {"all", "diff_in_diff"}:
+            result['diff_in_diff'] = diff_in_diff(
+                test_data=splitted_data["test"],
+                control_data=splitted_data["control"],
+                target_field=target_field,
+                target_field_before=target_field_before
+            )
+
         return result
 
     def calc_p_value(
