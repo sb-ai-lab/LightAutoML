@@ -442,11 +442,11 @@ class Matcher:
 
         Validates estimated effect:
                                     1) by replacing real treatment with random placebo treatment.
-                                     Estimated effect must be droped to zero, p-val < 0.05;
+                                     Estimated effect must be droped to zero, p-val > 0.05;
                                     2) by adding random feature (`random_feature`). Estimated effect shouldn't change
-                                    significantly, p-val > 0.05;
+                                    significantly, p-val < 0.05;
                                     3) estimates effect on subset of data (default fraction is 0.8). Estimated effect
-                                    shouldn't change significantly, p-val > 0.05.
+                                    shouldn't change significantly, p-val < 0.05.
 
         Args:
             refuter:
