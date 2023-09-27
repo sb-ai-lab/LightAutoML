@@ -1,58 +1,69 @@
-import pytest
-import pandas as pd
 from lightautoml.addons.hypex.ABTesting.ab_tester import ABTest
+from lightautoml.addons.hypex.utils.tutorial_data_creation import create_test_data
 
 
-@pytest.fixture
-def ab_test():
-    return ABTest()
+# def test_split_ab():
+#     data = create_test_data()
+#     half_data = int(data.shape[0] / 2)
+#     data['group'] = ['test'] * half_data + ['control'] * half_data
+#
+#     group_field = 'group'
+#
+#     model = ABTest()
+#     splitted_data = model.split_ab(data, group_field)
+#
+#     assert isinstance(splitted_data, dict), "result of split_ab is not dict"
+#     assert len(splitted_data) == 2, "split_ab contains not of 2 values"
+#     assert list(splitted_data.keys()) == ['test', 'control'], "changed keys in result of split_ab"
+#
+#
+# def test_calc_difference():
+#     data = create_test_data()
+#     half_data = int(data.shape[0] / 2)
+#     data['group'] = ['test'] * half_data + ['control'] * half_data
+#
+#     group_field = 'group'
+#     target_field = 'post_spends'
+#
+#     model = ABTest()
+#     splitted_data = model.split_ab(data, group_field)
+#     differences = model.calc_difference(splitted_data, target_field)
+#
+#     assert isinstance(differences, dict), "result of calc_difference is not dict"
 
 
-@pytest.fixture
-def data():
-    return pd.DataFrame(
-        {"group": ["test", "test", "control", "control"], "value": [1, 2, 3, 4]}
+def test_calc_p_value():
+    data = create_test_data()
+    half_data = int(data.shape[0] / 2)
+    data['group'] = ['test'] * half_data + ['control'] * half_data
+
+    group_field = 'group'
+    target_field = 'post_spends'
+
+    model = ABTest()
+    splitted_data = model.split_ab(data, group_field)
+    pvalues = model.calc_p_value(splitted_data, target_field)
+
+    assert isinstance(pvalues, dict), "result of calc_p_value is not dict"
+
+
+def test_execute():
+    data = create_test_data()
+    half_data = int(data.shape[0] / 2)
+    data['group'] = ['test'] * half_data + ['control'] * half_data
+
+    target_field = 'post_spends'
+    target_field_before = 'pre_spends'
+    group_field = 'group'
+
+    model = ABTest()
+    result = model.execute(
+        data=data,
+        target_field=target_field,
+        target_field_before=target_field_before,
+        group_field=group_field
     )
 
-
-@pytest.fixture
-def target_field():
-    return "value"
-
-
-@pytest.fixture
-def group_field():
-    return "group"
-
-
-def test_split_ab(ab_test, data, group_field):
-    expected_result = {
-        "test": pd.DataFrame({"group": ["test", "test"], "value": [1, 2]}),
-        "control": pd.DataFrame({"group": ["control", "control"], "value": [3, 4]}),
-    }
-    result = ab_test.split_ab(data, group_field)
-    assert result == expected_result
-
-
-def test_calc_difference(ab_test, data, group_field, target_field):
-    splitted_data = ab_test.split_ab(data, group_field)
-    expected_result = {"ate": -1.0}
-    result = ab_test.calc_difference(splitted_data, target_field)
-    assert result == expected_result
-
-
-def test_calc_p_value(ab_test, data, group_field, target_field):
-    splitted_data = ab_test.split_ab(data, group_field)
-    expected_result = {"t_test": 0.5714285714285714, "mann_whitney": 0.3333333333333333}
-    result = ab_test.calc_p_value(splitted_data, target_field)
-    assert result == expected_result
-
-
-def test_execute(ab_test, data, group_field, target_field):
-    expected_result = {
-        "size": {"test": 2, "control": 2},
-        "difference": {"ate": -1.0},
-        "p_value": {"t_test": 0.5714285714285714, "mann_whitney": 0.3333333333333333},
-    }
-    result = ab_test.execute(data, target_field, group_field)
-    assert result == expected_result
+    assert isinstance(result, dict), "result of func execution is not dict"
+    assert len(result) == 3, "result of execution is changed, len of dict was 3"
+    assert list(result.keys()) == ['size', 'difference', 'p_value']

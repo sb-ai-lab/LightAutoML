@@ -90,6 +90,9 @@ def create_test_data(
     """
     if rs is not None:
         np.random.seed(rs)
+
+    if (nan_cols is not None) and isinstance(nan_cols, str):
+        nan_cols = [nan_cols]
     # Simulating dataset with known effect size
     num_months = 12
 
