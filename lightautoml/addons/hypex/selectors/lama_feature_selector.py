@@ -21,7 +21,7 @@ logging.basicConfig(
 
 
 class LamaFeatureSelector:
-    """The main class of LAMA Feature selector. Select top features. By default, use LGM."""
+    """Class of LAMA Feature selector. Select top features. By default, use LGM."""
 
     def __init__(
         self,
@@ -39,25 +39,25 @@ class LamaFeatureSelector:
         """Initialize the LamaFeatureSelector.
 
         Args:
-            outcome: str
+            outcome:
                 The target column
-            outcome_type: str
+            outcome_type:
                 The type of target column
-            treatment: str
+            treatment:
                 The column that determines control and test groups
-            timeout: int
+            timeout:
                 Time limit for the execution of the code
-            n_threads: int
+            n_threads:
                 Maximum number of threads to be used
-            n_folds: int
+            n_folds:
                 Number of folds for cross-validation
-            verbose: bool
+            verbose:
                 Flag to control the verbosity of the process stages
-            generate_report: bool
+            generate_report:
                 Flag to control whether to create a report or not
-            report_dir: str
+            report_dir:
                 Directory for storing report files
-            use_algos: List[str]
+            use_algos:
                 List of names of LAMA algorithms for feature selection
         """
         self.outcome = outcome
@@ -77,11 +77,11 @@ class LamaFeatureSelector:
         This method defines metrics, applies the model, creates a report, and returns feature scores
 
         Args:
-            df: pd.DataFrame
+            df:
                 Input data
 
         Returns:
-            pd.DataFrame: A DataFrame containing the feature scores from the model
+            A DataFrame containing the feature scores from the model
 
         """
         roles = {

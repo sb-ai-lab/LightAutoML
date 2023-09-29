@@ -6,11 +6,23 @@ from typing import Any
 from typing import Callable
 from typing import Dict
 from typing import Optional
+from typing import Sequence
 from typing import Union
+
 import numpy as np
 import torch
 import torch.nn as nn
+
+
+try:
+    from transformers import AutoModel
+except:
+    import warnings
+
+    warnings.warn("'transformers' - package isn't installed")
+
 from ..tasks.base import Task
+from .dl_transformers import pooling_by_name
 
 
 logger = logging.getLogger(__name__)
@@ -87,6 +99,150 @@ class Clump(nn.Module):
         return x
 
 
+class TextBert(nn.Module):
+    """Text data model.
+
+    Class for working with text data based on HuggingFace transformers.
+
+    Args:
+        model_name: Transformers model name.
+        pooling: Pooling type.
+
+    Note:
+        There are different pooling types:
+
+            - cls: Use CLS token for sentence embedding
+                from last hidden state.
+            - max: Maximum on seq_len dimension for non masked
+                inputs from last hidden state.
+            - mean: Mean on seq_len dimension for non masked
+                inputs from last hidden state.
+            - sum: Sum on seq_len dimension for non masked
+                inputs from last hidden state.
+            - none: Without pooling for seq2seq models.
+
+    """
+
+    _poolers = {"cls", "max", "mean", "sum", "none"}
+
+    def __init__(self, model_name: str = "bert-base-uncased", pooling: str = "cls"):
+        super(TextBert, self).__init__()
+        if pooling not in self._poolers:
+            raise ValueError("pooling - {} - not in the list of available types {}".format(pooling, self._poolers))
+
+        self.transformer = AutoModel.from_pretrained(model_name)
+        self.n_out = self.transformer.config.hidden_size
+        self.dropout = torch.nn.Dropout(0.2)
+        self.activation = torch.nn.ReLU(inplace=True)
+        self.pooling = pooling_by_name[pooling]()
+
+    def get_out_shape(self) -> int:
+        """Output shape.
+
+        Returns:
+            int with module output shape.
+
+        """
+        return self.n_out
+
+    def forward(self, inp: Dict[str, torch.Tensor]) -> torch.Tensor:
+        """Forward-pass."""
+        # last hidden layer
+        encoded_layers, _ = self.transformer(
+            input_ids=inp["input_ids"],
+            attention_mask=inp["attention_mask"],
+            token_type_ids=inp.get("token_type_ids"),
+            return_dict=False,
+        )
+
+        # pool the outputs into a vector
+        encoded_layers = self.pooling(encoded_layers, inp["attention_mask"].unsqueeze(-1).bool())
+        mean_last_hidden_state = self.activation(encoded_layers)
+        mean_last_hidden_state = self.dropout(mean_last_hidden_state)
+        return mean_last_hidden_state
+
+
+class CatEmbedder(nn.Module):
+    """Category data model.
+
+    Args:
+        cat_dims: Sequence with number of unique categories
+            for category features.
+        emb_dropout: Dropout probability.
+        emb_ratio: Ratio for embedding size = (x + 1) // emb_ratio.
+        max_emb_size: Max embedding size.
+
+    """
+
+    def __init__(
+        self,
+        cat_dims: Sequence[int],
+        emb_dropout: bool = 0.1,
+        emb_ratio: int = 3,
+        max_emb_size: int = 50,
+    ):
+        super(CatEmbedder, self).__init__()
+        emb_dims = [(int(x), int(min(max_emb_size, max(1, (x + 1) // emb_ratio)))) for x in cat_dims]
+        self.no_of_embs = sum([y for x, y in emb_dims])
+        assert self.no_of_embs != 0, "The input is empty."
+        # Embedding layers
+        self.emb_layers = nn.ModuleList([nn.Embedding(x, y) for x, y in emb_dims])
+        self.emb_dropout_layer = nn.Dropout(emb_dropout) if emb_dropout else nn.Identity()
+
+    def get_out_shape(self) -> int:
+        """Output shape.
+
+        Returns:
+            Int with module output shape.
+
+        """
+        return self.no_of_embs
+
+    def forward(self, inp: Dict[str, torch.Tensor]) -> torch.Tensor:
+        """Forward-pass."""
+        output = torch.cat(
+            [emb_layer(inp["cat"][:, i]) for i, emb_layer in enumerate(self.emb_layers)],
+            dim=1,
+        )
+        output = self.emb_dropout_layer(output)
+        return output
+
+
+class ContEmbedder(nn.Module):
+    """Numeric data model.
+
+    Class for working with numeric data.
+
+    Args:
+        num_dims: Sequence with number of numeric features.
+        input_bn: Use 1d batch norm for input data.
+
+    """
+
+    def __init__(self, num_dims: int, input_bn: bool = True):
+        super(ContEmbedder, self).__init__()
+        self.n_out = num_dims
+        self.bn = nn.Identity()
+        if input_bn:
+            self.bn = nn.BatchNorm1d(num_dims)
+        assert num_dims != 0, "The input is empty."
+
+    def get_out_shape(self) -> int:
+        """Output shape.
+
+        Returns:
+            int with module output shape.
+
+        """
+        return self.n_out
+
+    def forward(self, inp: Dict[str, torch.Tensor]) -> torch.Tensor:
+        """Forward-pass."""
+        output = inp["cont"]
+        output = self.bn(output)
+        return output
+
+
 class TorchUniversalModel(nn.Module):
     """Mixed data model.
 
@@ -114,9 +270,9 @@ class TorchUniversalModel(nn.Module):
         task: Task,
         torch_model: nn.Module,
         n_out: int = 1,
-        cont_embedder_: Optional[Any] = None,
+        cont_embedder: Optional[Any] = None,
         cont_params: Optional[Dict] = None,
-        cat_embedder_: Optional[Any] = None,
+        cat_embedder: Optional[Any] = None,
         cat_params: Optional[Dict] = None,
         text_embedder: Optional[Any] = None,
         text_params: Optional[Dict] = None,
@@ -135,11 +291,11 @@ class TorchUniversalModel(nn.Module):
         self.text_embedder = None
 
         n_in = 0
-        if cont_embedder_ is not None:
-            self.cont_embedder = cont_embedder_(**cont_params)
+        if cont_embedder is not None:
+            self.cont_embedder = cont_embedder(**cont_params)
             n_in += self.cont_embedder.get_out_shape()
-        if cat_embedder_ is not None:
-            self.cat_embedder = cat_embedder_(**cat_params)
+        if cat_embedder is not None:
+            self.cat_embedder = cat_embedder(**cat_params)
             n_in += self.cat_embedder.get_out_shape()
         if text_embedder is not None:
             self.text_embedder = text_embedder(**text_params)
@@ -149,12 +305,7 @@ class TorchUniversalModel(nn.Module):
             torch_model(
                 **{
                     **kwargs,
-                    **{
-                        "n_in": n_in,
-                        "n_out": n_out,
-                        "loss": loss,
-                        "task": task,
-                    },
+                    **{"n_in": n_in, "n_out": n_out, "loss": loss, "task": task},
                 }
             )
             if torch_model is not None
@@ -162,34 +313,13 @@ class TorchUniversalModel(nn.Module):
         )
 
         if bias is not None:
-            self._set_last_layer(self.torch_model, bias)
-
-        self.сlump = Clump()
-        self.sig = nn.Sigmoid()
-        self.softmax = nn.Softmax(dim=1)
-
-    def _set_last_layer(self, torch_model, bias):
-        try:
-            use_skip = torch_model.use_skip
-            self._init_last_layers(torch_model, bias, use_skip)
-        except:
-            self._init_last_layers(torch_model, bias, False)
-
-    def _init_last_layers(self, torch_model, bias, use_skip=False):
-        try:
-            all_layers = list(torch_model.children())
-            layers = list(
-                filter(
-                    lambda x: isinstance(x, nn.Linear) or isinstance(x, nn.Sequential),
-                    all_layers,
-                )
-            )
-            if len(layers) == 0:
-                last_layer = all_layers[-1]
-                self._set_last_layer(last_layer, bias)
-
-            else:
-                last_layer = layers[-1]
+            try:
+                last_layer = list(
+                    filter(
+                        lambda x: isinstance(x, nn.Linear) or isinstance(x, nn.Sequential),
+                        list(self.torch_model.children()),
+                    )
+                )[-1]
                 while isinstance(last_layer, nn.Sequential):
                     last_layer = list(
                         filter(lambda x: isinstance(x, nn.Linear) or isinstance(x, nn.Sequential), last_layer)
@@ -198,22 +328,12 @@ class TorchUniversalModel(nn.Module):
                 last_layer.bias.data = bias
                 shape = last_layer.weight.data.shape
                 last_layer.weight.data = torch.zeros(shape[0], shape[1], requires_grad=True)
-            if use_skip:
-                if len(layers) <= 1:
-                    last_layer = all_layers[-2]
-                    self._set_last_layer(last_layer, bias)
-                else:
-                    pre_last_layer = layers[-2]
-                    while isinstance(last_layer, nn.Sequential):
-                        pre_last_layer = list(
-                            filter(lambda x: isinstance(x, nn.Linear) or isinstance(x, nn.Sequential), pre_last_layer)
-                        )[-1]
-                    bias = torch.Tensor(bias)
-                    pre_last_layer.bias.data = bias
-                    shape = pre_last_layer.weight.data.shape
-                    pre_last_layer.weight.data = torch.zeros(shape[0], shape[1], requires_grad=True)
-        except:
-            logger.info3("Last linear layer not founded, so init_bias=False")
+            except:
+                logger.info3("Last linear layer not founded, so init_bias=False")
+
+        self.сlump = Clump()
+        self.sig = nn.Sigmoid()
+        self.softmax = nn.Softmax(dim=1)
 
     def get_logits(self, inp: Dict[str, torch.Tensor]) -> torch.Tensor:
         """Forward-pass of model with embeddings."""

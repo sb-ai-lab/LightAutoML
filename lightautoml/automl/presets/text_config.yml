@@ -120,12 +120,6 @@ linear_l2_params:
 
 # params for NN model
 nn_params:
-  # embedding_size if needed
-  embedding_size: 10
-  # str in ['cat', 'cat_no_dropout', 'weighted']
-  cat_embedder: "cat"
-  # str in ['cont', 'linear', 'dense']
-  cont_embedder: "cont"
   # early stopping and scheduler use metric
   stop_by_metric: False
   random_state: 42
@@ -288,7 +282,7 @@ autonlp_params:
   # 'pooled_bert' - embeddings from pooled bert output
   # 'wat' - weighted average transformers
   # borep and random_lstm: https://arxiv.org/abs/1901.10444
-  model_name: 'pooled_bert'
+  model_name: 'random_lstm_bert'
 
   # dict with params of random_lstm, bert_embedder, borep or wat
   # check corresponding classes for details

@@ -1,7 +1,9 @@
 """Class that searches indexes."""
 import datetime as dt
+import functools
 import logging
-
+import time
+from typing import Any
 from typing import Dict
 from typing import Tuple
 from typing import Union
@@ -9,12 +11,41 @@ from typing import Union
 import faiss
 import numpy as np
 import pandas as pd
-
 from scipy.stats import norm
 from tqdm.auto import tqdm
 
 from ..utils.metrics import check_repeats
 from ..utils.metrics import matching_quality
+
+
+def timer(func):
+    """Decorator to measure the execution time of a function.
+
+    Uses time.perf_counter() to determine the start and end times
+    of the decorated function and then prints the total execution time
+
+    Usage Example:
+
+        @timer
+        def example_function():
+            ...
+
+    Args:
+        func: The function whose execution time is to be measured
+
+    Returns:
+        Wrapped version of the original function with added time measurement
+    """
+
+    @functools.wraps(func)
+    def _wrapper(*args, **kwargs):
+        start = time.perf_counter()
+        result = func(*args, **kwargs)
+        runtime = time.perf_counter() - start
+        print(f"{func.__name__} took {runtime:.4f} secs")
+        return result
+
+    return _wrapper
 
 
 faiss.cvar.distance_compute_blas_threshold = 100000
@@ -35,50 +66,54 @@ class FaissMatcher:
     """A class used to match instances using Faiss library."""
 
     def __init__(
-        self,
-        df: pd.DataFrame,
-        outcomes: str,
-        treatment: str,
-        info_col: list,
-        features: [list, pd.DataFrame] = None,
-        group_col: str = None,
-        sigma: float = 1.96,
-        validation: bool = None,
-        n_neighbors: int = 10,
-        silent: bool = True,
-        pbar: bool = True,
+            self,
+            df: pd.DataFrame,
+            outcomes: str,
+            treatment: str,
+            info_col: list,
+            features: [list, pd.DataFrame] = None,
+            group_col: str = None,
+            weights: dict = None,
+            sigma: float = 1.96,
+            validation: bool = None,
+            n_neighbors: int = 10,
+            silent: bool = True,
+            pbar: bool = True,
     ):
         """Construct all the necessary attributes.
 
         Args:
-            df: pd.DataFrame
+            df:
                 The input dataframe
-            outcomes: str
+            outcomes:
                 The target column name
-            treatment: str
+            treatment:
                 The column name with treatment
-            info_col: list[str]
+            info_col:
                 A list with informational column names
-            features: list or pd.DataFrame, optional
+            features:
                 A list with names of feature using to matching. Defaults to None
-            group_col: str. optional
+            group_col:
                 The column for stratification. Defaults to None
-            sigma: float, optional
+            weights:
+                Dict with wight of features to matching. If you would like that matching will be more for
+                1 feature and less for another one
+            sigma:
                 The significant level for confidence interval calculation Defaults to 1.96
-            validation: str, optional
+            validation:
                 The flag for validation of estimated ATE with default method `random_feature`
-            n_neighbors: int, optional
+            n_neighbors:
                 The number of neighbors to find for each object. Defaults to 10
-            silent: bool, optional
+            silent:
                 Write logs in debug mode
-            pbar: bool, optional
+            pbar:
                 Display progress bar while get index
         """
         self.n_neighbors = n_neighbors
         if group_col is None:
             self.df = df
         else:
-            self.df = df.sort_values([treatment, group_col]).reset_index(drop=True)
+            self.df = df.sort_values([treatment, group_col])
         self.columns_del = [outcomes]
         if info_col:
             self.info_col = info_col
@@ -87,27 +122,28 @@ class FaissMatcher:
 
         if self.info_col is not None:
             self.columns_del = self.columns_del + [x for x in self.info_col if x in self.df.columns]
-        self.outcomes = outcomes
+        self.outcomes = outcomes if type(outcomes) == list else [outcomes]
         self.treatment = treatment
 
         if features is None:
             self.columns_match = list(
-                set([x for x in list(self.df.columns) if x not in self.info_col] + [self.treatment, self.outcomes])
+                set([x for x in list(self.df.columns) if x not in self.info_col] + [self.treatment] + self.outcomes)
             )
         else:
             try:
-                self.columns_match = features["Feature"].tolist() + [self.treatment, self.outcomes]
+                self.columns_match = features["Feature"].tolist() + [self.treatment] + self.outcomes
             except TypeError:
-                self.columns_match = features + [self.treatment, self.outcomes]
+                self.columns_match = features + [self.treatment] + self.outcomes
 
         self.features_quality = (
-            self.df.drop(columns=[self.treatment, self.outcomes] + self.info_col)
+            self.df.drop(columns=[self.treatment] + self.outcomes + self.info_col)
             .select_dtypes(include=["int16", "int32", "int64", "float16", "float32", "float64"])
             .columns
         )
         self.dict_outcome_untreated = {}
         self.dict_outcome_treated = {}
         self.group_col = group_col
+        self.weights = weights
         self.treated_index = None
         self.untreated_index = None
         self.orig_treated_index = None
@@ -121,6 +157,7 @@ class FaissMatcher:
         self.silent = silent
         self.pbar = pbar
         self.tqdm = None
+        self.results = pd.DataFrame()
 
     def __getstate__(self) -> dict:
         """Prepare the object for serialization.
@@ -130,7 +167,7 @@ class FaissMatcher:
         because `tqdm` objects cannot be serialized.
 
         Returns:
-            dict: A copy of the object's dictionary with the `tqdm` attribute removed.
+            A copy of the object's dictionary with the `tqdm` attribute removed.
         """
         state = self.__dict__.copy()
         if "tqdm" in state:
@@ -145,7 +182,7 @@ class FaissMatcher:
         if the `pbar` attribute is True.
 
         Args:
-            state: dict
+            state:
                 The deserialized state of the object
         """
         if "pbar" in state and state["pbar"]:
@@ -159,19 +196,19 @@ class FaissMatcher:
         scales and transforms treatment column
 
         Args:
-            df: pd.DataFrame
+            df:
                 The input dataframe
 
         Returns:
-            tuple: Tuple of dataframes - one for treated (df[self.treatment] == 1]) and
+            Tuple of dataframes - one for treated (df[self.treatment] == 1]) and
             one for untreated (df[self.treatment] == 0]). Drops self.outcomes and
             `self.treatment` columns
 
         """
         logger.debug("Creating split data by treatment column")
 
-        treated = df[df[self.treatment] == 1].drop([self.outcomes, self.treatment], axis=1)
-        untreated = df[df[self.treatment] == 0].drop([self.outcomes, self.treatment], axis=1)
+        treated = df[df[self.treatment] == 1].drop([self.treatment] + self.outcomes, axis=1)
+        untreated = df[df[self.treatment] == 0].drop([self.treatment] + self.outcomes, axis=1)
 
         return treated, untreated
 
@@ -182,9 +219,9 @@ class FaissMatcher:
         creates dict of y - regular, matched and without bias.
 
         Args:
-            std_treated: pd.DataFrame
+            std_treated:
                 The dataframe of treated data
-            std_untreated: pd.DataFrame
+            std_untreated:
                 The dataframe of untreated data
 
         """
@@ -197,7 +234,7 @@ class FaissMatcher:
         self.dict_outcome_treated = {}
         df = self.df.drop(columns=self.info_col)
 
-        for outcome in [self.outcomes]:
+        for outcome in self.outcomes:
             y_untreated = df[df[self.treatment] == 0][outcome].to_numpy()
             y_treated = df[df[self.treatment] == 1][outcome].to_numpy()
 
@@ -231,13 +268,13 @@ class FaissMatcher:
         """Creates dataframe with outcomes values and treatment.
 
         Args:
-            dict_outcome: dict
+            dict_outcome:
                 A dictionary containing outcomes
-            is_treated: bool
+            is_treated:
                 A boolean value indicating whether the outcome is treated or not
 
         Returns:
-            pd.DataFrame: A dataframe with matched outcome and treatment columns
+            A dataframe with matched outcome and treatment columns
 
         """
         df_pred = pd.DataFrame(dict_outcome)
@@ -250,36 +287,58 @@ class FaissMatcher:
         """Creates matched dataframe with features.
 
         Args:
-            index: np.ndarray
+            index:
                 An array of indices
-            is_treated: bool
+            is_treated:
                 A boolean value indicating whether the outcome is treated or not
 
 
         Returns:
-            pd.DataFrame: A dataframe of matched features
+            A dataframe of matched features
 
         """
-        df = self.df.drop(columns=[self.outcomes] + self.info_col)
+        df = self.df.drop(columns=self.outcomes + self.info_col)
 
         if self.group_col is None:
+            untreated_index = df[df[self.treatment] == int(not is_treated)].index.to_numpy()
+            converted_index = [untreated_index[i] for i in index]
             filtered = df.loc[df[self.treatment] == int(not is_treated)].values
             untreated_df = pd.DataFrame(
                 data=np.array([filtered[idx].mean(axis=0) for idx in index]), columns=df.columns
-            )
-            untreated_df["index"] = pd.Series(list(index))
-            treated_df = df[df[self.treatment] == int(is_treated)].reset_index()
+            )  # добавить дату в данные и пофиксить баги с этим (тут ломалось)
+            if self.info_col is not None and len(self.info_col) != 1:
+                untreated_df["index"] = pd.Series(converted_index)
+                treated_df = df[df[self.treatment] == int(is_treated)].reset_index()
+            else:
+                ids = self.df[df[self.treatment] == int(not is_treated)][self.info_col].values.ravel()
+                converted_index = [ids[i] for i in index]
+                untreated_df["index"] = pd.Series(converted_index)
+                treated_df = df[df[self.treatment] == int(is_treated)].reset_index()
+                treated_df["index"] = self.df[self.df[self.treatment] == int(is_treated)][self.info_col].values.ravel()
         else:
+            df = df.sort_values([self.treatment, self.group_col])
+            untreated_index = df[df[self.treatment] == int(not is_treated)].index.to_numpy()
+            converted_index = [untreated_index[i] for i in index]
             filtered = df.loc[df[self.treatment] == int(not is_treated)]
             cols_untreated = [col for col in filtered.columns if col != self.group_col]
             filtered = filtered.drop(columns=self.group_col).to_numpy()
             untreated_df = pd.DataFrame(
                 data=np.array([filtered[idx].mean(axis=0) for idx in index]), columns=cols_untreated
             )
-            untreated_df["index"] = pd.Series(list(index))
             treated_df = df[df[self.treatment] == int(is_treated)].reset_index()
             grp = treated_df[self.group_col]
             untreated_df[self.group_col] = grp
+            if self.info_col is not None and len(self.info_col) != 1:
+                untreated_df["index"] = pd.Series(converted_index)
+            else:
+                ids = (
+                    self.df[df[self.treatment] == int(not is_treated)]
+                    .sort_values([self.treatment, self.group_col])[self.info_col]
+                    .values.ravel()
+                )
+                converted_index = [ids[i] for i in index]
+                untreated_df["index"] = pd.Series(converted_index)
+                treated_df["index"] = self.df[self.df[self.treatment] == int(is_treated)][self.info_col].values.ravel()
         untreated_df.columns = [col + POSTFIX for col in untreated_df.columns]
 
         x = pd.concat([treated_df, untreated_df], axis=1).drop(
@@ -291,7 +350,7 @@ class FaissMatcher:
         """Creates matched df of features and outcome.
 
         Returns:
-            pd.DataFrame: Matched dataframe
+            Matched dataframe
         """
         df_pred_treated = self._create_outcome_matched_df(self.dict_outcome_treated, True)
         df_pred_untreated = self._create_outcome_matched_df(self.dict_outcome_untreated, False)
@@ -316,13 +375,13 @@ class FaissMatcher:
         Effect on control group if it was affected
 
         Args:
-            df: pd.DataFrame
+            df:
                 Input dataframe
-            outcome: str
+            outcome:
                 The outcome to be considered for treatment effect
 
         Returns:
-            tuple: Contains ATC, scaled counts, and variances as numpy arrays
+            Contains ATC, scaled counts, and variances as numpy arrays
 
         """
         logger.debug("Calculating ATC")
@@ -341,13 +400,13 @@ class FaissMatcher:
         """Calculates Average Treatment Effect for the treated (ATT).
 
         Args:
-            df: pd.DataFrame
+            df:
                 Input dataframe
-            outcome: str
+            outcome:
                 The outcome to be considered for treatment effect
 
         Returns:
-            tuple: Contains ATT, scaled counts, and variances as numpy arrays
+            Contains ATT, scaled counts, and variances as numpy arrays
 
         """
         logger.debug("Calculating ATT")
@@ -366,7 +425,7 @@ class FaissMatcher:
         """Creates dictionaries of all effect: ATE, ATC, ATT.
 
         Args:
-            df: pd.DataFrame
+            df:
                 Input dataframe
 
         """
@@ -379,7 +438,7 @@ class FaissMatcher:
         N_t = df[self.treatment].sum()
         N_c = N - N_t
 
-        for outcome in [self.outcomes]:
+        for outcome in self.outcomes:
             att, scaled_counts_t, vars_t = self.calc_att(df, outcome)
             atc, scaled_counts_c, vars_c = self.calc_atc(df, outcome)
             ate = (N_c / N) * atc + (N_t / N) * att
@@ -420,11 +479,11 @@ class FaissMatcher:
         and Kolmogorov-Smirnov test for numeric values. Returns a dictionary of reports.
 
         Args:
-            df_matched: pd.DataFrame
+            df_matched:
                 Matched DataFrame to calculate quality
 
         Returns:
-            dict: dictionary containing PSI, KS-test, SMD data and repeat fractions
+            dictionary containing PSI, KS-test, SMD data and repeat fractions
 
         """
         if self.silent:
@@ -432,8 +491,8 @@ class FaissMatcher:
         else:
             logger.info("Estimating quality of matching")
 
-        psi_columns = self.columns_match
-        psi_columns.remove(self.treatment)
+        psi_columns = set(self.columns_match)
+        psi_columns = list(psi_columns - set([self.treatment] + self.outcomes))
         psi_data, ks_data, smd_data = matching_quality(
             df_matched, self.treatment, sorted(self.features_quality), sorted(psi_columns), self.silent
         )
@@ -465,7 +524,7 @@ class FaissMatcher:
         """Matches the dataframe if it divided by groups.
 
         Returns:
-            tuple: A tuple containing the matched dataframe and metrics such as ATE, ATT and ATC
+            A tuple containing the matched dataframe and metrics such as ATE, ATT and ATC
 
         """
         df = self.df.drop(columns=self.info_col)
@@ -486,7 +545,7 @@ class FaissMatcher:
             temp = temp.loc[:, (temp != 0).any(axis=0)].drop(columns=self.group_col)
             treated, untreated = self._get_split(temp)
 
-            std_treated_np, std_untreated_np = _transform_to_np(treated, untreated)
+            std_treated_np, std_untreated_np = _transform_to_np(treated, untreated, self.weights)
 
             if self.pbar:
                 self.tqdm.set_description(desc=f"Get untreated index by group {group}")
@@ -512,8 +571,9 @@ class FaissMatcher:
         if self.pbar:
             self.tqdm.close()
 
-        self.untreated_index = np.array(matches_c)
-        self.treated_index = np.array(matches_t)
+        self.untreated_index = matches_c
+        self.treated_index = matches_t
+
         df_group = df[self.columns_match].drop(columns=self.group_col)
         treated, untreated = self._get_split(df_group)
         self._predict_outcome(treated, untreated)
@@ -529,7 +589,7 @@ class FaissMatcher:
         """Matches the dataframe.
 
         Returns:
-            tuple: A tuple containing the matched dataframe and metrics such as ATE, ATT and ATC
+            A tuple containing the matched dataframe and metrics such as ATE, ATT and ATC
 
         """
         if self.group_col is not None:
@@ -538,7 +598,7 @@ class FaissMatcher:
         df = self.df[self.columns_match]
         treated, untreated = self._get_split(df)
 
-        std_treated_np, std_untreated_np = _transform_to_np(treated, untreated)
+        std_treated_np, std_untreated_np = _transform_to_np(treated, untreated, self.weights)
 
         if self.pbar:
             self.tqdm = tqdm(total=len(std_treated_np) + len(std_untreated_np))
@@ -573,63 +633,102 @@ class FaissMatcher:
         """Formats the ATE, ATC, and ATT results into a Pandas DataFrame for easy viewing.
 
         Returns:
-            pd.DataFrame: DataFrame containing ATE, ATC, and ATT results
+            DataFrame containing ATE, ATC, and ATT results
         """
         result = (self.ATE, self.ATC, self.ATT)
-        self.results = pd.DataFrame(
-            [list(x.values())[0] for x in result],
-            columns=["effect_size", "std_err", "p-val", "ci_lower", "ci_upper"],
-            index=["ATE", "ATC", "ATT"],
-        )
+
+        for outcome in self.outcomes:
+            res = pd.DataFrame(
+                [x[outcome] + [outcome] for x in result],
+                columns=["effect_size", "std_err", "p-val", "ci_lower", "ci_upper", "outcome"],
+                index=["ATE", "ATC", "ATT"],
+            )
+            self.results = pd.concat([self.results, res])
         return self.results
 
 
-def _get_index(base: np.ndarray, new: np.ndarray, n_neighbors: int) -> np.ndarray:
+def map_func(x: np.ndarray) -> np.ndarray:
+    """Get the indices of elements in an array that are equal to the first element.
+
+    Args:
+        x:
+            An input array.
+
+    Returns:
+        Array of indices where the elements match the first element of x.
+    """
+    return np.where(x == x[0])[0]
+
+
+def f2(x: np.ndarray, y: np.ndarray) -> Any:
+    """Index an array using a secondary array of indices.
+
+    Args:
+        x:
+            An input array.
+        y:
+            Array of indices used for indexing x.
+
+    Returns:
+        Indexed element from the input array x.
+    """
+    return x[y]
+
+
+def _get_index(base: np.ndarray, new: np.ndarray, n_neighbors: int) -> list:
     """Gets array of indexes that match a new array.
 
     Args:
-        base: np.ndarray
+        base:
             A numpy array serving as the reference for matching
-        new: np.ndarray
+        new:
             A numpy array that needs to be matched with the base
-        n_neighbors: int
+        n_neighbors:
             The number of neighbors to use for the matching
 
     Returns:
-        np.ndarray: An array of indexes containing all neighbours with minimum distance
+        An array of indexes containing all neighbours with minimum distance
     """
     index = faiss.IndexFlatL2(base.shape[1])
     index.add(base)
-    dist, indexes = index.search(new, n_neighbors)
-    equal_dist = list(map(lambda x: np.where(x == x[0])[0], dist))
-    indexes = np.array([i[j] for i, j in zip(indexes, equal_dist)])
+    dist, indexes = index.search(new, 20)
+    if n_neighbors == 1:
+        equal_dist = list(map(map_func, dist))
+        indexes = [f2(i, j) for i, j in zip(indexes, equal_dist)]
+    else:
+        indexes = f3(indexes, dist, n_neighbors)
     return indexes
 
 
-def _transform_to_np(treated: pd.DataFrame, untreated: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:
+def _transform_to_np(treated: pd.DataFrame, untreated: pd.DataFrame, weights: dict) -> Tuple[np.ndarray, np.ndarray]:
     """Transforms df to numpy and transform via Cholesky decomposition.
 
     Args:
-        treated: pd.DataFrame
+        treated:
             Test subset DataFrame to be transformed
-        untreated: pd.DataFrame
+        untreated:
             Control subset DataFrame to be transformed
+        weights:
+            Dict with weights for each feature. By default is 1
 
     Returns:
-        tuple: A tuple of transformed numpy arrays for treated and untreated data respectively
+        A tuple of transformed numpy arrays for treated and untreated data respectively
     """
     xc = untreated.to_numpy()
     xt = treated.to_numpy()
 
-    cov_c = np.cov(xc, rowvar=False, ddof=0)
-    cov_t = np.cov(xt, rowvar=False, ddof=0)
-    cov = (cov_c + cov_t) / 2
+    cov = conditional_covariance(xc, xt)
 
-    epsilon = 1e-6
-    cov = cov + epsilon * np.eye(cov.shape[0])
+    epsilon = 1e-5
+    cov[cov <= epsilon] = epsilon
 
     L = np.linalg.cholesky(cov)
     mahalanobis_transform = np.linalg.inv(L)
+    if weights is not None:
+        features = treated.columns
+        w_list = np.array([weights[col] if col in weights.keys() else 1 for col in features])
+        w_matrix = np.sqrt(np.diag(w_list / w_list.sum()))
+        mahalanobis_transform = np.dot(w_matrix, mahalanobis_transform)
     yc = np.dot(xc, mahalanobis_transform.T)
     yt = np.dot(xt, mahalanobis_transform.T)
 
@@ -640,17 +739,17 @@ def calc_atx_var(vars_c: np.ndarray, vars_t: np.ndarray, weights_c: np.ndarray, 
     """Calculates Average Treatment Effect for the treated (ATT) variance.
 
     Args:
-        vars_c: np.ndarray
+        vars_c:
             Control group variance
-        vars_t: np.ndarray
+        vars_t:
             Treatment group variance
-        weights_c: np.ndarray
+        weights_c:
             Control group weights
-        weights_t: np.ndarray
+        weights_t:
             Treatment group weights
 
     Returns:
-        float: The calculated ATT variance
+        The calculated ATT variance
 
     """
     N_c, N_t = len(vars_c), len(vars_t)
@@ -664,15 +763,15 @@ def calc_atc_se(vars_c: np.ndarray, vars_t: np.ndarray, scaled_counts_t: np.ndar
     """Calculates Average Treatment Effect for the control group (ATC) standard error.
 
     Args:
-        vars_c: np.ndarray
+        vars_c:
             Control group variance
-        vars_t: np.ndarray
+        vars_t:
             Treatment group variance
-        scaled_counts_t: np.ndarray
+        scaled_counts_t:
             Scaled counts for treatment group
 
     Returns:
-        float: The calculated ATC standard error
+        The calculated ATC standard error
     """
     N_c, N_t = len(vars_c), len(vars_t)
     weights_c = np.ones(N_c)
@@ -683,19 +782,28 @@ def calc_atc_se(vars_c: np.ndarray, vars_t: np.ndarray, scaled_counts_t: np.ndar
     return np.sqrt(var)
 
 
+def conditional_covariance(xc, xt):
+    """Calculates covariance according to Imbens, Rubin model."""
+    cov_c = np.cov(xc, rowvar=False, ddof=0)
+    cov_t = np.cov(xt, rowvar=False, ddof=0)
+    cov = (cov_c + cov_t) / 2
+
+    return cov
+
+
 def calc_att_se(vars_c: np.ndarray, vars_t: np.ndarray, scaled_counts_c: np.ndarray) -> float:
     """Calculates Average Treatment Effect for the treated (ATT) standard error.
 
     Args:
-        vars_c: np.ndarray
+        vars_c:
             Control group variance
-        vars_t: np.ndarray
+        vars_t:
             Treatment group variance
-        scaled_counts_c: np.ndarray
+        scaled_counts_c:
             Scaled counts for control group
 
     Returns:
-        float: The calculated ATT standard error
+        The calculated ATT standard error
     """
     N_c, N_t = len(vars_c), len(vars_t)
     weights_c = (N_c / N_t) * scaled_counts_c
@@ -707,22 +815,22 @@ def calc_att_se(vars_c: np.ndarray, vars_t: np.ndarray, scaled_counts_c: np.ndar
 
 
 def calc_ate_se(
-    vars_c: np.ndarray, vars_t: np.ndarray, scaled_counts_c: np.ndarray, scaled_counts_t: np.ndarray
+        vars_c: np.ndarray, vars_t: np.ndarray, scaled_counts_c: np.ndarray, scaled_counts_t: np.ndarray
 ) -> float:
     """Calculates Average Treatment Effect for the control group (ATC) standard error.
 
     Args:
-        vars_c: np.ndarray
+        vars_c:
             Control group variance
-        vars_t: np.ndarray
+        vars_t:
             Treatment group variance
-        scaled_counts_c: np.ndarray
+        scaled_counts_c:
             Scaled counts for control group
-        scaled_counts_t: np.ndarray
+        scaled_counts_t:
             Scaled counts for treatment group
 
     Returns:
-        float: The calculated ATE standard error
+        The calculated ATE standard error
     """
     N_c, N_t = len(vars_c), len(vars_t)
     N = N_c + N_t
@@ -738,11 +846,11 @@ def pval_calc(z):
     """Calculates p-value of the normal cumulative distribution function based on z.
 
     Args:
-        z: float
+        z:
             The z-score for which the p-value is calculated
 
     Returns:
-        float: The calculated p-value rounded to 2 decimal places
+        The calculated p-value rounded to 2 decimal places
 
     """
     return round(2 * (1 - norm.cdf(abs(z))), 2)
@@ -754,15 +862,15 @@ def scaled_counts(N: int, matches: np.ndarray, silent: bool = True) -> np.ndarra
     In the case of multiple matches, each subject only gets partial credit.
 
     Args:
-        N: int
+        N:
             The length of original treated or control group
-        matches: np.ndarray
+        matches:
             A numpy array of matched indexes from control or treated group
-        silent: bool, optional
+        silent:
             If true logger in info mode
 
     Returns:
-        np.ndarray: An array representing the number of times each subject has appeared as a match
+        An array representing the number of times each subject has appeared as a match
     """
     s_counts = np.zeros(N)
 
@@ -786,15 +894,15 @@ def bias_coefs(matches, Y_m, X_m):
     observation that has appeared in the matched sample.
 
     Args:
-        matches: np.ndarray
+        matches:
             A numpy array of matched indexes
-        Y_m: np.ndarray
+        Y_m:
             The dependent variable values
-        X_m: np.ndarray:
+        X_m:
             The independent variable values
 
     Returns:
-        np.ndarray: The calculated OLS coefficients excluding the intercept
+        The calculated OLS coefficients excluding the intercept
     """
     flat_idx = np.concatenate(matches)
     N, K = len(flat_idx), X_m.shape[1]
@@ -815,16 +923,40 @@ def bias(X, X_m, coefs):
     coefficients from the bias correction regression.
 
     Args:
-        X: np.ndarray
+        X:
             The original independent variable values
-        X_m: np.ndarray
+        X_m:
             The matched independent variable values
-        coefs: np.ndarray
+        coefs:
             The coefficients from the bias correction regression
 
     Returns:
-        np.ndarray: The calculated bias correction terms for each observation
+        The calculated bias correction terms for each observation
     """
     bias_list = [(X_j - X_i).dot(coefs) for X_i, X_j in zip(X, X_m)]
 
     return np.array(bias_list)
+
+
+def f3(index: np.array, dist: np.array, k: int) -> list:
+    """Function returns list of n matches with equal distance in case n>1.
+
+    Args:
+        index:
+            Array of matched indexes
+        dist:
+            Array of matched distances
+        k:
+            k of neareast neighbors with same distance
+
+    Returns:
+        Array of indexes for k neighbors with same distance
+    """
+    new = []
+    for i, val in enumerate(index):
+        eq_dist = sorted(set(dist[i]))
+        unit = []
+        for d in eq_dist[:k]:
+            unit.append(val[np.where(dist[i] == d)[0]])
+        new.append(np.concatenate(unit))
+    return new

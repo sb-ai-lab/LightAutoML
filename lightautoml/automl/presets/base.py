@@ -37,9 +37,8 @@ def upd_params(old: dict, new: dict) -> dict:
         Updated parameters.
 
     """
-    not_updatable_params = ["scheduler_params"]
     for k in new:
-        if type(new[k]) is dict and k in old and type(old[k]) is dict and k not in not_updatable_params:
+        if type(new[k]) is dict and k in old and type(old[k]) is dict:
             upd_params(old[k], new[k])
         else:
             old[k] = new[k]

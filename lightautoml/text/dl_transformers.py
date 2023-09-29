@@ -29,7 +29,6 @@ from ..ml_algo.torch_based.nn_models import SequenceClsPooler
 from ..ml_algo.torch_based.nn_models import SequenceIndentityPooler
 from ..ml_algo.torch_based.nn_models import SequenceMaxPooler
 from ..ml_algo.torch_based.nn_models import SequenceSumPooler
-from ..ml_algo.torch_based.nn_models import SequenceConcatPooler
 from .dp_utils import CustomDataParallel
 from .utils import _dtypes_mapping
 from .utils import collate_dict
@@ -42,7 +41,6 @@ pooling_by_name = {
     "mean": SequenceAvgPooler,
     "sum": SequenceSumPooler,
     "max": SequenceMaxPooler,
-    "concat": SequenceConcatPooler,
     "cls": SequenceClsPooler,
     "none": SequenceIndentityPooler,
 }

@@ -16,7 +16,6 @@ from torch import nn
 from torch import optim
 
 from ...tasks.losses import TorchLossWrapper
-from ..utils import SoftmaxClip
 
 
 logger = logging.getLogger(__name__)
@@ -138,7 +137,7 @@ class CatMulticlass(CatLinear):
 
     def __init__(self, numeric_size: int, embed_sizes: Sequence[int] = (), output_size: int = 1):
         super().__init__(numeric_size, embed_sizes=embed_sizes, output_size=output_size)
-        self.final_act = SoftmaxClip(dim=1)
+        self.final_act = nn.Softmax(dim=1)
 
 
 class TorchBasedLinearEstimator:
@@ -439,7 +438,6 @@ class TorchBasedLogisticRegression(TorchBasedLinearEstimator):
         embed_sizes: categorical embedding sizes.
         output_size: size of output layer.
         cs: regularization coefficients.
-        multilabel: multilabel or not.
         max_iter: maximum iterations of L-BFGS.
         tol: the tolerance for the stopping criteria.
         early_stopping: maximum rounds without improving.
@@ -472,25 +470,21 @@ class TorchBasedLogisticRegression(TorchBasedLinearEstimator):
             10.0,
             20.0,
         ),
-        multilabel: bool = False,
         max_iter: int = 1000,
         tol: float = 1e-4,
         early_stopping: int = 2,
         loss=Optional[Callable],
         metric=Optional[Callable],
     ):
-        if multilabel:
-            _loss = nn.BCEWithLogitsLoss
-            _model = CatLogisticRegression
-            self._binary = False
-        elif output_size == 1:
-            _loss = nn.BCEWithLogitsLoss
+        if output_size == 1:
+            _loss = nn.BCELoss
             _model = CatLogisticRegression
             self._binary = True
         else:
             _loss = nn.CrossEntropyLoss
             _model = CatMulticlass
             self._binary = False
+
         if loss is None:
             loss = TorchLossWrapper(_loss)
 

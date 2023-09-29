@@ -33,11 +33,12 @@ class ImageDataFeatures:
         self.n_jobs = 4
         self.loader = pil_loader
 
-        self.embed_model = "efficientnet_b0.ra_in1k"
+        self.embed_model = "efficientnet-b0"
         self.weights_path = None
         self.subs = 10000
         self.cache_dir = "../cache_CV"
         self.device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
+        self.is_advprop = True
         self.batch_size = 128
         self.verbose = True
 
@@ -107,6 +108,7 @@ class ImageAutoFeatures(FeaturesPipeline, ImageDataFeatures):
                         self.device,
                         self.n_jobs,
                         self.random_state,
+                        self.is_advprop,
                         self.batch_size,
                         self.verbose,
                     ),

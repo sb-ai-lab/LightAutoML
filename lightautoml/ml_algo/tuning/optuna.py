@@ -12,13 +12,13 @@ from typing import Union
 
 import optuna
 
-from ...dataset.base import LAMLDataset
-from ..base import MLAlgo
-from .base import Choice
-from .base import ParamsTuner
-from .base import Uniform
-from ...validation.base import HoldoutIterator
-from ...validation.base import TrainValidIterator
+from lightautoml.dataset.base import LAMLDataset
+from lightautoml.ml_algo.base import MLAlgo
+from lightautoml.ml_algo.tuning.base import Choice
+from lightautoml.ml_algo.tuning.base import ParamsTuner
+from lightautoml.ml_algo.tuning.base import Uniform
+from lightautoml.validation.base import HoldoutIterator
+from lightautoml.validation.base import TrainValidIterator
 
 
 logger = logging.getLogger(__name__)

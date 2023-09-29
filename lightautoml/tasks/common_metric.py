@@ -315,7 +315,7 @@ class BestClassMulticlassWrapper:
 
 _valid_str_binary_metric_names = {
     "auc": roc_auc_score,
-    "logloss": partial(log_loss),
+    "logloss": partial(log_loss, eps=1e-7),
     "accuracy": BestClassBinaryWrapper(accuracy_score),
 }
 
@@ -333,7 +333,7 @@ _valid_str_reg_metric_names = {
 _valid_str_multiclass_metric_names = {
     "auc_mu": auc_mu,
     "auc": roc_auc_ovr,
-    "crossentropy": partial(log_loss),
+    "crossentropy": partial(log_loss, eps=1e-7),
     "accuracy": BestClassMulticlassWrapper(accuracy_score),
     "f1_macro": BestClassMulticlassWrapper(F1Factory("macro")),
     "f1_micro": BestClassMulticlassWrapper(F1Factory("micro")),
@@ -341,7 +341,7 @@ _valid_str_multiclass_metric_names = {
 }
 _valid_str_multireg_metric_names = {"mse": mean_squared_error, "mae": mean_absolute_error}
 
-_valid_str_multilabel_metric_names = {"logloss": partial(log_loss)}
+_valid_str_multilabel_metric_names = {"logloss": partial(log_loss, eps=1e-7)}
 
 _valid_str_metric_names = {
     "binary": _valid_str_binary_metric_names,

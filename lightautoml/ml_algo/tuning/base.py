@@ -7,11 +7,11 @@ from typing import Optional
 from typing import Tuple
 from typing import overload
 
-from ...dataset.base import LAMLDataset
+from lightautoml.dataset.base import LAMLDataset
 
 # if TYPE_CHECKING:
-from ...ml_algo.base import MLAlgo
-from ...validation.base import TrainValidIterator
+from lightautoml.ml_algo.base import MLAlgo
+from lightautoml.validation.base import TrainValidIterator
 
 
 class DistributionBase(ABC):
