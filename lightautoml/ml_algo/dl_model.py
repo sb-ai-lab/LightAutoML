@@ -1,7 +1,6 @@
 """Neural net for tabular datasets."""
 
 
-from itertools import cycle
 from lightautoml.utils.installation import __validate_extra_deps
 
 
