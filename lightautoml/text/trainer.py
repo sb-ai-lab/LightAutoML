@@ -1,5 +1,6 @@
 """Main pytorch training and prediction class with Snapshots Ensemble."""
 
+from itertools import cycle
 import logging
 
 from copy import deepcopy
@@ -715,9 +716,9 @@ class Trainer:
         target = []
         logging_level = get_stdout_level()
         if logging_level < logging.INFO and self.verbose and self.verbose_bar:
-            loader = tqdm(zip(dataloader,sampler), desc=stage, disable=False)
+            loader = tqdm(zip(dataloader,cycle(sampler)), desc=stage, disable=False)
         else:
-            loader = zip(dataloader,sampler)
+            loader = zip(dataloader,cycle(sampler))
 
         with torch.no_grad():
             for sample, candidate_sample in loader:

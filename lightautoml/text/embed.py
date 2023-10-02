@@ -759,7 +759,18 @@ class MLPContEmbedding(nn.Module):
 
         """
         x = X["cont"]
-        x = torch.stack([l(x[:, i]) for i, l in enumerate(self.layers)], 1)
+        # ans = []
+        # for i, l in enumerate(self.layers):
+        #     temp = x[:,i].view(x.size(0),-1)
+        #     temp = l(temp)
+        # x = torch.stack(ans,1)
+        x = torch.stack([l(x[:, i].view(-1,1)) for i, l in enumerate(self.layers)], 1)
         if self.flatten_output:
             return x.view(x.shape[0], -1)
         return x
+
+class MLPContEmbeddingFlat(MLPContEmbedding):
+    """Flatten version of BasicCatEmbedding."""
+
+    def __init__(self, *args, **kwargs):
+        super(MLPContEmbeddingFlat, self).__init__(*args, **{**kwargs, **{"flatten_output": True}})

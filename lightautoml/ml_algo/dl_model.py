@@ -52,6 +52,8 @@ from ..text.embed import (
     DenseEmbeddingFlat,
     LinearEmbedding,
     LinearEmbeddingFlat,
+    MLPContEmbedding,
+    MLPContEmbeddingFlat,
     PLREmbedding,
     PLREmbeddingFlat,
     SoftEmbedding,
@@ -134,6 +136,7 @@ cont_embedder_by_name_flat = {
     "dense": DenseEmbeddingFlat,
     "plr": PLREmbeddingFlat,
     "soft": SoftEmbeddingFlat,
+    "mlp": MLPContEmbeddingFlat
 }
 cont_embedder_by_name = {
     "cont": LinearEmbedding,
@@ -141,6 +144,7 @@ cont_embedder_by_name = {
     "dense": DenseEmbedding,
     "plr": PLREmbedding,
     "soft": SoftEmbedding,
+    "mlp": MLPContEmbedding,
 }
 
 
