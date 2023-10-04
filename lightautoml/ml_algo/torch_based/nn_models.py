@@ -10,7 +10,7 @@ import torch
 import torch.nn as nn
 
 from .saint.saint import ColTransformer, RowColTransformer
-from ..tabnet.utils import TabNetEncoder, _initialize_non_glu
+from .tabnet.utils import TabNetEncoder, _initialize_non_glu
 from .autoint.autoint_utils import AttnInteractionBlock, LeakyGate
 from .autoint.ghost_norm import GhostBatchNorm
 from .fttransformer.fttransformer_utils import Transformer
