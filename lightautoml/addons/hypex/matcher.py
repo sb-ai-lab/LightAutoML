@@ -222,7 +222,7 @@ class Matcher:
         """Converts categorical features into dummy variables."""
         info_col = self.info_col if self.info_col is not None else []
         group_col = [self.group_col] if self.group_col is not None else []
-        columns_to_drop = info_col + group_col + self.outcomes
+        columns_to_drop = info_col + group_col + self.outcomes + [self.treatment]
         if self.base_filtration:
             filtered_features = nan_filtration(self.input_data.drop(columns=columns_to_drop))
             self.dropped_features = [f for f in self.input_data.columns if f not in filtered_features + columns_to_drop]
@@ -314,22 +314,24 @@ class Matcher:
             X = X.drop(columns=self.info_col)
 
         index_matched = MatcherNoReplacement(X, a, self.weights).match()
-        index_matched = np.concatenate(index_matched.loc[1].iloc[self.input_data[a == 1].index].matches.values)
+        filtred_matches = index_matched.loc[1].iloc[self.input_data[a == 1].index].matches[index_matched.loc[1].iloc[self.input_data[a == 1].index].matches.apply(lambda x: x != [])]
 
         if self.weights is not None:
             weighted_features = [f for f in self.weights.keys()]
             index_dict = dict()
             for w in weighted_features:
-                source = self.input_data.loc[index_matched][w].values
-                target = self.input_data[a == 1][w].values
+                source = self.input_data.loc[np.concatenate(filtred_matches.values)][w].values
+                target = self.input_data.loc[filtred_matches.index.to_list()][w].values
                 index = abs(source - target) <= abs(source) * threshold
                 index_dict.update({w: index})
             index_filtered = sum(index_dict.values()) == len(self.weights)
             matched_data = pd.concat(
-                [self.input_data[a == 1].iloc[index_filtered], self.input_data.loc[index_matched].iloc[index_filtered]]
+                [self.input_data.loc[filtred_matches.index.to_list()].iloc[index_filtered],
+                 self.input_data.loc[np.concatenate(filtred_matches.values)].iloc[index_filtered]]
             )
         else:
-            matched_data = pd.concat([self.input_data[a == 1], self.input_data.loc[index_matched]])
+            matched_data = pd.concat([self.input_data.loc[filtred_matches.index.to_list()],
+                                      self.input_data.loc[np.concatenate(filtred_matches.values)]])
         return matched_data
 
     def lama_feature_select(self) -> pd.DataFrame:
@@ -440,11 +442,11 @@ class Matcher:
 
         Validates estimated effect:
                                     1) by replacing real treatment with random placebo treatment.
-                                     Estimated effect must be droped to zero, p-val < 0.05;
+                                     Estimated effect must be droped to zero, p-val > 0.05;
                                     2) by adding random feature (`random_feature`). Estimated effect shouldn't change
-                                    significantly, p-val > 0.05;
+                                    significantly, p-val < 0.05;
                                     3) estimates effect on subset of data (default fraction is 0.8). Estimated effect
-                                    shouldn't change significantly, p-val > 0.05.
+                                    shouldn't change significantly, p-val < 0.05.
 
         Args:
             refuter:
