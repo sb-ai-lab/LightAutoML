@@ -49,10 +49,6 @@ def alpha():
 
 
 def test_split_ab(ab_test, data, group_field):
-    expected_result = {
-        "test": pd.DataFrame({"group": ["test", "test"], "value": [1, 2]}),
-        "control": pd.DataFrame({"group": ["control", "control"], "value": [3, 4]}),
-    }
     result = ab_test.split_ab(data, group_field)
     assert len(result["test"]) == DATA_SIZE
     assert len(result["control"]) == DATA_SIZE
@@ -60,8 +56,10 @@ def test_split_ab(ab_test, data, group_field):
 
 def test_calc_difference(ab_test, data, group_field, target_field, previous_value):
     splitted_data = ab_test.split_ab(data, group_field)
-    result = ab_test.calc_difference(splitted_data, target_field)
+    result = ab_test.calc_difference(splitted_data, target_field, previous_value)
     assert 1 < result["ate"] < 3
+    assert 1 < result["cuped"] < 3
+    assert 1 < result["diff_in_diff"] < 3
 
 
 def test_calc_difference_with_previous_value(
@@ -85,9 +83,12 @@ def test_calc_p_value(ab_test, data, group_field, target_field, previous_value, 
 
 
 def test_execute(ab_test, data, group_field, target_field, previous_value, alpha):
-    result = ab_test.execute(data, target_field, group_field)
+    result = ab_test.execute(data, target_field, group_field, previous_value)
+    print(result)
     assert result["size"]["test"] == DATA_SIZE
     assert result["size"]["control"] == DATA_SIZE
     assert 1 < result["difference"]["ate"] < 3
+    assert 1 < result["difference"]["cuped"] < 3
+    assert 1 < result["difference"]["diff_in_diff"] < 3
     assert result["p_value"]["t_test"] < alpha
     assert result["p_value"]["mann_whitney"] < alpha
