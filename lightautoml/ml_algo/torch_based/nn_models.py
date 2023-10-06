@@ -1136,7 +1136,7 @@ class TabNet(torch.nn.Module):
         epsilon=1e-15,
         virtual_batch_size=128,
         momentum=0.02,
-        mask_type="entemax",
+        mask_type="entmax",
         group_attention_matrix=None,
         **kwargs,
     ):
