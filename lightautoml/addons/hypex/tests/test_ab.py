@@ -1,69 +1,93 @@
 from lightautoml.addons.hypex.ABTesting.ab_tester import ABTest
-from lightautoml.addons.hypex.utils.tutorial_data_creation import create_test_data
+
+import pytest
+import pandas as pd
+import numpy as np
+
+DATA_SIZE = 100
 
 
-# def test_split_ab():
-#     data = create_test_data()
-#     half_data = int(data.shape[0] / 2)
-#     data['group'] = ['test'] * half_data + ['control'] * half_data
-#
-#     group_field = 'group'
-#
-#     model = ABTest()
-#     splitted_data = model.split_ab(data, group_field)
-#
-#     assert isinstance(splitted_data, dict), "result of split_ab is not dict"
-#     assert len(splitted_data) == 2, "split_ab contains not of 2 values"
-#     assert list(splitted_data.keys()) == ['test', 'control'], "changed keys in result of split_ab"
-#
-#
-# def test_calc_difference():
-#     data = create_test_data()
-#     half_data = int(data.shape[0] / 2)
-#     data['group'] = ['test'] * half_data + ['control'] * half_data
-#
-#     group_field = 'group'
-#     target_field = 'post_spends'
-#
-#     model = ABTest()
-#     splitted_data = model.split_ab(data, group_field)
-#     differences = model.calc_difference(splitted_data, target_field)
-#
-#     assert isinstance(differences, dict), "result of calc_difference is not dict"
+@pytest.fixture
+def ab_test():
+    return ABTest()
 
 
-def test_calc_p_value():
-    data = create_test_data()
-    half_data = int(data.shape[0] / 2)
-    data['group'] = ['test'] * half_data + ['control'] * half_data
-
-    group_field = 'group'
-    target_field = 'post_spends'
-
-    model = ABTest()
-    splitted_data = model.split_ab(data, group_field)
-    pvalues = model.calc_p_value(splitted_data, target_field)
-
-    assert isinstance(pvalues, dict), "result of calc_p_value is not dict"
-
-
-def test_execute():
-    data = create_test_data()
-    half_data = int(data.shape[0] / 2)
-    data['group'] = ['test'] * half_data + ['control'] * half_data
-
-    target_field = 'post_spends'
-    target_field_before = 'pre_spends'
-    group_field = 'group'
-
-    model = ABTest()
-    result = model.execute(
-        data=data,
-        target_field=target_field,
-        target_field_before=target_field_before,
-        group_field=group_field
+@pytest.fixture
+def data():
+    # Generate synthetic data for group A
+    group_a_data = np.random.normal(loc=10, scale=2, size=DATA_SIZE)
+    # Generate synthetic data for group B
+    group_b_data = np.random.normal(loc=12, scale=2, size=DATA_SIZE)
+    group_bp_data = np.random.normal(loc=10, scale=2, size=DATA_SIZE * 2)
+    return pd.DataFrame(
+        {
+            "group": ["control"] * len(group_a_data) + ["test"] * len(group_b_data),
+            "value": list(group_a_data) + list(group_b_data),
+            "previous_value": group_bp_data,
+        }
     )
 
-    assert isinstance(result, dict), "result of func execution is not dict"
-    assert len(result) == 3, "result of execution is changed, len of dict was 3"
-    assert list(result.keys()) == ['size', 'difference', 'p_value']
+
+@pytest.fixture
+def target_field():
+    return "value"
+
+
+@pytest.fixture
+def group_field():
+    return "group"
+
+
+@pytest.fixture
+def previous_value():
+    return "previous_value"
+
+
+@pytest.fixture
+def alpha():
+    return 0.05
+
+
+def test_split_ab(ab_test, data, group_field):
+    expected_result = {
+        "test": pd.DataFrame({"group": ["test", "test"], "value": [1, 2]}),
+        "control": pd.DataFrame({"group": ["control", "control"], "value": [3, 4]}),
+    }
+    result = ab_test.split_ab(data, group_field)
+    assert len(result["test"]) == DATA_SIZE
+    assert len(result["control"]) == DATA_SIZE
+
+
+def test_calc_difference(ab_test, data, group_field, target_field, previous_value):
+    splitted_data = ab_test.split_ab(data, group_field)
+    result = ab_test.calc_difference(splitted_data, target_field)
+    assert 1 < result["ate"] < 3
+
+
+def test_calc_difference_with_previous_value(
+    ab_test, data, group_field, target_field, previous_value
+):
+    ab_test.calc_difference_method = "ate"
+    splitted_data = ab_test.split_ab(data, group_field)
+    result = ab_test.calc_difference(splitted_data, previous_value)
+    assert -1 < result["ate"] < 1
+
+
+def test_calc_p_value(ab_test, data, group_field, target_field, previous_value, alpha):
+    splitted_data = ab_test.split_ab(data, group_field)
+    result = ab_test.calc_p_value(splitted_data, target_field)
+    assert result["t_test"] < alpha
+    assert result["mann_whitney"] < alpha
+
+    result = ab_test.calc_p_value(splitted_data, previous_value)
+    assert result["t_test"] > alpha
+    assert result["mann_whitney"] > alpha
+
+
+def test_execute(ab_test, data, group_field, target_field, previous_value, alpha):
+    result = ab_test.execute(data, target_field, group_field)
+    assert result["size"]["test"] == DATA_SIZE
+    assert result["size"]["control"] == DATA_SIZE
+    assert 1 < result["difference"]["ate"] < 3
+    assert result["p_value"]["t_test"] < alpha
+    assert result["p_value"]["mann_whitney"] < alpha
