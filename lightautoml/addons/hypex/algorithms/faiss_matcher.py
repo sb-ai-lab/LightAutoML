@@ -719,8 +719,8 @@ def _transform_to_np(treated: pd.DataFrame, untreated: pd.DataFrame, weights: di
 
     cov = conditional_covariance(xc, xt)
 
-    epsilon = 1e-5
-    cov[cov <= epsilon] = epsilon
+    epsilon = 1e-3
+    cov = cov + np.eye(cov.shape[0]) * epsilon
 
     L = np.linalg.cholesky(cov)
     mahalanobis_transform = np.linalg.inv(L)
