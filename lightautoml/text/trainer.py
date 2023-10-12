@@ -237,6 +237,20 @@ class SnapshotEns:
 
         return self
 
+class InfIterator(object):
+    def __init__(self, dataloader):
+        self.dl = dataloader
+        self.it = iter(self.dl)
+
+    def __iter__(self):
+        return self
+    
+    def __next__(self):
+        try:
+            return next(self.it)
+        except StopIteration:
+            self.it = iter(self.dl)
+            return next(self.it)
 
 class Trainer:
     """Torch main trainer class.
@@ -435,16 +449,11 @@ class Trainer:
         for epoch in range(self.n_epochs):
             self.epoch = epoch
             # train
-            if dataloaders['sampler'] is not None:
-                train_loss = self.train_with_sampler(dataloaders=dataloaders)
-            else:
-                train_loss = self.train(dataloaders=dataloaders)
+            train_loss = self.train(dataloaders=dataloaders)
             train_log.extend(train_loss)
             # test
-            if dataloaders['sampler'] is not None:
-                val_loss, val_data, weights = self.test_with_sampler(dataloader=dataloaders["val"], sampler = dataloaders["sampler"] )
-            else:
-                val_loss, val_data, weights = self.test(dataloader=dataloaders["val"])
+      
+            val_loss, val_data, weights = self.test(dataloaders=dataloaders)
             if self.stop_by_metric:
                 cond = -1 * self.metric(*val_data, weights)
             else:
@@ -469,20 +478,14 @@ class Trainer:
         self.se.set_best_params(self.model)
 
         if self.is_snap:
-            if dataloaders['sampler'] is not None:
-                val_loss, val_data, weights = self.test_with_sampler(dataloader=dataloaders["val"],sampler=dataloaders["sampler"], snap=True, stage="val")
-            else:
-                val_loss, val_data, weights = self.test(dataloader=dataloaders["val"], snap=True, stage="val")
+            val_loss, val_data, weights = self.test(dataloaders=dataloaders, snap=True, stage="val")
             logger.info3(
                 "Result SE, val loss: {vl}, val metric: {me}".format(
                     me=self.metric(*val_data, weights), vl=np.mean(val_loss)
                 )
             )
         elif self.se.swa:
-            if dataloaders['sampler'] is not None:
-                val_loss, val_data, weights = self.test_with_sampler(dataloader=dataloaders["val"], sampler=dataloaders["sampler"])
-            else:
-                val_loss, val_data, weights = self.test(dataloader=dataloaders["val"])
+            val_loss, val_data, weights = self.test(dataloaders=dataloaders)
             logger.info3(
                 "Early stopping: val loss: {vl}, val metric: {me}".format(
                     me=self.metric(*val_data, weights), vl=np.mean(val_loss)
@@ -515,15 +518,20 @@ class Trainer:
             loader = tqdm(dataloaders["train"], desc="train", disable=False)
         else:
             loader = dataloaders["train"]
+        sampler = None
+        if dataloaders['sampler'] is not None:
+            # data['batch_size'] = len(sample['label'])
+            sampler = InfIterator(dataloaders['sampler'])
         for sample in loader:
             data = {
                 i: (sample[i].long().to(self.device) if _dtypes_mapping[i] == "long" else sample[i].to(self.device))
                 for i in sample.keys()
             }
-            data['batch_size'] = len(sample['label'])
-            if dataloaders['sampler'] is not None:
-                data['sampler'] = dataloaders['sampler']
-
+            # data['batch_size'] = len(sample['label'])
+            # if dataloaders['sampler'] is not None:
+            #     # data['batch_size'] = len(sample['label'])
+            #     data['sampler'] = dataloaders['sampler']
+            data['sampler'] = sampler
             loss = self.model(data).mean()
             if self.apex:
                 with self.amp.scale_loss(loss, self .optimizer) as scaled_loss:
@@ -543,7 +551,7 @@ class Trainer:
             c += 1
             if self.verbose and self.verbose_bar and logging_level < logging.INFO:
                 if self.verbose_inside and c % self.verbose_inside == 0:
-                    val_loss, val_data, weights = self.test(dataloader=dataloaders)
+                    val_loss, val_data, weights = self.test(dataloaders=dataloaders)
                     if self.stop_by_metric:
                         cond = -1 * self.metric(*val_data, weights)
                     else:
@@ -719,17 +727,18 @@ class Trainer:
             loader = tqdm(dataloaders[stage], desc=stage, disable=False)
         else:
             loader = dataloaders[stage]
-
+        sampler = None
+        if dataloaders['sampler'] is not None:
+            # data['batch_size'] = len(sample['label'])
+            sampler = InfIterator(dataloaders['sampler'])
         with torch.no_grad():
-            for sample, candidate_sample in loader:
+            for sample in loader:
                 data = {
                     i: sample[i].long().to(self.device) if _dtypes_mapping[i] == "long" else sample[i].to(self.device)
                     for i in sample.keys()
                 }
+                data['sampler'] = sampler
                 ### NOTE, HERE WE CAN ADD TORCH.UNIQUE
-                data['batch_size'] = len(sample['label'])
-                if dataloaders['sampler'] is not None:
-                    data['sampler'] = dataloaders['sampler']
                 if snap:
                     output = self.se.predict(data)
                     loss = self.se.forward(data) if stage != "test" else None
@@ -773,5 +782,5 @@ class Trainer:
             Prediction.
 
         """
-        loss, (target, pred), _ = self.test(stage=stage, snap=self.is_snap, dataloader=dataloaders)
+        loss, (target, pred), _ = self.test(stage=stage, snap=self.is_snap, dataloaders=dataloaders)
         return pred

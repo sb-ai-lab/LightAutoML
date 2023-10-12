@@ -23,6 +23,7 @@ _dtypes_mapping = {
     "token_type_ids": "long",
     "text": "float",  # embeddings
     "length": "long",
+    "fold": "long"
 }
 
 

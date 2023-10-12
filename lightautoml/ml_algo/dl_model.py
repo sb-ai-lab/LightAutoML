@@ -1,6 +1,8 @@
 """Neural net for tabular datasets."""
 
 
+from lightautoml.dataset.base import LAMLDataset
+from lightautoml.dataset.utils import vconcatenate
 from lightautoml.utils.installation import __validate_extra_deps
 
 
@@ -506,7 +508,7 @@ class TorchModel(TabularMLAlgo):
         )
         return suggested_params
 
-    def get_dataloaders_from_dicts(self, data_dict: Dict):
+    def get_dataloaders_from_dicts(self, data_dict: Dict, n : int =0):
         """Construct dataloaders depending on stage.
 
         Args:
@@ -532,6 +534,7 @@ class TorchModel(TabularMLAlgo):
             }
 
             datasets[stage] = self.train_params["dataset"](
+                fold = n,
                 data=data,
                 y=value.target.values if stage != "test" else np.ones(len(value.data)),
                 w=value.weights.values if value.weights is not None else np.ones(len(value.data)),
@@ -573,7 +576,7 @@ class TorchModel(TabularMLAlgo):
         self.params = self._init_params_on_input(train_valid_iterator)
         return super().fit_predict(train_valid_iterator)
     
-    def fit_predict_single_fold(self, train: TabularDataset, valid: TabularDataset):
+    def fit_predict_single_fold(self, train: TabularDataset, valid: TabularDataset, n=0):
         """Implements training and prediction on single fold.
 
         Args:
@@ -589,16 +592,20 @@ class TorchModel(TabularMLAlgo):
         target = train.target
         self.params["bias"] = self.get_mean_target(target, task_name) if self.params["init_bias"] else None
 
-        model = self._infer_params(train)
+        if self.params['is_holdout']:
+            ds = train
+        else:
+            ds = vconcatenate([train,valid])
+        model = self._infer_params(ds)
 
         model_path = (
             os.path.join(self.path_to_save, f"{uuid.uuid4()}.pickle") if self.path_to_save is not None else None
         )
         # init datasets
         if self.use_sampler:
-            dataloaders = self.get_dataloaders_from_dicts({"train": train.to_pandas(), "val": valid.to_pandas(),"sampler": train.to_pandas()})
+            dataloaders = self.get_dataloaders_from_dicts({"train": train.to_pandas(), "val": valid.to_pandas(),"sampler": train.to_pandas()},n)
         else:
-            dataloaders = self.get_dataloaders_from_dicts({"train": train.to_pandas(), "val": valid.to_pandas()})
+            dataloaders = self.get_dataloaders_from_dicts({"train": train.to_pandas(), "val": valid.to_pandas()},n)
             dataloaders['sampler'] = None
         val_pred = model.fit(dataloaders)
 
