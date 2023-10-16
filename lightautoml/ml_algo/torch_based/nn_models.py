@@ -1237,6 +1237,7 @@ class SAINT(nn.Module):
         ff_dropout=0.0,
         mlp_dropout=0.0,
         attentiontype="colrow",
+        pooling: str = "cls",
         device: torch.device = torch.device("cuda:0"),
         **kwargs,
     ):
@@ -1268,9 +1269,9 @@ class SAINT(nn.Module):
 
         l_rate = (n_in + 1) // 8  # input_size = (dim * self.num_categories)  + (dim * num_continuous)
         hidden_dimensions = list(map(lambda t: l_rate * t, mlp_hidden_mults))
-
+        self.pooling = pooling_by_name[pooling]()
         self.mlp = MLP(
-            n_in=embedding_size,
+            n_in=embedding_size * 2 if pooling == "concat" else embedding_size,
             n_out=n_out,
             hidden_size=hidden_dimensions,
             drop_rate=mlp_dropout,
@@ -1284,7 +1285,7 @@ class SAINT(nn.Module):
         Args:
             embedded : torch.Tensor
                 embedded fields
-            bs : batch size
+            bs : batch size without sapler`s part
 
         Returns:
             torch.Tensor
@@ -1310,5 +1311,7 @@ class SAINT(nn.Module):
         # cat_outs = self.mlp1(x[:,:self.num_categories,:])
         # con_outs = self.mlp2(x[:,self.num_categories:,:])
         # return cat_outs, con_outs
-
-        return self.mlp(x[:, 0, :])
+        x_mask = torch.ones(x.shape, dtype=torch.bool).to(self.device)
+        pool_tokens = self.pooling(x=x, x_mask=x_mask)
+        logits = self.mlp(pool_tokens)
+        return logits
