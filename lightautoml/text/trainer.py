@@ -1,10 +1,9 @@
 """Main pytorch training and prediction class with Snapshots Ensemble."""
 
-from itertools import cycle
 import logging
 
 from copy import deepcopy
-from typing import Any, Iterable
+from typing import Any
 from typing import Callable
 from typing import Dict
 from typing import List
@@ -237,20 +236,28 @@ class SnapshotEns:
 
         return self
 
+
 class InfIterator(object):
+    """Infinite Iterator.
+
+    Args:
+        dataloader : torch.utils.dataloader
+    """
+
     def __init__(self, dataloader):
         self.dl = dataloader
         self.it = iter(self.dl)
 
     def __iter__(self):
         return self
-    
+
     def __next__(self):
         try:
             return next(self.it)
         except StopIteration:
             self.it = iter(self.dl)
             return next(self.it)
+
 
 class Trainer:
     """Torch main trainer class.
@@ -305,7 +312,6 @@ class Trainer:
         stop_by_metric: bool = False,
         clip_grad: bool = False,
         clip_grad_params: Optional[Dict] = None,
-
         **kwargs
     ):
         self.net = net
@@ -328,7 +334,7 @@ class Trainer:
         self.stop_by_metric = stop_by_metric
         self.clip_grad = clip_grad
         self.clip_grad_params = clip_grad_params if clip_grad_params is not None else {}
-        
+
         self.dataloader = None
         self.model = None
         self.optimizer = None
@@ -452,7 +458,7 @@ class Trainer:
             train_loss = self.train(dataloaders=dataloaders)
             train_log.extend(train_loss)
             # test
-      
+
             val_loss, val_data, weights = self.test(dataloaders=dataloaders)
             if self.stop_by_metric:
                 cond = -1 * self.metric(*val_data, weights)
@@ -496,7 +502,6 @@ class Trainer:
 
         return val_data[1]
 
-
     def train(self, dataloaders: Dict[str, DataLoader]) -> List[float]:
         """Training loop.
 
@@ -519,9 +524,9 @@ class Trainer:
         else:
             loader = dataloaders["train"]
         sampler = None
-        if dataloaders['sampler'] is not None:
+        if dataloaders["sampler"] is not None:
             # data['batch_size'] = len(sample['label'])
-            sampler = InfIterator(dataloaders['sampler'])
+            sampler = InfIterator(dataloaders["sampler"])
         for sample in loader:
             data = {
                 i: (sample[i].long().to(self.device) if _dtypes_mapping[i] == "long" else sample[i].to(self.device))
@@ -531,10 +536,10 @@ class Trainer:
             # if dataloaders['sampler'] is not None:
             #     # data['batch_size'] = len(sample['label'])
             #     data['sampler'] = dataloaders['sampler']
-            data['sampler'] = sampler
+            data["sampler"] = sampler
             loss = self.model(data).mean()
             if self.apex:
-                with self.amp.scale_loss(loss, self .optimizer) as scaled_loss:
+                with self.amp.scale_loss(loss, self.optimizer) as scaled_loss:
                     scaled_loss.backward()
             else:
                 loss.backward()
@@ -571,12 +576,12 @@ class Trainer:
         return loss_log
 
     def test(
-        self, dataloaders: DataLoader,stage: str = "val", snap: bool = False
+        self, dataloaders: DataLoader, stage: str = "val", snap: bool = False
     ) -> Tuple[List[float], Tuple[np.ndarray, np.ndarray]]:
         """Testing loop.
 
         Args:
-            dataloader: Torch dataloader.
+            dataloaders: Torch dataloader.
             stage: Train, val or test.
             snap: Use snapshots.
 
@@ -596,17 +601,17 @@ class Trainer:
         else:
             loader = dataloaders[stage]
         sampler = None
-        if dataloaders['sampler'] is not None:
+        if dataloaders["sampler"] is not None:
             # data['batch_size'] = len(sample['label'])
-            sampler = InfIterator(dataloaders['sampler'])
+            sampler = InfIterator(dataloaders["sampler"])
         with torch.no_grad():
             for sample in loader:
                 data = {
                     i: sample[i].long().to(self.device) if _dtypes_mapping[i] == "long" else sample[i].to(self.device)
                     for i in sample.keys()
                 }
-                data['sampler'] = sampler
-                ### NOTE, HERE WE CAN ADD TORCH.UNIQUE
+                data["sampler"] = sampler
+                # NOTE, HERE WE CAN ADD TORCH.UNIQUE
                 if snap:
                     output = self.se.predict(data)
                     loss = self.se.forward(data) if stage != "test" else None
@@ -619,11 +624,11 @@ class Trainer:
 
                 loss_log.append(loss)
 
-                output = output.data.cpu().numpy()[:len(sample['label'])]
-                target_data = data["label"].data.cpu().numpy()[:len(sample['label'])]
+                output = output.data.cpu().numpy()[: len(sample["label"])]
+                target_data = data["label"].data.cpu().numpy()[: len(sample["label"])]
                 weights = data.get("weight", None)
-                if weights is not None: 
-                    weights = weights.data.cpu().numpy()[:len(sample['label'])]
+                if weights is not None:
+                    weights = weights.data.cpu().numpy()[: len(sample["label"])]
 
                 pred.append(output)
                 target.append(target_data)
@@ -639,11 +644,12 @@ class Trainer:
             ),
             np.array(weights_log),
         )
+
     def predict(self, dataloaders: DataLoader, stage: str) -> np.ndarray:
         """Predict model.
 
         Args:
-            dataloader: Torch dataloader.
+            dataloaders: Torch dataloader.
             stage: Train, val or test.
 
         Returns:
