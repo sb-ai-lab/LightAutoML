@@ -9,7 +9,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from .saint.saint import ColTransformer, RowColTransformer
+from .saint.saint_utils import ColTransformer, RowColTransformer
 from .tabnet.utils import TabNetEncoder, _initialize_non_glu
 from .autoint.autoint_utils import AttnInteractionBlock, LeakyGate
 from .autoint.ghost_norm import GhostBatchNorm
@@ -1141,7 +1141,7 @@ class TabNet(torch.nn.Module):
         epsilon=1e-15,
         virtual_batch_size=128,
         momentum=0.02,
-        mask_type="entemax",
+        mask_type="entmax",
         group_attention_matrix=None,
         **kwargs,
     ):
@@ -1192,61 +1192,91 @@ class TabNet(torch.nn.Module):
 
 
 class SAINT(nn.Module):
+    """Implementation of Saint from https://github.com/yandex-research/tabular-dl-tabr.
+
+    Args:
+        n_in : int
+            Number of features
+        n_out : int or list of int for multi task classification
+            Dimension of network output
+        embedding_size : embedding_size
+            Dimension of the embedding
+        depth : int
+            Number of Attention Blocks.
+        heads : int
+            Number of heads in Attention.
+        dim_head : int
+            Attention head dimension.
+        mlp_hidden_mults : int | tuple[int]
+            Multiply hidden state of MLP.
+        ffn_mult : int
+            Multiply hidden state of feed forward layer.
+        attn_dropout : float
+            Post-Attention dropout.
+        ff_dropout : int
+            Feed-Forward Dropout.
+        mlp_dropout : float
+            MLP Dropout.
+        attentiontype : str
+            Either "colrow" or "row" : this is the masking attention to use
+        device : torch.device
+        kwargs : kwargs
+    """
+
     def __init__(
         self,
         n_in: int,
         n_out: int = 1,
         embedding_size: int = 10,
-        depth: int =2,
+        depth: int = 2,
         heads: int = 8,
-        dim_head = 16,
-        mlp_hidden_mults = (4, 2),
-        ffn_mult = 4,
-        attn_dropout = 0.,
-        ff_dropout = 0.,
-        mlp_dropout =0.,
-        attentiontype = 'colrow',
+        dim_head=16,
+        mlp_hidden_mults=(4, 2),
+        ffn_mult=4,
+        attn_dropout=0.0,
+        ff_dropout=0.0,
+        mlp_dropout=0.0,
+        attentiontype="colrow",
         device: torch.device = torch.device("cuda:0"),
-        **kwargs
-        ):
+        **kwargs,
+    ):
         super().__init__()
         self.device = device
         self.cls_token = nn.Embedding(2, embedding_size)
         self.attentiontype = attentiontype
-        if attentiontype == 'col':
+        if attentiontype == "col":
             self.transformer = ColTransformer(
-                dim = embedding_size,
-                depth = depth,
-                heads = heads,
-                dim_head = dim_head,
-                attn_dropout = attn_dropout,
-                ff_dropout = ff_dropout
+                dim=embedding_size,
+                depth=depth,
+                heads=heads,
+                dim_head=dim_head,
+                attn_dropout=attn_dropout,
+                ff_dropout=ff_dropout,
             )
-        elif attentiontype in ['row','colrow'] :
+        elif attentiontype in ["row", "colrow"]:
             self.transformer = RowColTransformer(
-                dim = embedding_size,
-                nfeats= n_in+1, #num featurs
-                depth = depth,
-                heads = heads,
-                dim_head = dim_head,
-                ffn_mult = ffn_mult,
-                attn_dropout = attn_dropout,
-                ff_dropout = ff_dropout,
-                style = attentiontype
+                dim=embedding_size,
+                nfeats=n_in + 1,  # num featurs
+                depth=depth,
+                heads=heads,
+                dim_head=dim_head,
+                ffn_mult=ffn_mult,
+                attn_dropout=attn_dropout,
+                ff_dropout=ff_dropout,
+                style=attentiontype,
             )
-        
-        l = (n_in+1) // 8 #input_size = (dim * self.num_categories)  + (dim * num_continuous)
-        hidden_dimensions = list(map(lambda t: l * t, mlp_hidden_mults))
 
-        self.mlp = MLP(n_in = embedding_size,
-                       n_out = n_out,
-                       hidden_size = hidden_dimensions,
-                       drop_rate=mlp_dropout,
-                       use_bn = False,
-                       dropout_first= False)
-        # self.embeds = nn.Embedding(self.total_tokens, self.dim) #.to(device)
+        l_rate = (n_in + 1) // 8  # input_size = (dim * self.num_categories)  + (dim * num_continuous)
+        hidden_dimensions = list(map(lambda t: l_rate * t, mlp_hidden_mults))
 
-
+        self.mlp = MLP(
+            n_in=embedding_size,
+            n_out=n_out,
+            hidden_size=hidden_dimensions,
+            drop_rate=mlp_dropout,
+            use_bn=False,
+            dropout_first=False,
+        )
 
     def forward(self, embedded: torch.Tensor, bs: int) -> torch.Tensor:
         """Transform the input tensor.
@@ -1254,15 +1284,20 @@ class SAINT(nn.Module):
         Args:
             embedded : torch.Tensor
                 embedded fields
+            bs : batch size
 
         Returns:
             torch.Tensor
 
         """
-        mask = torch.zeros((len(embedded),len(embedded)), device=self.device, dtype=torch.bool)
+        mask = torch.zeros((len(embedded), len(embedded)), device=self.device, dtype=torch.bool)
         mask[torch.arange(bs), torch.arange(bs)] = 1
+        # NOTE that it was:
+        # mask[:bs, bs:] = 1
+        # mask[bs:, bs:] = 1
+        # probably misprint
         mask[:bs, bs:] = 1
-        mask[bs:, bs:] = 1
+        mask[bs:, :bs] = 1
 
         cls_token = torch.unsqueeze(
             self.cls_token(torch.ones(embedded.shape[0], dtype=torch.int).to(self.device)), dim=1
@@ -1276,4 +1311,4 @@ class SAINT(nn.Module):
         # con_outs = self.mlp2(x[:,self.num_categories:,:])
         # return cat_outs, con_outs
 
-        return self.mlp(x[:,0,:])
+        return self.mlp(x[:, 0, :])
