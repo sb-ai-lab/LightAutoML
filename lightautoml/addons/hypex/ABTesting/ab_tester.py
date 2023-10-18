@@ -3,7 +3,7 @@ from IPython.display import display
 from collections import namedtuple
 from pathlib import Path
 from sklearn.utils import shuffle
-from typing import Iterable, Union, Optional, Dict, Any
+from typing import Iterable, Union, Optional, Dict, Any, Tuple
 
 from tqdm.auto import tqdm
 
@@ -38,74 +38,43 @@ def merge_groups(
 class AATest:
     def __init__(
             self,
-            data: pd.DataFrame,
             target_fields: Union[Iterable[str], str],
             info_cols: Union[Iterable[str], str] = None,
             group_cols: Union[str, Iterable[str]] = None,
             quant_field: str = None,
             mode: str = "simple"
     ):
-        """
-
-        Args:
-            data:
-                Input data
-            target_fields:
-                Field with target value
-            mode:
-                Regime to divide sample on A and B samples:
-                    'simple' - divides by groups, placing equal amount
-                    of records (clients | groups of clients) in samples
-                    'balanced' - divides by size of samples, placing full groups depending on the size of group
-                    to balance size of A and B. Can not be applied without groups
-            group_cols:
-                Name of field(s) for division by groups
-            quant_field:
-                Name of field by which division should take in account common features besides groups
-        """
-        self.data = data
-        self.init_data = data
         self.target_fields = [target_fields] if isinstance(target_fields, str) else target_fields
         self.info_cols = [info_cols] if isinstance(info_cols, str) else info_cols
         self.group_cols = [group_cols] if isinstance(group_cols, str) else group_cols
         self.quant_field = quant_field
         self.mode = mode
-        self._preprocessing_data()
 
-    def _preprocessing_data(self):
+    def _preprocessing_data(self, data):
         """Converts categorical variables to dummy variables.
 
         Returns:
             Data with categorical variables converted to dummy variables.
         """
-        data = self.data
-
         # categorical to dummies
+        prep_data = data.copy()
         init_cols = data.columns
 
-        dont_binarize_cols = (  # collects names of columns that shouldn't be binarized
-            self.group_cols + [self.quant_field]
-            if (self.group_cols is not None) and (self.quant_field is not None)
-            else self.group_cols
-            if self.group_cols is not None
-            else [self.quant_field]
-            if self.quant_field is not None
-            else None
-        )
+        dont_binarize_cols = self.group_cols or []
+        if self.quant_field is not None:
+            dont_binarize_cols.append(self.quant_field)
+
         # if self.group_cols is not None:
-        if dont_binarize_cols is not None:
-            data = pd.get_dummies(data.drop(columns=dont_binarize_cols), dummy_na=True)
-            data = data.merge(self.data[dont_binarize_cols], left_index=True, right_index=True)
-        else:
-            data = pd.get_dummies(data, dummy_na=True)
+        prep_data = pd.get_dummies(prep_data.drop(columns=dont_binarize_cols), dummy_na=True)
+        prep_data = data.merge(data[dont_binarize_cols], left_index=True, right_index=True)
 
         # fix if dummy_na is const=0
-        dummies_cols = set(data.columns) - set(init_cols)
-        const_columns = [col for col in dummies_cols if data[col].nunique() <= 1]  # choose constant_columns
+        dummies_cols = set(prep_data.columns) - set(init_cols)
+        const_columns = [col for col in dummies_cols if prep_data[col].nunique() <= 1]  # choose constant_columns
 
         # drop constant dummy columns and info columns
         cols_to_drop = const_columns + (self.info_cols if self.info_cols is not None else [])
-        self.data = data.drop(columns=cols_to_drop)
+        return prep_data.drop(columns=cols_to_drop)
 
     def __simple_mode(self, data: pd.DataFrame, random_state: int = None):
         """Separates data on A and B samples within simple mode.
@@ -136,7 +105,7 @@ class AATest:
 
         return result
 
-    def split(self, random_state: int = None) -> Dict:
+    def split(self, data, preprocessing_data=True, random_state: int = None) -> Dict:
         """Divides sample on two groups.
 
         Args:
@@ -145,7 +114,8 @@ class AATest:
         Returns:
             result: dict of indexes with division on test and control group
         """
-        data = self.data
+        if preprocessing_data:
+            data = self._preprocessing_data(data)
         result = {"test_indexes": [], "control_indexes": []}
 
         if self.group_cols:
@@ -189,7 +159,7 @@ class AATest:
 
         return result
 
-    def _postprep_data(self, spit_indexes: Dict = None):
+    def _postprep_data(self, data, spit_indexes: Dict = None):
         """prep data to show user (add info_cols and decode binary variables)
 
         Args:
@@ -199,13 +169,22 @@ class AATest:
             data: separated init data with column "group"
         """
         # prep data to show user (add info_cols and decode binary variables)
-        test = self.init_data.loc[spit_indexes["test_indexes"]]
-        control = self.init_data.loc[spit_indexes["control_indexes"]]
+        test = data.loc[spit_indexes["test_indexes"]]
+        control = data.loc[spit_indexes["control_indexes"]]
         data = merge_groups(test, control)
 
         return data
 
-    def sampling_metrics(self, alpha: float = 0.05, random_state: int = None):
+    @staticmethod
+    def calc_ab_delta(a_mean, b_mean, mode="percentile"):
+        if mode == "percentile":
+            return (1 - a_mean / b_mean) * 100
+        if mode == "absolute":
+            return b_mean - a_mean
+        if mode == "relative":
+            return (1 - a_mean / b_mean)
+
+    def sampling_metrics(self, data, alpha: float = 0.05, random_state: int = None, preprocessed_data=None):
         """
 
         Args:
@@ -217,16 +196,18 @@ class AATest:
                 1) metrics dataframe (stat tests) and
                 2) dict of random state with test_control dataframe
         """
+
         data_from_sampling_dict = {}
         scores = []
         t_result = {"random_state": random_state}
 
-        split = self.split(random_state)
-        a = self.data.loc[split["test_indexes"]]
-        b = self.data.loc[split["control_indexes"]]
+        split = self.split(data, preprocessed_data is None, random_state)
+
+        a = data.loc[split["test_indexes"]]
+        b = data.loc[split["control_indexes"]]
 
         # prep data to show user (merge indexes and init data)
-        data_from_sampling_dict[random_state] = self._postprep_data(split)
+        data_from_sampling_dict[random_state] = self._postprep_data(data, split)
 
         for tf in self.target_fields:
             ta = a[tf]
@@ -234,7 +215,10 @@ class AATest:
 
             t_result[f"{tf} a mean"] = ta.mean()
             t_result[f"{tf} b mean"] = tb.mean()
-            t_result[f"{tf} ab delta %"] = (1 - t_result[f"{tf} a mean"] / t_result[f"{tf} b mean"]) * 100
+            t_result[f"{tf} ab delta"] = self.calc_ab_delta(t_result[f"{tf} a mean"], t_result[f"{tf} b mean"],
+                                                            "absolute")
+            t_result[f"{tf} ab delta %"] = self.calc_ab_delta(t_result[f"{tf} a mean"], t_result[f"{tf} b mean"],
+                                                              "percentile")
             t_result[f"{tf} t_test p_value"] = ttest_ind(ta, tb, nan_policy='omit').pvalue
             t_result[f"{tf} ks_test p_value"] = ks_2samp(ta, tb).pvalue
             t_result[f"{tf} t_test passed"] = t_result[f"{tf} t_test p_value"] > alpha
@@ -248,13 +232,14 @@ class AATest:
 
     def search_dist_uniform_sampling(
             self,
+            data,
             alpha: float = 0.05,
             iterations: int = 10,
             file_name: Union[Path, str] = None,
             write_mode: str = "full",
             write_step: int = None,
             pbar: bool = True,
-    ) -> Optional[tuple[pd.DataFrame, dict[Any, dict]]]:
+    ) -> Optional[Tuple[pd.DataFrame, Dict[Any, Dict]]]:
         """Chooses random_state for finding homogeneous distribution.
 
         Args:
@@ -283,12 +268,14 @@ class AATest:
         results = []
         data_from_sampling = {}
 
+        preprocessed_data = self._preprocessing_data(data)
+
         if write_mode not in ("full", "all", "any"):
             warnings.warn(f"Write mode '{write_mode}' is not supported. Mode 'full' will be used")
             write_mode = "full"
 
         for i, rs in tqdm(enumerate(random_states), total=len(random_states), disable=not pbar):
-            res = self.sampling_metrics(alpha=alpha, random_state=rs)
+            res = self.sampling_metrics(data, alpha=alpha, random_state=rs, preprocessed_data=preprocessed_data)
             data_from_sampling.update(res["data_from_experiment"])
 
             # write to file
@@ -562,7 +549,7 @@ class ABTest:
             "difference": self.calc_difference(splitted_data, target_field, target_field_before),
             "p_value": self.calc_p_value(splitted_data, target_field),
         }
-        
+
         self.results = results
 
         return results
