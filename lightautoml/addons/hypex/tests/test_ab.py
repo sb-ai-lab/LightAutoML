@@ -62,9 +62,7 @@ def test_calc_difference(ab_test, data, group_field, target_field, previous_valu
     assert 1 < result["diff_in_diff"] < 3
 
 
-def test_calc_difference_with_previous_value(
-    ab_test, data, group_field, target_field, previous_value
-):
+def test_calc_difference_with_previous_value(ab_test, data, group_field, target_field, previous_value):
     ab_test.calc_difference_method = "ate"
     splitted_data = ab_test.split_ab(data, group_field)
     result = ab_test.calc_difference(splitted_data, previous_value)
