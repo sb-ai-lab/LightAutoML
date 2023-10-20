@@ -109,6 +109,8 @@ class AATest:
         """Divides sample on two groups.
 
         Args:
+            data: raw input data
+            preprocessing_data: флаг указания на необходимость преобразования
             random_state: one integer to fix split
 
         Returns:
@@ -155,14 +157,16 @@ class AATest:
             result["control_indexes"] = t_result["control_indexes"]
 
         result["test_indexes"] = list(set(result["test_indexes"]))
-        result["control_indexes"] = list(set(result["test_indexes"]))
+        result["control_indexes"] = list(set(result["control_indexes"]))
 
         return result
 
-    def _postprep_data(self, data, spit_indexes: Dict = None):
+    @staticmethod
+    def _postprep_data(data, spit_indexes: Dict = None):
         """prep data to show user (add info_cols and decode binary variables)
 
         Args:
+            data: raw input data
             spit_indexes: dict of indexes with separation on test and control group
 
         Returns:
@@ -188,8 +192,10 @@ class AATest:
         """
 
         Args:
+            data: raw input data
             alpha: Threshold to check statistical hypothesis; usually 0.05
             random_state: Random seeds for searching
+            preprocessed_data: pre-preprocessed data
 
         Returns:
             result: tuple of
@@ -245,6 +251,7 @@ class AATest:
         """Chooses random_state for finding homogeneous distribution.
 
         Args:
+            data: raw input data
             iterations:
                 Number of iterations to search uniform sampling to searching
             alpha:
@@ -514,6 +521,7 @@ class ABTest:
             data: The input data as a pandas DataFrame.
             target_field: The target field to be analyzed.
             group_field: The field used to split the data into groups.
+            target_field_before: The target field without treatment to be analyzed
 
         Returns:
             results:
@@ -525,7 +533,7 @@ class ABTest:
         splitted_data = self.split_ab(data, group_field)
 
         results = {
-            "size": {"test": len(splitted_data["test"]), "control": len(splitted_data["control"]),},
+            "size": {"test": len(splitted_data["test"]), "control": len(splitted_data["control"])},
             "difference": self.calc_difference(splitted_data, target_field, target_field_before),
             "p_value": self.calc_p_value(splitted_data, target_field),
         }
