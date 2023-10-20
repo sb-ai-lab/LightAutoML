@@ -1,6 +1,7 @@
 import warnings
+from copy import copy
+
 from IPython.display import display
-from collections import namedtuple
 from pathlib import Path
 from sklearn.utils import shuffle
 from typing import Iterable, Union, Optional, Dict, Any, Tuple
@@ -59,13 +60,13 @@ class AATest:
         prep_data = data.copy()
         init_cols = data.columns
 
-        dont_binarize_cols = self.group_cols or []
+        dont_binarize_cols = copy(self.group_cols) or []
         if self.quant_field is not None:
             dont_binarize_cols.append(self.quant_field)
 
         # if self.group_cols is not None:
         prep_data = pd.get_dummies(prep_data.drop(columns=dont_binarize_cols), dummy_na=True)
-        prep_data = data.merge(data[dont_binarize_cols], left_index=True, right_index=True)
+        prep_data = prep_data.merge(data[dont_binarize_cols], left_index=True, right_index=True)
 
         # fix if dummy_na is const=0
         dummies_cols = set(prep_data.columns) - set(init_cols)
