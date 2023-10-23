@@ -11,6 +11,7 @@ from ...dataset.utils import concatenate
 
 logger = logging.getLogger(__name__)
 
+
 def calc_one_feat_imp(iters, level, feat, model, data, norm_score, target, metric, silent):
     # data is a PandasDataset
     initial_col = copy(data[:, feat].data)
@@ -23,7 +24,7 @@ def calc_one_feat_imp(iters, level, feat, model, data, norm_score, target, metri
         level_predictions = []
         for _n, ml_pipe in enumerate(level):
             level_predictions.append(ml_pipe.predict(dataset))
-        
+
         if n != len(model.levels):
 
             level_predictions = concatenate(level_predictions)
@@ -34,13 +35,11 @@ def calc_one_feat_imp(iters, level, feat, model, data, norm_score, target, metri
                     # convert to initital dataset type
                     level_predictions = dataset.from_dataset(level_predictions)
                 except TypeError:
-                    raise TypeError(
-                        "Can not convert prediction dataset type to input features. Set skip_conn=False"
-                    )
+                    raise TypeError("Can not convert prediction dataset type to input features. Set skip_conn=False")
                 dataset = concatenate([level_predictions, dataset])
             else:
                 dataset = level_predictions
-    
+
     preds = model.blender.predict(level_predictions)
     data[feat] = initial_col
     preds.target = target.values
@@ -72,7 +71,7 @@ def calc_feats_permutation_imps(model, used_feats, data, target, metric, silent=
         else:
             # input data features
             level = 0
-        
+
         arr = used_feats_leveled.get(level, [])
         arr.append(feat)
         used_feats_leveled[level] = arr
@@ -109,9 +108,7 @@ def calc_feats_permutation_imps(model, used_feats, data, target, metric, silent=
                     # convert to initital dataset type
                     level_predictions = data.from_dataset(level_predictions)
                 except TypeError:
-                    raise TypeError(
-                        "Can not convert prediction dataset type to input features. Set skip_conn=False"
-                    )
+                    raise TypeError("Can not convert prediction dataset type to input features. Set skip_conn=False")
                 data = concatenate([level_predictions, data])
             else:
                 data = level_predictions
@@ -119,6 +116,7 @@ def calc_feats_permutation_imps(model, used_feats, data, target, metric, silent=
     feat_imp = pd.DataFrame(feat_imp, columns=["Feature", "Importance"])
     feat_imp = feat_imp.sort_values("Importance", ascending=False).reset_index(drop=True)
     return feat_imp
+
 
 def change_datetime(feature_datetime, key, value):
     assert key in ["year", "month", "dayofweek"]
