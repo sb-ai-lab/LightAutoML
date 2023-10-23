@@ -993,7 +993,11 @@ class ReportDeco:
         for feature_name in numerical_features:
             item = {"Feature name": feature_name}
             item["NaN ratio"] = "{:.4f}".format(train_data[feature_name].isna().sum() / train_data.shape[0])
-            values = train_data[feature_name].dropna().values
+            # check if column dtype is bool
+            if train_data[feature_name].dtype == bool:
+                values = train_data[feature_name].astype(float).dropna().values
+            else:
+                values = train_data[feature_name].dropna().values
             item["min"] = np.min(values)
             item["quantile_25"] = np.quantile(values, 0.25)
             item["average"] = np.mean(values)
@@ -1352,7 +1356,11 @@ class ReportDecoUtilized(ReportDeco):
         for feature_name in numerical_features:
             item = {"Feature name": feature_name}
             item["NaN ratio"] = "{:.4f}".format(train_data[feature_name].isna().sum() / train_data.shape[0])
-            values = train_data[feature_name].dropna().values
+            # check if column dtype is bool
+            if train_data[feature_name].dtype == bool:
+                values = train_data[feature_name].astype(float).dropna().values
+            else:
+                values = train_data[feature_name].dropna().values
             item["min"] = np.min(values)
             item["quantile_25"] = np.quantile(values, 0.25)
             item["average"] = np.mean(values)
