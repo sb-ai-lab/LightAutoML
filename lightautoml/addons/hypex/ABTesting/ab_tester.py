@@ -42,7 +42,7 @@ class AATest:
         info_cols: Union[Iterable[str], str] = None,
         group_cols: Union[str, Iterable[str]] = None,
         quant_field: str = None,
-        mode: str = "simple"
+        mode: str = "simple",
     ):
         self.target_fields = [target_fields] if isinstance(target_fields, str) else target_fields
         self.info_cols = [info_cols] if isinstance(info_cols, str) else info_cols
@@ -212,11 +212,7 @@ class AATest:
             return result
 
     def sampling_metrics(
-            self,
-            data: pd.DataFrame,
-            alpha: float = 0.05,
-            random_state: int = None,
-            preprocessed_data: pd.DataFrame = None
+        self, data: pd.DataFrame, alpha: float = 0.05, random_state: int = None, preprocessed_data: pd.DataFrame = None
     ):
         """Calculates metrics of one sampling.
 
@@ -390,7 +386,7 @@ class ABTest:
 
     @staticmethod
     def cuped(
-            test_data: pd.DataFrame, control_data: pd.DataFrame, target_field: str, target_field_before: str
+        test_data: pd.DataFrame, control_data: pd.DataFrame, target_field: str, target_field_before: str
     ) -> float:
         """Counts CUPED (Controlled-Experiment using Pre-Experiment Data) in absolute values.
 
@@ -444,7 +440,7 @@ class ABTest:
 
     @staticmethod
     def diff_in_diff(
-            test_data: pd.DataFrame, control_data: pd.DataFrame, target_field: str, target_field_before: str
+        test_data: pd.DataFrame, control_data: pd.DataFrame, target_field: str, target_field_before: str
     ) -> float:
         """Counts Difference in Difference.
 
@@ -518,9 +514,7 @@ class ABTest:
 
         return result
 
-    def calc_p_value(
-            self, splitted_data: Dict[str, pd.DataFrame], target_field: str
-    ) -> Dict[str, float]:
+    def calc_p_value(self, splitted_data: Dict[str, pd.DataFrame], target_field: str) -> Dict[str, float]:
         """Calculates the p-value for a given data set.
 
         Args:
