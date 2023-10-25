@@ -13,9 +13,9 @@ logger = logging.getLogger(__name__)
 
 
 def calc_one_feat_imp(iters, level, feat, model, data, norm_score, target, metric, silent):
-    # data is a PandasDataset
+    # data is a LAMLDataset
     initial_col = copy(data[:, feat].data)
-    new_col = np.random.permutation(initial_col.values)
+    new_col = np.random.permutation(initial_col)
     data[feat] = new_col
     dataset = copy(data)
 
@@ -63,20 +63,23 @@ def calc_feats_permutation_imps(model, used_feats, data, target, metric, silent=
 
     # construct levels of used feats
     used_feats_leveled = {}
-    for feat in used_feats:
-        if feat.startswith("Lvl_"):
-            # stack features
-            level = feat.split("_")[1]
-            level = int(level) + 1
-        else:
-            # input data features
-            level = 0
+
+    # input data features
+    initial_feats = model.levels[0][0].used_features
+    used_feats_leveled[0] = initial_feats
+
+    # construct levels of stacking feats
+    # only consider features not in initial_feats
+    for feat in list(set(used_feats) - set(initial_feats)):
+        # stacking feat looks like 'Lvl_0_Pipe_1_Mod_2_CatBoost_prediction_1'
+        level = feat.split("_")[1]
+        level = int(level) + 1
 
         arr = used_feats_leveled.get(level, [])
         arr.append(feat)
         used_feats_leveled[level] = arr
 
-    # convert data to PandasDataset
+    # convert holdout data to LAMLDataset
     data = model.reader.read(data, add_array_attrs=False)
 
     # iterate through all the levels
@@ -96,7 +99,7 @@ def calc_feats_permutation_imps(model, used_feats, data, target, metric, silent=
                     silent,
                 )
             )
-        # update data with stacking features
+        # update holdout data with stacking features
         if level != len(model.levels) - 1:
             level_predictions = []
             for _n, ml_pipe in enumerate(model.levels[level]):
