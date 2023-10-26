@@ -79,7 +79,6 @@ def calc_feats_permutation_imps(model, used_feats, data, target, metric, silent=
         arr.append(feat)
         used_feats_leveled[level] = arr
 
-    print(used_feats_leveled)
     # convert holdout data to LAMLDataset
     data = model.reader.read(data, add_array_attrs=False)
 
