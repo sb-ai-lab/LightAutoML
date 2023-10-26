@@ -31,6 +31,9 @@ from ...ml_algo.linear_sklearn import LinearLBFGS
 from ...ml_algo.random_forest import RandomForestSklearn
 from ...ml_algo.tuning.optuna import DLOptunaTuner
 from ...ml_algo.tuning.optuna import OptunaTuner
+from ...ml_algo.reliefF import ReliefF, SURF, MultiSURF
+from ...ml_algo.fcbf import FCBF
+from ...ml_algo.statistical_selection import MutualInfoRegression
 from ...pipelines.features.lgb_pipeline import LGBAdvancedPipeline
 from ...pipelines.features.lgb_pipeline import LGBSeqSimpleFeatures
 from ...pipelines.features.lgb_pipeline import LGBSimpleFeatures
@@ -42,11 +45,13 @@ from ...pipelines.selection.base import SelectionPipeline
 from ...pipelines.selection.importance_based import ImportanceCutoffSelector
 from ...pipelines.selection.importance_based import ModelBasedImportanceEstimator
 from ...pipelines.selection.permutation_importance_based import (
-    NpIterativeFeatureSelector,
+    IterativeFeatureSelector,
 )
 from ...pipelines.selection.permutation_importance_based import (
     NpPermutationImportanceEstimator,
+    NpCrossValPermutationImportanceEstimator,
 )
+
 from ...reader.base import DictToPandasSeqReader
 from ...reader.base import PandasToPandasReader
 from ...reader.tabular_batch_generator import ReadableToDf
@@ -357,8 +362,23 @@ class TabularAutoML(AutoMLPreset):
 
             if selection_params["importance_type"] == "permutation":
                 importance = NpPermutationImportanceEstimator()
-            else:
+            elif selection_params["importance_type"] == "gain":
                 importance = ModelBasedImportanceEstimator()
+            elif selection_params["importance_type"] == "relieff":
+                importance = ReliefF()
+                selection_gbm = None
+            elif selection_params["importance_type"] == "SURF":
+                importance = SURF()
+                selection_gbm = None
+            elif selection_params["importance_type"] == "MultiSURF":
+                importance = MultiSURF()
+                selection_gbm = None
+            elif selection_params["importance_type"] == "FCBF":
+                importance = FCBF()
+                selection_gbm = None
+            elif selection_params["importance_type"] == "MIR":
+                importance = MutualInfoRegression()
+                selection_gbm = None
 
             pre_selector = ImportanceCutoffSelector(
                 selection_feats,
@@ -379,16 +399,19 @@ class TabularAutoML(AutoMLPreset):
                 selection_gbm.set_prefix("Selector")
 
                 # TODO: Check about reusing permutation importance
-                importance = NpPermutationImportanceEstimator()
+                if selection_params["cross_val"]:
+                    importance = NpCrossValPermutationImportanceEstimator()
+                else:
+                    importance = NpPermutationImportanceEstimator()
 
-                extra_selector = NpIterativeFeatureSelector(
+                extra_selector = IterativeFeatureSelector(
                     selection_feats,
                     selection_gbm,
                     importance,
                     feature_group_size=selection_params["feature_group_size"],
-                    max_features_cnt_in_result=selection_params["max_features_cnt_in_result"],
+                    # max_features_cnt_in_result=selection_params["max_features_cnt_in_result"],
+                    kind=selection_params["kind"],
                 )
-
                 pre_selector = ComposedSelector([pre_selector, extra_selector])
 
         return pre_selector

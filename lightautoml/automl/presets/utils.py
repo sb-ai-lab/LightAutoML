@@ -3,24 +3,50 @@ import logging
 
 import matplotlib.pyplot as plt
 import numpy as np
+from copy import copy
 import pandas as pd
 import seaborn as sns
+from ...dataset.utils import concatenate
 
 
 logger = logging.getLogger(__name__)
 
 
-def calc_one_feat_imp(iters, feat, model, data, norm_score, target, metric, silent):
-    initial_col = data[feat].copy()
-    data[feat] = np.random.permutation(data[feat].values)
+def calc_one_feat_imp(iters, level, feat, model, data, norm_score, target, metric, silent):
+    # data is a LAMLDataset
+    initial_col = copy(data[:, feat].data)
+    new_col = np.random.permutation(initial_col)
+    data[feat] = new_col
+    dataset = copy(data)
 
-    preds = model.predict(data)
-    preds.target = data[target].values
+    # iterate through higher levels
+    for n, level in enumerate(model.levels[level:], level + 1):
+        level_predictions = []
+        for _n, ml_pipe in enumerate(level):
+            level_predictions.append(ml_pipe.predict(dataset))
+
+        if n != len(model.levels):
+
+            level_predictions = concatenate(level_predictions)
+
+            if model.skip_conn:
+
+                try:
+                    # convert to initital dataset type
+                    level_predictions = dataset.from_dataset(level_predictions)
+                except TypeError:
+                    raise TypeError("Can not convert prediction dataset type to input features. Set skip_conn=False")
+                dataset = concatenate([level_predictions, dataset])
+            else:
+                dataset = level_predictions
+
+    preds = model.blender.predict(level_predictions)
+    data[feat] = initial_col
+    preds.target = target.values
     new_score = metric(preds)
 
     if not silent:
         logger.info3("{}/{} Calculated score for {}: {:.7f}".format(iters[0], iters[1], feat, norm_score - new_score))
-    data[feat] = initial_col
     return feat, norm_score - new_score
 
 
@@ -30,22 +56,66 @@ def calc_feats_permutation_imps(model, used_feats, data, target, metric, silent=
         logger.info3("LightAutoML ts master used {} feats".format(n_used_feats))
     data = data.reset_index(drop=True)
     preds = model.predict(data)
-    preds.target = data[target].values
+    target_col = data[target]
+    preds.target = target_col.values
     norm_score = metric(preds)
     feat_imp = []
-    for it, f in enumerate(used_feats):
-        feat_imp.append(
-            calc_one_feat_imp(
-                (it + 1, n_used_feats),
-                f,
-                model,
-                data,
-                norm_score,
-                target,
-                metric,
-                silent,
+
+    # construct levels of used feats
+    used_feats_leveled = {}
+
+    # input data features
+    initial_feats = data.drop(columns=target).columns.values
+    used_feats_leveled[0] = initial_feats
+
+    # construct levels of stacking feats
+    # only consider features not in initial_feats
+    for feat in list(set(used_feats) - set(initial_feats)):
+        # stacking feat looks like 'Lvl_0_Pipe_1_Mod_2_CatBoost_prediction_1'
+        level = feat.split("_")[1]
+        level = int(level) + 1
+
+        arr = used_feats_leveled.get(level, [])
+        arr.append(feat)
+        used_feats_leveled[level] = arr
+
+    # convert holdout data to LAMLDataset
+    data = model.reader.read(data, add_array_attrs=False)
+
+    # iterate through all the levels
+    for level in sorted(used_feats_leveled.keys()):
+        # compute importances for features
+        for it, f in enumerate(used_feats_leveled[level]):
+            feat_imp.append(
+                calc_one_feat_imp(
+                    (it + 1, n_used_feats),
+                    level,
+                    f,
+                    model,
+                    data,
+                    norm_score,
+                    target_col,
+                    metric,
+                    silent,
+                )
             )
-        )
+        # update holdout data with stacking features
+        if level != len(model.levels) - 1:
+            level_predictions = []
+            for _n, ml_pipe in enumerate(model.levels[level]):
+                level_predictions.append(ml_pipe.predict(data))
+
+            level_predictions = concatenate(level_predictions)
+            if model.skip_conn:
+                try:
+                    # convert to initital dataset type
+                    level_predictions = data.from_dataset(level_predictions)
+                except TypeError:
+                    raise TypeError("Can not convert prediction dataset type to input features. Set skip_conn=False")
+                data = concatenate([level_predictions, data])
+            else:
+                data = level_predictions
+
     feat_imp = pd.DataFrame(feat_imp, columns=["Feature", "Importance"])
     feat_imp = feat_imp.sort_values("Importance", ascending=False).reset_index(drop=True)
     return feat_imp

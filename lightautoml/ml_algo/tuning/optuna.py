@@ -21,10 +21,11 @@ from ...validation.base import HoldoutIterator
 from ...validation.base import TrainValidIterator
 
 
-logger = logging.getLogger(__name__)
-optuna.logging.enable_propagation()
-optuna.logging.disable_default_handler()
-optuna.logging.set_verbosity(optuna.logging.DEBUG)
+# logger = logging.getLogger(__name__)
+# optuna.logging.enable_propagation()
+# optuna.logging.disable_default_handler()
+# optuna.logging.set_verbosity(optuna.logging.DEBUG)
+optuna.logging.set_verbosity(optuna.logging.WARNING)
 
 TunableAlgo = TypeVar("TunableAlgo", bound=MLAlgo)
 
@@ -143,9 +144,9 @@ class OptunaTuner(ParamsTuner):
             estimated_tuning_time = max(estimated_tuning_time, 1)
             self._upd_timeout(estimated_tuning_time)
 
-        logger.info(
-            f"Start hyperparameters optimization for \x1b[1m{ml_algo._name}\x1b[0m ... Time budget is {self.timeout:.2f} secs"
-        )
+        #         logger.info(
+        #             f"Start hyperparameters optimization for \x1b[1m{ml_algo._name}\x1b[0m ... Time budget is {self.timeout:.2f} secs"
+        #         )
 
         metric_name = train_valid_iterator.train.task.get_dataset_metric().name
         ml_algo = deepcopy(ml_algo)
@@ -167,9 +168,9 @@ class OptunaTuner(ParamsTuner):
             ml_algo.mean_trial_time = study.trials_dataframe()["duration"].mean().total_seconds()
             self.estimated_n_trials = min(self.n_trials, self.timeout // ml_algo.mean_trial_time)
 
-            logger.info3(
-                f"\x1b[1mTrial {len(study.trials)}\x1b[0m with hyperparameters {trial.params} scored {trial.value} in {trial.duration}"
-            )
+        #             logger.info3(
+        #                 f"\x1b[1mTrial {len(study.trials)}\x1b[0m with hyperparameters {trial.params} scored {trial.value} in {trial.duration}"
+        #             )
 
         try:
 
@@ -192,10 +193,10 @@ class OptunaTuner(ParamsTuner):
             self._best_params = self.study.best_params
             ml_algo.params = self._best_params
 
-            logger.info(f"Hyperparameters optimization for \x1b[1m{ml_algo._name}\x1b[0m completed")
-            logger.info2(
-                f"The set of hyperparameters \x1b[1m{self._best_params}\x1b[0m\n achieve {self.study.best_value:.4f} {metric_name}"
-            )
+            #             logger.info(f"Hyperparameters optimization for \x1b[1m{ml_algo._name}\x1b[0m completed")
+            #             logger.info2(
+            #                 f"The set of hyperparameters \x1b[1m{self._best_params}\x1b[0m\n achieve {self.study.best_value:.4f} {metric_name}"
+            #             )
 
             if flg_new_iterator:
                 # if tuner was fitted on holdout set we dont need to save train results
@@ -355,9 +356,9 @@ class DLOptunaTuner(ParamsTuner):
             estimated_tuning_time = max(estimated_tuning_time, 1)
             self._upd_timeout(estimated_tuning_time)
 
-        logger.info(
-            f"Start hyperparameters optimization for \x1b[1m{ml_algo._name}\x1b[0m ... Time budget is {self.timeout:.2f} secs"
-        )
+        #         logger.info(
+        #             f"Start hyperparameters optimization for \x1b[1m{ml_algo._name}\x1b[0m ... Time budget is {self.timeout:.2f} secs"
+        #         )
 
         metric_name = train_valid_iterator.train.task.get_dataset_metric().name
         ml_algo = deepcopy(ml_algo)
@@ -379,9 +380,9 @@ class DLOptunaTuner(ParamsTuner):
             ml_algo.mean_trial_time = study.trials_dataframe()["duration"].mean().total_seconds()
             self.estimated_n_trials = min(self.n_trials, self.timeout // ml_algo.mean_trial_time)
 
-            logger.info3(
-                f"\x1b[1mTrial {len(study.trials)}\x1b[0m with hyperparameters {trial.params} scored {trial.value} in {trial.duration}"
-            )
+        #             logger.info3(
+        #                 f"\x1b[1mTrial {len(study.trials)}\x1b[0m with hyperparameters {trial.params} scored {trial.value} in {trial.duration}"
+        #             )
 
         try:
             sampler = optuna.samplers.TPESampler(seed=self.random_state)
@@ -408,10 +409,10 @@ class DLOptunaTuner(ParamsTuner):
             ml_algo.params = self._best_params
             del self._params_scores
 
-            logger.info(f"Hyperparameters optimization for \x1b[1m{ml_algo._name}\x1b[0m completed")
-            logger.info2(
-                f"The set of hyperparameters \x1b[1m{self._best_params}\x1b[0m\n achieve {self.study.best_value:.4f} {metric_name}"
-            )
+            #             logger.info(f"Hyperparameters optimization for \x1b[1m{ml_algo._name}\x1b[0m completed")
+            #             logger.info2(
+            #                 f"The set of hyperparameters \x1b[1m{self._best_params}\x1b[0m\n achieve {self.study.best_value:.4f} {metric_name}"
+            #             )
 
             if flg_new_iterator:
                 # if tuner was fitted on holdout set we dont need to save train results
