@@ -65,7 +65,7 @@ def calc_feats_permutation_imps(model, used_feats, data, target, metric, silent=
     used_feats_leveled = {}
 
     # input data features
-    initial_feats = model.levels[0][0].used_features
+    initial_feats = data.drop(columns=target).columns.values
     used_feats_leveled[0] = initial_feats
 
     # construct levels of stacking feats
@@ -79,6 +79,7 @@ def calc_feats_permutation_imps(model, used_feats, data, target, metric, silent=
         arr.append(feat)
         used_feats_leveled[level] = arr
 
+    print(used_feats_leveled)
     # convert holdout data to LAMLDataset
     data = model.reader.read(data, add_array_attrs=False)
 
