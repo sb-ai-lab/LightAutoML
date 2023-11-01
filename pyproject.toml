@@ -64,6 +64,10 @@ jinja2 = "*"
 json2html = "*"
 seaborn = "*"
 
+# selection algos
+skrebate = "*"
+skfeature-chappers = "*"
+
 # NLP
 gensim = {version = ">=4", optional = true}
 nltk = {version = "*", optional = true}

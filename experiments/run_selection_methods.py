@@ -1,3 +1,9 @@
+from utils import Timer
+from utils import install_lightautoml
+
+install_lightautoml()
+
+
 import signal
 import numpy as np
 import argparse
@@ -10,11 +16,6 @@ from sklearn.metrics import roc_auc_score
 
 from lightautoml.automl.presets.tabular_presets import TabularAutoML
 from lightautoml.tasks import Task
-
-from utils import Timer
-from utils import install_lightautoml
-
-install_lightautoml()
 
 def metric(y_true, y_pred, task, reader):
     if task == "reg":
@@ -43,17 +44,17 @@ def signal_handler(signum, frame):
 signal.signal(signal.SIGALRM, signal_handler)
 
 config_path = {}
-config_path["NoSelection"] = "../lightautoml/automl/presets/tabular_configs/presets/tabular_config_no_selection.yml"
-config_path["CutoffGain"] = "../lightautoml/automl/presets/tabular_configs/presets/tabular_config_mode_1.yml"
-config_path["IterativeForward"] = "../lightautoml/automl/presets/tabular_configs/presets/tabular_config_mode_2_forward.yml"
-config_path["IterativeBackward"] = "../lightautoml/automl/presets/tabular_configs/presets/tabular_config_mode_2_backward.yml"
-config_path["IterativeForwardCrossVal"] = "../lightautoml/automl/presets/tabular_configs/presets/tabular_config_mode_2_forward_crossval.yml"
-config_path["IterativeBackwardCrossVal"] = "../lightautoml/automl/presets/tabular_configs/presets/tabular_config_mode_2_backward_crossval.yml"
-config_path["relief"] = "../lightautoml/automl/presets/tabular_configs/presets/tabular_config_relief.yml"
+config_path["NoSelection"] = "lightautoml/automl/presets/tabular_configs/presets/tabular_config_no_selection.yml"
+config_path["CutoffGain"] = "lightautoml/automl/presets/tabular_configs/presets/tabular_config_mode_1.yml"
+config_path["IterativeForward"] = "lightautoml/automl/presets/tabular_configs/presets/tabular_config_mode_2_forward.yml"
+config_path["IterativeBackward"] = "lightautoml/automl/presets/tabular_configs/presets/tabular_config_mode_2_backward.yml"
+config_path["IterativeForwardCrossVal"] = "lightautoml/automl/presets/tabular_configs/presets/tabular_config_mode_2_forward_crossval.yml"
+config_path["IterativeBackwardCrossVal"] = "lightautoml/automl/presets/tabular_configs/presets/tabular_config_mode_2_backward_crossval.yml"
+config_path["relief"] = "lightautoml/automl/presets/tabular_configs/presets/tabular_config_relief.yml"
 # config_path["SURF"] = "/home/pbelonovskiy/LAMA_selection/presets/tabular_config_SURF.yml"
-config_path["MultiSURF"]= "../lightautoml/automl/presets/tabular_configs/presets/tabular_config_MultiSURF.yml"
-config_path["fcbf"] = "../lightautoml/automl/presets/tabular_configs/presets/tabular_config_FCBF.yml"
-config_path["MIR"] = "../lightautoml/automl/presets/tabular_configs/presets/tabular_config_MIR.yml"
+config_path["MultiSURF"]= "lightautoml/automl/presets/tabular_configs/presets/tabular_config_MultiSURF.yml"
+config_path["fcbf"] = "lightautoml/automl/presets/tabular_configs/presets/tabular_config_FCBF.yml"
+config_path["MIR"] = "lightautoml/automl/presets/tabular_configs/presets/tabular_config_MIR.yml"
 
 RANDOM_SEED = 777    
 
@@ -76,7 +77,7 @@ def main(dataset_name: str, dataset_version: str,
     train = pd.read_csv(os.path.join(dataset_local_path, "train.csv"), index_col=0)
     test = pd.read_csv(os.path.join(dataset_local_path, "test.csv"), index_col=0)
     TARGET_NAME = train.columns[-1]
-
+    result_table = pd.DataFrame()
     for key in config_path:
         if task_type == "reg" and key == "fcbf":
             continue
@@ -84,8 +85,12 @@ def main(dataset_name: str, dataset_version: str,
         if task_type in ["binary", "multiclass"]  and key == "MIR":
             continue   
 
-        time_limit = 30
-        
+        time_limit = 500
+    
+        print("#"*100)
+        print(config_path[key])
+        print("#"*100)
+
         np.random.seed(RANDOM_SEED)
         automl = TabularAutoML(
             task=Task(task_type),
@@ -96,10 +101,10 @@ def main(dataset_name: str, dataset_version: str,
             reader_params = {'random_state': RANDOM_SEED})
         
         signal.alarm(time_limit+100)
-        cml_task.connect(automl)
+        # cml_task.connect(automl)
 
         with Timer() as timer_training:
-            oof_predictions = automl.fit_predict(train, roles={"target": TARGET_NAME}, verbose=0)
+            oof_predictions = automl.fit_predict(train, roles={"target": TARGET_NAME}, verbose=1)
 
         with Timer() as timer_predict:
             test_predictions = automl.predict(test)
@@ -107,24 +112,43 @@ def main(dataset_name: str, dataset_version: str,
 
         weight_of_LR = None
         num_used_feats = train.shape[1] - 1
-        result_oof = metric(train[TARGET_NAME], oof_predictions.data, task_type, automl.reader)
-        result_ho = metric(test[TARGET_NAME], test_predictions.data, task_type, automl.reader)
+        
+        # check for Nones in target
+        if (oof_predictions.data == None).any() or (test_predictions.data == None).any():
+            result_oof, result_ho = None, None
+        else:
+            result_oof = metric(train[TARGET_NAME], oof_predictions.data, task_type, automl.reader)
+            result_ho = metric(test[TARGET_NAME], test_predictions.data, task_type, automl.reader)
+
         selector_idc = len(automl.levels[0]) - 1
         num_used_feats = len(automl.levels[0][selector_idc].pre_selection.selected_features)
         if 'Lvl_0_Pipe_0_Mod_0_LinearL2' in automl.collect_model_stats():
             weight_of_LR = automl.blender.wts[0]
         output_table = pd.DataFrame([[dataset_name, dataset_version, task_type, key, result_oof,
-                                      result_ho, timer_training, train.shape[0], train.shape[1]-1,
+                                      result_ho, timer_training.duration, train.shape[0], train.shape[1]-1,
                                       num_used_feats, weight_of_LR]],
                                       columns=["dataset_name", "dataset_version",
                                                "task_type", "selection_method",
                                                "result_oof", "result_ho", "training_time",
-                                               "num_train_obs", "num_test_obs","num_used_feats",
+                                               "num_train_obs", "num_feats","num_used_feats",
                                                "weight_of_LR"])
+        result_table = pd.concat([result_table, output_table], ignore_index=True)
+        logger.report_table(title="Results", series='pandas DataFrame',
+                            table_plot=(result_table
+                                        .sort_values(by="result_ho",
+                                                     ascending=True if task_type == "reg" else False)
+                                        .reset_index(drop=True)))
         
-        logger.report_table(title="Results", series='pandas DataFrame', table_plot=output_table)
-        logger.flush()
+        print("#"*100)
         print("Working on the selection type {} completed".format(key))
+        print("#"*100)
+
+    logger.report_table(title="Results".format(key), series='pandas DataFrame',
+                        table_plot=(result_table
+                                    .sort_values(by="result_ho",
+                                                 ascending=True if task_type == "reg" else False)
+                                    .reset_index(drop=True)))
+    logger.flush()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="")
