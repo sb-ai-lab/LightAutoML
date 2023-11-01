@@ -112,9 +112,9 @@ def main(dataset_name: str, dataset_version: str,
 
         weight_of_LR = None
         num_used_feats = train.shape[1] - 1
-        
-        # check for Nones in target
-        if (oof_predictions.data == None).any() or (test_predictions.data == None).any():
+
+        # check for np.nan in target
+        if np.isnan(oof_predictions.data).any() or np.isnan(test_predictions.data).any():
             result_oof, result_ho = None, None
         else:
             result_oof = metric(train[TARGET_NAME], oof_predictions.data, task_type, automl.reader)
