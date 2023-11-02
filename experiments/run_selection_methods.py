@@ -16,6 +16,7 @@ from sklearn.metrics import roc_auc_score
 
 from lightautoml.automl.presets.tabular_presets import TabularAutoML
 from lightautoml.tasks import Task
+from lightautoml.dataset.np_pd_dataset import NumpyDataset
 
 def metric(y_true, y_pred, task, reader):
     if task == "reg":
@@ -103,12 +104,18 @@ def main(dataset_name: str, dataset_version: str,
         signal.alarm(time_limit+100)
         # cml_task.connect(automl)
 
-        with Timer() as timer_training:
-            oof_predictions = automl.fit_predict(train, roles={"target": TARGET_NAME}, verbose=1)
+        try:
+            with Timer() as timer_training:
+                oof_predictions = automl.fit_predict(train, roles={"target": TARGET_NAME}, verbose=1)
+                signal.alarm(0)
 
-        with Timer() as timer_predict:
-            test_predictions = automl.predict(test)
-        signal.alarm(0)
+        except TimeoutException:
+            # models fits for more than 600 seconds. Abort it.
+            oof_predictions = NumpyDataset(data=[None for _ in range(len(train[TARGET_NAME]))])
+            test_predictions = NumpyDataset(data=[None for _ in range(len(test[TARGET_NAME]))])
+        else:
+            with Timer() as timer_predict:
+                test_predictions = automl.predict(test)
 
         weight_of_LR = None
         num_used_feats = train.shape[1] - 1
