@@ -5,7 +5,7 @@ from pathlib import Path
 from lightautoml.addons.hypex import Matcher
 from lightautoml.addons.hypex.utils.tutorial_data_creation import create_test_data
 
-ROOT = Path('.').absolute().parents[0]
+ROOT = Path(".").absolute().parents[0]
 sys.path.append(str(ROOT))
 
 
@@ -38,7 +38,7 @@ def test_matcher_pos():
         "p-val",
         "ci_lower",
         "ci_upper",
-        "post_spends"
+        "post_spends",
     ], "format of results is changed: columns in report"
     assert model.results["p-val"].values[0] <= 0.05, "p-value on ATE is greater than 0.1"
     assert model.results["p-val"].values[1] <= 0.05, "p-value on ATC is greater than 0.1"
@@ -71,7 +71,7 @@ def test_matcher_group_pos():
         "p-val",
         "ci_lower",
         "ci_upper",
-        "post_spends"
+        "post_spends",
     ], "format of results is changed: columns in report ['effect_size', 'std_err', 'p-val', 'ci_lower', 'ci_upper']"
     assert model.results["p-val"].values[0] <= 0.05, "p-value on ATE is greater than 0.1"
     assert model.results["p-val"].values[1] <= 0.05, "p-value on ATC is greater than 0.1"
