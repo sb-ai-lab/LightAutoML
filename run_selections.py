@@ -13,4 +13,4 @@ for dataset_name, dataset_version in tqdm(names_versions):
             docker="python:3.8-bullseye",
             argparse_args=[("dataset", dataset_name),
                            ("dataset_version", dataset_version)])
-    Task.enqueue(task, queue_name="test_cpu_queue")
+    Task.enqueue(task, queue_name="cpu_queue")

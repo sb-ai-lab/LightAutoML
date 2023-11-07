@@ -101,7 +101,7 @@ def main(dataset_name: str, dataset_version: str,
             memory_limit=memory_limit,
             reader_params = {'random_state': RANDOM_SEED})
         
-        signal.alarm(time_limit+100)
+        signal.alarm(time_limit+200)
         # cml_task.connect(automl)
 
         try:
@@ -110,15 +110,27 @@ def main(dataset_name: str, dataset_version: str,
                 signal.alarm(0)
 
         except TimeoutException:
-            # models fits for more than 600 seconds. Abort it.
-            oof_predictions = NumpyDataset(data=[None for _ in range(len(train[TARGET_NAME]))])
-            test_predictions = NumpyDataset(data=[None for _ in range(len(test[TARGET_NAME]))])
+            # models fits for more than 700 seconds. Abort it.
+            oof_predictions = NumpyDataset(
+                data=np.array(
+                    [[None for _ in range(len(train[TARGET_NAME]))]]
+                    ))
+            test_predictions = NumpyDataset(
+                data=np.array(
+                    [[None for _ in range(len(test[TARGET_NAME]))]]
+                    ))
+            
+            num_used_feats = train.shape[1] - 1
+            weight_of_LR = None
+            
         else:
             with Timer() as timer_predict:
                 test_predictions = automl.predict(test)
-
-        weight_of_LR = None
-        num_used_feats = train.shape[1] - 1
+                weight_of_LR = None
+                selector_idc = len(automl.levels[0]) - 1
+                num_used_feats = len(automl.levels[0][selector_idc].pre_selection.selected_features)
+                if 'Lvl_0_Pipe_0_Mod_0_LinearL2' in automl.collect_model_stats():
+                    weight_of_LR = automl.blender.wts[0]
 
         # check for np.nan in target
         if np.isnan(oof_predictions.data).any() or np.isnan(test_predictions.data).any():
@@ -126,11 +138,7 @@ def main(dataset_name: str, dataset_version: str,
         else:
             result_oof = metric(train[TARGET_NAME], oof_predictions.data, task_type, automl.reader)
             result_ho = metric(test[TARGET_NAME], test_predictions.data, task_type, automl.reader)
-
-        selector_idc = len(automl.levels[0]) - 1
-        num_used_feats = len(automl.levels[0][selector_idc].pre_selection.selected_features)
-        if 'Lvl_0_Pipe_0_Mod_0_LinearL2' in automl.collect_model_stats():
-            weight_of_LR = automl.blender.wts[0]
+            
         output_table = pd.DataFrame([[dataset_name, dataset_version, task_type, key, result_oof,
                                       result_ho, timer_training.duration, train.shape[0], train.shape[1]-1,
                                       num_used_feats, weight_of_LR]],
