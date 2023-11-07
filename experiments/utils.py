@@ -42,9 +42,14 @@ class Timer:  # noqa: D101
 
 def install_lightautoml():
     """Install lightautoml using pip."""
-    os.system("curl -sSL https://install.python-poetry.org | ../../bin/python -")
+    # os.system("pwd")
+    # print("SYSTEM FREEZED")
+    # time.sleep(1800)
+    os.system("curl -sSL https://install.python-poetry.org | ../../bin/python - --version 1.5.1")
+    # print("python unfreezed")
     os.system("/root/.local/bin/poetry build")
-    os.system("../../bin/pip install ./dist/lightautoml-0.3.7.4-py3-none-any.whl")
+    os.system("../../bin/pip install dist/lightautoml-0.3.8b1-py3-none-any.whl")
+    # print("SUCCESS")
 
 
 #        .pip install --upgrade pip
