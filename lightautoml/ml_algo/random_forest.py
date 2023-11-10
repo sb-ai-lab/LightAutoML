@@ -10,6 +10,7 @@ from typing import Union
 import numpy as np
 
 from pandas import Series
+import sklearn
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import RandomForestRegressor
 
@@ -78,6 +79,14 @@ class RandomForestSklearn(TabularMLAlgo, ImportanceEstimator):
 
         return params
 
+    @staticmethod
+    def correct_mse_criterion() -> str:
+        if sklearn.__version__ >= "1.0.0":
+            criterion = "squared_error"
+        else:
+            criterion = "mse"
+        return criterion
+
     def init_params_on_input(self, train_valid_iterator: TrainValidIterator) -> dict:
         """Get model parameters depending on dataset parameters.
 
@@ -93,7 +102,9 @@ class RandomForestSklearn(TabularMLAlgo, ImportanceEstimator):
         suggested_params = copy(self.default_params)
 
         if "criterion" not in suggested_params:
-            suggested_params["criterion"] = "mse" if ((task == "reg") or (task == "multi:reg")) else "gini"
+            suggested_params["criterion"] = (
+                self.correct_mse_criterion() if ((task == "reg") or (task == "multi:reg")) else "gini"
+            )
 
         if self.freeze_defaults:
             # if user change defaults manually - keep it
