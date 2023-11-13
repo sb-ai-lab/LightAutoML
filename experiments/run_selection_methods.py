@@ -86,7 +86,7 @@ def main(dataset_name: str, dataset_version: str,
         if task_type in ["binary", "multiclass"]  and key == "MIR":
             continue   
 
-        time_limit = 500
+        time_limit = 700
     
         print("#"*100)
         print(config_path[key])
@@ -160,8 +160,8 @@ def main(dataset_name: str, dataset_version: str,
 
     logger.report_table(title="Results".format(key), series='pandas DataFrame',
                         table_plot=(result_table
-                                    .sort_values(by="result_ho",
-                                                 ascending=True if task_type == "reg" else False)
+                                    .sort_values(by=["result_ho", "training_time"],
+                                                 ascending=[True, True] if task_type == "reg" else [False, True])
                                     .reset_index(drop=True)))
     logger.flush()
 

@@ -39,7 +39,7 @@ poetry-core = [
 ]
 pandas = "<2.0.0"
 numpy = [
-    {version = "<=1.24.0", python = "<3.10"},
+    {version = "1.23.5", python = "<3.10"},
     {version = ">=1.22", python = ">=3.10"}
 ]
 scikit-learn = ">=0.22"
