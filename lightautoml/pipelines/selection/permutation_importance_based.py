@@ -18,6 +18,7 @@ from ..features.base import FeaturesPipeline
 from .base import ImportanceEstimator
 from .base import PredefinedSelector
 from .base import SelectionPipeline
+from lightautoml.validation.base import HoldoutIterator
 
 
 logger = logging.getLogger(__name__)
@@ -350,6 +351,11 @@ class IterativeFeatureSelector(SelectionPipeline):
         self._selected_features = selected_feats
 
     def perform_selection(self, train_valid=None):
+        
+        train_len = len(train_valid.train)
+        sampled_idx = np.random.choice(train_len, min(4000, train_len), replace=False)
+        train_valid = HoldoutIterator(train_valid.train[sampled_idx], train_valid.valid)
+        
         if self.kind == "backward":
             self._backward(train_valid)
         elif self.kind == "forward":

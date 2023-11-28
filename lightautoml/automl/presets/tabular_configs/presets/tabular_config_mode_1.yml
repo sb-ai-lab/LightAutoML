@@ -93,7 +93,7 @@ tuning_params:
   # smaller dataset gets more iters (int or 'auto')
   max_tuning_iter: 101
   # max tuning time. Tuning time might be set lower during train by automl's timer, but cannot be higher
-  max_tuning_time: 30
+  max_tuning_time: 300
 
 # params for BoostLGBM MLAlgo. Note - params are default and may be changed during train if not freeze_defaults
 lgb_params:

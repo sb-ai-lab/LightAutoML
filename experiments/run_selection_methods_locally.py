@@ -1,7 +1,7 @@
 from utils import Timer
 from utils import install_lightautoml
 
-install_lightautoml()
+#install_lightautoml()
 
 
 import signal
@@ -45,8 +45,8 @@ def signal_handler(signum, frame):
 signal.signal(signal.SIGALRM, signal_handler)
 
 config_path = {}
-config_path["NoSelection"] = "lightautoml/automl/presets/tabular_configs/presets/tabular_config_no_selection.yml"
-config_path["CutoffGain"] = "lightautoml/automl/presets/tabular_configs/presets/tabular_config_mode_1.yml"
+# config_path["NoSelection"] = "lightautoml/automl/presets/tabular_configs/presets/tabular_config_no_selection.yml"
+# config_path["CutoffGain"] = "lightautoml/automl/presets/tabular_configs/presets/tabular_config_mode_1.yml"
 config_path["IterativeForward"] = "lightautoml/automl/presets/tabular_configs/presets/tabular_config_mode_2_forward.yml"
 config_path["IterativeBackward"] = "lightautoml/automl/presets/tabular_configs/presets/tabular_config_mode_2_backward.yml"
 config_path["IterativeForwardCrossVal"] = "lightautoml/automl/presets/tabular_configs/presets/tabular_config_mode_2_forward_crossval.yml"
@@ -60,16 +60,19 @@ config_path["MIR"] = "lightautoml/automl/presets/tabular_configs/presets/tabular
 RANDOM_SEED = 777    
 
 
+# TARGET_NAME = "class"
+
 
 def main(dataset_name: str, dataset_version: str,
          dataset_project: str, cpu_limit: int,
          memory_limit: int):  # noqa D103
-    cml_task = clearml.Task.get_task(clearml.config.get_remote_task_id())
-    logger = cml_task.get_logger()
+    # cml_task = clearml.Task.get_task(clearml.config.get_remote_task_id())
+    # logger = cml_task.get_logger()
 
     dataset = clearml.Dataset.get(dataset_id=None, dataset_project=dataset_project,
                                   dataset_name=dataset_name, dataset_version=dataset_version)
-    dataset_local_path = dataset.get_local_copy()
+    #dataset_local_path = dataset.get_local_copy()
+    dataset_local_path = "/home/pbelonovskiy/clearml_cache/storage_manager/datasets/ds_56cbbd5a2d64493cb40110902dbdc0d5"
 
     with open(os.path.join(dataset_local_path, "task_type.txt"), "r") as f:
         task_type = f.readline()
@@ -84,7 +87,7 @@ def main(dataset_name: str, dataset_version: str,
         if task_type in ["binary", "multiclass"]  and key == "MIR":
             continue   
 
-        time_limit = 1200
+        time_limit = 100
     
         print("#"*100)
         print(config_path[key])
@@ -99,7 +102,7 @@ def main(dataset_name: str, dataset_version: str,
             memory_limit=memory_limit,
             reader_params = {'random_state': RANDOM_SEED})
         
-        signal.alarm(time_limit+300)
+        signal.alarm(time_limit+200)
         # cml_task.connect(automl)
 
         try:
@@ -130,16 +133,13 @@ def main(dataset_name: str, dataset_version: str,
                 if 'Lvl_0_Pipe_0_Mod_0_LinearL2' in automl.collect_model_stats():
                     weight_of_LR = automl.blender.wts[0]
 
-        # check for np.nan in target
+        # check for np.nan in train target
         if np.isnan(oof_predictions.data).any():
             result_oof = None
         else:
             result_oof = metric(train[TARGET_NAME], oof_predictions.data, task_type, automl.reader)
         
-        if np.isnan(test_predictions.data).any():
-            result_ho = None
-        else:
-            result_ho = metric(test[TARGET_NAME], test_predictions.data, task_type, automl.reader)
+        result_ho = metric(test[TARGET_NAME], test_predictions.data, task_type, automl.reader)
             
         output_table = pd.DataFrame([[dataset_name, dataset_version, task_type, key, result_oof,
                                       result_ho, timer_training.duration, train.shape[0], train.shape[1]-1,
@@ -150,28 +150,17 @@ def main(dataset_name: str, dataset_version: str,
                                                "num_train_obs", "num_feats","num_used_feats",
                                                "weight_of_LR"])
         result_table = pd.concat([result_table, output_table], ignore_index=True)
-        logger.report_table(title="Results", series='pandas DataFrame',
-                            table_plot=(result_table
-                                        .sort_values(by=["result_ho", "training_time"],
-                                                 ascending=[True, True] if task_type == "reg" else [False, True])
-                                        .reset_index(drop=True)))
         
+        print(result_table[["result_oof", "result_ho"]])
         print("#"*100)
         print("Working on the selection type {} completed".format(key))
         print("#"*100)
 
-    logger.report_table(title="Results".format(key), series='pandas DataFrame',
-                        table_plot=(result_table
-                                    .sort_values(by=["result_ho", "training_time"],
-                                                 ascending=[True, True] if task_type == "reg" else [False, True])
-                                    .reset_index(drop=True)))
-    logger.flush()
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="")
-    parser.add_argument("--dataset", type=str, help="dataset name or id", default="sampled_app_train")
+    parser.add_argument("--dataset", type=str, help="dataset name or id", default="childcare_costs")
     parser.add_argument("--dataset_project", type=str, help="dataset project", default="Datasets_with_metadata")
-    parser.add_argument("--dataset_version", type=str, help="dataset version", default=None)
+    parser.add_argument("--dataset_version", type=str, help="dataset version", default="21")
     parser.add_argument("--cpu_limit", type=int, help="", default=8)
     parser.add_argument("--memory_limit", type=int, help="", default=16)
     args = parser.parse_args()

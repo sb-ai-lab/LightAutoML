@@ -93,7 +93,7 @@ class RandomForestSklearn(TabularMLAlgo, ImportanceEstimator):
         suggested_params = copy(self.default_params)
 
         if "criterion" not in suggested_params:
-            suggested_params["criterion"] = "mse" if ((task == "reg") or (task == "multi:reg")) else "gini"
+            suggested_params["criterion"] = "squared_error" if ((task == "reg") or (task == "multi:reg")) else "gini"
 
         if self.freeze_defaults:
             # if user change defaults manually - keep it

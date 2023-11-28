@@ -16,7 +16,7 @@ class ReliefF(ImportanceEstimator):
 
     _name: str = "reliefF"
 
-    def __init__(self, num_obs=1000):
+    def __init__(self, num_obs=2000):
         super().__init__()
         self.num_obs = num_obs
         self.model = releiff(verbose=False, n_jobs=10, n_neighbors=70)
@@ -51,7 +51,7 @@ class SURF(ImportanceEstimator):
 
     _name: str = "SURF"
 
-    def __init__(self, num_obs=1000):
+    def __init__(self, num_obs=2000):
         super().__init__()
         self.num_obs = num_obs
         self.model = surf(verbose=False, n_jobs=10)
@@ -119,7 +119,7 @@ class MultiSURF(ImportanceEstimator):
 
     _name: str = "MultiSURF"
 
-    def __init__(self, num_obs=1000):
+    def __init__(self, num_obs=2000):
         super().__init__()
         self.num_obs = num_obs
         self.model = multisurf(verbose=False, n_jobs=10)
