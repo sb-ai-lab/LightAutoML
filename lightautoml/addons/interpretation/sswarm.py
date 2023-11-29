@@ -1,5 +1,6 @@
 from typing import Union
 from typing import List
+from typing import Set
 
 import pandas as pd
 import numpy as np
@@ -9,6 +10,28 @@ from copy import copy
 
 
 class SSWARM:
+    """Fast computation of shapley values.
+
+    Base on the Stratified SWARM algorithm.
+    Origin:
+        Title: Approximating the Shapley Value without Marginal Contributions.
+        Authors: Patrick Kolpaczki and Viktor Bengs and Maximilian Muschalik and Eyke Hüllermeier.
+        Link: https://arxiv.org/abs/2302.00736v3
+
+    Note:
+        Basic usage of explaier.
+
+        >>> explainer = SSWARM(automl, random_state=RANDOM_STATE)
+        >>> shap_values = explainer.shap_values(X_test, n_jobs=N_THREADS)
+        >>> shap.summary_plot(shap_values[0], X_test)
+
+    Args:
+        automl: Automl object.
+        random_state: Random seed for sampling combinations of features.
+
+
+    """
+
     def __init__(self, model, random_state: int = 77):
         self.model = model
         self.n_outputs = 1
@@ -18,8 +41,26 @@ class SSWARM:
 
     def shap_values(
         self, data: Union[pd.DataFrame, np.array], feature_names: List[str] = None, T: int = 500, n_jobs: int = 1
-    ) -> np.array:
+    ) -> List[List[float]]:
+        """Computes shapley values consistent with the SHAP interface.
+
+        Args:
+            data: A matrix of samples on which to explain the model's output.
+            feature_names: Feature names for automl prediction when data is not pd.DataFrame .
+            T: Number of iterations.
+            n_jobs: Number of parallel workers to execute automl.predict() .
+
+        Returns:
+            np.array: (# classes x # samples x # features) array of shapley values.
+                      (# samples x # features) in regression case.
+
+        """
         self.num_obs = data.shape[0]
+        if self.num_obs < 2:
+            raise ValueError(
+                """Too small number of observations.
+                             Input data must contatin at least 2 observations"""
+            )
         self.n = data.shape[1]
         self.N = set(np.arange(data.shape[1]))
 
@@ -49,7 +90,7 @@ class SSWARM:
         self.updates = []
 
         # exact calculations of phi for coalitions of size 1, n-1, n
-        self.ExactCalculation()
+        self.exactCalculation()
 
         # warm up stages
         self.warmUp("plus")
@@ -121,16 +162,36 @@ class SSWARM:
             self.expected_value = self.expected_value[0]
         return phi
 
-    def draw_random_combination(self, set_of_elements: set, size: int) -> set:
-        """Alternative version of sampling a combination"""
+    def draw_random_combination(self, set_of_elements: set, size: int) -> Set:
+        """Faster way of sampling a combination.
+
+        Args:
+            set_of_elements: set of features.
+            size: size of the combination to be drawn.
+
+        Returns:
+            set: random combination of features of size `size`.
+        """
         combination = set()
         for _ in range(size):
             val = self.rng.choice(list(set_of_elements.difference(combination)))
             combination.add(val)
         return combination
 
-    def v(self, data: np.array, n_jobs: int = 1) -> np.array:
-        v = self.model.predict(pd.DataFrame(data, columns=self.feature_names), n_jobs=n_jobs).data
+    def v(self, data: np.array, n_jobs: int = 1) -> List[List[float]]:
+        """Evaluate the value function.
+
+        Args:
+            data: Data for prediction.
+            n_jobs: Number of parallel workers to execute automl.predict() .
+
+        Returns:
+            np.array: (# obs x # classes) array of predicted target.
+        """
+        if isinstance(data, pd.DataFrame):
+            v = self.model.predict(data, n_jobs=n_jobs).data
+        else:
+            v = self.model.predict(data, features_names=self.feature_names, n_jobs=n_jobs).data
 
         if self.model.task.name in ["reg", "multiclass"]:
             return v
@@ -140,6 +201,7 @@ class SSWARM:
             raise NotImplementedError("Unknown task")
 
     def update(self, A, A_plus, A_minus, v):
+        """Perform one update step"""
         card = len(A)
         for i in A_plus.intersection(A):
             phi_col = self.phi_plus[:, i, card - 1]
@@ -155,7 +217,8 @@ class SSWARM:
             self.phi_minus[:, i, card] = (phi_col * c_col + v) / (c_col + 1)
             self.c_minus[:, i, card] = c_col + 1
 
-    def ExactCalculation(self):
+    def exactCalculation(self):
+        """Exact calculation stage."""
         for s in [1, self.n - 1, self.n]:
             for combination in combinations(self.N, s):
                 combination = set(combination)
@@ -163,6 +226,7 @@ class SSWARM:
                 self.updates.append([combination, combination, inv_combination])
 
     def warmUp(self, kind: str):
+        """Warm up stage."""
         for s in range(2, self.data.shape[1] - 1):
             pi = self.rng.permutation(self.data.shape[1])
             for k in range(np.floor(self.data.shape[1] / s).astype(int)):
@@ -187,7 +251,15 @@ class SSWARM:
         return np.sum([1 / i for i in range(1, n + 1)])
 
     @staticmethod
-    def define_probability_distribution(n: int) -> np.array:
+    def define_probability_distribution(n: int) -> List[float]:
+        """Compute P-tilde distribution.
+
+        Args:
+            n: num of features
+
+        Returns:
+            np.array: PMF
+        """
         probas = np.empty(n - 3)
         if n % 2 == 0:  # even case
             for s in range(2, n - 1):
