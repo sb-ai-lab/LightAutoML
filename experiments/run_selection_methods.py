@@ -1,6 +1,8 @@
 from utils import Timer
 from utils import install_lightautoml
 
+from clearml import Task
+
 install_lightautoml()
 
 
@@ -174,7 +176,10 @@ if __name__ == "__main__":
     parser.add_argument("--dataset_version", type=str, help="dataset version", default=None)
     parser.add_argument("--cpu_limit", type=int, help="", default=8)
     parser.add_argument("--memory_limit", type=int, help="", default=16)
+    parser.add_argument("--source", type=str, help="", default=None)
     args = parser.parse_args()
+    
+    Task.init(tags=[args.source], auto_connect_frameworks=False)
 
     main(dataset_name=args.dataset, dataset_project=args.dataset_project,
          dataset_version=args.dataset_version, cpu_limit=args.cpu_limit,
