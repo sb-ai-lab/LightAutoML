@@ -51,15 +51,15 @@ class SSWARM:
             n_jobs: Number of parallel workers to execute automl.predict() .
 
         Returns:
-            np.array: (# classes x # samples x # features) array of shapley values.
-                      (# samples x # features) in regression case.
+            (# classes x # samples x # features) array of shapley values.
+            (# samples x # features) in regression case.
 
         """
         self.num_obs = data.shape[0]
         if self.num_obs < 2:
             raise ValueError(
                 """Too small number of observations.
-                             Input data must contatin at least 2 observations"""
+                             Input data must contatin at least 2 observations."""
             )
         self.n = data.shape[1]
         self.N = set(np.arange(data.shape[1]))
@@ -98,6 +98,7 @@ class SSWARM:
 
         t = len(self.updates)
 
+        # collect general updates
         for i in range(t, T):
             # draw the size of coalition from distribution P
             s_t = self.rng.choice(np.arange(2, self.n - 1), p=PMF)
@@ -108,7 +109,8 @@ class SSWARM:
             self.updates.append([A_t, A_t, self.N.difference(A_t)])
 
         # Second stage: make updates
-        # num of the predictions made at once
+
+        # Num of the predictions made at once
         batch_size = 500_000
         if self.num_obs > batch_size:
             raise ValueError("Decrease the input number of observations")
@@ -156,8 +158,7 @@ class SSWARM:
         phi = phi + correction - self.expected_value / self.n
 
         phi = np.transpose(phi, axes=[2, 0, 1])
-        if phi.shape[0] == 1:
-            # regression
+        if phi.shape[0] == 1:  # regression
             phi = phi[0]
             self.expected_value = self.expected_value[0]
         return phi
@@ -170,7 +171,7 @@ class SSWARM:
             size: size of the combination to be drawn.
 
         Returns:
-            set: random combination of features of size `size`.
+            Random combination of features of size `size`.
         """
         combination = set()
         for _ in range(size):
@@ -186,7 +187,7 @@ class SSWARM:
             n_jobs: Number of parallel workers to execute automl.predict() .
 
         Returns:
-            np.array: (# obs x # classes) array of predicted target.
+            (# obs x # classes) array of predicted target.
         """
         if isinstance(data, pd.DataFrame):
             v = self.model.predict(data, n_jobs=n_jobs).data
@@ -201,7 +202,7 @@ class SSWARM:
             raise NotImplementedError("Unknown task")
 
     def update(self, A, A_plus, A_minus, v):
-        """Perform one update step"""
+        """Perform one update step."""
         card = len(A)
         for i in A_plus.intersection(A):
             phi_col = self.phi_plus[:, i, card - 1]
@@ -248,6 +249,7 @@ class SSWARM:
 
     @staticmethod
     def H(n: int) -> float:
+        """n-th harmonic number"""
         return np.sum([1 / i for i in range(1, n + 1)])
 
     @staticmethod
@@ -255,10 +257,10 @@ class SSWARM:
         """Compute P-tilde distribution.
 
         Args:
-            n: num of features
+            n: num of features.
 
         Returns:
-            np.array: PMF
+            PMF.
         """
         probas = np.empty(n - 3)
         if n % 2 == 0:  # even case
