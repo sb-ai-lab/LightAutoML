@@ -34,9 +34,14 @@ class SSWARM:
 
     def __init__(self, model, random_state: int = 77):
         self.model = model
+
+        self.used_feats = model.collect_used_feats()
+        self.n = len(self.used_feats)
+        self.N = set(np.arange(self.n))
         self.n_outputs = 1
         if self.model.reader._n_classes:
             self.n_outputs = self.model.reader._n_classes
+
         self.rng = np.random.default_rng(seed=random_state)
 
     def shap_values(
@@ -61,24 +66,24 @@ class SSWARM:
                 """Too small number of observations.
                              Input data must contatin at least 2 observations."""
             )
-        self.n = data.shape[1]
-        self.N = set(np.arange(data.shape[1]))
 
         self.feature_names = feature_names
         if isinstance(data, pd.DataFrame) and feature_names is None:
             self.feature_names = data.columns.values
+
         self.data = np.array(data)
+        self.feature_names = np.array(self.feature_names)
 
         # store prediction on all features v(N)
-        v_N = self.v(data, n_jobs=1)
+        v_N = self.v(self.data, n_jobs=1)
         self.expected_value = np.mean(v_N, axis=0)
 
         # initializing arrays for main variables
         # size is (num_obs x n x n x num_outputs)
-        self.phi_plus = np.zeros((data.shape[0], data.shape[1], data.shape[1], self.n_outputs))
-        self.phi_minus = np.zeros((data.shape[0], data.shape[1], data.shape[1], self.n_outputs))
-        self.c_plus = np.zeros((data.shape[0], data.shape[1], data.shape[1], self.n_outputs))
-        self.c_minus = np.zeros((data.shape[0], data.shape[1], data.shape[1], self.n_outputs))
+        self.phi_plus = np.zeros((self.data.shape[0], self.n, self.n, self.n_outputs))
+        self.phi_minus = np.zeros((self.data.shape[0], self.n, self.n, self.n_outputs))
+        self.c_plus = np.zeros((self.data.shape[0], self.n, self.n, self.n_outputs))
+        self.c_minus = np.zeros((self.data.shape[0], self.n, self.n, self.n_outputs))
 
         # initialization of \tilde{P}
         PMF = self.define_probability_distribution(self.n)
@@ -118,7 +123,7 @@ class SSWARM:
         n_updates_per_round = batch_size // self.num_obs
         bar = tqdm(total=2 * T)
         for i in range(0, T, n_updates_per_round):
-            pred_data = np.empty((n_updates_per_round * self.num_obs, self.n), dtype=np.object)
+            pred_data = np.empty((n_updates_per_round * self.num_obs, self.data.shape[1]), dtype=np.object)
 
             # prepare the data
             iter_updates = self.updates[i : i + n_updates_per_round]
@@ -129,7 +134,10 @@ class SSWARM:
 
                 temp = copy(self.data)
                 for col in self.N.difference(A):
-                    temp[:, col] = self.rng.permutation(temp[:, col])
+                    # map column number from the used features space to the overall features space
+                    mapped_col = np.where(np.array(self.feature_names) == self.used_feats[col])[0][0]
+                    # shuffle mapped column
+                    temp[:, mapped_col] = self.rng.permutation(temp[:, mapped_col])
 
                 pred_data[j * self.num_obs : (j + 1) * self.num_obs] = temp
                 bar.update(n=1)
@@ -189,10 +197,7 @@ class SSWARM:
         Returns:
             (# obs x # classes) array of predicted target.
         """
-        if isinstance(data, pd.DataFrame):
-            v = self.model.predict(data, n_jobs=n_jobs).data
-        else:
-            v = self.model.predict(data, features_names=self.feature_names, n_jobs=n_jobs).data
+        v = self.model.predict(data, features_names=self.feature_names, n_jobs=n_jobs).data
 
         if self.model.task.name in ["reg", "multiclass"]:
             return v
@@ -228,9 +233,9 @@ class SSWARM:
 
     def warmUp(self, kind: str):
         """Warm up stage."""
-        for s in range(2, self.data.shape[1] - 1):
-            pi = self.rng.permutation(self.data.shape[1])
-            for k in range(np.floor(self.data.shape[1] / s).astype(int)):
+        for s in range(2, self.n - 1):
+            pi = self.rng.permutation(self.n)
+            for k in range(np.floor(self.n / s).astype(int)):
                 A = set(pi[[i + k * s for i in range(0, s)]])
                 if kind == "plus":
                     self.updates.append([A, A, set()])
@@ -249,7 +254,7 @@ class SSWARM:
 
     @staticmethod
     def H(n: int) -> float:
-        """n-th harmonic number"""
+        """n-th harmonic number."""
         return np.sum([1 / i for i in range(1, n + 1)])
 
     @staticmethod
