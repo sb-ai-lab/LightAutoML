@@ -1,7 +1,8 @@
+"""Script to initialize selection methods computations."""
 from utils import Timer
 from utils import install_lightautoml
 
-from clearml import Task
+from clearml import Task as clearml_task
 
 install_lightautoml()
 
@@ -17,10 +18,12 @@ from sklearn.metrics import mean_absolute_error
 from sklearn.metrics import roc_auc_score
 
 from lightautoml.automl.presets.tabular_presets import TabularAutoML
-from lightautoml.tasks import Task
+from lightautoml.tasks import Task as lama_task
 from lightautoml.dataset.np_pd_dataset import NumpyDataset
 
+
 def metric(y_true, y_pred, task, reader):
+    """Compute the metric based on task."""
     if task == "reg":
         return mean_absolute_error(y_true, y_pred)
     if task == "multiclass":
@@ -37,12 +40,18 @@ def metric(y_true, y_pred, task, reader):
             oredered_labels = list({key: val for (key, val) in sorted(mapping.items())}.values())
             y_pred = y_pred[:, oredered_labels]
         return roc_auc_score(y_true, y_pred[:, 1])
-    
 
-class TimeoutException(BaseException): pass
+
+class TimeoutException(BaseException):
+    """Exception for signal."""
+
+    pass
+
 
 def signal_handler(signum, frame):
+    """Signal initialization."""
     raise TimeoutException("Timed out!")
+
 
 signal.signal(signal.SIGALRM, signal_handler)
 
@@ -50,27 +59,31 @@ config_path = {}
 config_path["NoSelection"] = "lightautoml/automl/presets/tabular_configs/presets/tabular_config_no_selection.yml"
 config_path["CutoffGain"] = "lightautoml/automl/presets/tabular_configs/presets/tabular_config_mode_1.yml"
 config_path["IterativeForward"] = "lightautoml/automl/presets/tabular_configs/presets/tabular_config_mode_2_forward.yml"
-config_path["IterativeBackward"] = "lightautoml/automl/presets/tabular_configs/presets/tabular_config_mode_2_backward.yml"
-config_path["IterativeForwardCrossVal"] = "lightautoml/automl/presets/tabular_configs/presets/tabular_config_mode_2_forward_crossval.yml"
-config_path["IterativeBackwardCrossVal"] = "lightautoml/automl/presets/tabular_configs/presets/tabular_config_mode_2_backward_crossval.yml"
+config_path[
+    "IterativeBackward"
+] = "lightautoml/automl/presets/tabular_configs/presets/tabular_config_mode_2_backward.yml"
+config_path[
+    "IterativeForwardCrossVal"
+] = "lightautoml/automl/presets/tabular_configs/presets/tabular_config_mode_2_forward_crossval.yml"
+config_path[
+    "IterativeBackwardCrossVal"
+] = "lightautoml/automl/presets/tabular_configs/presets/tabular_config_mode_2_backward_crossval.yml"
 config_path["relief"] = "lightautoml/automl/presets/tabular_configs/presets/tabular_config_relief.yml"
 # config_path["SURF"] = "/home/pbelonovskiy/LAMA_selection/presets/tabular_config_SURF.yml"
-config_path["MultiSURF"]= "lightautoml/automl/presets/tabular_configs/presets/tabular_config_MultiSURF.yml"
+config_path["MultiSURF"] = "lightautoml/automl/presets/tabular_configs/presets/tabular_config_MultiSURF.yml"
 config_path["fcbf"] = "lightautoml/automl/presets/tabular_configs/presets/tabular_config_FCBF.yml"
 config_path["MIR"] = "lightautoml/automl/presets/tabular_configs/presets/tabular_config_MIR.yml"
 
-RANDOM_SEED = 777    
+RANDOM_SEED = 777
 
 
-
-def main(dataset_name: str, dataset_version: str,
-         dataset_project: str, cpu_limit: int,
-         memory_limit: int):  # noqa D103
+def main(dataset_name: str, dataset_version: str, dataset_project: str, cpu_limit: int, memory_limit: int):  # noqa D103
     cml_task = clearml.Task.get_task(clearml.config.get_remote_task_id())
     logger = cml_task.get_logger()
 
-    dataset = clearml.Dataset.get(dataset_id=None, dataset_project=dataset_project,
-                                  dataset_name=dataset_name, dataset_version=dataset_version)
+    dataset = clearml.Dataset.get(
+        dataset_id=None, dataset_project=dataset_project, dataset_name=dataset_name, dataset_version=dataset_version
+    )
     dataset_local_path = dataset.get_local_copy()
 
     with open(os.path.join(dataset_local_path, "task_type.txt"), "r") as f:
@@ -83,25 +96,26 @@ def main(dataset_name: str, dataset_version: str,
         if task_type == "reg" and key == "fcbf":
             continue
 
-        if task_type in ["binary", "multiclass"]  and key == "MIR":
-            continue   
+        if task_type in ["binary", "multiclass"] and key == "MIR":
+            continue
 
         time_limit = 1200
-    
-        print("#"*100)
+
+        print("#" * 100)
         print(config_path[key])
-        print("#"*100)
+        print("#" * 100)
 
         np.random.seed(RANDOM_SEED)
         automl = TabularAutoML(
-            task=Task(task_type),
+            task=lama_task(task_type),
             cpu_limit=cpu_limit,
             config_path=config_path[key],
             timeout=time_limit,
             memory_limit=memory_limit,
-            reader_params = {'random_state': RANDOM_SEED})
-        
-        signal.alarm(time_limit+300)
+            reader_params={"random_state": RANDOM_SEED},
+        )
+
+        signal.alarm(time_limit + 300)
         # cml_task.connect(automl)
 
         try:
@@ -110,26 +124,21 @@ def main(dataset_name: str, dataset_version: str,
                 signal.alarm(0)
 
         except TimeoutException:
-            # models fits for more than 700 seconds. Abort it.
-            oof_predictions = NumpyDataset(
-                data=np.array(
-                    [[None for _ in range(len(train[TARGET_NAME]))]]
-                    ))
-            test_predictions = NumpyDataset(
-                data=np.array(
-                    [[None for _ in range(len(test[TARGET_NAME]))]]
-                    ))
-            
+            # models fits for more than 1500 seconds. Abort it.
+            oof_predictions = NumpyDataset(data=np.array([[None for _ in range(len(train[TARGET_NAME]))]]))
+            test_predictions = NumpyDataset(data=np.array([[None for _ in range(len(test[TARGET_NAME]))]]))
+
             num_used_feats = train.shape[1] - 1
             weight_of_LR = None
-            
+
         else:
             with Timer() as timer_predict:
+                print("Prediction completed in {} seconds".format(timer_predict))
                 test_predictions = automl.predict(test)
                 weight_of_LR = None
                 selector_idc = len(automl.levels[0]) - 1
                 num_used_feats = len(automl.levels[0][selector_idc].pre_selection.selected_features)
-                if 'Lvl_0_Pipe_0_Mod_0_LinearL2' in automl.collect_model_stats():
+                if "Lvl_0_Pipe_0_Mod_0_LinearL2" in automl.collect_model_stats():
                     weight_of_LR = automl.blender.wts[0]
 
         # check for np.nan in target
@@ -137,37 +146,68 @@ def main(dataset_name: str, dataset_version: str,
             result_oof = None
         else:
             result_oof = metric(train[TARGET_NAME], oof_predictions.data, task_type, automl.reader)
-        
+
         if np.isnan(test_predictions.data).any():
             result_ho = None
         else:
             result_ho = metric(test[TARGET_NAME], test_predictions.data, task_type, automl.reader)
-            
-        output_table = pd.DataFrame([[dataset_name, dataset_version, task_type, key, result_oof,
-                                      result_ho, timer_training.duration, train.shape[0], train.shape[1]-1,
-                                      num_used_feats, weight_of_LR]],
-                                      columns=["dataset_name", "dataset_version",
-                                               "task_type", "selection_method",
-                                               "result_oof", "result_ho", "training_time",
-                                               "num_train_obs", "num_feats","num_used_feats",
-                                               "weight_of_LR"])
-        result_table = pd.concat([result_table, output_table], ignore_index=True)
-        logger.report_table(title="Results", series='pandas DataFrame',
-                            table_plot=(result_table
-                                        .sort_values(by=["result_ho", "training_time"],
-                                                 ascending=[True, True] if task_type == "reg" else [False, True])
-                                        .reset_index(drop=True)))
-        
-        print("#"*100)
-        print("Working on the selection type {} completed".format(key))
-        print("#"*100)
 
-    logger.report_table(title="Results".format(key), series='pandas DataFrame',
-                        table_plot=(result_table
-                                    .sort_values(by=["result_ho", "training_time"],
-                                                 ascending=[True, True] if task_type == "reg" else [False, True])
-                                    .reset_index(drop=True)))
+        output_table = pd.DataFrame(
+            [
+                [
+                    dataset_name,
+                    dataset_version,
+                    task_type,
+                    key,
+                    result_oof,
+                    result_ho,
+                    timer_training.duration,
+                    train.shape[0],
+                    train.shape[1] - 1,
+                    num_used_feats,
+                    weight_of_LR,
+                ]
+            ],
+            columns=[
+                "dataset_name",
+                "dataset_version",
+                "task_type",
+                "selection_method",
+                "result_oof",
+                "result_ho",
+                "training_time",
+                "num_train_obs",
+                "num_feats",
+                "num_used_feats",
+                "weight_of_LR",
+            ],
+        )
+        result_table = pd.concat([result_table, output_table], ignore_index=True)
+        logger.report_table(
+            title="Results",
+            series="pandas DataFrame",
+            table_plot=(
+                result_table.sort_values(
+                    by=["result_ho", "training_time"], ascending=[True, True] if task_type == "reg" else [False, True]
+                ).reset_index(drop=True)
+            ),
+        )
+
+        print("#" * 100)
+        print("Working on the selection type {0} completed".format(key))
+        print("#" * 100)
+
+    logger.report_table(
+        title="Results",
+        series="pandas DataFrame",
+        table_plot=(
+            result_table.sort_values(
+                by=["result_ho", "training_time"], ascending=[True, True] if task_type == "reg" else [False, True]
+            ).reset_index(drop=True)
+        ),
+    )
     logger.flush()
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="")
@@ -178,9 +218,13 @@ if __name__ == "__main__":
     parser.add_argument("--memory_limit", type=int, help="", default=16)
     parser.add_argument("--source", type=str, help="", default=None)
     args = parser.parse_args()
-    
-    Task.init(tags=[args.source], auto_connect_frameworks=False)
 
-    main(dataset_name=args.dataset, dataset_project=args.dataset_project,
-         dataset_version=args.dataset_version, cpu_limit=args.cpu_limit,
-         memory_limit=args.memory_limit)
+    clearml_task.init(tags=[args.source], auto_connect_frameworks=False)
+
+    main(
+        dataset_name=args.dataset,
+        dataset_project=args.dataset_project,
+        dataset_version=args.dataset_version,
+        cpu_limit=args.cpu_limit,
+        memory_limit=args.memory_limit,
+    )
