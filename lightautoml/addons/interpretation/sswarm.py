@@ -7,7 +7,17 @@ import numpy as np
 from itertools import combinations
 from tqdm import tqdm
 from copy import copy
+from inspect import getfullargspec
+from sklearn.metrics import mean_squared_error
 
+"""
+if num_feats > 20:
+500 iters
+if num_feats < 20
+250 iters
+
+repeat iters
+"""
 
 class SSWARM:
     """Fast computation of shapley values.
@@ -19,7 +29,7 @@ class SSWARM:
         Link: https://arxiv.org/abs/2302.00736v3
 
     Note:
-        Basic usage of explaier.
+        Basic usage of explainer.
 
         >>> explainer = SSWARM(automl, random_state=RANDOM_STATE)
         >>> shap_values = explainer.shap_values(X_test, n_jobs=N_THREADS)
@@ -42,11 +52,12 @@ class SSWARM:
         if self.model.reader._n_classes:
             self.n_outputs = self.model.reader._n_classes
 
-        self.rng = np.random.default_rng(seed=random_state)
+        self.random_state = random_state
+        self.rng = np.random.default_rng(seed=self.random_state)
 
     def shap_values(
-        self, data: Union[pd.DataFrame, np.array], feature_names: List[str] = None, T: int = 500, n_jobs: int = 1
-    ) -> List[List[float]]:
+        self, data: Union[pd.DataFrame, np.array], feature_names: List[str] = None, T: int = 500, n_repeats: int = 3,
+        n_jobs: int = 1, batch_size=500_000) -> List[List[float]]:
         """Computes shapley values consistent with the SHAP interface.
 
         Args:
@@ -54,6 +65,7 @@ class SSWARM:
             feature_names: Feature names for automl prediction when data is not pd.DataFrame .
             T: Number of iterations.
             n_jobs: Number of parallel workers to execute automl.predict() .
+            batch_size: Num of the predictions made at once.
 
         Returns:
             (# classes x # samples x # features) array of shapley values.
@@ -80,11 +92,13 @@ class SSWARM:
 
         # initializing arrays for main variables
         # size is (num_obs x n x n x num_outputs)
-        self.phi_plus = np.zeros((self.data.shape[0], self.n, self.n, self.n_outputs))
-        self.phi_minus = np.zeros((self.data.shape[0], self.n, self.n, self.n_outputs))
-        self.c_plus = np.zeros((self.data.shape[0], self.n, self.n, self.n_outputs))
-        self.c_minus = np.zeros((self.data.shape[0], self.n, self.n, self.n_outputs))
-
+        self.phi_plus_const = np.zeros((self.data.shape[0], self.n, self.n, self.n_outputs))
+        self.phi_minus_const = np.zeros((self.data.shape[0], self.n, self.n, self.n_outputs))
+        self.c_plus_const = np.zeros((self.data.shape[0], self.n, self.n, self.n_outputs))
+        self.c_minus_const = np.zeros((self.data.shape[0], self.n, self.n, self.n_outputs))
+        final_phi = np.zeros((self.data.shape[0], self.n, self.n_outputs))
+        self.overall_mse = []
+        
         # initialization of \tilde{P}
         PMF = self.define_probability_distribution(self.n)
         if len(PMF) == 1:
@@ -95,81 +109,117 @@ class SSWARM:
         self.updates = []
 
         # exact calculations of phi for coalitions of size 1, n-1, n
+        # the same fot all repeats
         self.exactCalculation()
+        n_exact_updates = len(self.updates)
+        
+        #if self.n > 3: # if n <= 3 -> we have already calculated all Shapley values exactly
+        # iters_per_round = 500
+        # num_repeats = 5
+        bar = tqdm(total=(2 * (T - n_exact_updates)) * n_repeats + 2 * n_exact_updates)
+        for k in range(n_repeats):
+            
+            # At the first iteration phi_plus, phi_minus, c_plus, c_minus are zero arrays.
+            # At the further iterations they are already adjusted to the exactCalculation updates.
+            self.phi_plus = copy(self.phi_plus_const)
+            self.phi_minus = copy(self.phi_minus_const)
+            self.c_plus = copy(self.c_plus_const)
+            self.c_minus = copy(self.c_minus_const)
+                
+            # warm up stages
+            self.warmUp("plus")
+            self.warmUp("minus")
+            n_warmup_updates = len(self.updates)
+            if k == 0:
+                n_warmup_updates -= n_exact_updates
+            
+            # collect general updates
+            for i in range(n_exact_updates + n_warmup_updates, T):
+                # draw the size of coalition from distribution P
+                s_t = self.rng.choice(np.arange(2, self.n - 1), p=PMF)
+                # draw the random coalition with size s_t
+                # A_t = set(self.rng.choice([list(i) for i in combinations(self.N, s_t)]))
+                A_t = self.draw_random_combination(self.N, s_t)
+                # store combination
+                self.updates.append([A_t, A_t, self.N.difference(A_t)])
 
-        # warm up stages
-        self.warmUp("plus")
-        self.warmUp("minus")
+            # Second stage: make updates
+            if self.num_obs > batch_size:
+                raise ValueError("Decrease the input number of observations")
 
-        t = len(self.updates)
+            n_updates_per_round = batch_size // self.num_obs
+            n_total_updates = T if k == 0 else T - n_exact_updates
+            for i in range(0, n_total_updates, n_updates_per_round):
+                pred_data = np.empty((n_updates_per_round * self.num_obs,
+                                      self.data.shape[1]), dtype=np.object)
 
-        # collect general updates
-        for i in range(t, T):
-            # draw the size of coalition from distribution P
-            s_t = self.rng.choice(np.arange(2, self.n - 1), p=PMF)
-            # draw the random coalition with size s_t
-            # A_t = set(self.rng.choice([list(i) for i in combinations(self.N, s_t)]))
-            A_t = self.draw_random_combination(self.N, s_t)
-            # store combination
-            self.updates.append([A_t, A_t, self.N.difference(A_t)])
+                # prepare the data
+                iter_updates = self.updates[i : i + n_updates_per_round]
+                for j, comb in enumerate(iter_updates):
+                    A = comb[0]
+                    A_plus = comb[1]
+                    A_minus = comb[2]
 
-        # Second stage: make updates
+                    temp = copy(self.data)
+                    for col in self.N.difference(A):
+                        # map column number from the used features space to the overall features space
+                        mapped_col = np.where(np.array(self.feature_names) == self.used_feats[col])[0][0]
+                        # shuffle mapped column
+                        temp[:, mapped_col] = self.rng.permutation(temp[:, mapped_col])
 
-        # Num of the predictions made at once
-        batch_size = 500_000
-        if self.num_obs > batch_size:
-            raise ValueError("Decrease the input number of observations")
+                    pred_data[j * self.num_obs : (j + 1) * self.num_obs] = temp
+                    bar.update(n=1)
 
-        n_updates_per_round = batch_size // self.num_obs
-        bar = tqdm(total=2 * T)
-        for i in range(0, T, n_updates_per_round):
-            pred_data = np.empty((n_updates_per_round * self.num_obs, self.data.shape[1]), dtype=np.object)
+                # make predictions
+                v = self.v(pred_data, n_jobs=n_jobs)
 
-            # prepare the data
-            iter_updates = self.updates[i : i + n_updates_per_round]
-            for j, comb in enumerate(iter_updates):
-                A = comb[0]
-                A_plus = comb[1]
-                A_minus = comb[2]
+                # make updates
+                for j, comb in enumerate(iter_updates):
+                    A = comb[0]
+                    A_plus = comb[1]
+                    A_minus = comb[2]
 
-                temp = copy(self.data)
-                for col in self.N.difference(A):
-                    # map column number from the used features space to the overall features space
-                    mapped_col = np.where(np.array(self.feature_names) == self.used_feats[col])[0][0]
-                    # shuffle mapped column
-                    temp[:, mapped_col] = self.rng.permutation(temp[:, mapped_col])
+                    v_t = v[j * self.num_obs : (j + 1) * self.num_obs]
+                    self.update(A, A_plus, A_minus, v_t)
+                    
+                    # if k == 0 and i == 0 and j == n_exact_updates: # exactCalculation updates are completed
+                    #     # store the arrays to start from in the further repeats
+                    #     self.phi_plus_const = copy(self.phi_plus)
+                    #     self.phi_minus_const = copy(self.phi_minus)
+                    #     self.c_plus_const = copy(self.c_plus)
+                    #     self.c_minus_const = copy(self.c_minus)
+                    #     print("POINT")
+                    
+                    bar.update(n=1)
 
-                pred_data[j * self.num_obs : (j + 1) * self.num_obs] = temp
-                bar.update(n=1)
 
-            # make predictions
-            v = self.v(pred_data, n_jobs=n_jobs)
+            # finilize the computations and derive the general representation of phi
+            phi = np.sum(self.phi_plus - self.phi_minus, axis=2) / self.n
+            PHI = np.sum(phi, axis=1)
 
-            # make updates
-            for j, comb in enumerate(iter_updates):
-                A = comb[0]
-                A_plus = comb[1]
-                A_minus = comb[2]
-
-                v_t = v[j * self.num_obs : (j + 1) * self.num_obs]
-                self.update(A, A_plus, A_minus, v_t)
-                bar.update(n=1)
-
+            # normalize phi to sum to the predicted outcome
+            # and substract expected value to be consistent with SHAP python library
+            correction = ((v_N - PHI) / self.n).repeat(self.n, axis=0).reshape(len(phi), self.n, self.n_outputs)
+            phi = phi + correction - self.expected_value / self.n
+            
+            print(np.sum(phi))
+            final_phi += phi / n_repeats
+            
+            # clear the updates
+            self.updates = []
+            
+            # change the seed
+            self.rng = np.random.default_rng(seed=self.random_state + k + 1)
+        
         bar.close()
-
-        phi = np.sum(self.phi_plus - self.phi_minus, axis=2) / self.n
-        PHI = np.sum(phi, axis=1)
-
-        # normalize phi to sum to the predicted outcome
-        # and substract expected value to be consistent with SHAP python library
-        correction = ((v_N - PHI) / self.n).repeat(self.n, axis=0).reshape(len(phi), self.n, self.n_outputs)
-        phi = phi + correction - self.expected_value / self.n
-
-        phi = np.transpose(phi, axes=[2, 0, 1])
-        if phi.shape[0] == 1:  # regression
-            phi = phi[0]
+        final_phi = np.transpose(final_phi, axes=[2, 0, 1])
+        self.rng = np.random.default_rng(seed=self.random_state)
+        
+        if final_phi.shape[0] == 1:  # regression
+            final_phi = final_phi[0]
             self.expected_value = self.expected_value[0]
-        return phi
+            
+        return final_phi
 
     def draw_random_combination(self, set_of_elements: set, size: int) -> Set:
         """Faster way of sampling a combination.
@@ -197,11 +247,14 @@ class SSWARM:
         Returns:
             (# obs x # classes) array of predicted target.
         """
-        v = self.model.predict(data, features_names=self.feature_names, n_jobs=n_jobs).data
+        if "n_jobs" in getfullargspec(self.model.predict).args:
+            v = self.model.predict(data, features_names=self.feature_names, n_jobs=n_jobs).data
+        else:
+            v = self.model.predict(pd.DataFrame(data, columns=self.feature_names)).data
 
-        if self.model.task.name in ["reg", "multiclass"]:
+        if self.model.reader.task.name in ["reg", "multiclass"]:
             return v
-        elif self.model.task.name == "binary":
+        elif self.model.reader.task.name == "binary":
             return np.hstack((1 - v, v))
         else:
             raise NotImplementedError("Unknown task")
