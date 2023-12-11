@@ -90,12 +90,6 @@ class SSWARM:
         v_N = self.v(self.data, n_jobs=1)
         self.expected_value = np.mean(v_N, axis=0)
 
-        # initializing arrays for main variables
-        # size is (num_obs x n x n x num_outputs)
-        self.phi_plus_const = np.zeros((self.data.shape[0], self.n, self.n, self.n_outputs))
-        self.phi_minus_const = np.zeros((self.data.shape[0], self.n, self.n, self.n_outputs))
-        self.c_plus_const = np.zeros((self.data.shape[0], self.n, self.n, self.n_outputs))
-        self.c_minus_const = np.zeros((self.data.shape[0], self.n, self.n, self.n_outputs))
         final_phi = np.zeros((self.data.shape[0], self.n, self.n_outputs))
         self.overall_mse = []
         
@@ -104,52 +98,49 @@ class SSWARM:
         if len(PMF) == 1:
             PMF = np.array([1])
 
-        # First stage: collect updates
-        # Updates are stored as a list of 3 sets
-        self.updates = []
-
-        # exact calculations of phi for coalitions of size 1, n-1, n
-        # the same fot all repeats
-        self.exactCalculation()
-        n_exact_updates = len(self.updates)
         
         #if self.n > 3: # if n <= 3 -> we have already calculated all Shapley values exactly
-        # iters_per_round = 500
-        # num_repeats = 5
-        bar = tqdm(total=(2 * (T - n_exact_updates)) * n_repeats + 2 * n_exact_updates)
+        bar = tqdm(total=(2 * T * n_repeats))
         for k in range(n_repeats):
             
-            # At the first iteration phi_plus, phi_minus, c_plus, c_minus are zero arrays.
-            # At the further iterations they are already adjusted to the exactCalculation updates.
-            self.phi_plus = copy(self.phi_plus_const)
-            self.phi_minus = copy(self.phi_minus_const)
-            self.c_plus = copy(self.c_plus_const)
-            self.c_minus = copy(self.c_minus_const)
+            # initializing arrays for main variables
+            # size is (num_obs x n x n x num_outputs)
+            self.phi_plus = np.zeros((self.data.shape[0], self.n, self.n, self.n_outputs))
+            self.phi_minus = np.zeros((self.data.shape[0], self.n, self.n, self.n_outputs))
+            self.c_plus = np.zeros((self.data.shape[0], self.n, self.n, self.n_outputs))
+            self.c_minus = np.zeros((self.data.shape[0], self.n, self.n, self.n_outputs))
+            
+            # First stage: collect updates
+            # Updates are stored as a list of 3 sets
+            self.updates = []
+            
+            # exact calculations of phi for coalitions of size 1, n-1, n
+            self.exactCalculation()
+            n_exact_updates = len(self.updates)
                 
-            # warm up stages
+            # warm ups
             self.warmUp("plus")
             self.warmUp("minus")
             n_warmup_updates = len(self.updates)
-            if k == 0:
-                n_warmup_updates -= n_exact_updates
             
             # collect general updates
             for i in range(n_exact_updates + n_warmup_updates, T):
                 # draw the size of coalition from distribution P
                 s_t = self.rng.choice(np.arange(2, self.n - 1), p=PMF)
+                
                 # draw the random coalition with size s_t
-                # A_t = set(self.rng.choice([list(i) for i in combinations(self.N, s_t)]))
                 A_t = self.draw_random_combination(self.N, s_t)
+                
                 # store combination
                 self.updates.append([A_t, A_t, self.N.difference(A_t)])
 
+            
             # Second stage: make updates
             if self.num_obs > batch_size:
                 raise ValueError("Decrease the input number of observations")
 
             n_updates_per_round = batch_size // self.num_obs
-            n_total_updates = T if k == 0 else T - n_exact_updates
-            for i in range(0, n_total_updates, n_updates_per_round):
+            for i in range(0, T, n_updates_per_round):
                 pred_data = np.empty((n_updates_per_round * self.num_obs,
                                       self.data.shape[1]), dtype=np.object)
 
@@ -164,6 +155,7 @@ class SSWARM:
                     for col in self.N.difference(A):
                         # map column number from the used features space to the overall features space
                         mapped_col = np.where(np.array(self.feature_names) == self.used_feats[col])[0][0]
+                        
                         # shuffle mapped column
                         temp[:, mapped_col] = self.rng.permutation(temp[:, mapped_col])
 
@@ -182,14 +174,6 @@ class SSWARM:
                     v_t = v[j * self.num_obs : (j + 1) * self.num_obs]
                     self.update(A, A_plus, A_minus, v_t)
                     
-                    # if k == 0 and i == 0 and j == n_exact_updates: # exactCalculation updates are completed
-                    #     # store the arrays to start from in the further repeats
-                    #     self.phi_plus_const = copy(self.phi_plus)
-                    #     self.phi_minus_const = copy(self.phi_minus)
-                    #     self.c_plus_const = copy(self.c_plus)
-                    #     self.c_minus_const = copy(self.c_minus)
-                    #     print("POINT")
-                    
                     bar.update(n=1)
 
 
@@ -202,11 +186,7 @@ class SSWARM:
             correction = ((v_N - PHI) / self.n).repeat(self.n, axis=0).reshape(len(phi), self.n, self.n_outputs)
             phi = phi + correction - self.expected_value / self.n
             
-            print(np.sum(phi))
             final_phi += phi / n_repeats
-            
-            # clear the updates
-            self.updates = []
             
             # change the seed
             self.rng = np.random.default_rng(seed=self.random_state + k + 1)
