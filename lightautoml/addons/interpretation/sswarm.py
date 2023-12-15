@@ -50,7 +50,7 @@ class SSWARM:
         self,
         data: Union[pd.DataFrame, np.array],
         feature_names: List[str] = None,
-        T: int = 500,
+        T: int = None,
         n_repeats: int = 3,
         n_jobs: int = 1,
         batch_size=500_000,
@@ -62,9 +62,11 @@ class SSWARM:
         Args:
             data: A matrix of samples on which to explain the model's output.
             feature_names: Feature names for automl prediction when data is not pd.DataFrame .
-            T: Number of iterations.
+            T: Number of iterations. Default is None, which refers to auto infer.
+                Higher `T` yields more accurate estimates, but takes more time. Auto is ok in most cases.
             n_repeats: Number of computations with different seeds.
-                Final shapley values are an avarage among seeds.
+                Final shapley values are an avarage among seeds. Default is 3.
+                Higher `n_repeats` yields more accurate estimates, but takes more time.
             n_jobs: Number of parallel workers to execute automl.predict() .
             batch_size: Number of observations passed to automl.predict() at once.
 
@@ -87,8 +89,15 @@ class SSWARM:
         self.data = np.array(data)
         feature_names = np.array(feature_names)
 
+        # infer auto params
+        if T is None:
+            if self.n < 20:
+                T = 250
+            else:
+                T = 500
+
         # predictions on all features v(N)
-        v_N = self.v(self.data, n_jobs=1)
+        v_N = self.v(self.data, feature_names=feature_names, n_jobs=1)
         self.expected_value = np.mean(v_N, axis=0)
 
         # final phi is accumulated during repeats
@@ -164,7 +173,7 @@ class SSWARM:
                     bar.update(n=1)
 
                 # make predictions on shuffled data
-                v = self.v(pred_data, n_jobs=n_jobs, feature_names=feature_names)
+                v = self.v(pred_data, feature_names=feature_names, n_jobs=n_jobs)
 
                 # update phi-s
                 for j, comb in enumerate(iter_updates):
@@ -218,7 +227,7 @@ class SSWARM:
             combination.add(val)
         return combination
 
-    def v(self, data: np.array, n_jobs: int = 1, feature_names: List[str] = None) -> List[List[float]]:
+    def v(self, data: np.array, feature_names: List[str] = None, n_jobs: int = 1) -> List[List[float]]:
         """Evaluate the value function.
 
         Args:
