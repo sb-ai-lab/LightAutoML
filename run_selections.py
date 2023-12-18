@@ -1,7 +1,7 @@
 from clearml import Dataset, Task
 from tqdm import tqdm
 
-source = "kaggle"
+source = "openml"
 names_versions = [[i["name"], i["version"]]
                   for i in Dataset.list_datasets(dataset_project="Datasets_with_metadata",
                                                 tags=[source])]
