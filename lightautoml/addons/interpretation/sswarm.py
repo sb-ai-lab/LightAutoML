@@ -86,7 +86,7 @@ class SSWARM:
         if isinstance(data, pd.DataFrame) and feature_names is None:
             feature_names = data.columns.values
 
-        self.data = np.array(data)
+        data = np.array(data)
         feature_names = np.array(feature_names)
 
         # infer auto params
@@ -97,11 +97,11 @@ class SSWARM:
                 T = 500
 
         # predictions on all features v(N)
-        v_N = self.v(self.data, feature_names=feature_names, n_jobs=1)
+        v_N = self.v(data, feature_names=feature_names, n_jobs=1)
         self.expected_value = np.mean(v_N, axis=0)
 
         # final phi is accumulated during repeats
-        final_phi = np.zeros((self.data.shape[0], self.n, self.n_outputs))
+        final_phi = np.zeros((data.shape[0], self.n, self.n_outputs))
 
         # initialization of \tilde{P}
         PMF = self.define_probability_distribution(self.n)
@@ -114,10 +114,10 @@ class SSWARM:
 
             # initializing arrays for main variables
             # size is (num_obs x n x n x num_outputs)
-            self.phi_plus = np.zeros((self.data.shape[0], self.n, self.n, self.n_outputs))
-            self.phi_minus = np.zeros((self.data.shape[0], self.n, self.n, self.n_outputs))
-            self.c_plus = np.zeros((self.data.shape[0], self.n, self.n, self.n_outputs))
-            self.c_minus = np.zeros((self.data.shape[0], self.n, self.n, self.n_outputs))
+            self.phi_plus = np.zeros((data.shape[0], self.n, self.n, self.n_outputs))
+            self.phi_minus = np.zeros((data.shape[0], self.n, self.n, self.n_outputs))
+            self.c_plus = np.zeros((data.shape[0], self.n, self.n, self.n_outputs))
+            self.c_minus = np.zeros((data.shape[0], self.n, self.n, self.n_outputs))
 
             # First stage: collect updates
 
@@ -152,7 +152,7 @@ class SSWARM:
             for i in range(0, T, n_updates_per_round):
 
                 # initialize array for shuffled data
-                pred_data = np.empty((n_updates_per_round * num_obs, self.data.shape[1]), dtype=np.object)
+                pred_data = np.empty((n_updates_per_round * num_obs, data.shape[1]), dtype=np.object)
 
                 # prepare the data
                 iter_updates = self.updates[i : i + n_updates_per_round]
@@ -161,7 +161,7 @@ class SSWARM:
                     A_plus = comb[1]
                     A_minus = comb[2]
 
-                    temp = copy(self.data)
+                    temp = copy(data)
                     for col in self.N.difference(A):
                         # map column number from the used features space to the overall features space
                         mapped_col = np.where(np.array(feature_names) == self.used_feats[col])[0][0]
