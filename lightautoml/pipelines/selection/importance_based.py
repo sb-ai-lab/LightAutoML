@@ -11,8 +11,154 @@ from ..features.base import FeaturesPipeline
 from .base import ImportanceEstimator
 from .base import SelectionPipeline
 
+import numpy as np
+from pandas import Series
+
+from sklearn.feature_selection import mutual_info_regression
+from skrebate import ReliefF as releiff
+from skrebate import MultiSURF as multisurf
+from skfeature.function.information_theoretical_based.FCBF import fcbf
+
 
 ImportanceEstimatedAlgo = TypeVar("ImportanceEstimatedAlgo", bound=ImportanceEstimator)
+
+
+class MultiSURF(ImportanceEstimator):
+
+    _name: str = "MultiSURF"
+
+    def __init__(self, num_obs=2000):
+        super().__init__()
+        self.num_obs = num_obs
+        self.model = multisurf(verbose=False, n_jobs=10)
+
+    def fit(self, train_valid: TrainValidIterator, *args, **kwargs):
+        # obtain the feature score on each fold
+        self.scores = []
+        self.features = train_valid.features
+        for n, (idx, train, valid) in enumerate(train_valid):
+            sampled_idx = np.random.choice(len(train.data), min(self.num_obs, len(train.data)), replace=False)
+            self.model.fit(train.data[sampled_idx], train.target[sampled_idx])
+            score = self.model.feature_importances_
+            self.scores.append(score)
+
+    def get_features_score(self) -> Series:
+        """
+
+        Returns:
+            Series with feature importances.
+
+        """
+        imp = 0
+        for score in self.scores:
+            imp = imp + score
+
+        imp = imp / len(self.scores)
+
+        return Series(imp, index=self.features).sort_values(ascending=False)
+
+
+class FCBF(ImportanceEstimator):
+
+    _name: str = "FCBF"
+
+    def __init__(self):
+        super().__init__()
+        self.model = fcbf
+
+    def fit(self, train_valid: TrainValidIterator, *args, **kwargs):
+        # obtain the feature score on each fold
+        self.features = train_valid.features
+        self.scores = []
+        for n, (idx, train, valid) in enumerate(train_valid):
+            idx = self.model(np.nan_to_num(train.data), train.target)
+            score = np.zeros(len(self.features))
+            score[idx[0]] = 1.0
+            self.scores.append(score)
+
+    def get_features_score(self) -> Series:
+        """
+
+        Returns:
+            Series with feature importances.
+
+        """
+        imp = 0
+        for score in self.scores:
+            imp = imp + score
+
+        imp = imp / len(self.scores)
+
+        return Series(imp, index=self.features).sort_values(ascending=False)
+
+
+class ReliefF(ImportanceEstimator):
+
+    _name: str = "reliefF"
+
+    def __init__(self, num_obs=2000):
+        super().__init__()
+        self.num_obs = num_obs
+        self.model = releiff(verbose=False, n_jobs=10, n_neighbors=70)
+
+    def fit(self, train_valid: TrainValidIterator, *args, **kwargs):
+        # obtain the feature score on each fold
+        self.scores = []
+        self.features = train_valid.features
+        for n, (idx, train, valid) in enumerate(train_valid):
+            sampled_idx = np.random.choice(len(train.data), min(self.num_obs, len(train.data)), replace=False)
+            self.model.fit(train.data[sampled_idx], train.target[sampled_idx])
+            score = self.model.feature_importances_
+            self.scores.append(score)
+
+    def get_features_score(self) -> Series:
+        """
+
+        Returns:
+            Series with feature importances.
+
+        """
+        imp = 0
+        for score in self.scores:
+            imp = imp + score
+
+        imp = imp / len(self.scores)
+
+        return Series(imp, index=self.features).sort_values(ascending=False)
+
+
+class MutualInfoRegression(ImportanceEstimator):
+
+    _name: str = "MIR"
+
+    def __init__(self, random_state=42):
+        super().__init__()
+        self.random_state = random_state
+        self.model = mutual_info_regression
+
+    def fit(self, train_valid: TrainValidIterator, *args, **kwargs):
+        # obtain the feature score on each fold
+        self.scores = []
+        self.features = train_valid.features
+        for n, (idx, train, valid) in enumerate(train_valid):
+            mi = self.model(np.nan_to_num(train.data), train.target, random_state=self.random_state)
+            mi /= np.max(mi)
+            mi = np.where(mi > 0.8, 1, 0)
+            self.scores.append(mi)
+
+    def get_features_score(self) -> Series:
+        """
+
+        Returns:
+            Series with feature importances.
+
+        """
+        imp = 0
+        for score in self.scores:
+            imp = imp + score
+
+        imp = imp / len(self.scores)
+        return Series(imp, index=self.features).sort_values(ascending=False)
 
 
 class ModelBasedImportanceEstimator(ImportanceEstimator):

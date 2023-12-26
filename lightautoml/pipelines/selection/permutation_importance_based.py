@@ -19,6 +19,7 @@ from .base import ImportanceEstimator
 from .base import PredefinedSelector
 from .base import SelectionPipeline
 from lightautoml.validation.base import HoldoutIterator
+from lightautoml.validation.np_iterators import get_numpy_iterator
 
 
 logger = logging.getLogger(__name__)
@@ -157,103 +158,103 @@ class NpCrossValPermutationImportanceEstimator(ImportanceEstimator):
         self.raw_importances = Series(permutation_importance).sort_values(ascending=False)
 
 
-# class NpIterativeFeatureSelector(SelectionPipeline):
-#     """Select features sequentially using chunks to find the best combination of chunks.
+class NpIterativeFeatureSelector(SelectionPipeline):
+    """Select features sequentially using chunks to find the best combination of chunks.
 
-#     The general idea of this algorithm is to sequentially
-#     check groups of features ordered by feature importances and
-#     if the quality of the model becomes better,
-#     we select such group, if not - ignore group.
+    The general idea of this algorithm is to sequentially
+    check groups of features ordered by feature importances and
+    if the quality of the model becomes better,
+    we select such group, if not - ignore group.
 
-#     Args:
-#         feature_pipeline: Composition of feature transforms.
-#         ml_algo: Tuple (MlAlgo, ParamsTuner).
-#         imp_estimator: Feature importance estimator.
-#         fit_on_holdout: If use the holdout iterator.
-#         feature_group_size: Chunk size.
-#         max_features_cnt_in_result: Lower bound of features after selection,
-#             if it is reached, it will stop.
+    Args:
+        feature_pipeline: Composition of feature transforms.
+        ml_algo: Tuple (MlAlgo, ParamsTuner).
+        imp_estimator: Feature importance estimator.
+        fit_on_holdout: If use the holdout iterator.
+        feature_group_size: Chunk size.
+        max_features_cnt_in_result: Lower bound of features after selection,
+            if it is reached, it will stop.
 
-#     """
+    """
 
-#     def __init__(
-#         self,
-#         feature_pipeline: FeaturesPipeline,
-#         ml_algo: Optional[MLAlgo] = None,
-#         imp_estimator: Optional[ImportanceEstimator] = None,
-#         fit_on_holdout: bool = True,
-#         feature_group_size: Optional[int] = 5,
-#         max_features_cnt_in_result: Optional[int] = None,
-#     ):
-#         if not fit_on_holdout:
-#             logger.info2("This selector only for holdout training. fit_on_holout argument added just to be compatible")
+    def __init__(
+        self,
+        feature_pipeline: FeaturesPipeline,
+        ml_algo: Optional[MLAlgo] = None,
+        imp_estimator: Optional[ImportanceEstimator] = None,
+        fit_on_holdout: bool = True,
+        feature_group_size: Optional[int] = 5,
+        max_features_cnt_in_result: Optional[int] = None,
+    ):
+        if not fit_on_holdout:
+            logger.info2("This selector only for holdout training. fit_on_holout argument added just to be compatible")
 
-#         super().__init__(feature_pipeline, ml_algo, imp_estimator, True)
+        super().__init__(feature_pipeline, ml_algo, imp_estimator, True)
 
-#         self.feature_group_size = feature_group_size
-#         self.max_features_cnt_in_result = max_features_cnt_in_result
+        self.feature_group_size = feature_group_size
+        self.max_features_cnt_in_result = max_features_cnt_in_result
 
-#     def perform_selection(self, train_valid: Optional[TrainValidIterator] = None):
-#         """Select features iteratively by checking model quality for current selected feats and new group.
+    def perform_selection(self, train_valid: Optional[TrainValidIterator] = None):
+        """Select features iteratively by checking model quality for current selected feats and new group.
 
-#         Args:
-#             train_valid: Iterator for dataset.
+        Args:
+            train_valid: Iterator for dataset.
 
-#         """
-#         # Calculate or receive permutation importances scores
-#         imp = self.imp_estimator.get_features_score()
+        """
+        # Calculate or receive permutation importances scores
+        imp = self.imp_estimator.get_features_score()
 
-#         features_to_check = [x for x in imp.index if x in set(train_valid.features)]
+        features_to_check = [x for x in imp.index if x in set(train_valid.features)]
 
-#         # Perform iterative selection algo
-#         chunks = _create_chunks_from_list(features_to_check, self.feature_group_size)
-#         selected_feats = []
-#         cnt_without_update = 0
-#         cur_best_score = None
+        # Perform iterative selection algo
+        chunks = _create_chunks_from_list(features_to_check, self.feature_group_size)
+        selected_feats = []
+        cnt_without_update = 0
+        cur_best_score = None
 
-#         for it, chunk in enumerate(chunks):
-#             if self.max_features_cnt_in_result is not None and len(selected_feats) >= self.max_features_cnt_in_result:
-#                 logger.info3(
-#                     "We exceeded max_feature_cnt_in_result bound (selected features count = {}). Exiting from iterative algo...".format(
-#                         len(selected_feats)
-#                     )
-#                 )
-#                 break
-#             selected_feats += chunk
-#             logger.info3("Started iteration {}, chunk = {}, feats to check = {}".format(it, chunk, selected_feats))
-#             cs = PredefinedSelector(selected_feats)
-#             selected_cols_iterator = train_valid.apply_selector(cs)
-#             logger.info3("Features in SCI = {}".format(selected_cols_iterator.features))
+        for it, chunk in enumerate(chunks):
+            if self.max_features_cnt_in_result is not None and len(selected_feats) >= self.max_features_cnt_in_result:
+                logger.info3(
+                    "We exceeded max_feature_cnt_in_result bound (selected features count = {}). Exiting from iterative algo...".format(
+                        len(selected_feats)
+                    )
+                )
+                break
+            selected_feats += chunk
+            logger.info3("Started iteration {}, chunk = {}, feats to check = {}".format(it, chunk, selected_feats))
+            cs = PredefinedSelector(selected_feats)
+            selected_cols_iterator = train_valid.apply_selector(cs)
+            logger.info3("Features in SCI = {}".format(selected_cols_iterator.features))
 
-#             # Create copy of MLAlgo for iterative algo only
-#             ml_algo_for_iterative, preds = tune_and_fit_predict(
-#                 deepcopy(self._empty_algo), self.tuner, selected_cols_iterator
-#             )
+            # Create copy of MLAlgo for iterative algo only
+            ml_algo_for_iterative, preds = tune_and_fit_predict(
+                deepcopy(self._empty_algo), self.tuner, selected_cols_iterator
+            )
 
-#             cur_score = ml_algo_for_iterative.score(preds)
-#             logger.debug("Current score = {}, current best score = {}".format(cur_score, cur_best_score))
+            cur_score = ml_algo_for_iterative.score(preds)
+            logger.debug("Current score = {}, current best score = {}".format(cur_score, cur_best_score))
 
-#             if cur_best_score is None or cur_best_score < cur_score:
-#                 logger.info3("Update best score from {} to {}".format(cur_best_score, cur_score))
-#                 cur_best_score = cur_score
-#                 cnt_without_update = 0
-#             else:
-#                 cnt_without_update += 1
-#                 logger.debug(
-#                     "Without update for {} steps. Remove last added group {} from selected features...".format(
-#                         cnt_without_update, chunk
-#                     )
-#                 )
-#                 selected_feats = selected_feats[: -len(chunk)]
-#                 logger.debug("Selected feats after delete = {}".format(selected_feats))
+            if cur_best_score is None or cur_best_score < cur_score:
+                logger.info3("Update best score from {} to {}".format(cur_best_score, cur_score))
+                cur_best_score = cur_score
+                cnt_without_update = 0
+            else:
+                cnt_without_update += 1
+                logger.debug(
+                    "Without update for {} steps. Remove last added group {} from selected features...".format(
+                        cnt_without_update, chunk
+                    )
+                )
+                selected_feats = selected_feats[: -len(chunk)]
+                logger.debug("Selected feats after delete = {}".format(selected_feats))
 
-#         logger.debug("Update mapped importance")
-#         imp = imp[imp.index.isin(selected_feats)]
-#         self.map_raw_feature_importances(imp)
+        logger.debug("Update mapped importance")
+        imp = imp[imp.index.isin(selected_feats)]
+        self.map_raw_feature_importances(imp)
 
-#         selected_feats = list(self.mapped_importances.index)
-#         logger.info3("Finally selected feats = {}".format(selected_feats))
-#         self._selected_features = selected_feats
+        selected_feats = list(self.mapped_importances.index)
+        logger.info3("Finally selected feats = {}".format(selected_feats))
+        self._selected_features = selected_feats
 
 
 class IterativeFeatureSelector(SelectionPipeline):
@@ -352,6 +353,7 @@ class IterativeFeatureSelector(SelectionPipeline):
 
     def perform_selection(self, train_valid=None):
         
+        train_valid = train_valid.convert_to_holdout_iterator()
         train_len = len(train_valid.train)
         sampled_idx = np.random.choice(train_len, min(4000, train_len), replace=False)
         train_valid = HoldoutIterator(train_valid.train[sampled_idx], train_valid.valid)

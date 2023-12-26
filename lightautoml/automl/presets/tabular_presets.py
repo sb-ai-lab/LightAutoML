@@ -31,9 +31,6 @@ from ...ml_algo.linear_sklearn import LinearLBFGS
 from ...ml_algo.random_forest import RandomForestSklearn
 from ...ml_algo.tuning.optuna import DLOptunaTuner
 from ...ml_algo.tuning.optuna import OptunaTuner
-from ...ml_algo.reliefF import ReliefF, SURF, MultiSURF
-from ...ml_algo.fcbf import FCBF
-from ...ml_algo.statistical_selection import MutualInfoRegression
 from ...pipelines.features.lgb_pipeline import LGBAdvancedPipeline
 from ...pipelines.features.lgb_pipeline import LGBSeqSimpleFeatures
 from ...pipelines.features.lgb_pipeline import LGBSimpleFeatures
@@ -44,13 +41,14 @@ from ...pipelines.selection.base import ComposedSelector
 from ...pipelines.selection.base import SelectionPipeline
 from ...pipelines.selection.importance_based import ImportanceCutoffSelector
 from ...pipelines.selection.importance_based import ModelBasedImportanceEstimator
-from ...pipelines.selection.permutation_importance_based import (
-    IterativeFeatureSelector,
-)
-from ...pipelines.selection.permutation_importance_based import (
-    NpPermutationImportanceEstimator,
-    NpCrossValPermutationImportanceEstimator,
-)
+from ...pipelines.selection.importance_based import ReliefF
+from ...pipelines.selection.importance_based import MultiSURF
+from ...pipelines.selection.importance_based import FCBF
+from ...pipelines.selection.importance_based import MutualInfoRegression
+from ...pipelines.selection.permutation_importance_based import NpIterativeFeatureSelector
+from ...pipelines.selection.permutation_importance_based import IterativeFeatureSelector
+from ...pipelines.selection.permutation_importance_based import NpPermutationImportanceEstimator
+from ...pipelines.selection.permutation_importance_based import NpCrossValPermutationImportanceEstimator
 
 from ...reader.base import DictToPandasSeqReader
 from ...reader.base import PandasToPandasReader
@@ -367,9 +365,6 @@ class TabularAutoML(AutoMLPreset):
             elif selection_params["importance_type"] == "relieff":
                 importance = ReliefF()
                 selection_gbm = None
-            elif selection_params["importance_type"] == "SURF":
-                importance = SURF()
-                selection_gbm = None
             elif selection_params["importance_type"] == "MultiSURF":
                 importance = MultiSURF()
                 selection_gbm = None
@@ -399,19 +394,31 @@ class TabularAutoML(AutoMLPreset):
                 selection_gbm.set_prefix("Selector")
 
                 # TODO: Check about reusing permutation importance
-                if selection_params["cross_val"]:
+                fit_on_holdout = True
+                if selection_params.get("cross_val", False):
                     importance = NpCrossValPermutationImportanceEstimator()
+                    fit_on_holdout = False
                 else:
                     importance = NpPermutationImportanceEstimator()
-
-                extra_selector = IterativeFeatureSelector(
-                    selection_feats,
-                    selection_gbm,
-                    importance,
-                    feature_group_size=selection_params["feature_group_size"],
-                    # max_features_cnt_in_result=selection_params["max_features_cnt_in_result"],
-                    kind=selection_params["kind"],
-                )
+                    
+                if selection_params.get("kind", False):
+                    extra_selector = IterativeFeatureSelector(
+                        selection_feats,
+                        selection_gbm,
+                        importance,
+                        fit_on_holdout,
+                        feature_group_size=selection_params["feature_group_size"],
+                        # max_features_cnt_in_result=selection_params["max_features_cnt_in_result"],
+                        kind=selection_params["kind"],
+                    )
+                else:
+                    extra_selector = NpIterativeFeatureSelector(
+                        selection_feats,
+                        selection_gbm,
+                        importance,
+                        feature_group_size=selection_params["feature_group_size"],
+                        # max_features_cnt_in_result=selection_params["max_features_cnt_in_result"],
+                    )
                 pre_selector = ComposedSelector([pre_selector, extra_selector])
 
         return pre_selector

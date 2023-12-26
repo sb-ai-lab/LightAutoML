@@ -14,7 +14,7 @@ import os
 import clearml
 import pandas as pd
 
-from sklearn.metrics import mean_absolute_error
+from sklearn.metrics import mean_squared_error
 from sklearn.metrics import roc_auc_score
 
 from lightautoml.automl.presets.tabular_presets import TabularAutoML
@@ -25,7 +25,7 @@ from lightautoml.dataset.np_pd_dataset import NumpyDataset
 def metric(y_true, y_pred, task, reader):
     """Compute the metric based on task."""
     if task == "reg":
-        return mean_absolute_error(y_true, y_pred)
+        return mean_squared_error(y_true, y_pred)
     if task == "multiclass":
         mapping = reader.class_mapping
         if mapping is not None:

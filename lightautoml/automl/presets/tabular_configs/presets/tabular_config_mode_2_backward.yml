@@ -75,7 +75,7 @@ selection_params:
   # importance type permutation/gain
   importance_type: 'gain'
   kind: "backward"
-  cross_val: True
+  cross_val: False
   # pretrain selector on holdout set. True - fast/ False - accurate
   fit_on_holdout: True
   # cutoff value for permutation or gain (mode 1/2)
