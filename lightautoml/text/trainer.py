@@ -233,7 +233,7 @@ class SnapshotEns:
             else:
                 model.load_state_dict(model_weights)
             self.models[key] = deepcopy(model.eval()).cpu()
-
+        weights["best_loss"] = self.best_loss
         return self
 
 
