@@ -48,12 +48,12 @@ class SSWARM:
 
     def shap_values(
         self,
-        data: Union[pd.DataFrame, np.array],
+        data: Union[pd.DataFrame, np.ndarray],
         feature_names: List[str] = None,
         T: int = None,
         n_repeats: int = 3,
         n_jobs: int = 1,
-        batch_size=500_000,
+        batch_size: int = 500_000,
     ) -> List[List[float]]:
         """Computes shapley values of an input observations.
            Returns values in the SHAP format to be consistent with
@@ -228,7 +228,7 @@ class SSWARM:
         return combination
 
     def v(self, data: np.array, feature_names: List[str] = None, n_jobs: int = 1) -> List[List[float]]:
-        """Evaluate the value function.
+        """Evaluate the utility function.
 
         Args:
             data: Data for prediction.
