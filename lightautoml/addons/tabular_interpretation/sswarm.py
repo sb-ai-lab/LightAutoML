@@ -169,7 +169,7 @@ class SSWARM:
             for i in range(0, T, n_updates_per_round):
 
                 # initialize array for shuffled data
-                pred_data = np.empty((n_updates_per_round * num_obs, data.shape[1]), dtype=np.object)
+                pred_data = np.empty((n_updates_per_round * num_obs, data.shape[1]), dtype=object)
 
                 # prepare the data
                 iter_updates = self.updates[i : i + n_updates_per_round]
