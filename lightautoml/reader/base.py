@@ -505,7 +505,7 @@ class PandasToPandasReader(Reader):
         try:
             # TODO: check all notnans and set coerce errors
             t = cast(pd.Series, pd.to_datetime(feature, infer_datetime_format=False, format=date_format))
-        except (ValueError, AttributeError):
+        except (ValueError, AttributeError, TypeError):
             # else category
             return CategoryRole(object)
 
