@@ -40,7 +40,7 @@ class MLAlgo(ABC):
     Args:
         default_params: Algo hyperparams.
         freeze_defaults:
-            - ``True`` :  params may be rewrited depending on dataset.
+            - ``True`` :  params may be rewritten depending on dataset.
             - ``False``:  params may be changed only manually
                 or with tuning.
         timer: Timer for Algo.
