@@ -50,12 +50,14 @@ def extract_params(input_struct):
         if key.startswith(("_", "autonlp_params")):
             continue
         value = iterator[key]
-        if type(value) in [bool, int, float, str]:
+        if type(value) in [bool, int, float, str, np.bool_]:
             params[key] = value
         elif value is None:
             params[key] = None
         elif hasattr(value, "__dict__") or isinstance(value, dict):
             params[key] = extract_params(value)
+        elif isinstance(value, list) or isinstance(value, np.ndarray):
+            params[key] = ", ".join([i.__str__() for i in value])
         else:
             params[key] = str(type(value))
     return params
@@ -991,7 +993,11 @@ class ReportDeco:
         for feature_name in numerical_features:
             item = {"Feature name": feature_name}
             item["NaN ratio"] = "{:.4f}".format(train_data[feature_name].isna().sum() / train_data.shape[0])
-            values = train_data[feature_name].dropna().values
+            # check if column dtype is bool
+            if train_data[feature_name].dtype == bool:
+                values = train_data[feature_name].astype(float).dropna().values
+            else:
+                values = train_data[feature_name].dropna().values
             item["min"] = np.min(values)
             item["quantile_25"] = np.quantile(values, 0.25)
             item["average"] = np.mean(values)
@@ -1132,6 +1138,366 @@ class ReportDeco:
                 )
             except ModuleNotFoundError:
                 print("Can't generate PDF report: check manual for installing pdf extras.")
+
+
+_config_name_desc_dict = {
+    "conf_0_sel_type_0.yml": "Preset 0: No feature selection",
+    "conf_1_sel_type_1.yml": "Preset 1: Cutoff feature selection",
+    "conf_2_select_mode_1_no_typ.yml": "Preset 2: Cutoff feature selection, no advanced typisation",
+    "conf_3_sel_type_1_no_inter_lgbm.yml": "Preset 3: Cutoff feature selection, no GBM categories intersections",
+    "conf_4_sel_type_0_no_int.yml": "Preset 4: No feature selection, no Linear categories intersections, no GBM categories intersections",
+    "conf_5_sel_type_1_tuning_full.yml": "Preset 5: Cutoff feature selection, accurate parameters tuner",
+    "conf_6_sel_type_1_tuning_full_no_int_lgbm.yml": "Preset 6: Cutoff feature selection, accurate parameters tuner, no GBM categories intersections",
+}
+
+
+class ReportDecoUtilized(ReportDeco):
+    """
+    Special report wrapper for :class:`~lightautoml.automl.presets.tabular_presets.TabularUtilizedAutoML`.
+    Usage case is the same as main
+    :class:`~lightautoml.report.report_deco.ReportDeco` class.
+    It generates same report as :class:`~lightautoml.report.report_deco.ReportDeco` ,
+    but with info about each used preset.
+
+    Difference:
+
+        - the model parameters section appears only after fit_predict is called.
+          report_automl.__call__ and report_automl.fit_predict are changed.
+        - report_automl._generate_model_section and report_automl._generate_train_set_section obtain
+          the list of subsections of Model and Data overview and concatenate in one section.
+        - report_automl._generate_preset_sections and report_automl._generate_data_sections
+          are the new functions that generate Model overview and Data overview section for each preset individually.
+        - report_automl._data_genenal_info, report_automl._describe_roles,
+          report_automl._describe_dropped_features get on input additional reader
+          parameter. Each preset has its own reader configuration, so train data
+          summary is generated for each reader individually.
+        - new html templates are intoduced.
+
+    """
+
+    @property
+    def task(self):
+        return self._model.task.name
+
+    @property
+    def mapping(self):
+        return self._model.outer_pipes[0].ml_algos[0].models[0][0].reader.class_mapping
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        self._fi_section_path = "feature_importance_utillized_section.html"
+        self._model_section_path = "model_section_utilized.html"
+        self._preset_section_path = "preset_section.html"
+        self._preset_sections = None
+        self._preset_data_sections_path = "utilized_data_subsections.html"
+        self._data_sections = None
+        self._train_set_section_path = "train_set_section_utilized.html"
+
+        self._roles_df = pd.DataFrame()
+        self._pred_formula = None
+
+    def __call__(self, model):
+        self._model = model
+
+        # add informataion to report
+        self._model_name = model.__class__.__name__
+        self._model_summary = None
+
+        self._sections = {}
+        self._sections["intro"] = "<p>This report was generated automatically.</p>"
+        self._model_results = []
+        self._n_test_sample = 0
+
+        self._generate_model_section()
+        self.generate_report()
+        return self
+
+    def fit_predict(self, *args, **kwargs):
+        """Wrapped :meth:`TimeUtilization.fit_predict` method.
+
+        Valid args, kwargs are the same as wrapped automl.
+
+        Args:
+            *args: Arguments.
+            **kwargs: Additional parameters.
+
+        Returns:
+            OOF predictions.
+
+        """
+        # TODO: parameters parsing in general case
+
+        preds = self._model.fit_predict(*args, **kwargs)
+
+        # Generate sections describing presets used in `fit_predict`
+        self._generate_preset_sections()
+
+        train_data = kwargs["train_data"] if "train_data" in kwargs else args[0]
+        input_roles = kwargs["roles"] if "roles" in kwargs else args[1]
+        self._target = input_roles["target"]
+        valid_data = kwargs.get("valid_data", None)
+        if valid_data is None:
+            data = self._collect_data(preds, train_data)
+        else:
+            data = self._collect_data(preds, valid_data)
+        self._inference_content = {}
+        if self.task == "binary":
+            # filling for html
+            self._inference_content = {}
+            self._inference_content["roc_curve"] = "valid_roc_curve.png"
+            self._inference_content["pr_curve"] = "valid_pr_curve.png"
+            self._inference_content["pie_f1_metric"] = "valid_pie_f1_metric.png"
+            self._inference_content["preds_distribution_by_bins"] = "valid_preds_distribution_by_bins.png"
+            self._inference_content["distribution_of_logits"] = "valid_distribution_of_logits.png"
+            # graphics and metrics
+            _, self._F1_thresh = f1_score_w_co(data)
+            auc_score, prec, rec, F1 = self._binary_classification_details(data)
+            # update model section
+            evaluation_parameters = ["AUC-score", "Precision", "Recall", "F1-score"]
+            self._model_summary = pd.DataFrame(
+                {
+                    "Evaluation parameter": evaluation_parameters,
+                    "Validation sample": [auc_score, prec, rec, F1],
+                }
+            )
+        elif self.task == "reg":
+            # filling for html
+            self._inference_content["target_distribution"] = "valid_target_distribution.png"
+            self._inference_content["error_hist"] = "valid_error_hist.png"
+            self._inference_content["scatter_plot"] = "valid_scatter_plot.png"
+            # graphics and metrics
+            mean_ae, median_ae, mse, r2, evs = self._regression_details(data)
+            # model section
+            evaluation_parameters = [
+                "Mean absolute error",
+                "Median absolute error",
+                "Mean squared error",
+                "R^2 (coefficient of determination)",
+                "Explained variance",
+            ]
+            self._model_summary = pd.DataFrame(
+                {
+                    "Evaluation parameter": evaluation_parameters,
+                    "Validation sample": [mean_ae, median_ae, mse, r2, evs],
+                }
+            )
+        elif self.task == "multiclass":
+            self._N_classes = len(train_data[self._target].drop_duplicates())
+            self._inference_content["confusion_matrix"] = "valid_confusion_matrix.png"
+
+            index_names = np.array([["Precision", "Recall", "F1-score"], ["micro", "macro", "weighted"]])
+            index = pd.MultiIndex.from_product(index_names, names=["Evaluation metric", "Average"])
+
+            summary = self._multiclass_details(data)
+            self._model_summary = pd.DataFrame({"Validation sample": summary}, index=index)
+
+        self._inference_content["title"] = "Results on validation sample"
+
+        # wrap text in <pre> tag to display \n, \t
+        self._pred_formula = "<pre>" + self._model.create_model_str_desc() + "</pre>"
+
+        self._generate_model_section()
+
+        # generate train data section
+        self._data_sections = []
+        for model in self._model.outer_pipes:
+            preset_name = model.ml_algos[0].models[0][0].config_path.split("/")[-1].split(".")[0]
+            reader = model.ml_algos[0].models[0][0].reader
+            self._train_data_overview = self._data_genenal_info(train_data, reader)
+            self._describe_roles(train_data, reader, preset_name)
+            self._describe_dropped_features(train_data, reader, model.ml_algos[0].models[0][0], preset_name)
+            train_set_section = self._generate_data_sections(preset_name)
+            self._data_sections.append(train_set_section)
+
+        self._roles_df = self._roles_df.T.to_html(justify="left")
+        self._generate_train_set_section()
+
+        # generate fit_predict section
+        self._generate_inference_section()
+        # generate feature importance and interpretation sections
+        self._generate_fi_section(valid_data)
+        if self.interpretation:
+            self._generate_interpretation_section(valid_data)
+
+        self.generate_report()
+        return preds
+
+    def _data_genenal_info(self, data, reader):
+        general_info = pd.DataFrame(columns=["Parameter", "Value"])
+        general_info.loc[0] = ("Number of records", data.shape[0])
+        general_info.loc[1] = ("Total number of features", data.shape[1])
+        general_info.loc[2] = ("Used features", len(reader._used_features))
+        general_info.loc[3] = (
+            "Dropped features",
+            len(reader._dropped_features),
+        )
+        # general_info.loc[4] = ("Number of positive cases", np.sum(data[self._target] == 1))
+        # general_info.loc[5] = ("Number of negative cases", np.sum(data[self._target] == 0))
+        return general_info.to_html(index=False, justify="left")
+
+    def _describe_roles(self, train_data, reader, preset_name):
+
+        # detect feature roles
+        roles = reader._roles
+        numerical_features = [feat_name for feat_name in roles if roles[feat_name].name == "Numeric"]
+        categorical_features = [feat_name for feat_name in roles if roles[feat_name].name == "Category"]
+        datetime_features = [feat_name for feat_name in roles if roles[feat_name].name == "Datetime"]
+        text_features = [feat_name for feat_name in roles if roles[feat_name].name == "Text"]
+
+        # filling data frame with roles description
+        self._roles_df.loc[preset_name, numerical_features] = ["N" for _ in range(len(numerical_features))]
+        self._roles_df.loc[preset_name, categorical_features] = ["C" for _ in range(len(categorical_features))]
+        self._roles_df.loc[preset_name, datetime_features] = ["D" for _ in range(len(datetime_features))]
+        self._roles_df.loc[preset_name, text_features] = ["T" for _ in range(len(text_features))]
+
+        # numerical roles
+        numerical_features_df = []
+        for feature_name in numerical_features:
+            item = {"Feature name": feature_name}
+            item["NaN ratio"] = "{:.4f}".format(train_data[feature_name].isna().sum() / train_data.shape[0])
+            # check if column dtype is bool
+            if train_data[feature_name].dtype == bool:
+                values = train_data[feature_name].astype(float).dropna().values
+            else:
+                values = train_data[feature_name].dropna().values
+            item["min"] = np.min(values)
+            item["quantile_25"] = np.quantile(values, 0.25)
+            item["average"] = np.mean(values)
+            item["median"] = np.median(values)
+            item["quantile_75"] = np.quantile(values, 0.75)
+            item["max"] = np.max(values)
+            numerical_features_df.append(item)
+        self._numerical_features_table = list2table(numerical_features_df, {"float_format": "{:.2f}".format})
+
+        # categorical roles
+        categorical_features_df = []
+        for feature_name in categorical_features:
+            item = {"Feature name": feature_name}
+            item["NaN ratio"] = "{:.4f}".format(train_data[feature_name].isna().sum() / train_data.shape[0])
+            value_counts = train_data[feature_name].value_counts(normalize=True)
+            values = value_counts.index.values
+            counts = value_counts.values
+            item["Number of unique values"] = len(counts)
+            item["Most frequent value"] = values[0]
+            item["Occurance of most frequent"] = "{:.1f}%".format(100 * counts[0])
+            item["Least frequent value"] = values[-1]
+            item["Occurance of least frequent"] = "{:.1f}%".format(100 * counts[-1])
+            categorical_features_df.append(item)
+        self._categorical_features_table = list2table(categorical_features_df)
+
+        # datetime roles
+        datetime_features_df = []
+        for feature_name in datetime_features:
+            item = {"Feature name": feature_name}
+            item["NaN ratio"] = "{:.4f}".format(train_data[feature_name].isna().sum() / train_data.shape[0])
+            values = train_data[feature_name].dropna().values
+            item["min"] = np.min(values)
+            item["max"] = np.max(values)
+            item["base_date"] = reader._roles[feature_name].base_date
+            datetime_features_df.append(item)
+        self._datetime_features_table = list2table(datetime_features_df)
+
+        # text roles
+        text_features_df = []
+        for feature_name in text_features:
+            item = {"Feature name": feature_name}
+            feature_length = train_data[feature_name].str.len()
+            item["Amount of empty records"] = (feature_length == 0).sum(axis=0)
+            item["Length of the shortest sentence"] = feature_length.min()
+            item["Length of the longest sentence"] = feature_length.max()
+            text_features_df.append(item)
+        self._text_features_table = list2table(text_features_df)
+
+    def _describe_dropped_features(self, train_data, reader, model, preset_name):
+        self._max_nan_rate = reader.max_nan_rate
+        self._max_constant_rate = reader.max_constant_rate
+        self._features_dropped_list = reader._dropped_features
+
+        selector_dropped_features = list(set(list(reader._roles.keys())) - set(model.collect_used_feats()))
+
+        # filling data frame with roles description
+        self._roles_df.loc[preset_name, reader._dropped_features] = ["-" for _ in range(len(reader._dropped_features))]
+        self._roles_df.loc[preset_name, selector_dropped_features] = [
+            "-" for _ in range(len(selector_dropped_features))
+        ]
+        # dropped features table
+        dropped_list = [col for col in self._features_dropped_list if col != self._target]
+        if dropped_list == []:
+            self._dropped_features_table = None
+        else:
+            dropped_nan_ratio = train_data[dropped_list].isna().sum() / train_data.shape[0]
+            dropped_most_occured = pd.Series(np.nan, index=dropped_list)
+            for col in dropped_list:
+                col_most_occured = train_data[col].value_counts(normalize=True).values
+                if len(col_most_occured) > 0:
+                    dropped_most_occured[col] = col_most_occured[0]
+            dropped_features_table = pd.DataFrame(
+                {"nan_rate": dropped_nan_ratio, "constant_rate": dropped_most_occured}
+            )
+            self._dropped_features_table = (
+                dropped_features_table.reset_index()
+                .rename(columns={"index": "Название переменной"})
+                .to_html(index=False, justify="left")
+            )
+
+    def _generate_model_section(self):
+        model_summary = None
+        if self._model_summary is not None:
+            model_summary = self._model_summary.to_html(
+                index=self.task == "multiclass",
+                justify="left",
+                float_format="{:.4f}".format,
+            )
+
+        env = Environment(loader=FileSystemLoader(searchpath=self.template_path))
+        model_section = env.get_template(self._model_section_path).render(
+            model_name=self._model_name,
+            model_presets=self._preset_sections,
+            model_summary=model_summary,
+            pred_formula=self._pred_formula,
+        )
+        self._sections["model"] = model_section
+
+    def _generate_train_set_section(self):
+        env = Environment(loader=FileSystemLoader(searchpath=self.template_path))
+        train_set_section = env.get_template(self._train_set_section_path).render(
+            data_sections=self._data_sections, roles_table=self._roles_df
+        )
+        self._sections["train_set"] = train_set_section
+
+    def _generate_preset_sections(self):
+
+        self._preset_sections = []
+        env = Environment(loader=FileSystemLoader(searchpath=self.template_path))
+        for model in self._model.outer_pipes:
+            preset_name = model.ml_algos[0].models[0][0].config_path.split("/")[-1]
+            preset_desc = _config_name_desc_dict.get(preset_name, None)
+            if preset_desc is not None:
+                preset_name = "{0} ({1})".format(preset_desc, preset_name)
+
+            model_parameters = json2html.convert(extract_params(model.ml_algos[0].models[0][0]))
+            preset_section = env.get_template(self._preset_section_path).render(
+                preset_name=preset_name, model_parameters=model_parameters
+            )
+
+            self._preset_sections.append(preset_section)
+
+    def _generate_data_sections(self, preset_name):
+        env = Environment(loader=FileSystemLoader(searchpath=self.template_path))
+        train_set_section = env.get_template(self._preset_data_sections_path).render(
+            train_data_overview=self._train_data_overview,
+            numerical_features_table=self._numerical_features_table,
+            categorical_features_table=self._categorical_features_table,
+            datetime_features_table=self._datetime_features_table,
+            text_features_table=self._text_features_table,
+            target=self._target,
+            max_nan_rate=self._max_nan_rate,
+            max_constant_rate=self._max_constant_rate,
+            dropped_features_table=self._dropped_features_table,
+            preset_name=preset_name,
+        )
+        return train_set_section
 
 
 _default_wb_report_params = {

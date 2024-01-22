@@ -1,0 +1,26 @@
+<li>
+    <h2 class="caret caret-down" id="section2">Data overview</h2>
+    <ul class="nested active">
+        <li>
+            <h3 class="caret" id="section2_1">Roles table</h3>
+            <ul class="nested">
+                <p>Each reader has its own preprocessing configuration and type guessing, thus
+                    each reader recognises feature roles differently.
+                </p>
+                <p>Table below summarizes the guessed feature roles for all applied presets.</p>
+                <p>"N" - numerical, "C" - categorical, "D" - datetime, "T" - textual, "-" - dropped.</p>
+                {{ roles_table }}
+            </ul>
+        </li>
+
+        <li>
+            <h3 class="caret" id="section2_2">Precise description</h3>
+            <ul class="nested">
+                <p>Below is the precise description of training data for each preset.</p>
+                {% for section in data_sections %}
+                    {{ section }}
+                {% endfor %}
+            </ul>
+        </li>
+    </ul>
+</li>
