@@ -1,0 +1,43 @@
+<li>
+    <h2 class="caret caret-down" id="section1">Model overview</h2>
+    <ul class="nested active">
+        <li>
+            <h3 class="caret" id="section1_1">Summary results</h3>
+            <ul class="nested">
+                {% if model_summary is not none %}
+                    <p>Results for data samples:</p>
+
+                    {{ model_summary }}
+                {% else %}
+                    <p>Use fit_predict() for training model.</p>
+                {% endif %}
+            </ul>
+        </li>
+        <li>
+            <h3 class="caret" id="section1_2">Prediction formula</h3>
+            <ul class="nested">
+                {% if pred_formula is not none %}
+                   {{ pred_formula }}
+                {% else %}
+                    <p>Use fit_predict() for training model.</p>
+                {% endif %}
+            </ul>
+        </li>
+        <li>
+            <h3 class="caret" id="section1_3">Model parameters</h3>
+            <ul class="nested">
+                <p>The following model is loaded: <b>{{ model_name }}</b>.</p>
+
+                {% if model_presets is not none %}
+                    <p>Parameters of applied presets are described below:</p>
+                    {% for preset in model_presets %}
+                        {{ preset }}
+                    {% endfor %}
+                {% else %}
+                    <p>Use fit_predict() for training model.
+                        Description of applied presets will appear in this section.</p>
+                {% endif %}
+            </ul>
+        </li>
+    </ul>
+</li>
