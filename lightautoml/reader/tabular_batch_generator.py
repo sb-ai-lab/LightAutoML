@@ -18,7 +18,7 @@ import pandas as pd
 from joblib import Parallel
 from joblib import delayed
 from pandas import DataFrame
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 
 
 def get_filelen(fname: str) -> int:
@@ -340,7 +340,7 @@ class SqlDataSource:
         index: Optional[Union[str, List[str]]] = None,
     ):
         self.engine = create_engine(connection_string)
-        self.query = query
+        self.query = text(query)
         self.index = index
         self._data = None
 
