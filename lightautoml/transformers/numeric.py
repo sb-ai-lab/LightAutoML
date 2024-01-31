@@ -425,7 +425,7 @@ class QuantileTransformer(LAMLTransformer):
     def __init__(
         self,
         n_quantiles: Optional[int] = None,
-        subsample: int = 1e9,
+        subsample: int = int(1e9),
         output_distribution: str = "normal",
         noise: float = 1e-3,
         qnt_factor: int = 30,

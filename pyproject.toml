@@ -39,9 +39,12 @@ poetry-core = [
 pandas = "<2.0.0"
 numpy = [
     {version = "<=1.24.0", python = "<3.10"},
-    {version = ">=1.22", python = ">=3.10"}
+    {version = ">=1.22, <1.24.0", python = ">=3.10"}
 ]
-scikit-learn = ">=0.22"
+scikit-learn = [
+    {version = ">=0.22, <=0.24.2", python = "<3.10"},
+    {version = ">=0.22", python = ">=3.10"},
+]
 lightgbm = ">=2.3, <=3.2.1"
 catboost = ">=0.26.1"
 optuna = "*"

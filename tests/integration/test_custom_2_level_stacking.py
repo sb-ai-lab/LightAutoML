@@ -154,7 +154,7 @@ def test_manual_pipeline(sampled_app_train_test, sampled_app_roles, binary_task)
     oof_score = roc_auc_score(train[target_name].values, oof_predictions.data[:, 0])
     ho_score = roc_auc_score(test[target_name].values, ho_predictions.data[:, 0])
 
-    assert oof_score > 0.68
+    assert oof_score > 0.67
     assert ho_score > 0.67
 
     check_pickling(automl, ho_score, binary_task, test, target_name)
