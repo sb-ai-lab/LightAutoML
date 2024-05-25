@@ -56,7 +56,7 @@ pip install -U lightautoml[nlp]
 
 ```
 
-Additionaly, run following commands to enable pdf report generation:
+Additionally, run following commands to enable pdf report generation:
 
 ```bash
 # MacOS
