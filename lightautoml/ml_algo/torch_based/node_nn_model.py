@@ -554,6 +554,7 @@ class DenseODSTBlock(nn.Sequential):
         max_features: maximum number of features per input
         depth: number of splits in every tree.
         input_dropout: Dropout rate forest layer.
+        choice_function: str `entmax` or `sparsmax`.
         flatten_output: flatten output or not.
     """
 
@@ -565,12 +566,23 @@ class DenseODSTBlock(nn.Sequential):
         tree_dim=1,
         max_features=None,
         input_dropout=0.0,
+        choice_function="entmax",
         flatten_output=True,
         **kwargs
     ):
         layers = []
+        ch_f = Sparsemax() if choice_function == "sparsmax" else Entmax15()
+        bin_f = Sparsemoid() if choice_function == "sparsmax" else Entmoid15()
         for i in range(num_layers):
-            oddt = ODST(input_dim, layer_dim, tree_dim=tree_dim, flatten_output=True, **kwargs)
+            oddt = ODST(
+                input_dim,
+                layer_dim,
+                tree_dim=tree_dim,
+                flatten_output=True,
+                choice_function=ch_f,
+                bin_function=bin_f,
+                **kwargs
+            )
             input_dim = min(input_dim + layer_dim * tree_dim, max_features or float("inf"))
             layers.append(oddt)
 
