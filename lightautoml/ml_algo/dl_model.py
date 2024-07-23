@@ -527,7 +527,7 @@ class TorchModel(TabularMLAlgo):
                 num_workers=self.train_params["num_workers"],
                 collate_fn=collate_dict,
                 pin_memory=self.train_params["pin_memory"],
-                drop_last={'train':True}.get(stage, False)
+                drop_last={"train": True}.get(stage, False),
             )
             for stage, value in data_dict.items()
         }

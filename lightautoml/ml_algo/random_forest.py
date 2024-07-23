@@ -81,6 +81,11 @@ class RandomForestSklearn(TabularMLAlgo, ImportanceEstimator):
 
     @staticmethod
     def correct_mse_criterion() -> str:
+        """Choose right MSE criterion name from sklearn.
+
+        Returns:
+            str: criterion
+        """
         if sklearn.__version__ >= "1.0.0":
             criterion = "squared_error"
         else:
