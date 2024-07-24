@@ -14,7 +14,8 @@ from scipy.stats import ttest_ind, ks_2samp, mannwhitneyu
 
 
 def merge_groups(
-    test_group: Union[Iterable[pd.DataFrame], pd.DataFrame], control_group: Union[Iterable[pd.DataFrame], pd.DataFrame],
+    test_group: Union[Iterable[pd.DataFrame], pd.DataFrame],
+    control_group: Union[Iterable[pd.DataFrame], pd.DataFrame],
 ) -> pd.DataFrame:
     """Merges test and control groups in one DataFrame and creates column "group".
 
@@ -227,7 +228,6 @@ class AATest:
                 1) metrics dataframe (stat tests) and
                 2) dict of random state with test_control dataframe
         """
-
         data_from_sampling_dict = {}
         scores = []
         t_result = {"random_state": random_state}
@@ -343,7 +343,9 @@ class AATest:
 
 class ABTest:
     def __init__(
-        self, calc_difference_method: str = "all", calc_p_value_method: str = "all",
+        self,
+        calc_difference_method: str = "all",
+        calc_p_value_method: str = "all",
     ):
         """Initializes the ABTest class.
 
@@ -531,12 +533,14 @@ class ABTest:
         result = {}
         if self.calc_p_value_method in {"all", "t_test"}:
             result["t_test"] = ttest_ind(
-                splitted_data["test"][target_field], splitted_data["control"][target_field],
+                splitted_data["test"][target_field],
+                splitted_data["control"][target_field],
             ).pvalue
 
         if self.calc_p_value_method in {"all", "mann_whitney"}:
             result["mann_whitney"] = mannwhitneyu(
-                splitted_data["test"][target_field], splitted_data["control"][target_field],
+                splitted_data["test"][target_field],
+                splitted_data["control"][target_field],
             ).pvalue
 
         return result
@@ -546,7 +550,7 @@ class ABTest:
     ) -> Dict[str, Dict[str, float]]:
         """Splits the input data based on the group field and calculates the size, difference, and p-value.
 
-        Parameters:
+        Args:
             data: Input data as a pandas DataFrame
             target_field: Target field to be analyzed
             group_field: Field used to split the data into groups

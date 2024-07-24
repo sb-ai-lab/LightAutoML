@@ -314,7 +314,11 @@ class Matcher:
             X = X.drop(columns=self.info_col)
 
         index_matched = MatcherNoReplacement(X, a, self.weights).match()
-        filtred_matches = index_matched.loc[1].iloc[self.input_data[a == 1].index].matches[index_matched.loc[1].iloc[self.input_data[a == 1].index].matches.apply(lambda x: x != [])]
+        filtred_matches = (
+            index_matched.loc[1]
+            .iloc[self.input_data[a == 1].index]
+            .matches[index_matched.loc[1].iloc[self.input_data[a == 1].index].matches.apply(lambda x: x != [])]
+        )
 
         if self.weights is not None:
             weighted_features = [f for f in self.weights.keys()]
@@ -326,12 +330,18 @@ class Matcher:
                 index_dict.update({w: index})
             index_filtered = sum(index_dict.values()) == len(self.weights)
             matched_data = pd.concat(
-                [self.input_data.loc[filtred_matches.index.to_list()].iloc[index_filtered],
-                 self.input_data.loc[np.concatenate(filtred_matches.values)].iloc[index_filtered]]
+                [
+                    self.input_data.loc[filtred_matches.index.to_list()].iloc[index_filtered],
+                    self.input_data.loc[np.concatenate(filtred_matches.values)].iloc[index_filtered],
+                ]
             )
         else:
-            matched_data = pd.concat([self.input_data.loc[filtred_matches.index.to_list()],
-                                      self.input_data.loc[np.concatenate(filtred_matches.values)]])
+            matched_data = pd.concat(
+                [
+                    self.input_data.loc[filtred_matches.index.to_list()],
+                    self.input_data.loc[np.concatenate(filtred_matches.values)],
+                ]
+            )
         return matched_data
 
     def lama_feature_select(self) -> pd.DataFrame:
