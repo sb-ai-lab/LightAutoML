@@ -1,3 +1,4 @@
+"""Tools to configure resources matcher."""
 from .matcher import Matcher
 
 

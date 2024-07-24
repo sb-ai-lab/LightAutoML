@@ -63,6 +63,7 @@ jinja2 = "*"
 json2html = "*"
 seaborn = "*"
 
+
 # NLP
 gensim = {version = ">=4", optional = true}
 nltk = {version = "*", optional = true}
@@ -84,6 +85,9 @@ featuretools = {version = ">=1.11.1", python = ">=3.8", optional = true}
 # Report (pdf)
 weasyprint = {version = "52.5", optional = true}
 cffi = {version = "1.14.5", optional = true}
+
+# HypEx
+faiss-cpu = {version = "*", optional = true}
 
 
 [tool.poetry.extras]
@@ -108,6 +112,11 @@ report = [
 afg = [
     "featuretools"
 ]
+
+hypex = [
+    "faiss-cpu"
+]
+
 all = [
     "albumentations",
     "efficientnet-pytorch",
@@ -120,7 +129,8 @@ all = [
     "transformers",
     "cffi",
     "weasyprint",
-    "featuretools"
+    "featuretools",
+    "faiss-cpu"
 ]
 
 

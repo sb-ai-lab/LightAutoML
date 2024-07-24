@@ -35,11 +35,10 @@ extensions = [
     "nbsphinx",
     "nbsphinx_link",
     "sphinx_autodoc_typehints",
+    "IPython.sphinxext.ipython_console_highlighting",
 ]
 
-exclude_patterns = [
-    "_build/*",
-]
+exclude_patterns = ["_build/*", "**.ipynb_checkpoints"]
 
 # Delete external references
 autosummary_mock_imports = [
@@ -67,6 +66,7 @@ autosummary_mock_imports = [
     "matplotlib",
     "seaborn",
     "json2html",
+    "faiss",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -157,7 +157,7 @@ intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "numpy": ("https://numpy.org/doc/stable", None),
     "torch": ("https://pytorch.org/docs/stable/", None),
-    "scipy": ("https://docs.scipy.org/doc/scipy/reference/", None),
+    "scipy": ("https://docs.scipy.org/doc/scipy/", None),
     "pandas": ("https://pandas.pydata.org/pandas-docs/stable/", None),
     "sklearn": ("https://scikit-learn.org/stable/", None),
     "PIL": ("https://pillow.readthedocs.io/en/stable/", None),
