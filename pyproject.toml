@@ -118,7 +118,8 @@ afg = [
 ]
 
 hypex = [
-    "faiss-cpu"
+    "faiss-cpu",
+    "ipython"
 ]
 
 all = [
@@ -134,7 +135,8 @@ all = [
     "cffi",
     "weasyprint",
     "featuretools",
-    "faiss-cpu"
+    "faiss-cpu",
+    "ipython"
 ]
 
 
