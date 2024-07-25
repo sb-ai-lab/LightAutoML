@@ -169,11 +169,8 @@ class TorchUniversalModel(nn.Module):
         self.softmax = nn.Softmax(dim=1)
 
     def _set_last_layer(self, torch_model, bias):
-        try:
-            use_skip = torch_model.use_skip
-            self._init_last_layers(torch_model, bias, use_skip)
-        except:
-            self._init_last_layers(torch_model, bias, False)
+        use_skip = getattr(torch_model, "use_skip", False)
+        self._init_last_layers(torch_model, bias, use_skip)
 
     def _init_last_layers(self, torch_model, bias, use_skip=False):
         try:

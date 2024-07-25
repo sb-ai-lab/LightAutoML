@@ -153,9 +153,9 @@ class DenseLightModel(nn.Module):
         concat_input: bool = True,
         dropout_first: bool = True,
         bn_momentum: float = 0.1,
-        ghost_batch: Optional[int] = 64,
-        use_skip: bool = True,
-        leaky_gate: bool = True,
+        ghost_batch: Optional[int] = None,
+        use_skip: bool = False,
+        leaky_gate: bool = False,
         weighted_sum: bool = True,
         device: torch.device = torch.device("cuda:0"),
         **kwargs,
@@ -827,6 +827,7 @@ class NODE(nn.Module):
             layer_dim: num trees in one layer.
             num_layers: number of forests.
             tree_dim: number of response channels in the response of individual tree.
+            choice_function: str `entmax` or `sparsmax`
             use_original_head use averaging as a head or put linear layer instead.
             depth: number of splits in every tree.
             drop_rate: Dropout rate for each layer altogether.
@@ -842,6 +843,7 @@ class NODE(nn.Module):
         layer_dim: int = 2048,
         num_layers: int = 1,
         tree_dim: int = 1,
+        choice_function="entmax",
         use_original_head: bool = False,
         depth: int = 6,
         drop_rate: float = 0.0,
@@ -860,6 +862,7 @@ class NODE(nn.Module):
             num_layers=num_layers,
             tree_dim=tree_dim if not use_original_head else n_out,
             depth=depth,
+            choice_function=choice_function,
             input_dropout=drop_rate,
             flatten_output=not use_original_head,
         )
