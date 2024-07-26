@@ -367,11 +367,12 @@ class WeightedBlender(Blender):
 
         return scorer
 
-    def _optimize(self, splitted_preds: Sequence[NumpyDataset]) -> np.ndarray:
+    def _optimize(self, splitted_preds: Sequence[NumpyDataset], eps: float = 1e-7) -> np.ndarray:
         """Perform coordinate descent.
 
         Args:
             splitted_preds (Sequence[NumpyDataset]): predictions for weighting to maximize the metric.
+            eps (float): epsilon.
 
         Returns:
             np.ndarray: best weights.
@@ -400,7 +401,7 @@ class WeightedBlender(Blender):
                 score = -opt_res.fun
                 candidate = self._get_candidate(candidate, weights_idx, new_weight)
 
-                if score > best_score:
+                if score - eps > best_score:
                     flg_no_upd = False
                     best_score = score
                     best_weights = candidate
