@@ -17,6 +17,7 @@ from .common_metric import _valid_metric_args
 from .common_metric import _valid_str_metric_names
 from .losses import CBLoss
 from .losses import LGBLoss
+from .losses import XGBLoss
 from .losses import SKLoss
 from .losses import TORCHLoss
 from .utils import infer_gib
@@ -342,7 +343,7 @@ class Task:
                 loss, self.name
             )
 
-            for loss_key, loss_factory in zip(["lgb", "sklearn", "torch", "cb"], [LGBLoss, SKLoss, TORCHLoss, CBLoss]):
+            for loss_key, loss_factory in zip(["lgb", "sklearn", "torch", "cb", "xgb"], [LGBLoss, SKLoss, TORCHLoss, CBLoss, XGBLoss]):
                 try:
                     self.losses[loss_key] = loss_factory(loss, loss_params=loss_params)
                 except (AssertionError, TypeError, ValueError):
