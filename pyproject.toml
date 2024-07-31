@@ -43,6 +43,7 @@ numpy = [
     {version = "<=1.24.0", python = "<3.10"},
     {version = ">=1.22, <1.24.0", python = ">=3.10"}
 ]
+scipy = "<=1.11"
 scikit-learn = [
     {version = ">=0.22, <=0.24.2", python = "<3.10"},
     {version = ">=0.22", python = ">=3.10"},
