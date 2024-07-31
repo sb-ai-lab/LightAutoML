@@ -87,10 +87,10 @@ class BoostXGB(TabularMLAlgo, ImportanceEstimator):
         fobj = loss.fobj
 
         # # get metric params
-        # params["metric"] = loss.metric_name
+        params["eval_metric"] = loss.metric_name
         feval = loss.feval
 
-        # params["num_class"] = self.n_classes
+        params["num_class"] = self.n_classes
         # add loss and tasks params if defined
         params = {**params, **loss.fobj_params, **loss.metric_params}
 
@@ -188,24 +188,24 @@ class BoostXGB(TabularMLAlgo, ImportanceEstimator):
         """
         optimization_search_space = {}
 
-        optimization_search_space["feature_fraction"] = Uniform(
+        optimization_search_space["colsample_bytree"] = Uniform(
             low=0.5,
             high=1.0,
         )
 
-        optimization_search_space["num_leaves"] = Uniform(
+        optimization_search_space["max_leaves"] = Uniform(
             low=16,
             high=255,
             q=1,
         )
 
         if estimated_n_trials > 30:
-            optimization_search_space["bagging_fraction"] = Uniform(
+            optimization_search_space["subsample"] = Uniform(
                 low=0.5,
                 high=1.0,
             )
 
-            optimization_search_space["min_sum_hessian_in_leaf"] = Uniform(
+            optimization_search_space["min_child_weight"] = Uniform(
                 low=1e-3,
                 high=10.0,
                 log=True,

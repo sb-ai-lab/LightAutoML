@@ -30,14 +30,14 @@ _xgb_binary_metrics_dict = {
 }
 
 _xgb_reg_metrics_dict = {
-    "mse": "mse",  # TODO
+    "mse": "rmse",
     "mae": "mae",
-    # "r2": "mse", # TODO
+    "r2": "rmse",
     "rmsle": "rmsle",
     "mape": "mape",
-    "quantile": "reg:quantileerror",
-    "huber": "reg:pseudohubererror",
-    # "fair": "fair",# TODO
+    # "quantile": "", # TODO
+    "huber": "mphe",
+    # "fair": "",# TODO
 }
 
 _xgb_multiclass_metrics_dict = {
