@@ -487,7 +487,10 @@ class TabularAutoML(AutoMLPreset):
 
         ml_algos = []
         force_calc = []
-        for key, force in zip(keys, [True, False, False, False]):
+        for idx, key in enumerate(keys):
+            if idx == 0:  # force calculations only for the first ml_algo
+                force = True
+
             tuned = "_tuned" in key
             algo_key = key.split("_")[0]
             time_score = self.get_time_score(n_level, key)
@@ -511,6 +514,7 @@ class TabularAutoML(AutoMLPreset):
                 gbm_model = (gbm_model, gbm_tuner)
             ml_algos.append(gbm_model)
             force_calc.append(force)
+            force = False
 
         gbm_pipe = NestedTabularMLPipeline(
             ml_algos, force_calc, pre_selection=pre_selector, features_pipeline=gbm_feats, **self.nested_cv_params
