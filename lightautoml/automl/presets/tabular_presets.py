@@ -26,6 +26,7 @@ from ...addons.utilization import TimeUtilization
 from ...dataset.np_pd_dataset import NumpyDataset
 from ...ml_algo.boost_cb import BoostCB
 from ...ml_algo.boost_lgbm import BoostLGBM
+from ...ml_algo.boost_xgb import BoostXGB
 from ...ml_algo.dl_model import TorchModel
 from ...ml_algo.linear_sklearn import LinearLBFGS
 from ...ml_algo.random_forest import RandomForestSklearn
@@ -104,6 +105,7 @@ class TabularAutoML(AutoMLPreset):
         selection_params: Params of feature selection.
         lgb_params: Params of lightgbm model.
         cb_params: Params of catboost model.
+        xgb_params: Params of xgboost model.
         rf_params: Params of Sklearn Random Forest model.
         linear_l2_params: Params of linear model.
         nn_params: Params of neural network model.
@@ -121,6 +123,8 @@ class TabularAutoML(AutoMLPreset):
     _time_scores = {
         "lgb": 1,
         "lgb_tuned": 3,
+        "xgb": 1,
+        "xgb_tuned": 3,
         "linear_l2": 0.7,
         "cb": 2,
         "cb_tuned": 6,
@@ -148,6 +152,7 @@ class TabularAutoML(AutoMLPreset):
         selection_params: Optional[dict] = None,
         lgb_params: Optional[dict] = None,
         cb_params: Optional[dict] = None,
+        xgb_params: Optional[dict] = None,
         rf_params: Optional[dict] = None,
         linear_l2_params: Optional[dict] = None,
         nn_params: Optional[dict] = None,
@@ -171,6 +176,7 @@ class TabularAutoML(AutoMLPreset):
                 "tuning_params",
                 "lgb_params",
                 "cb_params",
+                "xgb_params",
                 "rf_params",
                 "linear_l2_params",
                 "nn_params",
@@ -186,6 +192,7 @@ class TabularAutoML(AutoMLPreset):
                 tuning_params,
                 lgb_params,
                 cb_params,
+                xgb_params,
                 rf_params,
                 linear_l2_params,
                 nn_params,
@@ -266,6 +273,7 @@ class TabularAutoML(AutoMLPreset):
         self.lgb_params["default_params"]["num_threads"] = min(
             self.lgb_params["default_params"]["num_threads"], cpu_cnt
         )
+        self.xgb_params["default_params"]["nthread"] = min(self.xgb_params["default_params"]["nthread"], cpu_cnt)
         self.reader_params["n_jobs"] = min(self.reader_params["n_jobs"], cpu_cnt)
 
     def get_feature_pipeline(self, model, **kwargs):
@@ -487,6 +495,8 @@ class TabularAutoML(AutoMLPreset):
                 gbm_model = BoostLGBM(timer=gbm_timer, **self.lgb_params)
             elif algo_key == "cb":
                 gbm_model = BoostCB(timer=gbm_timer, **self.cb_params)
+            elif algo_key == "xgb":
+                gbm_model = BoostXGB(timer=gbm_timer, **self.xgb_params)
             else:
                 raise ValueError("Wrong algo key")
 
@@ -583,7 +593,9 @@ class TabularAutoML(AutoMLPreset):
                 lvl.append(self.get_linear(n + 1, selector))
 
             gbm_models = [
-                x for x in ["lgb", "lgb_tuned", "cb", "cb_tuned"] if x in names and x.split("_")[0] in self.task.losses
+                x
+                for x in ["lgb", "lgb_tuned", "cb", "cb_tuned", "xgb", "xgb_tuned"]
+                if x in names and x.split("_")[0] in self.task.losses
             ]
 
             if len(gbm_models) > 0:
