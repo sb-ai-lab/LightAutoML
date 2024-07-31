@@ -11,7 +11,7 @@ class TestTabularAutoMLXGB:
         train, test = sampled_app_train_test
 
         # run automl
-        automl = TabularAutoML(task=binary_task, general_params = {"use_algos": [['xgb']]})
+        automl = TabularAutoML(task=binary_task, general_params={"use_algos": [["xgb"]]})
         oof_predictions = automl.fit_predict(train, roles=sampled_app_roles, verbose=10)
         ho_predictions = automl.predict(test)
 

@@ -273,9 +273,7 @@ class TabularAutoML(AutoMLPreset):
         self.lgb_params["default_params"]["num_threads"] = min(
             self.lgb_params["default_params"]["num_threads"], cpu_cnt
         )
-        self.xgb_params["default_params"]["nthread"] = min(
-            self.xgb_params["default_params"]["nthread"], cpu_cnt
-        )
+        self.xgb_params["default_params"]["nthread"] = min(self.xgb_params["default_params"]["nthread"], cpu_cnt)
         self.reader_params["n_jobs"] = min(self.reader_params["n_jobs"], cpu_cnt)
 
     def get_feature_pipeline(self, model, **kwargs):
@@ -595,7 +593,9 @@ class TabularAutoML(AutoMLPreset):
                 lvl.append(self.get_linear(n + 1, selector))
 
             gbm_models = [
-                x for x in ["lgb", "lgb_tuned", "cb", "cb_tuned", "xgb", "xgb_tuned"] if x in names and x.split("_")[0] in self.task.losses
+                x
+                for x in ["lgb", "lgb_tuned", "cb", "cb_tuned", "xgb", "xgb_tuned"]
+                if x in names and x.split("_")[0] in self.task.losses
             ]
 
             if len(gbm_models) > 0:

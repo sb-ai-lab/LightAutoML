@@ -47,15 +47,14 @@ class BoostXGB(TabularMLAlgo, ImportanceEstimator):
         # "task": "train",
         # "learning_rate": 0.05, #eta
         # "max_leaves": 128,
-        
-        # "colsample_bytree": 0.7, 
+        # "colsample_bytree": 0.7,
         # "subsample": 0.7 ,
         # # "bagging_freq": 1,
         # "max_depth": -1,
         # "verbosity": -1,
         # "reg_alpha": 1,
         # "reg_lambda": 0.0,
-        # "gamma": 0.0, 
+        # "gamma": 0.0,
         # # "zero_as_missing": False,
         # "nthread": 4,
         # "max_bin": 255,
@@ -110,8 +109,8 @@ class BoostXGB(TabularMLAlgo, ImportanceEstimator):
         # TODO: use features_num
         # features_num = len(train_valid_iterator.features())
 
-        rows_num = len(train_valid_iterator.train)
-        task = train_valid_iterator.train.task.name
+        # rows_num = len(train_valid_iterator.train)
+        # task = train_valid_iterator.train.task.name
 
         suggested_params = copy(self.default_params)
 
@@ -226,7 +225,9 @@ class BoostXGB(TabularMLAlgo, ImportanceEstimator):
 
         return optimization_search_space
 
-    def fit_predict_single_fold(self, train: TabularDataset, valid: TabularDataset) -> Tuple[xgboost.Booster, np.ndarray]:
+    def fit_predict_single_fold(
+        self, train: TabularDataset, valid: TabularDataset
+    ) -> Tuple[xgboost.Booster, np.ndarray]:
         """Implements training and prediction on single fold.
 
         Args:
@@ -258,7 +259,7 @@ class BoostXGB(TabularMLAlgo, ImportanceEstimator):
                 params=params,
                 dtrain=dtrain,
                 num_boost_round=num_trees,
-                evals=[(dval, 'valid'), (dtrain, 'train')],
+                evals=[(dval, "valid"), (dtrain, "train")],
                 obj=fobj,
                 feval=feval,
                 early_stopping_rounds=early_stopping_rounds,
@@ -281,9 +282,7 @@ class BoostXGB(TabularMLAlgo, ImportanceEstimator):
             Predicted target values.
 
         """
-        pred = self.task.losses["xgb"].bw_func(model.predict(
-            xgboost.DMatrix(dataset.data)
-        ))
+        pred = self.task.losses["xgb"].bw_func(model.predict(xgboost.DMatrix(dataset.data)))
 
         return pred
 

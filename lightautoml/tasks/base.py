@@ -343,7 +343,9 @@ class Task:
                 loss, self.name
             )
 
-            for loss_key, loss_factory in zip(["lgb", "sklearn", "torch", "cb", "xgb"], [LGBLoss, SKLoss, TORCHLoss, CBLoss, XGBLoss]):
+            for loss_key, loss_factory in zip(
+                ["lgb", "sklearn", "torch", "cb", "xgb"], [LGBLoss, SKLoss, TORCHLoss, CBLoss, XGBLoss]
+            ):
                 try:
                     self.losses[loss_key] = loss_factory(loss, loss_params=loss_params)
                 except (AssertionError, TypeError, ValueError):

@@ -9,8 +9,8 @@ from typing import Optional
 from typing import Tuple
 from typing import Union
 
-import lightgbm as lgb
 import numpy as np
+import xgboost
 
 from ..common_metric import _valid_str_multiclass_metric_names
 from ..utils import infer_gib
@@ -30,7 +30,7 @@ _xgb_binary_metrics_dict = {
 }
 
 _xgb_reg_metrics_dict = {
-    "mse": "mse", # TODO
+    "mse": "mse",  # TODO
     "mae": "mae",
     # "r2": "mse", # TODO
     "rmsle": "rmsle",
@@ -43,7 +43,7 @@ _xgb_reg_metrics_dict = {
 _xgb_multiclass_metrics_dict = {
     "auc": _valid_str_multiclass_metric_names["auc"],
     "auc_mu": _valid_str_multiclass_metric_names["auc_mu"],
-    "crossentropy": "mlogloss", 
+    "crossentropy": "mlogloss",
     "accuracy": "merror",
     "f1_macro": _valid_str_multiclass_metric_names["f1_macro"],
     "f1_micro": _valid_str_multiclass_metric_names["f1_micro"],
@@ -61,12 +61,12 @@ _xgb_loss_mapping = {
     "mse": ("reg:squarederror", None, None),
     "mae": ("reg:absoluteerror", None, None),
     # "mape": ("mape", None, None),
-    "crossentropy": ("multi:softmax", None, None),# TODO
-    "rmsle": ("reg:squaredlogerror", fw_rmsle, np.expm1),# TODO: fw and bw
+    "crossentropy": ("multi:softmax", None, None),  # TODO
+    "rmsle": ("reg:squaredlogerror", fw_rmsle, np.expm1),  # TODO: fw and bw
     "quantile": ("reg:quantileerror", None, None),
     "huber": ("reg:pseudohubererror", None, None),
     # "fair": ("fair", None, None),
-    # "f1": (lgb_f1_loss_multiclass, None, softmax_ax1),
+    "f1": (lgb_f1_loss_multiclass, None, softmax_ax1),
 }
 
 _xgb_loss_params_mapping = {
@@ -76,7 +76,7 @@ _xgb_loss_params_mapping = {
 }
 
 _xgb_force_metric = {
-    "rmsle": ("mse", None, None),# TODO
+    "rmsle": ("mse", None, None),  # TODO
 }
 
 
@@ -88,7 +88,7 @@ class XGBFunc:
         self.greater_is_better = greater_is_better
         self.bw_func = bw_func
 
-    def __call__(self, pred: np.ndarray, dtrain: lgb.Dataset) -> Tuple[str, float, bool]:
+    def __call__(self, pred: np.ndarray, dtrain: xgboost.DMatrix) -> Tuple[str, float, bool]:
         """Calculate metric."""
         label = dtrain.get_label()
 
@@ -229,7 +229,7 @@ class XGBLoss(Loss):
         if self.fobj_name in _xgb_force_metric:
             metric, greater_is_better, metric_params = _xgb_force_metric[self.fobj_name]
             logger.info2(
-                "For lgbm {0} callback metric switched to {1}".format(self.fobj_name, metric),
+                "For xgb {0} callback metric switched to {1}".format(self.fobj_name, metric),
                 UserWarning,
             )
 
