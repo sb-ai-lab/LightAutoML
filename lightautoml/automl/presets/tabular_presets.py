@@ -260,6 +260,7 @@ class TabularAutoML(AutoMLPreset):
             self.cb_params["default_params"]["task_type"] = "GPU"
             self.cb_params["default_params"]["devices"] = gpu_ids.replace(",", ":")
 
+            self.xgb_params["default_params"]["device"] = f"cuda:{gpu_ids.split(',')[-1]}"  # TODO: add multigpu for xgb
         else:
             self.nn_params["device"] = "cpu"
 
@@ -471,7 +472,7 @@ class TabularAutoML(AutoMLPreset):
             force_calc=True,
             pre_selection=pre_selector,
             features_pipeline=linear_l2_feats,
-            **self.nested_cv_params
+            **self.nested_cv_params,
         )
         return linear_l2_pipe
 
@@ -985,7 +986,7 @@ class TabularUtilizedAutoML(TimeUtilization):
         max_runs_per_config: int = 5,
         random_state: int = 42,
         outer_blender_max_nonzero_coef: float = 0.05,
-        **kwargs
+        **kwargs,
     ):
         if configs_list is None:
             configs_list = [
@@ -1018,7 +1019,7 @@ class TabularUtilizedAutoML(TimeUtilization):
             max_runs_per_config,
             None,
             random_state,
-            **kwargs
+            **kwargs,
         )
 
     def get_feature_scores(
