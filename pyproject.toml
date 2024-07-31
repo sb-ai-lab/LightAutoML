@@ -50,7 +50,10 @@ scikit-learn = [
 ]
 lightgbm = ">=2.3, <=3.2.1"
 catboost = ">=0.26.1"
-xgboost = "^2.0.0"
+xgboost = [
+    {version = "*", python = "<3.8"},
+    {version = "^2.0.0", python = ">=3.8"}
+]
 optuna = "*"
 torch = [
     {platform = "win32", python = "3.6.1", version = "1.7.0"},
