@@ -15,13 +15,15 @@ license = "Apache-2.0"
 homepage = "https://lightautoml.readthedocs.io/en/latest/"
 repository = "https://github.com/AILab-MLTools/LightAutoML"
 classifiers = [
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Operating System :: OS Independent",
     "Intended Audience :: Science/Research",
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Environment :: Console",
     "Natural Language :: English",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
