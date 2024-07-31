@@ -407,11 +407,11 @@ class WeightedBlender(Blender):
                     best_weights = candidate
 
             logger.info(
-                f"Blending: iteration \x1b[1m{iteration_num}\x1b[0m: best score = \x1b[1m{score}\x1b[0m, best weights = \x1b[1m{candidate}\x1b[0m"
+                f"Blending: iteration \x1b[1m{iteration_num}\x1b[0m: score = \x1b[1m{score}\x1b[0m, weights = \x1b[1m{candidate}\x1b[0m"
             )
 
             if flg_no_upd:
-                logger.info("Blending: no score update. Terminated.\n")
+                logger.info("Blending: no improvements for score. Terminated.\n")
                 break
         logger.info(f"Blending: best score = \x1b[1m{best_score}\x1b[0m, best weights = \x1b[1m{best_weights}\x1b[0m")
 
