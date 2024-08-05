@@ -43,7 +43,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-14]  # FIX: 'ubuntu-latest'(ubunut-22.04) -> 'ubuntu-20.04': Python version 3.6 was not found in the local cache
+        os: [ubuntu-20.04, windows-latest, macos-14-large]  # FIX: 'ubuntu-latest'(ubunut-22.04) -> 'ubuntu-20.04': Python version 3.6 was not found in the local cache
         python-version: ["3.6", "3.7", "3.8", "3.9", "3.10", "3.11"]
 
     steps:
@@ -59,7 +59,7 @@ jobs:
           poetry-version: 1.1.7
 
       - name: install deps for MacOS
-        if: ${{ matrix.os == 'macos-latest' }}
+        if: ${{ matrix.os == 'macos-14-large' }}
         run: brew install libomp cairo pango gdk-pixbuf libffi
 
       - name: install deps for Ubuntu
