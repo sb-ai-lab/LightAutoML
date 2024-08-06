@@ -31,7 +31,7 @@ classifiers = [
 
 
 [tool.poetry.dependencies]
-python = ">=3.8, <3.13"
+python = ">=3.8, <3.12"
 
 poetry-core = "^1.0.0"
 pandas = "<2.0.0"
@@ -47,7 +47,6 @@ scikit-learn = [
 lightgbm = ">=2.3, <=3.2.1"
 catboost = ">=0.26.1"
 xgboost = "^2.0.0"
-]
 optuna = "*"
 torch = ">=1.9.0, <=2.0.0"
 holidays = "*"

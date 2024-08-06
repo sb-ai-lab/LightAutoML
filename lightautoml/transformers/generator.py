@@ -15,8 +15,9 @@ try:
     import featuretools as ft
 except:
     import warnings
+
     warnings.warn("Library 'featuretools' - package isn't installed")
-    
+
 
 import pandas as pd
 
