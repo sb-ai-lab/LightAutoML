@@ -1,27 +1,27 @@
 from sklearn.metrics import roc_auc_score
 
-from lightautoml.automl.presets.whitebox_presets import WhiteBoxPreset
+from lightautoml.automl.presets.tabular_presets import TabularAutoML
 from tests.unit.test_automl.test_presets.presets_utils import check_pickling
 from tests.unit.test_automl.test_presets.presets_utils import get_target_name
 
 
-class TestWhiteBoxPreset:
-    def test_fit_predict(self, jobs_train_test, jobs_roles, binary_task):
+class TestTabularAutoMLXGB:
+    def test_fit_predict(self, sampled_app_train_test, sampled_app_roles, binary_task):
         # load and prepare data
-        train, test = jobs_train_test
+        train, test = sampled_app_train_test
 
         # run automl
-        automl = WhiteBoxPreset(binary_task)
-        oof_predictions = automl.fit_predict(train.reset_index(drop=True), roles=jobs_roles, verbose=10)
+        automl = TabularAutoML(task=binary_task, general_params={"use_algos": [["xgb"]]})
+        oof_predictions = automl.fit_predict(train, roles=sampled_app_roles, verbose=10)
         ho_predictions = automl.predict(test)
 
         # calculate scores
-        target_name = get_target_name(jobs_roles)
+        target_name = get_target_name(sampled_app_roles)
         oof_score = roc_auc_score(train[target_name].values, oof_predictions.data[:, 0])
         ho_score = roc_auc_score(test[target_name].values, ho_predictions.data[:, 0])
 
         # checks
-        assert oof_score > 0.75
-        assert ho_score > 0.75
+        assert oof_score > 0.65
+        assert ho_score > 0.65
 
         check_pickling(automl, ho_score, binary_task, test, target_name)

@@ -106,6 +106,13 @@ cb_params:
     thread_count: 100
   freeze_defaults: False
 
+# params for BoostLGBM MLAlgo. Note - params are default and may be changed during train if not freeze_defaults
+xgb_params:
+  # Look for lightgbm train params here. (num_threads will be rewrited by global preset's cpu limit)
+  default_params:
+    nthread: 100
+  freeze_defaults: False
+
 # params for RandomForest MLAlgo. Note - params are default and may be changed during train if not freeze_defaults
 rf_params:
   # Look for RF train params here. (thread_count will be rewrited by global preset's cpu limit)

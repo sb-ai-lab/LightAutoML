@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "LightAutoML"
-version = "0.3.8.1"
+version = "0.4.0b1"
 description = "Fast and customizable framework for automatic ML model creation (AutoML)"
 authors = [
     "Alexander Ryzhkov <alexmryzhkov@gmail.com>",
@@ -15,13 +15,15 @@ license = "Apache-2.0"
 homepage = "https://lightautoml.readthedocs.io/en/latest/"
 repository = "https://github.com/AILab-MLTools/LightAutoML"
 classifiers = [
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Operating System :: OS Independent",
     "Intended Audience :: Science/Research",
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Environment :: Console",
     "Natural Language :: English",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
@@ -30,7 +32,7 @@ classifiers = [
 
 
 [tool.poetry.dependencies]
-python = ">=3.6.1, <=3.11"
+python = ">=3.6.1, <3.12"
 
 poetry-core = [
     {version = ">=1.0.0", python = "<3.7"},
@@ -41,12 +43,17 @@ numpy = [
     {version = "<=1.24.0", python = "<3.10"},
     {version = ">=1.22, <1.24.0", python = ">=3.10"}
 ]
+scipy = "<=1.11"
 scikit-learn = [
     {version = ">=0.22, <=0.24.2", python = "<3.10"},
     {version = ">=0.22", python = ">=3.10"},
 ]
 lightgbm = ">=2.3, <=3.2.1"
 catboost = ">=0.26.1"
+xgboost = [
+    {version = "*", python = "<3.8"},
+    {version = "^2.0.0", python = ">=3.8"}
+]
 optuna = "*"
 torch = [
     {platform = "win32", python = "3.6.1", version = "1.7.0"},
