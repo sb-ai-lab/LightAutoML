@@ -61,7 +61,7 @@ jobs:
       - name: install deps for MacOS
         if: ${{ matrix.os == 'macos-14-large' }}
         run: brew install libomp cairo pango gdk-pixbuf libffi
-      
+
       - name: update pip if python 3.12
         if: ${{ matrix.python-version == '3.12' }}
         run: pip install setuptools && python -m ensurepip --upgrade
