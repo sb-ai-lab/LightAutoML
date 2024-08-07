@@ -7,7 +7,6 @@
 [![Telegram](https://img.shields.io/badge/chat-on%20Telegram-2ba2d9.svg)](https://t.me/lightautoml)
 <br>
 [![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/sb-ai-lab/lightautoml/CI.yml)](https://github.com/sb-ai-lab/lightautoml/actions/workflows/CI.yml?query=branch%3Amain)
-![Poetry-Lock](https://img.shields.io/github/workflow/status/sb-ai-lab/LightAutoML/Poetry%20run/master?label=Poetry-Lock)
 ![Read the Docs](https://img.shields.io/readthedocs/lightautoml)
 [![Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
@@ -115,12 +114,12 @@ reader = PandasToPandasReader(Task("binary"), cv=5, random_state=42)
 
 # create a feature selector
 selector = ImportanceCutoffSelector(
-    LGBSimpleFeatures(), 
+    LGBSimpleFeatures(),
     BoostLGBM(
         default_params={'learning_rate': 0.05, 'num_leaves': 64,
         'seed': 42, 'num_threads': N_THREADS}
     ),
-    ModelBasedImportanceEstimator(), 
+    ModelBasedImportanceEstimator(),
     cutoff=0
 )
 
@@ -131,7 +130,7 @@ pipeline_lvl1 = MLPipeline([
         BoostLGBM(
             default_params={'learning_rate': 0.05, 'num_leaves': 128,
             'seed': 1, 'num_threads': N_THREADS}
-        ), 
+        ),
         OptunaTuner(n_trials=20, timeout=30)
     ),
     # second model without hyperparams tuning
@@ -149,8 +148,8 @@ pipeline_lvl2 = MLPipeline(
             'max_bin': 1024, 'seed': 3, 'num_threads': N_THREADS},
             freeze_defaults=True
         )
-    ], 
-    pre_selection=None, 
+    ],
+    pre_selection=None,
     features_pipeline=LGBSimpleFeatures(),
     post_selection=None
 )
