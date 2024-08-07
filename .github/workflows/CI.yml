@@ -61,9 +61,13 @@ jobs:
       - name: install deps for MacOS
         if: ${{ matrix.os == 'macos-14-large' }}
         run: brew install libomp cairo pango gdk-pixbuf libffi
+      
+      - name: update pip if python 3.12
+        if: ${{ matrix.python-version == '3.12' }}
+        run: pip install setuptools && python -m ensurepip --upgrade
 
       - name: install deps for Ubuntu
-        if: ${{ matrix.os == 'ubuntu-20.04' }}
+        if: ${{ matrix.os == 'ubuntu-latest' }}
         run: sudo apt-get install build-essential libcairo2 libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf2.0-0 libffi-dev shared-mime-info
 
       - name: install deps for Windows
