@@ -76,13 +76,13 @@ jobs:
         run: |
           tox
 
-  windows-macos-tests:
+  win-mac-tests:
     needs: linux-tests
     runs-on: ${{matrix.os}}
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, macos-14-large]
+        os: [windows-latest, macos-latest]
         python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
 
     steps:
@@ -98,7 +98,7 @@ jobs:
           poetry-version: 1.1.7
 
       - name: install deps for MacOS
-        if: ${{ matrix.os == 'macos-14-large' }}
+        if: ${{ matrix.os == 'macos-latest' }}
         run: brew install libomp cairo pango gdk-pixbuf libffi
 
       - name: update pip if python 3.12
@@ -111,7 +111,7 @@ jobs:
 
       - name: install deps for Windows
         if: ${{ matrix.os == 'windows-latest' }}
-        run: pip3 install pycairo==1.20.0
+        run: pip3 install pycairo>=1.20.0
 
       - name: install tox
         run: |
