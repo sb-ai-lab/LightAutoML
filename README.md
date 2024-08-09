@@ -7,15 +7,15 @@
 ![Read the Docs](https://img.shields.io/readthedocs/lightautoml)
 ### [Documentation](https://lightautoml.readthedocs.io/)  |  [Installation](#installation) | [Examples](#resources) | [Telegram chat](https://t.me/joinchat/sp8P7sdAqaU0YmRi) | [Telegram channel](https://t.me/lightautoml)
 
-LightAutoML (LAMA) allows you to create machine learning models using just a few lines of code, or build your own custom pipeline using ready blocks. It supports tabular, time series, image and text data.
+LightAutoML (LAMA) allows you create machine learning models using just a few lines of code, or build your own custom pipeline using ready blocks. It supports tabular, time series, image and text data.
 
-**Authors**: [Alexander Ryzhkov](https://kaggle.com/alexryzhkov), [Anton Vakhrushev](https://kaggle.com/btbpanda), [Dmitry Simakov](https://kaggle.com/simakov), Rinchin Damdinov, Vasilii Bunakov, Alexander Kirilin, Pavel Shvets.
+Authors: [Alexander Ryzhkov](https://kaggle.com/alexryzhkov), [Anton Vakhrushev](https://kaggle.com/btbpanda), [Dmitry Simakov](https://kaggle.com/simakov), Rinchin Damdinov, Vasilii Bunakov, Alexander Kirilin, Pavel Shvets.
 
 <a name="quicktour"></a>
 # Quick tour
 
-There are two main ways to solve machine learning problems using LightAutoML:
-* Ready to use preset
+There are two ways to solve machine learning problems using LightAutoML:
+* Ready-to-use preset:
     ```python
     from lightautoml.automl.presets.tabular_presets import TabularAutoML
     from lightautoml.tasks import Task
@@ -25,7 +25,7 @@ There are two main ways to solve machine learning problems using LightAutoML:
     test_preds = automl.predict(test_df).data
     ```
 
-* As a framework</br>
+* As a framework:</br>
     LighAutoML framework has a lot of ready-to-use parts and extensive customization options, to learn more check out the [resources](#resources) section.
 
 <a name="resources"></a>
