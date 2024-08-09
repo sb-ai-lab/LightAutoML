@@ -31,7 +31,7 @@ jobs:
           python-version: "3.9"
       - uses: pre-commit/action@v2.0.3
 
-  tests:
+  linux-tests:
     needs: pre-commit
     runs-on: ${{matrix.os}}
     if: |
@@ -41,10 +41,51 @@ jobs:
       ||
       ( github.event_name == 'workflow_dispatch' ) && ( needs.pre-commit.result == 'success' )
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
-        os: [ubuntu-20.04, windows-latest, macos-14-large]  # FIX: 'ubuntu-latest'(ubunut-22.04) -> 'ubuntu-20.04': Python version 3.6 was not found in the local cache
-        python-version: ["3.6", "3.7", "3.8", "3.9", "3.10", "3.11"]
+        os: [ubuntu-latest]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - uses: Gr1N/setup-poetry@v8
+        with:
+          poetry-version: 1.1.7
+
+      - name: update pip if python 3.12
+        if: ${{ matrix.python-version == '3.12' }}
+        run: pip install setuptools && python -m ensurepip --upgrade
+
+      - name: install deps for Ubuntu
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: sudo apt-get install build-essential libcairo2 libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf2.0-0 libffi-dev shared-mime-info
+
+      - name: install tox
+        run: |
+          python3 -m pip install --upgrade pip
+          pip3 install tox==3.28.0
+          pip3 install tox-gh-actions==2.12.0
+
+      - name: test with tox
+        run: |
+          tox
+
+  win-mac-tests:
+    needs: [linux-tests, pre-commit]
+    runs-on: ${{matrix.os}}
+    if: |
+      ( github.event_name == 'schedule' ) && ( needs.pre-commit.result == 'success' )
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [windows-latest, macos-latest]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
 
     steps:
       - uses: actions/checkout@v2
@@ -59,16 +100,20 @@ jobs:
           poetry-version: 1.1.7
 
       - name: install deps for MacOS
-        if: ${{ matrix.os == 'macos-14-large' }}
+        if: ${{ matrix.os == 'macos-latest' }}
         run: brew install libomp cairo pango gdk-pixbuf libffi
 
+      - name: update pip if python 3.12
+        if: ${{ matrix.python-version == '3.12' }}
+        run: pip install setuptools && python -m ensurepip --upgrade
+
       - name: install deps for Ubuntu
-        if: ${{ matrix.os == 'ubuntu-20.04' }}
+        if: ${{ matrix.os == 'ubuntu-latest' }}
         run: sudo apt-get install build-essential libcairo2 libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf2.0-0 libffi-dev shared-mime-info
 
       - name: install deps for Windows
-        if: ${{ matrix.os == 'windows-latest' }} && ${{ matrix.python-version == '3.6'}}
-        run: pip3 install pycairo==1.20.0
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: pip3 install pycairo>=1.20.0
 
       - name: install tox
         run: |

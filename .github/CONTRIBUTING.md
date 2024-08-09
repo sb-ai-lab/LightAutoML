@@ -65,7 +65,7 @@ Examples can be added in several ways:
 
 ### Installation
 
-If you are installing from the source, you will need Python 3.6.12 or later.
+If you are installing from the source, you will need Python 3.8 or later.
 We recommend you install an [Anaconda](https://www.anaconda.com/products/individual#download-section)
 to work with environments.
 
@@ -154,7 +154,7 @@ To run specific test:
 tox -e py37 -- -x tests/unit/test_utils
 ```
 
-To run tests for specific Python versions (for example python 3.6):
+To run tests for specific Python versions (for example python 3.8):
 ```bash
 poetry run tox -e py36
 ```

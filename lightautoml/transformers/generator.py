@@ -14,13 +14,10 @@ from typing import Tuple
 try:
     import featuretools as ft
 except:
-    import sys
     import warnings
 
-    if sys.version_info.minor >= 7:
-        warnings.warn("Library 'featuretools' - package isn't installed")
-    else:
-        warnings.warn("Library 'featuretools' isn't provided for python_version < 3.7")
+    warnings.warn("Library 'featuretools' - package isn't installed")
+
 
 import pandas as pd
 
