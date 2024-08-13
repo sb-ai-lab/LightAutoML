@@ -253,31 +253,29 @@ class BoostLGBM(TabularMLAlgo, ImportanceEstimator):
 
         with redirect_stdout(LoggerStream(logger, verbose_eval=100)):
             lgb_kwargs = {
-                'params': params,
-                'train_set': lgb_train,
-                'num_boost_round': num_trees,
-                'valid_sets': [lgb_valid],
-                'valid_names': ["valid"],
-                'feval': feval,
-             }
-            
+                "params": params,
+                "train_set": lgb_train,
+                "num_boost_round": num_trees,
+                "valid_sets": [lgb_valid],
+                "valid_names": ["valid"],
+                "feval": feval,
+            }
+
             if lgb.__version__ >= "3.3.0":
-                lgb_kwargs['callbacks'] = [
+                lgb_kwargs["callbacks"] = [
                     lgb.log_evaluation(period=verbose_eval),
-                    lgb.early_stopping(early_stopping_rounds, False, True)
+                    lgb.early_stopping(early_stopping_rounds, False, True),
                 ]
             else:
-                lgb_kwargs['early_stopping_rounds'] = early_stopping_rounds
-                lgb_kwargs['verbose_eval'] = verbose_eval
-            
-            if lgb.__version__ >= "4.0.0":
-                lgb_kwargs['params']['objective'] = fobj
-            else:
-                lgb_kwargs['fobj'] = fobj
+                lgb_kwargs["early_stopping_rounds"] = early_stopping_rounds
+                lgb_kwargs["verbose_eval"] = verbose_eval
 
-            model = lgb.train(
-                **lgb_kwargs
-            )
+            if lgb.__version__ >= "4.0.0":
+                lgb_kwargs["params"]["objective"] = fobj
+            else:
+                lgb_kwargs["fobj"] = fobj
+
+            model = lgb.train(**lgb_kwargs)
 
         val_pred = model.predict(valid.data)
         val_pred = self.task.losses["lgb"].bw_func(val_pred)
