@@ -1,0 +1,47 @@
+name: tests_macos
+
+on:
+  # # At 20:59 every day (23:59 MSK)
+  # schedule:
+  #   - cron: 59 20 * * *
+
+  # Manually triggerable in github
+  workflow_dispatch:
+
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
+
+jobs:
+  macos-tests:
+    runs-on: macos-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - uses: Gr1N/setup-poetry@v8
+        with:
+          poetry-version: 1.1.7
+
+      - name: install deps for MacOS
+        run: brew update && brew install libomp cairo pango gdk-pixbuf libffi
+
+      - name: install tox
+        run: |
+          python3 -m pip install --upgrade pip
+          pip3 install tox==3.28.0
+          pip3 install tox-gh-actions==2.12.0
+
+      - name: test with tox
+        run: |
+          tox
