@@ -33,8 +33,16 @@ jobs:
         with:
           poetry-version: 1.1.7
 
+      - name: setup-msys2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-cairo
+
       - name: install deps for Windows
-        run: pip3 install pycairo==1.20.0
+        run: pip3 install pycairo
 
       - name: install tox
         run: |
