@@ -48,7 +48,10 @@ scikit-learn = [
     {version = ">=0.22, <=0.24.2", python = "<3.10"},
     {version = ">=0.22", python = ">=3.10"},
 ]
-lightgbm = ">=2.3, <=3.2.1"
+lightgbm = [
+    {version = ">=2.3"},
+    {version = "^4.4.0", platform = "darwin"}, # https://github.com/microsoft/LightGBM/issues/5328#issuecomment-2169128216
+]
 catboost = ">=0.26.1"
 xgboost = "^2.0.0"
 optuna = "*"

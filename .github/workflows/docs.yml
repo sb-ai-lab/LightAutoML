@@ -1,20 +1,32 @@
 name: docs
 
 on:
+  # At 20:59 every day (23:59 MSK)
   schedule:
-    - cron: 0 9 * * 1
+    - cron: 59 20 * * *
 
   # Manually triggerable in github
   workflow_dispatch:
 
 jobs:
+  codespell:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: checkout
+      uses: actions/checkout@v4
+
+    - name: codespell
+      uses: codespell-project/actions-codespell@v2
+
   docs:
     runs-on: ubuntu-latest
+    needs: codespell
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3.1.0
+      - name: checkout
+        uses: actions/checkout@v4
 
-      - name: Setup Python
+      - name: setup Python
         uses: actions/setup-python@v4
         with:
           python-version: 3.8
@@ -23,17 +35,17 @@ jobs:
         with:
           poetry-version: 1.1.7
 
-      - name: Installation pandoc
+      - name: installation pandoc
         run: |
           wget https://github.com/jgm/pandoc/releases/download/2.14.0.3/pandoc-2.14.0.3-1-amd64.deb
           sudo dpkg -i pandoc-2.14.0.3-1-amd64.deb
 
-      - name: Poetry install
+      - name: poetry install
         run: |
           poetry run python scripts/poetry_fix.py -c
           poetry install -E all
 
-      - name: Make documentations
+      - name: make documentations
         run: |
           cd docs
           poetry run make html
