@@ -7,10 +7,10 @@ on:
 
   # Manually triggerable in github
   workflow_dispatch:
-  
+
   workflow_run:
     workflows: ["CI"]
-    types: 
+    types:
       - completed
 
 jobs:
@@ -45,7 +45,7 @@ jobs:
       - name: test with tox
         run: |
           tox
-  
+
   macos-tests:
     runs-on: macos-latest
     strategy:
