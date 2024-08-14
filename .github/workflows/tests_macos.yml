@@ -9,7 +9,8 @@ on:
   workflow_dispatch:
 
   workflow_run:
-    workflows: ["CI"]
+    workflows: ["tests_ubuntu"]
+    branches: [master]
     types:
       - completed
 
@@ -38,7 +39,7 @@ jobs:
 
       - name: install conda dependencies
         run: |
-          conda install numpy==1.26.4
+          conda install pip numpy==1.26.4
 
       - name: install with pip
         run: |
