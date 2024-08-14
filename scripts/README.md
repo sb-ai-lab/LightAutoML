@@ -1,4 +1,4 @@
-# Usefull scripts
+# Useful scripts
 
 1. ```poetry_fix.py``` fixes problem: too long time of poetry lock command. It re-writes a single python version in the ```pyproject.toml```, which helps resolve all dependencies in a short time.
 

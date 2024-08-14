@@ -54,7 +54,7 @@ class GroupByFactory:
             GroupByFactory.get_GroupBy('delta_mean')
 
         Returns:
-            Object of GroupByBase impementing selected feature.
+            Object of GroupByBase implementing selected feature.
 
         Raises:
             ValueError: if identifier is not found.

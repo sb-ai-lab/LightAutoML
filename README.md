@@ -92,7 +92,7 @@ To install LAMA framework on your machine from PyPI:
 pip install -U lightautoml
 
 # For partial installation use corresponding option
-# Extra dependecies: [nlp, cv, report] or use 'all' to install all dependecies
+# Extra dependencies: [nlp, cv, report] or use 'all' to install all dependencies
 pip install -U lightautoml[nlp]
 ```
 

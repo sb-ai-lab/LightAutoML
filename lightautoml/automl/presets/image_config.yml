@@ -1,7 +1,7 @@
 general_params:
   # possible values are list of lists, that describes levels
   # possible values are ['lgb', 'lgb_tuned', 'linear_l2', 'cb', 'cb_tuned']. List will be extended later
-  # or 'auto' - configuration will be infered from data
+  # or 'auto' - configuration will be inferred from data
   # ex.[['lgb', 'lgb_tuned', 'linear_l2', 'cb', 'cb_tuned'], ['lgb', 'linear_l2']] is 3 algos on 1 level, 2 algos on 2 level and blender on 3 level
   # to define more than 1 level nested_cv_params.cv should be > 1
   use_algos: 'auto'
@@ -341,7 +341,7 @@ nn_params:
   multigpu: false
   # device
   device: cuda:0
-  # use defualt dataset config or custom torch dataset
+  # use default dataset config or custom torch dataset
   dataset: UniversalDataset
   pin_memory: false
   # training and inference batch size

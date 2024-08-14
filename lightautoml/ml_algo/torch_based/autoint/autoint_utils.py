@@ -90,7 +90,7 @@ class AttnInteractionLayer(nn.Module):
             default is True
         ghost_batch_size : int or None, optional
             only used if `use_bn` is True; size of batch in "ghost batch norm";
-            if None, normal batch norm is used; defualt is None
+            if None, normal batch norm is used; default is None
         device : string or torch.device, optional
             default is "cpu"
 
@@ -206,7 +206,7 @@ class AttnInteractionBlock(nn.Module):
             default is True
         ghost_batch_size : int or None, optional
             only used if `use_bn` is True; size of batch in "ghost batch norm";
-            if None, normal batch norm is used; defualt is None
+            if None, normal batch norm is used; default is None
         device : string or torch.device, optional
             default is "cpu"
     """

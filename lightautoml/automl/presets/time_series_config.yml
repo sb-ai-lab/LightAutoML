@@ -1,7 +1,7 @@
 general_params:
   # possible values are list of lists, that describes levels
   # possible values are ['linear_l2', 'cb', 'cb_tuned', 'nn', 'mlp', 'dense', 'denselight', 'resnet', 'snn'].
-  # or 'auto' - configuration will be infered from data
+  # or 'auto' - configuration will be inferred from data
   # for using one of the 'nn', 'mlp', 'dense', 'denselight', 'resnet', 'snn' on the only one layer, it should be defined using double brackets, e. g. [['nn']]
   # it is also possible to use ['lgb', 'lgb_tunes'] but only for regression on the only one point. Task should be specified as 'reg' instead of 'multi:reg'
   # ex.[['linear_l2', 'cb', 'cb_tuned'], ['linear_l2']] is 2 algos on 1 level, 1 algos on 2 level and blender on 3 level
@@ -231,7 +231,7 @@ nn_params:
   multigpu: false
   # device
   device: cuda:0
-  # use defualt dataset config or custom torch dataset
+  # use default dataset config or custom torch dataset
   dataset: UniversalDataset
   pin_memory: false
   # training and inference batch size

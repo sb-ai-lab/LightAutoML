@@ -119,7 +119,7 @@ print("AutoML created...")
 # ======================================================================================
 print("Fit predict...")
 oof_pred = automl.fit_predict(train, roles={"target": "TARGET"})
-print("Finnished fitting...")
+print("Finished fitting...")
 
 test_pred = automl.predict(test)
 print("Prediction for test data:\n{}\nShape = {}".format(test_pred, test_pred.shape))

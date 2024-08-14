@@ -259,7 +259,7 @@ class TfidfTextTransformer(TunableTransformer):
         """Get transformer parameters depending on dataset parameters.
 
         Args:
-            dataset: Dataset used for model parmaeters initialization.
+            dataset: Dataset used for model parameters initialization.
 
         Returns:
             Parameters of model.

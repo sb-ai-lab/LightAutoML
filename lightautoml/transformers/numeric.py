@@ -267,7 +267,7 @@ class LogOdds(LAMLTransformer):
         dataset = dataset.to_numpy()
         data = dataset.data
         # transform
-        # TODO: maybe np.exp and then cliping and logodds?
+        # TODO: maybe np.exp and then clipping and logodds?
         data = np.clip(data, 1e-7, 1 - 1e-7)
         data = np.log(data / (1 - data))
 
