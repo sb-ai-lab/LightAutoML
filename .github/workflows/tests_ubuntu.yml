@@ -15,6 +15,7 @@ on:
 
 jobs:
   ubuntu-tests:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: true
@@ -22,10 +23,10 @@ jobs:
         python-version: ["3.8", "3.10", "3.11", "3.12"] # "3.9" is tested in CI
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
 
