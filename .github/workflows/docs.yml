@@ -1,9 +1,9 @@
 name: docs
 
 on:
-  # At 20:59 every day (23:59 MSK)
+  # At 20:59 every tuesday (23:59 MSK)
   schedule:
-    - cron: 59 20 * * *
+    - cron: 59 20 * * 2
 
   # Manually triggerable in github
   workflow_dispatch:

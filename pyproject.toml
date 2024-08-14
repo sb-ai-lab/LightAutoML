@@ -177,3 +177,8 @@ lines_after_imports = 2
 lines_between_types = 1
 use_parentheses = true
 filter_files = true
+
+[tool.codespell]
+skip = '*.git,*.csv'
+#
+ignore-words-list = 'LAMA,Lama,lama,MAPE'
