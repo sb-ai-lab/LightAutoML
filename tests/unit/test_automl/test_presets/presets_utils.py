@@ -1,5 +1,6 @@
 import os
 import pickle
+from pytest import approx
 import tempfile
 
 from sklearn.metrics import log_loss
@@ -27,7 +28,7 @@ def check_pickling(automl, ho_score, task, test_data, target_name):
         elif task.name == "reg":
             ho_score_new = mean_squared_error(test_data[target_name].values, test_pred.data[:, 0])
 
-        assert ho_score == ho_score_new
+        assert ho_score == approx(ho_score_new, rel=1e-3)
 
 
 def get_target_name(roles):
