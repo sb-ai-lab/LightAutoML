@@ -29,10 +29,6 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - uses: Gr1N/setup-poetry@v8
-        with:
-          poetry-version: 1.1.7
-
       - name: install deps for Ubuntu
         run: sudo apt-get install build-essential libcairo2 libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf2.0-0 libffi-dev shared-mime-info
 

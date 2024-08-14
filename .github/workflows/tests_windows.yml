@@ -29,10 +29,6 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - uses: Gr1N/setup-poetry@v8
-        with:
-          poetry-version: 1.1.7
-
       - name: setup-msys2
         uses: msys2/setup-msys2@v2
         with:
