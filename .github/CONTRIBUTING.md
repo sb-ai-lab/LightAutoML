@@ -118,7 +118,7 @@ here we will give a quick-start guide:
 1. Install and configure:
 
 ```console
-poetry run pre-commit install
+tox -e lint
 ```
 
 2. Now, when you run `$ git commit`, there will be a pre-commit check.
@@ -146,17 +146,17 @@ tox --parallel 6
 
 To run all tests with specific Python versions:
 ```bash
-tox -e py37
+tox -e py38
 ```
 
 To run specific test:
 ```
-tox -e py37 -- -x tests/unit/test_utils
+tox -e py38 -- -x tests/unit/test_utils
 ```
 
 To run tests for specific Python versions (for example python 3.8):
 ```bash
-poetry run tox -e py36
+tox -e py38
 ```
 
 
