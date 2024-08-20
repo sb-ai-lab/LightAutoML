@@ -42,7 +42,7 @@ class Blender:
         return self._outp_dim
 
     def fit_predict(
-        self, predictions: Sequence[LAMLDataset], pipes: Sequence[MLPipeline]
+        self, predictions: Sequence[LAMLDataset], pipes: Sequence[MLPipeline], class_mapping: dict
     ) -> Tuple[LAMLDataset, Sequence[MLPipeline]]:
         """Wraps custom ``._fit_predict`` methods of blenders.
 
@@ -63,7 +63,7 @@ class Blender:
             self._bypass = True
             return predictions[0], pipes
 
-        return self._fit_predict(predictions, pipes)
+        return self._fit_predict(predictions, pipes, class_mapping)
 
     def _fit_predict(
         self, predictions: Sequence[LAMLDataset], pipes: Sequence[MLPipeline]
@@ -134,7 +134,7 @@ class Blender:
 
         return splitted_preds, model_idx, pipe_idx
 
-    def _set_metadata(self, predictions: Sequence[LAMLDataset], pipes: Sequence[MLPipeline]):
+    def _set_metadata(self, predictions: Sequence[LAMLDataset], pipes: Sequence[MLPipeline], class_mapping: dict):
 
         pred0 = predictions[0]
         pipe0 = pipes[0]
@@ -142,6 +142,8 @@ class Blender:
         self._outp_dim = pred0.shape[1] // len(pipe0.ml_algos)
         self._outp_prob = pred0.task.name in ["binary", "multiclass"]
         self._score = predictions[0].task.get_dataset_metric()
+
+        self._class_mapping = class_mapping
 
     def score(self, dataset: LAMLDataset) -> float:
         """Score metric for blender.
@@ -321,7 +323,7 @@ class WeightedBlender(Blender):
         outp = splitted_preds[0].empty()
         outp.set_data(
             weighted_pred,
-            ["WeightedBlend_{0}".format(x) for x in range(weighted_pred.shape[1])],
+            self._class_mapping if self._class_mapping else list(range(weighted_pred.shape[1])),
             NumericRole(np.float32, prob=self._outp_prob),
         )
 
@@ -436,7 +438,7 @@ class WeightedBlender(Blender):
         return new_pipes, wts
 
     def _fit_predict(
-        self, predictions: Sequence[NumpyDataset], pipes: Sequence[MLPipeline]
+        self, predictions: Sequence[NumpyDataset], pipes: Sequence[MLPipeline], class_mapping: dict
     ) -> Tuple[NumpyDataset, Sequence[MLPipeline]]:
         """Perform coordinate descent.
 
@@ -451,7 +453,7 @@ class WeightedBlender(Blender):
             Dataset and MLPipeline.
 
         """
-        self._set_metadata(predictions, pipes)
+        self._set_metadata(predictions, pipes, class_mapping)
         splitted_preds, _, pipe_idx = cast(List[NumpyDataset], self.split_models(predictions))
 
         wts = self._optimize(splitted_preds)
