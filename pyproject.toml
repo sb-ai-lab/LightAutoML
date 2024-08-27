@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "LightAutoML"
-version = "0.3.8.1"
+version = "0.4.0.dev1"
 description = "Fast and customizable framework for automatic ML model creation (AutoML)"
 authors = [
     "Alexander Ryzhkov <alexmryzhkov@gmail.com>",
@@ -45,10 +45,7 @@ scikit-learn = ">=0.22"
 lightgbm = ">=2.3, <=3.2.1"
 catboost = ">=0.26.1"
 optuna = "*"
-torch = [
-    {platform = "win32", python = "3.6.1", version = "1.7.0"},
-    {version = ">=1.9.0, <=2.0.0"}
-]
+torch = ">=1.9.0"
 dataclasses = {version = "0.6", python = "<3.7"}
 holidays = "*"
 statsmodels = "<=0.14.0"
@@ -73,10 +70,7 @@ albumentations = {version = "<=1.0.3", optional = true}
 timm = {version = ">=0.9.0", optional = true}
 opencv-python = {version = "<=4.8.0.74", optional = true}
 PyWavelets = {version = "*", optional = true}
-torchvision = [
-    {platform = "win32", python = "3.6.1", version = "0.8.0", optional = true},
-    {platform = "*", version = "<=0.14.0", optional = true}
-]
+torchvision = {version = "*", optional = true}
 
 # AFG
 featuretools = {version = ">=1.11.1", python = ">=3.8", optional = true}
