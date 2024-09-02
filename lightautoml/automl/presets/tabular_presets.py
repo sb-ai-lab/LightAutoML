@@ -30,7 +30,6 @@ from ...ml_algo.boost_xgb import BoostXGB
 from ...ml_algo.dl_model import TorchModel
 from ...ml_algo.linear_sklearn import LinearLBFGS
 from ...ml_algo.random_forest import RandomForestSklearn
-from ...ml_algo.tuning.optuna import DLOptunaTuner
 from ...ml_algo.tuning.optuna import OptunaTuner
 from ...pipelines.features.lgb_pipeline import LGBAdvancedPipeline
 from ...pipelines.features.lgb_pipeline import LGBSeqSimpleFeatures
@@ -444,7 +443,7 @@ class TabularAutoML(AutoMLPreset):
 
             if tuned:
                 nn_model.set_prefix("Tuned")
-                nn_tuner = DLOptunaTuner(
+                nn_tuner = OptunaTuner(
                     n_trials=model_params["tuning_params"]["max_tuning_iter"],
                     timeout=model_params["tuning_params"]["max_tuning_time"],
                     fit_on_holdout=model_params["tuning_params"]["fit_on_holdout"],
