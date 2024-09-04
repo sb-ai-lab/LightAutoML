@@ -21,6 +21,7 @@ from .base import Uniform
 from ...validation.base import HoldoutIterator
 from ...validation.base import TrainValidIterator
 from ...ml_algo.dl_model import TorchModel
+from ...utils.logging import get_stdout_level
 
 
 logger = logging.getLogger(__name__)
@@ -185,6 +186,15 @@ class OptunaTuner(ParamsTuner):
             ml_algo.default_params[
                 "thread_count"
             ] = num_cpu_per_process  # get's num of cpu here when makes params for optuna optimisation
+            # Custom progress bar
+            def custom_progress_bar(study: optuna.study.Study, trial: optuna.trial.FrozenTrial):
+                best_trial = study.best_trial
+                progress_bar.set_postfix(best_trial=best_trial.number, best_value=best_trial.value)
+                progress_bar.update(1)
+
+            # Initialize progress bar
+            if get_stdout_level() in [logging.INFO, logging.INFO2]:
+                progress_bar = tqdm(total=self.n_trials, desc="Optimization Progress")
 
             sampler = optuna.samplers.TPESampler(seed=self.random_state)
             self.study = optuna.create_study(direction=self.direction, sampler=sampler)
@@ -197,10 +207,17 @@ class OptunaTuner(ParamsTuner):
                 ),
                 n_trials=self.n_trials,
                 timeout=self.timeout,
-                callbacks=[update_trial_time],
-                # show_progress_bar=True,
                 n_jobs=n_jobs,
+                callbacks=(
+                    [update_trial_time, custom_progress_bar]
+                    if get_stdout_level() in [logging.INFO, logging.INFO2]
+                    else [update_trial_time]
+                ),
             )
+
+            # Close the progress bar if it was initialized
+            if get_stdout_level() in [logging.INFO, logging.INFO2]:
+                progress_bar.close()
 
             # need to update best params here
             # self._best_params = self.study.best_params
