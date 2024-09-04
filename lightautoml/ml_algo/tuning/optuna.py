@@ -138,7 +138,7 @@ class OptunaTuner(ParamsTuner):
 
         """
         assert not ml_algo.is_fitted, "Fitted algo cannot be tuned."
-        self._params_scores = []
+
         # optuna.logging.set_verbosity(logger.getEffectiveLevel())
         # upd timeout according to ml_algo timer
         estimated_tuning_time = ml_algo.timer.estimate_tuner_time(len(train_valid_iterator))
@@ -176,18 +176,20 @@ class OptunaTuner(ParamsTuner):
             )
 
         try:
-            is_nn = isinstance(ml_algo, TorchModel)
+            self._is_nn = isinstance(ml_algo, TorchModel)
             rows_num = train_valid_iterator.train.shape[0]
 
             # get num of cpu for a process
-            num_cpu_per_process, n_jobs = self.get_num_cpu_n_jobs_for_optuna(
-                overall_num_cpu=ml_algo.params["num_threads"], rows_num=rows_num, is_nn=is_nn
+            num_cpu_per_process, n_jobs = self.allocate_resources_for_optuna_jobs(
+                overall_num_cpu=ml_algo.params["num_threads"], rows_num=rows_num, is_nn=self._is_nn
             )
+
             ml_algo.default_params[
-                "thread_count"
+                "num_threads"  # TODO: check if num_threads exist in every algo
             ] = num_cpu_per_process  # get's num of cpu here when makes params for optuna optimisation
+
             # Custom progress bar
-            def custom_progress_bar(study: optuna.study.Study, trial: optuna.trial.FrozenTrial):
+            def custom_progress_bar(study: optuna.study.Study):
                 best_trial = study.best_trial
                 progress_bar.set_postfix(best_trial=best_trial.number, best_value=best_trial.value)
                 progress_bar.update(1)
@@ -219,15 +221,7 @@ class OptunaTuner(ParamsTuner):
             if get_stdout_level() in [logging.INFO, logging.INFO2]:
                 progress_bar.close()
 
-            # need to update best params here
-            # self._best_params = self.study.best_params
-            if self.direction == "maximize":
-                self._best_params = max(self._params_scores, key=lambda x: x[1])[0]
-
-            else:
-                self._best_params = min(self._params_scores, key=lambda x: x[1])[0]
-
-            ml_algo.params = self._best_params
+            ml_algo.params = self.study.best_params
 
             logger.info(f"Hyperparameters optimization for \x1b[1m{ml_algo._name}\x1b[0m completed")
             logger.info2(
@@ -237,7 +231,6 @@ class OptunaTuner(ParamsTuner):
             if flg_new_iterator:
                 # set defatult_params back to normal
                 ml_algo.default_params["thread_count"] = ml_algo.params["thread_count"]
-                del self._params_scores
                 # if tuner was fitted on holdout set we dont need to save train results
                 return None, None
 
@@ -248,7 +241,6 @@ class OptunaTuner(ParamsTuner):
 
             return ml_algo, preds_ds
         except optuna.exceptions.OptunaError:
-            del self._params_scores
             return None, None
 
     def _get_objective(
@@ -273,37 +265,23 @@ class OptunaTuner(ParamsTuner):
 
         def objective(trial: optuna.trial.Trial) -> float:
             _ml_algo = deepcopy(ml_algo)
-            is_dl_model = isinstance(_ml_algo, TorchModel)
-
             optimization_search_space = _ml_algo.optimization_search_space
 
             if not optimization_search_space:
-                if not is_dl_model:
-                    optimization_search_space = _ml_algo._get_default_search_spaces(
-                        suggested_params=_ml_algo.init_params_on_input(train_valid_iterator),
-                        estimated_n_trials=estimated_n_trials,
-                    )
-                else:
-                    optimization_search_space = _ml_algo._default_sample
-
-            if callable(optimization_search_space):
-                _ml_algo.params = optimization_search_space(
-                    trial=trial,
-                    optimization_search_space=optimization_search_space,
+                optimization_search_space = _ml_algo._get_default_search_spaces(
+                    suggested_params=_ml_algo.init_params_on_input(train_valid_iterator),
                     estimated_n_trials=estimated_n_trials,
-                    suggested_params=_ml_algo.init_params_on_input(train_valid_iterator),
                 )
-            else:
-                _ml_algo.params = self._sample(
-                    trial=trial,
-                    optimization_search_space=optimization_search_space,
-                    suggested_params=_ml_algo.init_params_on_input(train_valid_iterator),
-                )
+
+            _ml_algo.params = self._sample(
+                trial=trial,
+                optimization_search_space=optimization_search_space,
+                suggested_params=_ml_algo.init_params_on_input(train_valid_iterator),
+            )
 
             output_dataset = _ml_algo.fit_predict(train_valid_iterator=train_valid_iterator)
 
             score = _ml_algo.score(output_dataset)
-            self._params_scores.append((_ml_algo.params, score))
             return score
 
         return objective
@@ -331,15 +309,20 @@ class OptunaTuner(ParamsTuner):
             if not_supported:
                 raise ValueError(f"Optuna does not support distribution {search_space}")
 
+        if self._is_nn:
+            trial_values["opt_params"] = {
+                "lr": trial_values["lr"],
+                "weight_decay": trial_values["weight_decay"],
+            }
+
         return trial_values
 
     def plot(self):
         """Plot optimization history of all trials in a study."""
         return optuna.visualization.plot_optimization_history(self.study)
 
-    def get_num_cpu_n_jobs_for_optuna(self, overall_num_cpu: int, rows_num: int, is_nn: bool = False):
-        """Get the number of CPU needed per process and the number of processes,
-        taking into account the length of the dataset.
+    def allocate_resources_for_optuna_jobs(self, overall_num_cpu: int, rows_num: int, is_nn: bool = False):
+        """Get the number of CPU needed per process and the number of processes. Taking into account the length of the dataset.
 
         Args:
             overall_num_cpu (int): Maximum number of CPUs available.
@@ -353,23 +336,33 @@ class OptunaTuner(ParamsTuner):
         if is_nn:
             return overall_num_cpu, 1  # TODO: test optuna parallelisation for nn
 
-        def helper_function(impericaly_needed_num_of_cpu):
+        def split_cpus(n_cpu_per_job: int):
+            """Helper function.
+
+            Args:
+                n_cpu_per_job (int): excpected number of cpu for a job
+
+            Returns:
+                num_cpu_per_process (int): final number of cpu for a job
+                n_jobs (int): number of jobs for optuna
+
+            """
             # if num of cpu we have is less then 2*num_cpu needed for a proces then just use one job
-            if overall_num_cpu <= impericaly_needed_num_of_cpu * 2 - 1:
+            if overall_num_cpu <= n_cpu_per_job * 2 - 1:
                 num_cpu_per_process = overall_num_cpu
                 n_jobs = 1
             else:
-                num_cpu_per_process = impericaly_needed_num_of_cpu
+                num_cpu_per_process = n_cpu_per_job
                 n_jobs = overall_num_cpu // num_cpu_per_process
             return num_cpu_per_process, n_jobs
 
         if rows_num <= 50_000:
-            num_cpu_per_process, n_jobs = helper_function(2)
+            num_cpu_per_process, n_jobs = split_cpus(2)
         elif rows_num <= 1_000_000:
-            num_cpu_per_process, n_jobs = helper_function(4)
+            num_cpu_per_process, n_jobs = split_cpus(4)
         elif rows_num <= 5_000_000:
-            num_cpu_per_process, n_jobs = helper_function(8)
+            num_cpu_per_process, n_jobs = split_cpus(8)
         else:
-            num_cpu_per_process, n_jobs = helper_function(16)
+            num_cpu_per_process, n_jobs = split_cpus(16)
 
         return num_cpu_per_process, n_jobs

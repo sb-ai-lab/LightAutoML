@@ -17,13 +17,13 @@ from copy import copy
 from typing import Dict
 
 import numpy as np
-import optuna
 import pandas as pd
 import torch
 import torch.nn as nn
 
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
+from .tuning.base import Uniform
 from ..dataset.np_pd_dataset import NumpyDataset
 from ..tasks.losses.torch import TorchLossWrapper
 from ..utils.installation import __validate_extra_deps
@@ -618,7 +618,7 @@ class TorchModel(TabularMLAlgo):
 
         return pred
 
-    def _default_sample(self, trial: optuna.trial.Trial, estimated_n_trials: int, suggested_params: Dict) -> Dict:
+    def _get_default_search_spaces(self, estimated_n_trials: int, suggested_params: Dict) -> Dict:
         """Implements simple tuning sampling strategy.
 
         Args:
@@ -631,19 +631,18 @@ class TorchModel(TabularMLAlgo):
 
         """
         # optionally
-        trial_values = copy(suggested_params)
+        # trial_values = copy(suggested_params) # TODO: check how to use it
+        trial_values = {}
 
-        trial_values["bs"] = trial.suggest_categorical("bs", [2 ** i for i in range(6, 11)])
+        trial_values["bs"] = Uniform(low=64, high=1024, q=1)
 
-        weight_decay_bin = trial.suggest_categorical("weight_decay_bin", [0, 1])
+        weight_decay_bin = Uniform(low=0, high=1, q=1)
         if weight_decay_bin == 0:
             weight_decay = 0
         else:
-            weight_decay = trial.suggest_loguniform("weight_decay", low=1e-6, high=1e-2)
+            weight_decay = Uniform(low=1e-6, high=1e-2, log=True)
 
-        lr = trial.suggest_loguniform("lr", low=1e-5, high=1e-1)
-        trial_values["opt_params"] = {
-            "lr": lr,
-            "weight_decay": weight_decay,
-        }
+        trial_values["lr"] = Uniform(low=1e-5, high=1e-1, log=True)
+        trial_values["weight_decay"] = weight_decay
+
         return trial_values
