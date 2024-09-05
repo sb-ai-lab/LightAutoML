@@ -273,11 +273,18 @@ class OptunaTuner(ParamsTuner):
                     estimated_n_trials=estimated_n_trials,
                 )
 
-            _ml_algo.params = self._sample(
-                trial=trial,
-                optimization_search_space=optimization_search_space,
-                suggested_params=_ml_algo.init_params_on_input(train_valid_iterator),
-            )
+            if callable(optimization_search_space):
+                _ml_algo.params = optimization_search_space(
+                    trial=trial,
+                    optimization_search_space=None,
+                    suggested_params=_ml_algo.init_params_on_input(train_valid_iterator),
+                )
+            else:
+                _ml_algo.params = self._sample(
+                    trial=trial,
+                    optimization_search_space=optimization_search_space,
+                    suggested_params=_ml_algo.init_params_on_input(train_valid_iterator),
+                )
 
             output_dataset = _ml_algo.fit_predict(train_valid_iterator=train_valid_iterator)
 

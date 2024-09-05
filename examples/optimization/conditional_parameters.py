@@ -18,6 +18,7 @@ data = pd.read_csv("./data/sampled_app_train.csv")
 train_data, test_data = train_test_split(data, test_size=0.2, stratify=data["TARGET"], random_state=42)
 
 
+# replacing default _sample function in OptunaTuner class with this function
 def sample(optimization_search_space, trial, suggested_params):
     trial_values = copy.copy(suggested_params)
     trial_values["feature_fraction"] = trial.suggest_uniform("feature_fraction", low=0.5, high=1.0)
