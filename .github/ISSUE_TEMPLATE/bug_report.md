@@ -13,7 +13,7 @@ assignees:
 
 ## Environment
 1. lightautoml version:
-2. python version: 
+2. python version:
 3. OS:
 4. pip freeze file:
 
@@ -21,7 +21,6 @@ assignees:
 Steps to reproduce the behavior:
 1. first step
 2. second step
-3. 
 
 <!-- If you have a code sample, error messages, stack traces, please provide it here as well -->
 
