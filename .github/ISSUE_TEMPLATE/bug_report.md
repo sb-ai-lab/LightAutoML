@@ -11,27 +11,19 @@ assignees:
 
 <!-- A clear and concise description of the bug. -->
 
-### To Reproduce
+## Environment
+1. lightautoml version:
+2. python version:
+3. OS:
+4. pip freeze file:
 
+### To Reproduce
 Steps to reproduce the behavior:
-1. Go to '...'
-1. Run '....'
-3. ...
+1. first step
+2. second step
 
 <!-- If you have a code sample, error messages, stack traces, please provide it here as well -->
-
-
 
 ### Expected behavior
 
 <!-- A clear and concise description of what you expected to happen. -->
-
-### Additional context
-
-<!-- Add any other context about the problem here. -->
-
-### Checklist
-- [ ] bug description
-- [ ] steps to reproduce
-- [ ] expected behavior
-- [ ] code sample / screenshots
