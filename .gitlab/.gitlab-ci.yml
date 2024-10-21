@@ -20,7 +20,7 @@ mirror-code:
   <<: *ssh_key_configuration
   stage: mirror
   script: |
-    if [ "${CI_COMMIT_REF_NAME}" == experiment* ] || [ "${CI_COMMIT_REF_NAME}" == AUTOML-* ]
+    if [[ "${CI_COMMIT_REF_NAME}" == experiment* ]] || [[ "${CI_COMMIT_REF_NAME}" == AUTOML-* ]]
     then
         :
     else
