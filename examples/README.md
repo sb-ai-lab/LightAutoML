@@ -1,5 +1,11 @@
 # Examples
+## Competitions
+| Place         | Competition   | Description | Solution  |
+| ------ |:------------- | --------- | --------- |
+| 1st | [2024 AutoML Grand Prix](https://www.kaggle.com/automl-grand-prix) | Team "LightAutoML testers" | [1 stage](https://www.kaggle.com/competitions/playground-series-s4e5/discussion/500700), [3 stage](https://www.kaggle.com/competitions/playground-series-s4e7/discussion/516860), [4 stage](https://www.kaggle.com/competitions/playground-series-s4e8/discussion/523732), [5 stage](https://www.kaggle.com/competitions/playground-series-s4e9/discussion/531884) |
 
+
+## Code snippets
 1. `demo0.py` - building ML pipeline from blocks and fit + predict the pipeline itself.
 2. `demo1.py` - several ML pipelines creation (using importances based cutoff feature selector) to build 2 level stacking using AutoML class
 3. `demo2.py` - several ML pipelines creation (using iteartive feature selection algorithm) to build 2 level stacking using AutoML class
@@ -15,3 +21,4 @@
 13. `demo12.py` - AutoML tabular preset usage with custom validation scheme and multiprocessed inference
 14. `demo13.py` - AutoML TS preset usage with lag and diff transformers' parameters selection
 15. `demo14.py` - Groupby features (using TabularAutoML preset and custom pipeline)
+
