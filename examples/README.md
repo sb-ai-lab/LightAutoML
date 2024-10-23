@@ -2,7 +2,7 @@
 ## Competitions
 | Place         | Competition   | Description | Solution  |
 | ------ |:------------- | --------- | --------- |
-| 1st | [2024 AutoML Grand Prix](https://www.kaggle.com/automl-grand-prix) | Team "LightAutoML testers" | [1 stage](https://www.kaggle.com/competitions/playground-series-s4e5/discussion/500700), [2 stage](https://www.kaggle.com/competitions/playground-series-s4e6/discussion/509631), [3 stage](https://www.kaggle.com/competitions/playground-series-s4e7/discussion/516475), [4 stage](https://www.kaggle.com/competitions/playground-series-s4e8/discussion/523656), [5 stage](https://www.kaggle.com/competitions/playground-series-s4e9/discussion/531884) |
+| 1st | [2024 AutoML Grand Prix](https://www.kaggle.com/automl-grand-prix) | Team "LightAutoML testers" | [1 stage](https://www.kaggle.com/competitions/playground-series-s4e5/discussion/500700), [3 stage](https://www.kaggle.com/competitions/playground-series-s4e7/discussion/516860), [4 stage](https://www.kaggle.com/competitions/playground-series-s4e8/discussion/523732), [5 stage](https://www.kaggle.com/competitions/playground-series-s4e9/discussion/531884) |
 
 
 ## Code snippets
