@@ -248,7 +248,7 @@ class AutoML:
                 if self.skip_conn:
                     valid_part = train_valid.get_validation_data()
                     try:
-                        # convert to initital dataset type
+                        # convert to initial dataset type
                         level_predictions = valid_part.from_dataset(level_predictions)
                     except TypeError:
                         raise TypeError(
@@ -305,7 +305,7 @@ class AutoML:
                 if self.skip_conn:
 
                     try:
-                        # convert to initital dataset type
+                        # convert to initial  dataset type
                         level_predictions = dataset.from_dataset(level_predictions)
                     except TypeError:
                         raise TypeError(

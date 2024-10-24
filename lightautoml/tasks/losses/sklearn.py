@@ -29,7 +29,7 @@ class SKLoss(Loss):
     Args:
         loss: One of default loss function.
             Valid are: 'logloss', 'mse', 'crossentropy', 'rmsle'.
-        loss_params: Addtional loss parameters.
+        loss_params: Additional loss parameters.
         fw_func: Forward transformation.
             Used for transformation of target and item weights.
         bw_func: backward transformation.

@@ -68,7 +68,7 @@ class SSWARM:
             T: Number of iterations. Default is None, which refers to auto infer.
                 Higher `T` yields more accurate estimates, but takes more time. Auto is ok in most cases.
             n_repeats: Number of computations with different seeds.
-                Final shapley values are an avarage among seeds. Default is 3.
+                Final shapley values are an average among seeds. Default is 3.
                 Higher `n_repeats` yields more accurate estimates, but takes more time.
             n_jobs: Number of parallel workers to execute automl.predict() .
                 IMPORTANT NOTE: for now, parallelization significantly increases
@@ -96,7 +96,7 @@ class SSWARM:
         # check if input number of observations is not less than 2
         num_obs = data.shape[0]
         if num_obs < 2:
-            raise ValueError("Too small number of observations. " + "Input data must contatin at least 2 observations.")
+            raise ValueError("Too small number of observations. " + "Input data must contain at least 2 observations.")
 
         # check if input number of observations is more than a batch_size
         if num_obs > batch_size:
@@ -203,12 +203,12 @@ class SSWARM:
 
                     bar.update(n=1)
 
-            # finilize the computations and derive the general representation of phi
+            # finalize the computations and derive the general representation of phi
             phi = np.sum(self.phi_plus - self.phi_minus, axis=2) / self.n
             PHI = np.sum(phi, axis=1)
 
             # normalize phi to sum to the predicted outcome and
-            # substract expected value to be consistent with SHAP python library
+            # subtract expected value to be consistent with SHAP python library
             correction = ((v_N - PHI) / self.n).repeat(self.n, axis=0).reshape(len(phi), self.n, self.n_outputs)
             phi = phi + correction - self.expected_value / self.n
 

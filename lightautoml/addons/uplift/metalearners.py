@@ -222,7 +222,7 @@ class TLearner(MetaLearner):
 
     Each model is trained on it's own group (treatment/control).
 
-    The 'meta' model prediction is a substraction predictions of 'treatment' model and 'control' model.
+    The 'meta' model prediction is a subtraction predictions of 'treatment' model and 'control' model.
 
 
     Args:
@@ -465,7 +465,7 @@ class TDLearner(MetaLearner):
 
     `TDLearner` - is an 'meta' model which uses a two models (the one model depends on the prediction of another model).
 
-    The 'meta' model prediction is a substraction predictions of 'treatment' model and 'control' model.
+    The 'meta' model prediction is a subtraction predictions of 'treatment' model and 'control' model.
 
 
     Args:

@@ -1,4 +1,4 @@
-"""Specify python verion."""
+"""Specify python version."""
 
 import argparse
 import fileinput
@@ -47,7 +47,7 @@ def main():
         "-c",
         "--current",
         action="store_true",
-        help="Set curret python version in `pyproject.toml`",
+        help="Set current python version in `pyproject.toml`",
     )
     group.add_argument("-f", "--full", action="store_true", help="Set all pythons versions in `pyproject.toml`")
 

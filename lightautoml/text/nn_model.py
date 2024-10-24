@@ -1,4 +1,4 @@
-"""Neural Net modules for differen data types."""
+"""Neural Net modules for different data types."""
 
 import logging
 
@@ -237,7 +237,7 @@ class TorchUniversalModel(nn.Module):
         if self.task.name in ["binary", "multilabel"]:
             out = self.sig(self.сlump(logits))
         elif self.task.name == "multiclass":
-            # cant find self.clump when predicting
+            # can't find self.clump when predicting
             out = self.softmax(torch.clamp(logits, -50, 50))
         else:
             out = logits

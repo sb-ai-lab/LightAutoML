@@ -283,7 +283,7 @@ class DeepTimmImageEmbedder(TransformerMixin):
 
     @torch.no_grad()
     def transform(self, data: Sequence[str]) -> np.ndarray:
-        """Calculate image embeddings from pathes.
+        """Calculate image embeddings from paths.
 
         Args:
             data: Sequence of paths.

@@ -16,10 +16,10 @@ logger = logging.getLogger(__name__)
 
 
 def __validate_extra_deps(extra_section: str, error: bool = False) -> None:
-    """Check if extra dependecies is installed.
+    """Check if extra dependencies is installed.
 
     Args:
-        extra_section: Name of extra dependecies
+        extra_section: Name of extra dependencies
         error: How to process error
 
     """
@@ -40,7 +40,7 @@ def __validate_extra_deps(extra_section: str, error: bool = False) -> None:
         except PackageNotFoundError as e:
             # Print warning
             logger.warning(
-                "'%s' extra dependecy package '%s' isn't installed. "
+                "'%s' extra dependency package '%s' isn't installed. "
                 "Look at README.md in repo 'LightAutoML' for installation instructions.",
                 extra_section,
                 lib_name,

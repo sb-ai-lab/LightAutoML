@@ -40,7 +40,7 @@ class LinearFeatures(FeaturesPipeline, TabularDataFeatures):
         - Create categorical intersections.
         - OHE or embed idx encoding for categories.
         - Other cats to numbers ways if defined in role params.
-        - Standartization and nan handling for numbers.
+        - Standardization and nan handling for numbers.
         - Numbers discretization if needed.
         - Dates handling.
         - Handling probs (output of lower level models).
@@ -137,21 +137,21 @@ class LinearFeatures(FeaturesPipeline, TabularDataFeatures):
                 + get_columns_by_role(train, "Category", encoding_type="oof")
                 + get_columns_by_role(train, "Category", encoding_type="ohe")
             )
-            te = []
+            te_lst = []  # te_lst != te_list
 
         else:
-            te = get_columns_by_role(train, "Category", encoding_type="oof")
+            te_lst = get_columns_by_role(train, "Category", encoding_type="oof")
             le = get_columns_by_role(train, "Category", encoding_type="ohe")
             # split auto categories by unique values cnt
             un_values = self.get_uniques_cnt(train, auto)
-            te = te + [x for x in un_values.index if un_values[x] > self.auto_unique_co]
-            le = le + list(set(auto) - set(te))
+            te_lst = te_lst + [x for x in un_values.index if un_values[x] > self.auto_unique_co]
+            le = le + list(set(auto) - set(te_lst))
 
         # get label encoded categories
         sparse_list.append(self.get_categorical_raw(train, le))
 
         # get target encoded categories
-        te_part = self.get_categorical_raw(train, te)
+        te_part = self.get_categorical_raw(train, te_lst)
         if te_part is not None:
             te_part = SequentialTransformer([te_part, target_encoder()])
             te_list.append(te_part)
@@ -195,7 +195,7 @@ class LinearFeatures(FeaturesPipeline, TabularDataFeatures):
         # handle dense
         dense_list = [x for x in dense_list if x is not None]
         if len(dense_list) > 0:
-            # standartize, fillna, add null flags
+            # standardize, fillna, add null flags
             dense_pipe = SequentialTransformer(
                 [
                     UnionTransformer(dense_list),

@@ -40,8 +40,8 @@ class LinearLBFGS(TabularMLAlgo):
 
     freeze_defaults:
 
-        - ``True`` :  params may be rewrited depending on dataset.
-        - ``False``:  params may be changed only manually or with tuning.
+        - ``True`` :  params can be rewritten depending on dataset.
+        - ``False``:  params can be changed only manually or with tuning.
 
     timer: :class:`~lightautoml.utils.timer.Timer` instance or ``None``.
 
@@ -238,7 +238,7 @@ class LinearL1CD(TabularMLAlgo):
             pred = model.predict_proba(data)
 
         else:
-            raise ValueError("Task not suppoted")
+            raise ValueError("Task not supported")
 
         return pred
 

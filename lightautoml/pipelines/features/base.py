@@ -455,7 +455,7 @@ class TabularDataFeatures:
 
         Args:
             train: Dataset with train data.
-            feats_to_select: features to hanlde. If ``None`` - default filter.
+            feats_to_select: features to handle. If ``None`` - default filter.
 
         Returns:
             Transformer.

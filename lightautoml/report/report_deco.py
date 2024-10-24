@@ -1017,9 +1017,9 @@ class ReportDeco:
             counts = value_counts.values
             item["Number of unique values"] = len(counts)
             item["Most frequent value"] = values[0]
-            item["Occurance of most frequent"] = "{:.1f}%".format(100 * counts[0])
+            item["Occurrence of most frequent"] = "{:.1f}%".format(100 * counts[0])
             item["Least frequent value"] = values[-1]
-            item["Occurance of least frequent"] = "{:.1f}%".format(100 * counts[-1])
+            item["Occurrence of least frequent"] = "{:.1f}%".format(100 * counts[-1])
             categorical_features_df.append(item)
         self._categorical_features_table = list2table(categorical_features_df)
 
@@ -1380,9 +1380,9 @@ class ReportDecoUtilized(ReportDeco):
             counts = value_counts.values
             item["Number of unique values"] = len(counts)
             item["Most frequent value"] = values[0]
-            item["Occurance of most frequent"] = "{:.1f}%".format(100 * counts[0])
+            item["Occurrence of most frequent"] = "{:.1f}%".format(100 * counts[0])
             item["Least frequent value"] = values[-1]
-            item["Occurance of least frequent"] = "{:.1f}%".format(100 * counts[-1])
+            item["Occurrence of least frequent"] = "{:.1f}%".format(100 * counts[-1])
             categorical_features_df.append(item)
         self._categorical_features_table = list2table(categorical_features_df)
 
@@ -2246,9 +2246,9 @@ class ReportDecoUplift(ReportDeco):
             counts = value_counts.values
             item["Number of unique values"] = len(counts)
             item["Most frequent value"] = values[0]
-            item["Occurance of most frequent"] = "{:.1f}%".format(100 * counts[0])
+            item["Occurrence of most frequent"] = "{:.1f}%".format(100 * counts[0])
             item["Least frequent value"] = values[-1]
-            item["Occurance of least frequent"] = "{:.1f}%".format(100 * counts[-1])
+            item["Occurrence of least frequent"] = "{:.1f}%".format(100 * counts[-1])
             categorical_features_df.append(item)
         if categorical_features_df == []:
             self._categorical_features_table = None

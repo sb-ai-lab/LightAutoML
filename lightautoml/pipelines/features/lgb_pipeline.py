@@ -558,7 +558,7 @@ class LGBAdvancedPipeline(FeaturesPipeline, TabularDataFeatures):
                 + get_columns_by_role(train, "Category", encoding_type="oof")
                 + get_columns_by_role(train, "Category", encoding_type="int")
             )
-            te = []
+            te_lst = []
             ordinal = None
 
         else:
@@ -566,14 +566,14 @@ class LGBAdvancedPipeline(FeaturesPipeline, TabularDataFeatures):
             ordinal = get_columns_by_role(train, "Category", ordinal=True)
 
             if target_encoder is not None:
-                te = get_columns_by_role(train, "Category", encoding_type="oof")
+                te_lst = get_columns_by_role(train, "Category", encoding_type="oof")
                 # split auto categories by unique values cnt
                 un_values = self.get_uniques_cnt(train, auto)
-                te = te + [x for x in un_values.index if un_values[x] > self.auto_unique_co]
-                ordinal = ordinal + list(set(auto) - set(te))
+                te_lst = te_lst + [x for x in un_values.index if un_values[x] > self.auto_unique_co]
+                ordinal = ordinal + list(set(auto) - set(te_lst))
 
             else:
-                te = []
+                te_lst = []
                 ordinal = ordinal + auto + get_columns_by_role(train, "Category", encoding_type="oof")
 
             ordinal = sorted(list(set(ordinal)))
@@ -585,7 +585,7 @@ class LGBAdvancedPipeline(FeaturesPipeline, TabularDataFeatures):
             transformer_list.append(le_part)
 
         # get target encoded part
-        te_part = self.get_categorical_raw(train, te)
+        te_part = self.get_categorical_raw(train, te_lst)
         if te_part is not None:
             te_part = SequentialTransformer([te_part, target_encoder()])
             transformer_list.append(te_part)

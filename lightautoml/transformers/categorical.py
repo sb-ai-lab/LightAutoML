@@ -24,7 +24,7 @@ from ..dataset.roles import NumericRole
 from .base import LAMLTransformer
 
 
-# type - something that can be convered to pandas dataset
+# type - something that can be converted to pandas dataset
 NumpyOrPandas = Union[NumpyDataset, PandasDataset]
 NumpyOrSparse = Union[NumpyDataset, CSRSparseDataset]
 

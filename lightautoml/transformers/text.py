@@ -708,7 +708,7 @@ class AutoNLPWrap(LAMLTransformer):
                             # Dict of embeddings checker
                             emb_size = next(iter(model.values())).shape[0]
                         except:
-                            raise ValueError("Unrecognized embedding dimention, please specify it in model_params")
+                            raise ValueError("Unrecognized embedding dimension, please specify it in model_params")
         try:
             model = model.wv
         except:

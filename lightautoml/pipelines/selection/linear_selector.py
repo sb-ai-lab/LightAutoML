@@ -22,7 +22,7 @@ class HighCorrRemoval(SelectionPipeline):
         corr_co: Similarity threshold.
         subsample: Number (int) of samples, or frac (float) from full dataset.
         random_state: Random seed for subsample.
-        **kwargs: Addtional parameters. Used for initialiation of parent class.
+        **kwargs: Additional parameters. Used for initialization of parent class.
 
     """
 

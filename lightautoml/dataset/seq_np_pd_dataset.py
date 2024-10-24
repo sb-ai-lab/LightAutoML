@@ -142,7 +142,7 @@ class SeqNumpyPandasDataset(PandasDataset):
             roles: Roles specifier.
             idx: sequential indexes. Each element consists of corresponding sequence in data table.
             task: Task specifier.
-            name: name of currnet dataset.
+            name: name of current dataset.
             scheme: dict of relations of current dataset with others.
             **kwargs: Series, array like attrs target, group etc...
 
