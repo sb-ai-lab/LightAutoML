@@ -17,6 +17,7 @@ build:
       - asdf global poetry 1.1.5
       - poetry config virtualenvs.create false
       - poetry run python scripts/poetry_fix.py -c
+      - poetry install setuptools==70.0.0
     post_install:
       - poetry install -E all
 
