@@ -87,7 +87,7 @@ cb_params:
 
 # params for RandomForest MLAlgo. Note - params are default and may be changed during train if not freeze_defaults
 rf_params:
-  # Look for RF train params here. (thread_count will be rewrited by global preset's cpu limit)
+  # Look for RF train params here. (thread_count will be rewritten by global preset's cpu limit)
   default_params:
   freeze_defaults: False
 

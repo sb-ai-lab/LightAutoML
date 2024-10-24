@@ -55,7 +55,7 @@ from lightautoml.ml_algo.tuning.optuna import OptunaTuner
 #         train_valid_iterator=iterator,
 #     )
 
-#     # check that the hyperparameters values are in the difined search space
+#     # check that the hyperparameters values are in the defined search space
 #     for trial in params_tuner.study.get_trials():
 #         assert (trial.params["feature_fraction"] >= 0) and (trial.params["feature_fraction"] <= 1)
 #         assert trial.params["min_sum_hessian_in_leaf"] in [0.5, 0.8]

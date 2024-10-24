@@ -27,7 +27,7 @@ Then,
     # Create virtual environment inside your project directory
     poetry config virtualenvs.in-project true
 
-    # If you want to update dependecies, run the command:
+    # If you want to update dependencies, run the command:
     poetry lock
 
     # Installation

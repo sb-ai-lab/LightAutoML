@@ -3,7 +3,7 @@ general_params:
   report: False
 
 reader_params:
-  # sample of data to perform analisys
+  # sample of data for analysis
   samples: 100000
   # minimum nan_rate in feature to keep feature
   max_nan_rate: 0.999

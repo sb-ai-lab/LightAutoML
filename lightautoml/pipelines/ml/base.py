@@ -90,7 +90,7 @@ class MLPipeline:
                 # case when model and tuner are defined
                 mod, tuner = mt_pair
             except (TypeError, ValueError):
-                # case when only model is definded
+                # case when only model is defined
                 mod, tuner = mt_pair, DefaultTuner()
 
             mod.set_prefix("Mod_{0}".format(n))

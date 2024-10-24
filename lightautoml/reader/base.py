@@ -66,7 +66,7 @@ class Reader:
     :class:`~lightautoml.dataset.base.LAMLDataset` from raw data.
     Takes data in different formats as input,
     drop obviously useless features,
-    estimates avaliable size and returns dataset.
+    estimates available size and returns dataset.
 
     Args:
         task: Task object
@@ -294,9 +294,9 @@ class PandasToPandasReader(Reader):
 
             # check if column is defined like target/group/weight etc ...
             if r.name in attrs_dict:
-                # defined in kwargs is rewrited.. TODO: Maybe raise warning if rewrited?
+                # defined in kwargs is rewritten.. TODO: Maybe raise warning if rewritten?
                 # TODO: Think, what if multilabel or multitask? Multiple column target ..
-                # TODO: Maybe for multilabel/multitask make target only avaliable in kwargs??
+                # TODO: Maybe for multilabel/multitask make target only available in kwargs??
                 if ((self.task.name == "multi:reg") or (self.task.name == "multilabel")) and (
                     attrs_dict[r.name] == "target"
                 ):
@@ -475,8 +475,8 @@ class PandasToPandasReader(Reader):
     def _guess_role(self, feature: Series) -> RoleType:
         """Try to infer role, simple way.
 
-        If convertable to float -> number.
-        Else if convertable to datetime -> datetime.
+        If convertible to float -> number.
+        Else if convertible to datetime -> datetime.
         Else category.
 
         Args:
@@ -525,7 +525,7 @@ class PandasToPandasReader(Reader):
             feature: Column from dataset.
 
         Returns:
-            ``True`` if nan ratio and freqency are not high.
+            ``True`` if nan ratio and frequency are not high.
 
         """
         if feature.isnull().mean() >= self.max_nan_rate:
@@ -597,8 +597,8 @@ class PandasToPandasReader(Reader):
         new_roles_dict = dataset.roles
         advanced_roles_params = deepcopy(self.advanced_roles_params)
         drop_co = advanced_roles_params.pop("drop_score_co")
-        # guess roles nor numerics
 
+        # guess roles nor numerics
         stat = get_numeric_roles_stat(
             dataset,
             manual_roles=manual_roles,
@@ -609,12 +609,11 @@ class PandasToPandasReader(Reader):
 
         if len(stat) > 0:
             # upd stat with rules
-
             stat = calc_encoding_rules(stat, **advanced_roles_params)
             new_roles_dict = {**new_roles_dict, **rule_based_roles_guess(stat)}
             top_scores.append(stat["max_score"])
-        #
-        # # # guess categories handling type
+
+        # guess categories handling type
         stat = get_category_roles_stat(
             dataset,
             random_state=self.random_state,
@@ -624,12 +623,11 @@ class PandasToPandasReader(Reader):
         if len(stat) > 0:
             # upd stat with rules
             # TODO: add sample params
-
             stat = calc_category_rules(stat)
             new_roles_dict = {**new_roles_dict, **rule_based_cat_handler_guess(stat)}
             top_scores.append(stat["max_score"])
-        #
-        # # get top scores of feature
+
+        # get top scores of feature
         if len(top_scores) > 0:
             top_scores = pd.concat(top_scores, axis=0)
             # TODO: Add sample params
@@ -904,7 +902,7 @@ class DictToPandasSeqReader(PandasToPandasReader):
             # check if column is defined like target/group/weight etc ...
             if feat in plain_features:
                 if r.name in attrs_dict:
-                    # defined in kwargs is rewrited.. TODO: Maybe raise warning if rewrited?
+                    # defined in kwargs is rewritten.. TODO: Maybe raise warning if rewritten?
 
                     if ((self.task.name == "multi:reg") or (self.task.name == "multilabel")) and (
                         attrs_dict[r.name] == "target"

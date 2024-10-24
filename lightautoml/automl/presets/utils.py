@@ -32,7 +32,7 @@ def calc_one_feat_imp(iters, level, feat, model, data, norm_score, target, metri
             if model.skip_conn:
 
                 try:
-                    # convert to initital dataset type
+                    # convert to initial dataset type
                     level_predictions = dataset.from_dataset(level_predictions)
                 except TypeError:
                     raise TypeError("Can not convert prediction dataset type to input features. Set skip_conn=False")
@@ -108,7 +108,7 @@ def calc_feats_permutation_imps(model, used_feats, data, target, metric, silent=
             level_predictions = concatenate(level_predictions)
             if model.skip_conn:
                 try:
-                    # convert to initital dataset type
+                    # convert to initial dataset type
                     level_predictions = data.from_dataset(level_predictions)
                 except TypeError:
                     raise TypeError("Can not convert prediction dataset type to input features. Set skip_conn=False")

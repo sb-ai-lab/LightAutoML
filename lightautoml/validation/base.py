@@ -238,7 +238,7 @@ class HoldoutIterator(TrainValidIterator):
 class CustomIterator(TrainValidIterator):
     """Iterator that uses function to create folds indexes.
 
-    Usefull for example - classic timeseries splits.
+    Useful for example - classic timeseries splits.
 
     """
 

@@ -82,7 +82,7 @@ class TimeUtilization:
     """Class that helps to utilize given time to :class:`~lightautoml.automl.presets.base.AutoMLPreset`.
 
     Useful to calc benchmarks and compete
-    It takes list of config files as input and run it white time limit exceeded.
+    It takes a list of config files as input and runs it until a time limit is exceeded.
     If time left - it can perform multistart on same configs with new random state.
     In best case - blend different configurations of single preset.
     In worst case - averaging multiple automl's with different states.

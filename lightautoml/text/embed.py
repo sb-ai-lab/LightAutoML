@@ -1,4 +1,4 @@
-"""Neural Net modules for differen data types."""
+"""Neural Net modules for different data types."""
 
 import logging
 
