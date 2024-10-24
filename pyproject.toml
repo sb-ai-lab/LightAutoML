@@ -179,6 +179,6 @@ use_parentheses = true
 filter_files = true
 
 [tool.codespell]
-skip = '*.git,*.csv,./lightautoml/addons/hypex/*,./lightautoml/addons/interpretation/*'
+skip = '*.git,*.csv,./lightautoml/addons/hypex/*,./lightautoml/addons/interpretation/*,*.ipynb'
 #
-ignore-words-list = 'LAMA,Lama,lama,MAPE,splitted'
+ignore-words-list = 'LAMA,Lama,lama,MAPE,mape,splitted,fpr'

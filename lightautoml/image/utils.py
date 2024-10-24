@@ -4,7 +4,7 @@ from PIL import Image
 
 
 def pil_loader(path: str) -> Image:
-    """Load image from pathes.
+    """Load image from paths.
 
     Args:
         path: Image path.

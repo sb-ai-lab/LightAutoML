@@ -126,7 +126,7 @@ class GroupByBase:
 
         Args:
             data (dataset): input data to extract ``feature_column``.
-            group_by_processor (GroupByProcessor): processor, containig groups.
+            group_by_processor (GroupByProcessor): processor, containing groups.
             feature_column (string): name of column to calculate statistics.
 
         Returns:

@@ -133,5 +133,5 @@ class CustomDataParallel(nn.DataParallel):
         return self.gather(outputs, self.output_device)
 
     def parallel_apply_predict(self, replicas, inputs, kwargs):
-        """Parrallel prediction."""
+        """Parallel prediction."""
         return parallel_apply_predict(replicas, inputs, kwargs, self.device_ids[: len(replicas)])

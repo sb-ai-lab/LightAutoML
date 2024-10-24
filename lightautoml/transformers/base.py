@@ -198,7 +198,7 @@ class UnionTransformer(LAMLTransformer):
         """Multi-process version of fit.
 
         Args:
-            dataset: Datatset to fit on.
+            dataset: Dataset to fit on.
 
         Returns:  # noqa: DAR202
             self.

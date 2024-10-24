@@ -27,7 +27,7 @@ base_dir = os.path.dirname(__file__)
 
 
 def upd_params(old: dict, new: dict) -> dict:
-    """Update dictonary of parameters.
+    """Update dictionary of parameters.
 
     Args:
         old: Old parameters.
@@ -53,7 +53,7 @@ class AutoMLPreset(AutoML):
     It's almost like AutoML, but with delayed initialization.
     Initialization starts on fit, some params are inferred from data.
     Preset should be defined via ``.create_automl`` method. Params should be set via yaml config.
-    Most usefull case - end-to-end model development.
+    Most useful case - end-to-end model development.
 
     Commonly _params kwargs (ex. timing_params) set via config file (config_path argument).
     If you need to change just few params, it's possible to pass it as dict of dicts, like json.

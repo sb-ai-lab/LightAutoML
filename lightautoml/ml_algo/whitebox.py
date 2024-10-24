@@ -131,8 +131,8 @@ class WbMLAlgo(TabularMLAlgo):
            Verbosity level
 
     freeze_defaults:
-        - ``True`` :  params may be rewrited depending on dataset.
-        - ``False``:  params may be changed only manually or with tuning.
+        - ``True`` :  params can be rewritten depending on dataset.
+        - ``False``:  params can be changed only manually or with tuning.
 
     timer: :class:`~lightautoml.utils.timer.Timer` instance or ``None``.
 

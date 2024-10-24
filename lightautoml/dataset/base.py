@@ -73,7 +73,7 @@ class LAMLDataset:
             features: Feature names or None for empty data.
             roles: Features roles or None for empty data.
             task: Task for dataset if train/valid.
-            **kwargs: Special named array of attributes (target, group etc..).
+            **kwargs: Special named array of attributes (target, group etc.).
 
         """
         if features is None:
@@ -169,7 +169,7 @@ class LAMLDataset:
         idx = self._get_cols_idx(k)
         # for case when setting col and change role
         if type(val) is LAMLColumn:
-            assert val.role.dtype == self.roles[k].dtype, "Inplace changing types unavaliable."
+            assert val.role.dtype == self.roles[k].dtype, "Inplace changing types unavailable."
             self._set_col(self.data, idx, val.data)
             self.roles[k] = val.role
         # for case only changing column values

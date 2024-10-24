@@ -30,7 +30,7 @@ class WeightedAverageTransformer(TransformerMixin):
         embed_size: Size of embedding.
         weight_type: 'idf' for idf weights, 'sif' for
             smoothed inverse frequency weights, '1' for all weights are equal.
-        use_svd: Substract projection onto first singular vector.
+        use_svd: Subtract projection onto first singular vector.
         alpha: Param for sif weights.
         verbose: Add prints.
         **kwargs: Unused arguments.
@@ -109,16 +109,16 @@ class WeightedAverageTransformer(TransformerMixin):
     def fit(self, sentences: Sequence[str]):  # noqa: D102
         self.reset_statistic()
         dict_vec = DictVectorizer()
-        occurances = dict_vec.fit_transform([dict(Counter(x)) for x in sentences])
+        occurrences = dict_vec.fit_transform([dict(Counter(x)) for x in sentences])
 
         if self.weight_type == "idf":
-            nd = np.asarray((occurances > 0).sum(axis=0)).ravel()
-            idf = np.log1p((occurances.shape[0] + 1) / (nd + 1))
+            nd_value = np.asarray((occurrences > 0).sum(axis=0)).ravel()
+            idf = np.log1p((occurrences.shape[0] + 1) / (nd_value + 1))
             self.weights_ = dict(zip(dict_vec.feature_names_, idf))
 
         elif self.weight_type == "sif":
-            nd = np.asarray((occurances > 0).sum(axis=0)).ravel()
-            pw = (nd + 1) / (occurances.shape[0] + 1)
+            nd_value = np.asarray((occurrences > 0).sum(axis=0)).ravel()
+            pw = (nd_value + 1) / (occurrences.shape[0] + 1)
             pw = self.alpha / (self.alpha + pw)
             self.weights_ = dict(zip(dict_vec.feature_names_, pw))
 

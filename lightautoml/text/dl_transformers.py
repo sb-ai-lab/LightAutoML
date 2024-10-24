@@ -144,7 +144,7 @@ class DLTransformer(TransformerMixin):
 
     @torch.no_grad()
     def transform(self, data: Sequence[str]) -> np.ndarray:
-        """Embedded sentece."""
+        """Embedded sentence."""
         dataset = self.dataset(data, **self.dataset_params)
         loader = DataLoader(dataset, collate_fn=collate_dict, **self.loader_params)
 

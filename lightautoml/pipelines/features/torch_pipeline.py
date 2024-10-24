@@ -44,7 +44,7 @@ class TorchSimpleFeatures(FeaturesPipeline, TabularDataFeatures):
         multiclass_te_co: int = 3,
         use_qnt: bool = True,
         n_quantiles: Optional[int] = None,
-        subsample: int = 1e9,
+        subsample: int = 10 ** 9,
         output_distribution: str = "normal",
         noise: float = 1e-3,
         qnt_factor: int = 30,

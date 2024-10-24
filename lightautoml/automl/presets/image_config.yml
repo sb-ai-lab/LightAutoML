@@ -12,9 +12,9 @@ general_params:
   skip_conn: True
 
 reader_params:
-  # sample of data to perform analisys
+  # sample of data for analysis
   samples: 100000
-  # minimum nan_rate in feature to keep feature
+  # maximum nan_rate in feature to keep feature
   max_nan_rate: 0.999
   # maximum frequency of top frequent value to keep feature
   max_constant_rate: 0.999
@@ -92,14 +92,14 @@ tuning_params:
 
 # params for BoostLGBM MLAlgo. Note - params are default and may be changed during train if not freeze_defaults
 lgb_params:
-  # Look for lightgbm train params here. (num_threads will be rewrited by global preset's cpu limit)
+  # Look for lightgbm train params here. (num_threads will be rewritten by global preset's cpu limit)
   default_params:
     num_threads: 100
   freeze_defaults: False
 
 # params for BoostCB MLAlgo. Note - params are default and may be changed during train if not freeze_defaults
 cb_params:
-  # Look for lightgbm train params here. (thread_count will be rewrited by global preset's cpu limit)
+  # Look for lightgbm train params here. (thread_count will be rewritten by global preset's cpu limit)
   default_params:
     # task type - auto based on gpu available
     task_type: 'CPU'
@@ -108,14 +108,14 @@ cb_params:
 
 # params for BoostLGBM MLAlgo. Note - params are default and may be changed during train if not freeze_defaults
 xgb_params:
-  # Look for lightgbm train params here. (num_threads will be rewrited by global preset's cpu limit)
+  # Look for lightgbm train params here. (num_threads will be rewritten by global preset's cpu limit)
   default_params:
     nthread: 100
   freeze_defaults: False
 
 # params for RandomForest MLAlgo. Note - params are default and may be changed during train if not freeze_defaults
 rf_params:
-  # Look for RF train params here. (thread_count will be rewrited by global preset's cpu limit)
+  # Look for RF train params here. (thread_count will be rewritten by global preset's cpu limit)
   default_params:
   freeze_defaults: False
 
@@ -137,9 +137,9 @@ gbm_pipeline_params:
   multiclass_te_co: 3
   # use groupby features
   use_groupby: False
-  # groupby types used in feature engeneering
+  # groupby types used in feature engineering
   groupby_types: [ 'delta_median', 'delta_mean', 'min', 'max', 'std', 'mode', 'is_mode' ]
-  # top features are choosen by cardinality or feature importance
+  # top features are chosen by cardinality or feature importance
   groupby_top_based_on: 'cardinality'
   # top categorical features to use in groupby transformer
   groupby_top_categorical: 3
@@ -163,9 +163,9 @@ linear_pipeline_params:
   multiclass_te_co: 3
   # use groupby features
   use_groupby: False
-  # groupby types used in feature engeneering
+  # groupby types used in feature engineering
   groupby_types: [ 'delta_median', 'delta_mean', 'min', 'max', 'std', 'mode', 'is_mode' ]
-  # top features are choosen by cardinality or feature importance
+  # top features are chosen by cardinality or feature importance
   groupby_top_based_on: 'cardinality'
   # top categorical features to use in groupby transformer
   groupby_top_categorical: 3

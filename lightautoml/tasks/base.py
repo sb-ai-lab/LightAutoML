@@ -233,27 +233,27 @@ class Task:
             - `'reg'` - for regression.
             - `'multiclass'` - for multiclass classification.
 
-        Avaliable losses for binary task:
+        Available losses for binary task:
 
             - `'logloss'` - (uses by default) Standard logistic loss.
 
-        Avaliable losses for regression task:
+        Available losses for regression task:
 
             - `'mse'` - (uses by default) Mean Squared Error.
             - `'mae'` - Mean Absolute Error.
             - `'mape'` - Mean Absolute Percentage Error.
             - `'rmsle'` - Root Mean Squared Log Error.
-            - `'huber'` - Huber loss, reqired params:
+            - `'huber'` - Huber loss, required params:
                 ``a`` - threshold between MAE and MSE losses.
             - `'fair'` - Fair loss, required params:
                 ``c`` - sets smoothness.
             - `'quantile'` - Quantile loss, required params:
                 ``q`` - sets quantile.
 
-        Avaliable losses for multi-classification task:
+        Available losses for multi-classification task:
 
             - `'crossentropy'` - (uses by default) Standard crossentropy function.
-            - `'f1'` - Optimizes F1-Macro Score, now avaliable for
+            - `'f1'` - Optimizes F1-Macro Score, now available for
                 LightGBM and NN models. Here we implicitly assume
                 that the prediction lies not in the set ``{0, 1}``,
                 but in the interval ``[0, 1]``.
@@ -264,20 +264,20 @@ class Task:
             - `'accuracy'` - Accuracy score (uses argmax prediction).
             - `'logloss'` - Standard logistic loss.
 
-        Avaliable metrics for regression task:
+        Available metrics for regression task:
 
             - `'mse'` - (uses by default) Mean Squared Error.
             - `'mae'` - Mean Absolute Error.
             - `'mape'` - Mean Absolute Percentage Error.
             - `'rmsle'` - Root Mean Squared Log Error.
-            - `'huber'` - Huber loss, reqired params:
+            - `'huber'` - Huber loss, required params:
                 ``a`` - threshold between MAE and MSE losses.
             - `'fair'` - Fair loss, required params:
                 ``c`` - sets smoothness.
             - `'quantile'` - Quantile loss, required params:
                 ``q`` - sets quantile.
 
-        Avaliable metrics for multi-classification task:
+        Available metrics for multi-classification task:
 
             - `'crossentropy'` - (uses by default) Standard cross-entropy loss.
             - `'auc'` - ROC-AUC of each class against the rest.

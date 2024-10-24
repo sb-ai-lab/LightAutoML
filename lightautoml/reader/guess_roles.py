@@ -111,7 +111,7 @@ def gini_normalized(y_true: np.ndarray, y_pred: np.ndarray, empty_slice: Optiona
 
     assert (
         y_pred.shape[1] == 1 or y_true.shape[1] == y_pred.shape[1]
-    ), "Shape missmatch. Only calculate NxM vs NxM or Nx1 vs NxM"
+    ), "Shape mismatch. Only calculate NxM vs NxM or Nx1 vs NxM"
     outp_size = y_true.shape[1]
 
     ginis = np.zeros((outp_size,), dtype=np.float32)

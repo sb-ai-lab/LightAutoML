@@ -43,7 +43,7 @@ def get_batch_ids(arr, batch_size):
     """Generator of batched sequences.
 
     Args:
-        arr: Sequense.
+        arr: Sequence.
         batch_size: Batch size.
 
     Yields:

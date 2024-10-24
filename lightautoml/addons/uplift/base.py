@@ -573,7 +573,7 @@ class AutoUplift(BaseAutoUplift):
             self.uplift_candidates.extend(dd_candidates)
 
     def _calculate_tabular_time(self):
-        # Number TabularAutoML in all posible uplift candidates
+        # Number TabularAutoML in all possible uplift candidates
         # TODO: rewrite this
         if self.has_report:
             num_tabular_automls = 16 if self.add_dd_candidates else 11
