@@ -1,3 +1,6 @@
 {
-    "path": "../../../examples/tutorials/Tutorial_5_uplift.ipynb"
+    "path": "../../../examples/tutorials/Tutorial_5_uplift.ipynb",
+    "extra-media": [
+        "../../../imgs"
+    ]
 }

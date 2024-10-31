@@ -1,3 +1,6 @@
 {
-    "path": "../../../examples/tutorials/Tutorial_7_ICE_and_PDP_interpretation.ipynb"
+    "path": "../../../examples/tutorials/Tutorial_7_ICE_and_PDP_interpretation.ipynb",
+    "extra-media": [
+        "../../../imgs"
+    ]
 }

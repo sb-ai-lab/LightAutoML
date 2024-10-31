@@ -1,3 +1,6 @@
 {
-    "path": "../../../examples/tutorials/Tutorial_9_neural_networks.ipynb"
+    "path": "../../../examples/tutorials/Tutorial_9_neural_networks.ipynb",
+    "extra-media": [
+        "../../../imgs"
+    ]
 }
