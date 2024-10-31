@@ -1,4 +1,4 @@
-<img src=docs/imgs/lightautoml_logo_color.png />
+<img src=imgs/lightautoml_logo_color.png />
 
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/lightautoml)](https://pypi.org/project/lightautoml)
 [![PyPI - Version](https://img.shields.io/pypi/v/lightautoml)](https://pypi.org/project/lightautoml)

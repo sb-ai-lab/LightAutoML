@@ -1,3 +1,6 @@
 {
-    "path": "../../../examples/tutorials/Tutorial_8_CV_preset.ipynb"
+    "path": "../../../examples/tutorials/Tutorial_8_CV_preset.ipynb",
+    "extra-media": [
+        "../../../imgs"
+    ]
 }

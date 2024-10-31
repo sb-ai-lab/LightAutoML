@@ -1,3 +1,6 @@
 {
-    "path": "../../../examples/tutorials/Tutorial_2_WhiteBox_AutoWoE.ipynb"
+    "path": "../../../examples/tutorials/Tutorial_2_WhiteBox_AutoWoE.ipynb",
+    "extra-media": [
+        "../../../imgs"
+    ]
 }

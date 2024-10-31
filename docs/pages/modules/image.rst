@@ -19,7 +19,7 @@ Image feature extractors based on color histograms and CNN embeddings.
     :template: classtemplate.rst
 
     CreateImageFeatures
-    EffNetImageEmbedder
+    TimmModelEmbedder
 
 
 PyTorch Image Datasets
@@ -32,8 +32,8 @@ PyTorch Image Datasets
     :nosignatures:
     :template: classtemplate.rst
 
-    ImageDataset
-    DeepImageEmbedder
+    ImageTimmDataset
+    DeepTimmImageEmbedder
 
 
 Utils
