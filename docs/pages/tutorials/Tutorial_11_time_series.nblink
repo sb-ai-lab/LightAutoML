@@ -1,3 +1,6 @@
 {
-    "path": "../../../examples/tutorials/Tutorial_11_time_series.ipynb"
+    "path": "../../../examples/tutorials/Tutorial_11_time_series.ipynb",
+    "extra-media": [
+        "../../../imgs"
+    ]
 }

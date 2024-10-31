@@ -1,3 +1,6 @@
 {
-    "path": "../../../examples/tutorials/Tutorial_12_Matching.ipynb"
+    "path": "../../../examples/tutorials/Tutorial_12_Matching.ipynb",
+    "extra-media": [
+        "../../../imgs"
+    ]
 }

@@ -1,3 +1,6 @@
 {
-    "path": "../../../examples/tutorials/Tutorial_6_custom_pipeline.ipynb"
+    "path": "../../../examples/tutorials/Tutorial_6_custom_pipeline.ipynb",
+    "extra-media": [
+        "../../../imgs"
+    ]
 }

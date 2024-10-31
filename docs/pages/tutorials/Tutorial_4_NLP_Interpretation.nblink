@@ -1,3 +1,6 @@
 {
-    "path": "../../../examples/tutorials/Tutorial_4_NLP_Interpretation.ipynb"
+    "path": "../../../examples/tutorials/Tutorial_4_NLP_Interpretation.ipynb",
+    "extra-media": [
+        "../../../imgs"
+    ]
 }
