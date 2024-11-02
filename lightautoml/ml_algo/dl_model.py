@@ -277,7 +277,7 @@ class TorchModel(TabularMLAlgo):
         params["metric"] = self.task.losses["torch"].metric_func
 
         if params["bert_name"] is None and params["use_text"]:
-            params["bert_name"] = _model_name_by_lang[params["lang"]]
+            params["bert_name"] = _model_name_by_lang[params.get("lang", "en")]
 
         is_text = (len(params["text_features"]) > 0) and (params["use_text"]) and (params["device"].type == "cuda")
         is_cat = (len(params["cat_features"]) > 0) and (params["use_cat"])
@@ -309,7 +309,7 @@ class TorchModel(TabularMLAlgo):
             net_params={
                 "task": self.task,
                 "cont_embedder_": cont_embedder_by_name.get(params["cont_embedder"], LinearEmbedding)
-                if input_type_by_name[params["model"]] == "seq" and is_cont
+                if input_type_by_name.get(params["model"], "flat") == "seq" and is_cont
                 else cont_embedder_by_name_flat.get(params["cont_embedder"], ContEmbedder)
                 if is_cont
                 else None,
@@ -323,7 +323,7 @@ class TorchModel(TabularMLAlgo):
                 if is_cont
                 else None,
                 "cat_embedder_": cat_embedder_by_name.get(params["cat_embedder"], BasicCatEmbedding)
-                if input_type_by_name[params["model"]] == "seq" and is_cat
+                if input_type_by_name.get(params["model"], "flat") == "seq" and is_cat
                 else cat_embedder_by_name_flat.get(params["cat_embedder"], CatEmbedder)
                 if is_cat
                 else None,
