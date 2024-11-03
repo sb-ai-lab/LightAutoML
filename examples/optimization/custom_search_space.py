@@ -8,9 +8,8 @@ from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import train_test_split
 
 from lightautoml.automl.presets.tabular_presets import TabularAutoML
-from lightautoml.ml_algo.tuning.base import Distribution
-from lightautoml.ml_algo.tuning.base import SearchSpace
 from lightautoml.tasks import Task
+from lightautoml.ml_algo.tuning.base import Uniform
 
 
 # load and prepare data
@@ -22,8 +21,8 @@ automl = TabularAutoML(
     task=Task("binary"),
     lgb_params={
         "optimization_search_space": {
-            "feature_fraction": SearchSpace(Distribution.UNIFORM, low=0.5, high=1.0),
-            "min_sum_hessian_in_leaf": SearchSpace(Distribution.LOGUNIFORM, low=1e-3, high=10.0),
+            "feature_fraction": Uniform(low=0.5, high=1.0),
+            "min_sum_hessian_in_leaf": Uniform(low=1e-3, high=10.0, log=True),
         }
     },
 )

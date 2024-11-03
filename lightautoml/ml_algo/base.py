@@ -8,6 +8,7 @@ from copy import copy
 from typing import Any
 from typing import Dict
 from typing import List
+from typing import Callable
 from typing import Optional
 from typing import Sequence
 from typing import Tuple
@@ -48,7 +49,13 @@ class MLAlgo(ABC):
     """
 
     _default_params: Dict = {}
-    optimization_search_space: Dict = {}
+
+    # Dict is a default search space representation that is used for simple cases
+    # Callable is used for complex cases like conditional search space as described in
+    # LightAutoML/examples/optimization/conditional_parameters.py
+    # Called in _get_objective function in OptunaTuner class
+    optimization_search_space: Union[Dict, Callable] = {}
+
     # TODO: add checks here
     _fit_checks: Tuple = ()
     _transform_checks: Tuple = ()
