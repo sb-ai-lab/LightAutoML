@@ -21,10 +21,11 @@ cache:
     - ~/.cache/pip/
 
 stages:
+  - mirror
   - default
   - all_pythons
   - docs
-  - mirror
+  
 
 default:
   stage: default
