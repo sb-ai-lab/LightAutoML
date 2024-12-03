@@ -1,6 +1,8 @@
 workflow:
   rules:
-    - if: $CI_PIPELINE_SOURCE == "push"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: always
+    - when: never
 
 .job_template: &ssh_key_configuration
   before_script:
@@ -13,8 +15,46 @@ workflow:
     - echo "  LogLevel ERROR" >> ~/.ssh/config
     - echo "  UserKnownHostsFile /dev/null" >> ~/.ssh/config
 
+cache:
+  key: "$CI_JOB_NAME-$CI_COMMIT_REF_SLUG"
+  paths:
+    - ~/.cache/pip/
+
 stages:
+  - default
+  - all_pythons
+  - docs
   - mirror
+
+default:
+  stage: default
+  image: python:3.10
+  before_script:
+    - pip install tox
+  script:
+    - tox -e lint
+    - tox -e py310
+
+
+all_pythons:
+  stage: all_pythons
+  image: python:$PYTHON_VERSION
+  before_script:
+    - pip install tox
+  script:
+    - tox -e py${PYTHON_VERSION//./}
+  parallel:
+    matrix:
+      - PYTHON_VERSION: ["3.8", "3.9", "3.11", "3.12"]
+
+docs:
+  stage: docs
+  image: python:3.10
+  before_script:
+    - pip install tox
+  script:
+    - tox -e codespell,build
+
 
 mirror-code:
   <<: *ssh_key_configuration
