@@ -19,6 +19,8 @@ from sklearn.metrics import roc_auc_score
 from lightautoml.automl.presets.tabular_presets import TabularAutoML
 from lightautoml.tasks import Task
 
+RANDOM_STATE = 1234
+
 
 def main(dataset_name: str, cpu_limit: int, memory_limit: int):  # noqa D103
     cml_task = clearml.Task.get_task(clearml.config.get_remote_task_id())
@@ -36,6 +38,7 @@ def main(dataset_name: str, cpu_limit: int, memory_limit: int):  # noqa D103
 
     # =================================== automl config:
     automl = TabularAutoML(
+        debug=True,
         task=task,
         cpu_limit=cpu_limit,
         memory_limit=memory_limit,
@@ -45,6 +48,11 @@ def main(dataset_name: str, cpu_limit: int, memory_limit: int):  # noqa D103
         # },  # ['nn', 'mlp', 'dense', 'denselight', 'resnet', 'snn', 'node', 'autoint', 'fttransformer'] or custom torch model
         # nn_params={"n_epochs": 10, "bs": 512, "num_workers": 0, "path_to_save": None, "freeze_defaults": True},
         # nn_pipeline_params={"use_qnt": True, "use_te": False},
+        reader_params={
+            #     # 'n_jobs': N_THREADS,
+            #     "cv": 5,
+            "random_state": RANDOM_STATE,
+        },
     )
     # ===================================
 
