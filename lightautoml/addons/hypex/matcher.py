@@ -170,7 +170,7 @@ class Matcher:
         self.input_data = input_data
         if outcome is None:
             outcome = list()
-        self.outcomes = outcome if type(outcome) == list else [outcome]
+        self.outcomes = outcome if isinstance(outcome, list) else [outcome]
         self.treatment = treatment
         self.group_col = group_col
         self.info_col = info_col
