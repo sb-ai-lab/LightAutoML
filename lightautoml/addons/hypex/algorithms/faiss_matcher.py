@@ -122,7 +122,7 @@ class FaissMatcher:
 
         if self.info_col is not None:
             self.columns_del = self.columns_del + [x for x in self.info_col if x in self.df.columns]
-        self.outcomes = outcomes if type(outcomes) == list else [outcomes]
+        self.outcomes = outcomes if isinstance(outcomes, list) else [outcomes]
         self.treatment = treatment
 
         if features is None:

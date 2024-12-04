@@ -25,7 +25,7 @@ stages:
   - default
   - all_pythons
   - docs
-  
+
 
 default:
   stage: default

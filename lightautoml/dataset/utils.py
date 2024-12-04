@@ -116,7 +116,7 @@ def numpy_or_pandas_and_seq_concat(
     assert len(datasets) == 2, "should be 1 sequential and 1 plain dataset"
     # get 1 numpy / pandas dataset
     for n, dataset in enumerate(datasets):
-        if type(dataset) == SeqNumpyPandasDataset:
+        if isinstance(dataset, SeqNumpyPandasDataset):
             seq_dataset = dataset
         else:
             plain_dataset = dataset

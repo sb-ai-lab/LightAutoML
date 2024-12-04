@@ -153,7 +153,7 @@ class OptunaTuner(ParamsTuner):
         ml_algo = deepcopy(ml_algo)
 
         flg_new_iterator = False
-        if self._fit_on_holdout and type(train_valid_iterator) != HoldoutIterator:
+        if self._fit_on_holdout and not isinstance(train_valid_iterator, HoldoutIterator):
             train_valid_iterator = train_valid_iterator.convert_to_holdout_iterator()
             flg_new_iterator = True
 
@@ -381,7 +381,7 @@ class DLOptunaTuner(ParamsTuner):
         ml_algo = deepcopy(ml_algo)
 
         flg_new_iterator = False
-        if self._fit_on_holdout and type(train_valid_iterator) != HoldoutIterator:
+        if self._fit_on_holdout and not isinstance(train_valid_iterator, HoldoutIterator):
             train_valid_iterator = train_valid_iterator.convert_to_holdout_iterator()
             flg_new_iterator = True
 
