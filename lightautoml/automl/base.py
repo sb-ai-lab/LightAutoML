@@ -185,6 +185,20 @@ class AutoML:
         self.timer.start()
         train_dataset = self.reader.fit_read(train_data, train_features, roles)
 
+        # Saving class mapping
+        if self.reader.task.name == "binary":
+            self.classes_ = [1]
+        elif self.reader.task.name == "multi:reg":
+            self.classes_ = roles["target"]
+        elif self.reader.task.name == "reg":
+            self.classes_ = [roles["target"]]
+        else:
+            self.classes_ = (
+                sorted(self.reader.class_mapping, key=self.reader.class_mapping.get, reverse=False)
+                if self.reader.class_mapping
+                else None
+            )
+
         assert (
             len(self._levels) <= 1 or train_dataset.folds is not None
         ), "Not possible to fit more than 1 level without cv folds"
@@ -259,7 +273,7 @@ class AutoML:
             else:
                 break
 
-        blended_prediction, last_pipes = self.blender.fit_predict(level_predictions, pipes)
+        blended_prediction, last_pipes = self.blender.fit_predict(level_predictions, pipes, self.classes_)
         self.levels.append(last_pipes)
 
         self.reader.upd_used_features(remove=list(set(self.reader.used_features) - set(self.collect_used_feats())))
