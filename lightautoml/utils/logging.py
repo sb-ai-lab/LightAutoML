@@ -120,7 +120,7 @@ def verbosity_to_loglevel(verbosity: int, extended=True):
 
 def get_stdout_level():
     for handler in _logger.handlers:
-        if type(handler) == logging.StreamHandler:
+        if isinstance(handler, logging.StreamHandler):
             return handler.level
     return _logger.getEffectiveLevel()
 
@@ -131,7 +131,7 @@ def set_stdout_level(level):
     has_console_handler = False
 
     for handler in _logger.handlers:
-        if type(handler) == logging.StreamHandler:
+        if isinstance(handler, logging.StreamHandler):
             if handler.level == level:
                 has_console_handler = True
             else:
@@ -150,7 +150,7 @@ def add_filehandler(filename: str, level=logging.DEBUG):
         has_file_handler = False
 
         for handler in _logger.handlers:
-            if type(handler) == logging.FileHandler:
+            if isinstance(handler, logging.FileHandler):
                 if handler.baseFilename == filename or handler.baseFilename == os.path.join(os.getcwd(), filename):
                     has_file_handler = True
                 else:
@@ -172,7 +172,7 @@ def add_filehandler(filename: str, level=logging.DEBUG):
             _logger.addHandler(file_handler)
     else:
         for handler in _logger.handlers:
-            if type(handler) == logging.FileHandler:
+            if isinstance(handler, logging.FileHandler):
                 _logger.handlers.remove(handler)
 
 

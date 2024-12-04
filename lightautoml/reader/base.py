@@ -288,7 +288,7 @@ class PandasToPandasReader(Reader):
 
         for feat in parsed_roles:
             r = parsed_roles[feat]
-            if type(r) == str:
+            if isinstance(r, str):
                 # get default role params if defined
                 r = self._get_default_role_from_str(r)
 
@@ -317,7 +317,7 @@ class PandasToPandasReader(Reader):
         assert "target" in kwargs, "Target should be defined"
         if self.task.name in ["multi:reg", "multilabel"]:
             kwargs["target"] = train_data.loc[:, kwargs["target"]]
-        self.target = kwargs["target"].name if type(kwargs["target"]) == pd.Series else kwargs["target"].columns
+        self.target = kwargs["target"].name if isinstance(kwargs["target"], pd.Series) else kwargs["target"].columns
         kwargs["target"] = self._create_target(kwargs["target"])
 
         # TODO: Check target and task
@@ -767,7 +767,7 @@ class DictToPandasSeqReader(PandasToPandasReader):
 
             if feat in parsed_roles:
                 r = parsed_roles[feat]
-                if type(r) == str:
+                if isinstance(r, str):
                     # get default role params if defined
                     r = self._get_default_role_from_str(r)
                 # handle datetimes
@@ -895,7 +895,7 @@ class DictToPandasSeqReader(PandasToPandasReader):
 
         for feat in parsed_roles:
             r = parsed_roles[feat]
-            if type(r) == str:
+            if isinstance(r, str):
                 # get default role params if defined
                 r = self._get_default_role_from_str(r)
 
@@ -932,7 +932,7 @@ class DictToPandasSeqReader(PandasToPandasReader):
         if isinstance(kwargs["target"], list):
             kwargs["target"] = plain_data.loc[:, kwargs["target"]]
 
-        self.target = kwargs["target"].name if type(kwargs["target"]) == pd.Series else kwargs["target"].columns
+        self.target = kwargs["target"].name if isinstance(kwargs["target"], pd.Series) else kwargs["target"].columns
         kwargs["target"] = self._create_target(kwargs["target"])
 
         # TODO: Check target and task
