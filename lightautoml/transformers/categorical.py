@@ -9,6 +9,7 @@ from typing import cast
 
 import numpy as np
 
+from pandas import __version__ as pandas_version
 from pandas import DataFrame
 from pandas import Series
 from pandas import concat
@@ -153,14 +154,21 @@ class LabelEncoder(LAMLTransformer):
             role = roles[i]
             # TODO: think what to do with this warning
             co = role.unknown
-            cnts = (
-                subs[i]
-                .value_counts(dropna=False)
-                .reset_index()
-                .sort_values([i, "index"], ascending=[False, True])
-                .set_index("index")
-            )
-            vals = cnts[cnts[i] > co].index.values
+
+            if pandas_version < "2.0.0":
+                cnts = (
+                    subs[i]
+                    .value_counts(dropna=False)
+                    .reset_index()
+                    .sort_values([i, "index"], ascending=[False, True])
+                    .set_index("index")
+                )
+                t = cnts[i]
+            else:
+                cnts = subs[i].value_counts(dropna=False).sort_values(ascending=True)
+                t = cnts
+
+            vals = cnts[t > co].index.values
             self.dicts[i] = Series(np.arange(vals.shape[0], dtype=np.int32) + 1, index=vals)
 
         return self
@@ -1023,10 +1031,17 @@ class OrdinalEncoder(LabelEncoder):
                 flg_number = False
 
             if not flg_number:
+
+                value_counts_index = "index"
+                if pandas_version >= "2.0.0":
+                    value_counts_index = "count"
+
                 co = role.unknown
                 cnts = subs[i].value_counts(dropna=True)
                 cnts = cnts[cnts > co].reset_index()
-                cnts = Series(cnts["index"].astype(str).rank().values, index=cnts["index"].values)
+                cnts = Series(
+                    cnts[value_counts_index].astype(str).rank().values, index=cnts[value_counts_index].values
+                ).drop_duplicates()
                 cnts = concat([cnts, Series([cnts.shape[0] + 1], index=[np.nan])])
                 self.dicts[i] = cnts
 

@@ -522,8 +522,9 @@ class PandasToPandasReader(Reader):
         # check if it's datetime
         dt_role = DatetimeRole(np.datetime64, date_format=date_format)
         try:
-            # TODO: check all notnans and set coerce errors
-            t = cast(pd.Series, pd.to_datetime(feature, infer_datetime_format=False, format=date_format))
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore")
+                t = cast(pd.Series, pd.to_datetime(feature, format=date_format))
         except (ValueError, AttributeError, TypeError):
             # else category
             return CategoryRole(object)

@@ -270,9 +270,7 @@ class BoostLGBM(TabularMLAlgo, ImportanceEstimator):
                 lgb_kwargs["early_stopping_rounds"] = early_stopping_rounds
                 lgb_kwargs["verbose_eval"] = verbose_eval
 
-            if lgb.__version__ >= "4.0.0":
-                lgb_kwargs["params"]["objective"] = fobj
-            else:
+            if lgb.__version__ < "4.0.0":
                 lgb_kwargs["fobj"] = fobj
 
             model = lgb.train(**lgb_kwargs)

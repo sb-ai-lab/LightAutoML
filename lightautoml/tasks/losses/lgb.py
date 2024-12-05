@@ -143,13 +143,15 @@ class LGBLoss(Loss):
         fw_func: Optional[Callable] = None,
         bw_func: Optional[Callable] = None,
     ):
+        self.metric = None
+        self.fobj = None
+        self.fobj_name = None
+
         if loss in _lgb_loss_mapping:
             fobj, fw_func, bw_func = _lgb_loss_mapping[loss]
             if type(fobj) is str:
                 self.fobj_name = fobj
-                self.fobj = None
             else:
-                self.fobj_name = None
                 self.fobj = fobj
             # map param name for known objectives
             if self.fobj_name in _lgb_loss_params_mapping:
@@ -160,9 +162,7 @@ class LGBLoss(Loss):
             # set lgb style objective
             if type(loss) is str:
                 self.fobj_name = loss
-                self.fobj = None
             else:
-                self.fobj_name = None
                 self.fobj = loss
 
         # set forward and backward transformations
