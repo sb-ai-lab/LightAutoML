@@ -130,7 +130,7 @@ class TorchSimpleFeatures(FeaturesPipeline, TabularDataFeatures):
         # process datetimes
         datetimes = get_columns_by_role(train, "Datetime")
         if len(datetimes) > 0:
-            dt_processing = SequentialTransformer([ColumnsSelector(keys=datetimes), TimeToNum()])
+            dt_processing = SequentialTransformer([ColumnsSelector(keys=datetimes), TimeToNum(), FillnaMean()])
             transformers_list.append(dt_processing)
 
         # process numbers

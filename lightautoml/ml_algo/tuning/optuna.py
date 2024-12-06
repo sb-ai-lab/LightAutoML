@@ -179,7 +179,9 @@ class OptunaTuner(ParamsTuner):
             df = study.trials_dataframe()
 
             if df[df["state"] == "FAIL"].shape[0] / self.estimated_n_trials > self.fail_tolerance:
-                raise Exception(f"Too much trials was failed ({df[df["state"] == "FAIL"].shape[0]} of {df.shape[0]}). Check the model or search space for it.")
+                raise Exception(
+                    f"Too much trials was failed ({df[df['state'] == 'FAIL'].shape[0]} of {df.shape[0]}). Check the model or search space for it."
+                )
 
         try:
             # Custom progress bar
@@ -342,7 +344,7 @@ class DLOptunaTuner(ParamsTuner):
         direction: Optional[str] = "maximize",
         fit_on_holdout: bool = True,
         random_state: int = 42,
-        fail_tolerance = 0.5,
+        fail_tolerance=0.5,
     ):
         self.timeout = timeout
         self.n_trials = n_trials
@@ -416,7 +418,9 @@ class DLOptunaTuner(ParamsTuner):
             df = study.trials_dataframe()
 
             if df[df["state"] == "FAIL"].shape[0] / self.estimated_n_trials > self.fail_tolerance:
-                raise Exception(f"Too much trials was failed ({df[df["state"] == "FAIL"].shape[0]} of {df.shape[0]}). Check the model or search space for it.")
+                raise Exception(
+                    f"Too much trials was failed ({df[df['state'] == 'FAIL'].shape[0]} of {df.shape[0]}). Check the model or search space for it."
+                )
 
         try:
             # Custom progress bar
