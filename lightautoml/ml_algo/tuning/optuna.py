@@ -107,6 +107,7 @@ class OptunaTuner(ParamsTuner):
         direction: Optional[str] = "maximize",
         fit_on_holdout: bool = True,
         random_state: int = 42,
+        fail_tolerance: float = 0.5,
     ):
         self.timeout = timeout
         self.n_trials = n_trials
@@ -114,6 +115,7 @@ class OptunaTuner(ParamsTuner):
         self.direction = direction
         self._fit_on_holdout = fit_on_holdout
         self.random_state = random_state
+        self.fail_tolerance = fail_tolerance
 
     def _upd_timeout(self, timeout):
         self.timeout = min(self.timeout, timeout)
@@ -173,6 +175,12 @@ class OptunaTuner(ParamsTuner):
                 f"\x1b[1mTrial {len(study.trials)}\x1b[0m with hyperparameters {trial.params} scored {trial.value} in {trial.duration}"
             )
 
+        def check_fail_tolerance(study: optuna.study.Study, trial: optuna.trial.FrozenTrial):
+            df = study.trials_dataframe()
+
+            if df[df["state"] == "FAIL"].shape[0] / self.estimated_n_trials > self.fail_tolerance:
+                raise Exception(f"Too much trials was failed ({df[df["state"] == "FAIL"].shape[0]} of {df.shape[0]}). Check the model or search space for it.")
+
         try:
             # Custom progress bar
             def custom_progress_bar(study: optuna.study.Study, trial: optuna.trial.FrozenTrial):
@@ -196,10 +204,11 @@ class OptunaTuner(ParamsTuner):
                 n_trials=self.n_trials,
                 timeout=self.timeout,
                 callbacks=(
-                    [update_trial_time, custom_progress_bar]
+                    [update_trial_time, check_fail_tolerance, custom_progress_bar]
                     if get_stdout_level() in [logging.INFO, logging.INFO2]
-                    else [update_trial_time]
+                    else [update_trial_time, check_fail_tolerance]
                 ),
+                catch=[Exception],
             )
 
             # Close the progress bar if it was initialized
@@ -333,6 +342,7 @@ class DLOptunaTuner(ParamsTuner):
         direction: Optional[str] = "maximize",
         fit_on_holdout: bool = True,
         random_state: int = 42,
+        fail_tolerance = 0.5,
     ):
         self.timeout = timeout
         self.n_trials = n_trials
@@ -340,6 +350,7 @@ class DLOptunaTuner(ParamsTuner):
         self.direction = direction
         self._fit_on_holdout = fit_on_holdout
         self.random_state = random_state
+        self.fail_tolerance = fail_tolerance
 
     def _upd_timeout(self, timeout):
         self.timeout = min(self.timeout, timeout)
@@ -401,6 +412,12 @@ class DLOptunaTuner(ParamsTuner):
                 f"\x1b[1mTrial {len(study.trials)}\x1b[0m with hyperparameters {trial.params} scored {trial.value} in {trial.duration}"
             )
 
+        def check_fail_tolerance(study: optuna.study.Study, trial: optuna.trial.FrozenTrial):
+            df = study.trials_dataframe()
+
+            if df[df["state"] == "FAIL"].shape[0] / self.estimated_n_trials > self.fail_tolerance:
+                raise Exception(f"Too much trials was failed ({df[df["state"] == "FAIL"].shape[0]} of {df.shape[0]}). Check the model or search space for it.")
+
         try:
             # Custom progress bar
             def custom_progress_bar(study: optuna.study.Study, trial: optuna.trial.FrozenTrial):
@@ -424,10 +441,11 @@ class DLOptunaTuner(ParamsTuner):
                 n_trials=self.n_trials,
                 timeout=self.timeout,
                 callbacks=(
-                    [update_trial_time, custom_progress_bar]
+                    [update_trial_time, check_fail_tolerance, custom_progress_bar]
                     if get_stdout_level() in [logging.INFO, logging.INFO2]
-                    else [update_trial_time]
+                    else [update_trial_time, check_fail_tolerance]
                 ),
+                catch=[Exception],
             )
 
             # Close the progress bar if it was initialized
