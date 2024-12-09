@@ -13,6 +13,7 @@ from typing import Tuple
 from typing import TypeVar
 from typing import Union
 from typing import cast
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -107,7 +108,7 @@ class Reader:
         train_data: Any,
         features_names: Optional[List[str]] = None,
         roles: UserRolesDefinition = None,
-        **kwargs: Any
+        **kwargs: Any,
     ):
         """Abstract function to get dataset with initial feature selection."""
         raise NotImplementedError
@@ -231,7 +232,7 @@ class PandasToPandasReader(Reader):
         max_score_rate: float = 0.2,
         abs_score_val: float = 0.04,
         drop_score_co: float = 0.01,
-        **kwargs: Any
+        **kwargs: Any,
     ):
         super().__init__(task)
         self.samples = samples
@@ -443,6 +444,24 @@ class PandasToPandasReader(Reader):
         # WARNING: Multilabel task
         self._n_classes = len(unqiues)
 
+        # if we have multiclass, cv parameter should be less or equal than quantity of samples in the smallest class
+        if self.task.name == "multiclass":
+            # smallest - quantity of samples in the smallest class
+            target_val_counts = target.value_counts(dropna=False)
+            smallest = int(target_val_counts.values[-1])
+            smallest_class = target_val_counts.index[-1]
+            if smallest == 1:
+                # some class is represented by 1 sample, so we cannot split dataset correctly
+                raise ValueError(
+                    f"Class {smallest_class} of target has only 1 sample, dataset cannot be splitted stratified"
+                )
+            elif smallest < self.cv:
+                # we can split dataset correctly, but to do this we change cv parameter for this and warn user about it
+                warnings.warn(
+                    f"Target class {smallest_class} has only {smallest} samples in the dataset, which is less than {self.cv} (cross-validation parameter), Last one will be changed to {smallest} (not recommended)"
+                )
+                self.cv = smallest
+
         # case - target correctly defined and no mapping
         if (np.arange(srtd.shape[0]) == srtd).all():
             assert srtd.shape[0] > 1, "Less than 2 unique values in target"
@@ -503,8 +522,9 @@ class PandasToPandasReader(Reader):
         # check if it's datetime
         dt_role = DatetimeRole(np.datetime64, date_format=date_format)
         try:
-            # TODO: check all notnans and set coerce errors
-            t = cast(pd.Series, pd.to_datetime(feature, infer_datetime_format=False, format=date_format))
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore")
+                t = cast(pd.Series, pd.to_datetime(feature, format=date_format))
         except (ValueError, AttributeError, TypeError):
             # else category
             return CategoryRole(object)
@@ -698,7 +718,7 @@ class DictToPandasSeqReader(PandasToPandasReader):
         abs_score_val: float = 0.04,
         drop_score_co: float = 0.01,
         seq_params=None,
-        **kwargs: Any
+        **kwargs: Any,
     ):
 
         super().__init__(task)
@@ -740,7 +760,7 @@ class DictToPandasSeqReader(PandasToPandasReader):
             self.ti[dataset_name] = TopInd(
                 scheme=self.seq_params[dataset_name].get("scheme", None),
                 roles=self.meta[dataset_name]["roles"],
-                **self.seq_params[dataset_name]["params"]
+                **self.seq_params[dataset_name]["params"],
             )
             self.ti[dataset_name].read(seq_data, plain_data)
 
@@ -854,7 +874,7 @@ class DictToPandasSeqReader(PandasToPandasReader):
             else self.meta[dataset_name]["seq_idx_data"],
             name=dataset_name,
             scheme=self.seq_params[dataset_name].get("scheme", None),
-            **kwargs
+            **kwargs,
         )
         return seq_dataset, parsed_roles
 
@@ -1014,7 +1034,7 @@ class DictToPandasSeqReader(PandasToPandasReader):
             plain_data[self.plain_used_features] if plain_data is not None else pd.DataFrame(),
             self.plain_roles,
             task=self.task,
-            **kwargs
+            **kwargs,
         )
         if self.advanced_roles:
             new_roles = self.advanced_roles_guess(dataset, manual_roles=parsed_roles)
@@ -1029,7 +1049,7 @@ class DictToPandasSeqReader(PandasToPandasReader):
                 plain_data[self.plain_used_features] if plain_data is not None else pd.DataFrame(),
                 self.plain_roles,
                 task=self.task,
-                **kwargs
+                **kwargs,
             )
 
         for seq_name, values in self.meta.items():
@@ -1069,7 +1089,7 @@ class DictToPandasSeqReader(PandasToPandasReader):
                     idx=test_idx,
                     name=dataset_name,
                     scheme=self.seq_params[dataset_name].get("scheme", None),
-                    **kwargs
+                    **kwargs,
                 )
 
                 seq_datasets[dataset_name] = seq_dataset
@@ -1098,7 +1118,7 @@ class DictToPandasSeqReader(PandasToPandasReader):
             plain_data[self.plain_used_features] if plain_data is not None else pd.DataFrame(),
             self.plain_roles,
             task=self.task,
-            **kwargs
+            **kwargs,
         )
 
         dataset.seq_data = seq_datasets
