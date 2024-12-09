@@ -3,6 +3,7 @@ import argparse
 import os
 import pandas as pd
 import clearml
+import numpy as np
 
 
 def main(  # noqa D103
@@ -15,8 +16,8 @@ def main(  # noqa D103
     tags: list,
     dataset_project: str = None,
     dataset_partial_name: str = None,
+    n_datasets: int = -1,
 ):
-
     if (dataset_project is not None) or (dataset_partial_name is not None) or len(tags) > 0:
         dataset_list = pd.DataFrame(
             clearml.Dataset.list_datasets(
@@ -38,7 +39,9 @@ def main(  # noqa D103
 
     print(f"Running {len(dataset_list)} datasets:")
 
-    for dataset in dataset_list[:3]:
+    np.random.shuffle(dataset_list)
+
+    for dataset in dataset_list[:n_datasets]:
         if isinstance(dataset, str):
             dataset_name = dataset
             tags = ""
@@ -54,7 +57,7 @@ def main(  # noqa D103
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="")
     parser.add_argument("--dataset", type=str, help="dataset name or id", default="sampled_app_train")
-    parser.add_argument("--dataset_project", type=str, help="dataset_project", default=None)
+    parser.add_argument("--dataset_project", type=str, help="dataset_project", default="Datasets_with_metadata")
     parser.add_argument("--dataset_partial_name", type=str, help="dataset_partial_name", default=None)
     parser.add_argument("--tags", nargs="+", default=[], help="tags")
     parser.add_argument("--cpu_limit", type=int, help="cpu limit in n threads", default=8)
@@ -62,6 +65,7 @@ if __name__ == "__main__":
     parser.add_argument("--queue", type=str, help="clearml workers queue", default="cpu_queue")
     parser.add_argument("--project", type=str, help="clearml project", default="junk")
     parser.add_argument("--image", type=str, help="docker image", default="for_clearml:latest")
+    parser.add_argument("--n_datasets", type=int, help="number of datasets", default=-1)
     args = parser.parse_args()
 
     main(
@@ -74,4 +78,5 @@ if __name__ == "__main__":
         queue=args.queue,
         project=args.project,
         image=args.image,
+        n_datasets=args.n_datasets,
     )
