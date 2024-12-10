@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "LightAutoML"
-version = "0.4.0b1"
+version = "0.4.0"
 description = "Fast and customizable framework for automatic ML model creation (AutoML)"
 authors = [
     "Alexander Ryzhkov <alexmryzhkov@gmail.com>",
@@ -31,7 +31,7 @@ classifiers = [
 
 
 [tool.poetry.dependencies]
-python = ">=3.8, <3.13"
+python = ">=3.8"
 
 poetry-core = "^1.0.0"
 pandas = "*"
