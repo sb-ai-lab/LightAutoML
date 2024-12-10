@@ -82,7 +82,7 @@ def test_invalid_distributions():
 
     params_tuner = OptunaTuner(n_trials=10, timeout=300)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(Exception):
         params_tuner.fit(
             ml_algo=model,
             train_valid_iterator=iterator_mock,

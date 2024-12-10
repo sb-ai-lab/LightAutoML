@@ -78,6 +78,11 @@ lgb_params:
     num_threads: 100
   freeze_defaults: False
 
+xgb_params:
+  default_params:
+    nthread: 100
+  freeze_defaults: False
+
 # params for BoostCB MLAlgo
 cb_params:
   default_params:

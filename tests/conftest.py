@@ -84,6 +84,19 @@ def sampled_app_roles():
 
 
 @pytest.fixture()
+def ai92_value_77_train_test():
+    data = pd.read_csv(
+        "./examples/data/ai92_value_77.csv",
+    )
+
+    horizon = 30
+
+    train = data[:-horizon]
+    test = data[-horizon:]
+    return train, test, horizon
+
+
+@pytest.fixture()
 def binary_task():
     return Task("binary")
 

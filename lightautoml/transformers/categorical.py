@@ -15,6 +15,7 @@ from pandas import Series
 from pandas import concat
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.utils.murmurhash import murmurhash3_32
+from sklearn import __version__ as sklearn_version
 
 from ..dataset.base import LAMLDataset
 from ..dataset.np_pd_dataset import CSRSparseDataset
@@ -266,13 +267,19 @@ class OHEEncoder(LAMLTransformer):
             fill_rate = self.total_feats_cnt / (self.total_feats_cnt - max_idx.shape[0] + max_idx.sum())
             self.make_sparse = fill_rate < 0.2
 
+        # from 1.2.0 "sparse" is deprecated
+        if sklearn_version >= "1.2.0":
+            sparse_ohe = {"sparse_output": self.make_sparse}
+        else:
+            sparse_ohe = {"sparse": self.make_sparse}
+
         # create ohe
         self.ohe = OneHotEncoder(
             categories=[np.arange(x, y + 1, dtype=np.int32) for (x, y) in zip(min_idx, max_idx)],
             # drop=np.ones(max_idx.shape[0], dtype=np.int32),
             dtype=self.dtype,
-            sparse=self.make_sparse,
             handle_unknown="ignore",
+            **sparse_ohe,
         )
         self.ohe.fit(data)
 
