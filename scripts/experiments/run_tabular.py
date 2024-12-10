@@ -49,9 +49,9 @@ def main(dataset_name: str, cpu_limit: int, memory_limit: int):  # noqa D103
         cpu_limit=cpu_limit,
         memory_limit=memory_limit,
         timeout=10 * 60 * 60,
-        # general_params={
-        #     "use_algos": [["mlp"]]
-        # },  # ['nn', 'mlp', 'dense', 'denselight', 'resnet', 'snn', 'node', 'autoint', 'fttransformer'] or custom torch model
+        general_params={
+            # "use_algos": [["mlp"]]
+        },  # ['nn', 'mlp', 'dense', 'denselight', 'resnet', 'snn', 'node', 'autoint', 'fttransformer'] or custom torch model
         # nn_params={"n_epochs": 10, "bs": 512, "num_workers": 0, "path_to_save": None, "freeze_defaults": True},
         # nn_pipeline_params={"use_qnt": True, "use_te": False},
         reader_params={
