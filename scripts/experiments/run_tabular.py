@@ -22,6 +22,12 @@ from lightautoml.tasks import Task
 RANDOM_STATE = 1234
 
 
+def map_to_corect_order_of_classes(values, classes_):  # noqa D103
+    class_mapping = {n: x for (x, n) in enumerate(classes_)}
+    mapped = list(map(class_mapping.get, values))
+    return mapped
+
+
 def main(dataset_name: str, cpu_limit: int, memory_limit: int):  # noqa D103
     cml_task = clearml.Task.get_task(clearml.config.get_remote_task_id())
     logger = cml_task.get_logger()
@@ -72,8 +78,18 @@ def main(dataset_name: str, cpu_limit: int, memory_limit: int):  # noqa D103
 
     elif task_type == "multiclass":
         not_nan = np.any(~np.isnan(oof_predictions.data), axis=1)
-        metric_oof = log_loss(train[target_name].values[not_nan], oof_predictions.data[not_nan, :])
-        metric_ho = log_loss(test[target_name], test_predictions.data)
+        try:
+            metric_oof = log_loss(train[target_name].values[not_nan], oof_predictions.data[not_nan, :])
+            metric_ho = log_loss(test[target_name], test_predictions.data)
+        except:
+            # Some datasets can have dtype=float of target,
+            # so we must map this target for correct log_loss calculating (if we didn't caclulate it in the try block)
+            # and this mapping must be in the correct order so we extract automl.classes_ and map values
+            y_true = map_to_corect_order_of_classes(values=train[target_name].values[not_nan], classes_=automl.classes_)
+            metric_oof = log_loss(y_true, oof_predictions.data[not_nan, :])
+
+            y_true = map_to_corect_order_of_classes(values=test[target_name], classes_=automl.classes_)
+            metric_ho = log_loss(y_true, test_predictions.data)
 
     elif task_type == "reg":
         metric_oof = task.metric_func(train[target_name].values, oof_predictions.data[:, 0])
