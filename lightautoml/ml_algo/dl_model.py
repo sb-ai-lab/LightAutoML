@@ -618,32 +618,35 @@ class TorchModel(TabularMLAlgo):
 
         return pred
 
-    def _default_sample(self, trial: optuna.trial.Trial, estimated_n_trials: int, suggested_params: Dict) -> Dict:
-        """Implements simple tuning sampling strategy.
+    def _get_default_search_spaces(self, suggested_params: Dict, estimated_n_trials: int) -> Dict:
+        def sample(optimization_search_space, trial: optuna.trial.Trial, suggested_params: Dict) -> Dict:
+            """Implements simple tuning sampling strategy.
 
-        Args:
-            trial: Current optuna Trial.
-            estimated_n_trials: Estimated trials based on time spent on previous ones.
-            suggested_params: Suggested params
+            Args:
+                trial: Current optuna Trial.
+                estimated_n_trials: Estimated trials based on time spent on previous ones.
+                suggested_params: Suggested params
 
-        Returns:
-            Dict with Sampled params.
+            Returns:
+                Dict with Sampled params.
 
-        """
-        # optionally
-        trial_values = copy(suggested_params)
+            """
+            # optionally
+            trial_values = copy(suggested_params)
 
-        trial_values["bs"] = trial.suggest_categorical("bs", [2 ** i for i in range(6, 11)])
+            trial_values["bs"] = trial.suggest_categorical("bs", [2 ** i for i in range(6, 11)])
 
-        weight_decay_bin = trial.suggest_categorical("weight_decay_bin", [0, 1])
-        if weight_decay_bin == 0:
-            weight_decay = 0
-        else:
-            weight_decay = trial.suggest_loguniform("weight_decay", low=1e-6, high=1e-2)
+            weight_decay_bin = trial.suggest_categorical("weight_decay_bin", [0, 1])
+            if weight_decay_bin == 0:
+                weight_decay = 0
+            else:
+                weight_decay = trial.suggest_float("weight_decay", low=1e-6, high=1e-2, log=True)
 
-        lr = trial.suggest_loguniform("lr", low=1e-5, high=1e-1)
-        trial_values["opt_params"] = {
-            "lr": lr,
-            "weight_decay": weight_decay,
-        }
-        return trial_values
+            lr = trial.suggest_float("lr", low=1e-5, high=1e-1, log=True)
+            trial_values["opt_params"] = {
+                "lr": lr,
+                "weight_decay": weight_decay,
+            }
+            return trial_values
+
+        return sample

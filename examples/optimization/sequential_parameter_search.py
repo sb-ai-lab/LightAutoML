@@ -24,7 +24,7 @@ def sample(optimization_search_space, trial, suggested_params):
     for feature_fraction in range(10):
         feature_fraction = feature_fraction / 10
         trial_values["feature_fraction"] = feature_fraction
-        trial_values["min_sum_hessian_in_leaf"] = trial.suggest_uniform("min_sum_hessian_in_leaf", low=0.5, high=1)
+        trial_values["min_sum_hessian_in_leaf"] = trial.suggest_float("min_sum_hessian_in_leaf", low=0.5, high=1)
         yield trial_values
 
 
