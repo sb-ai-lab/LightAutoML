@@ -417,7 +417,7 @@ class WeightedBlender(Blender):
                 break
         logger.info(f"Blending: best score = \x1b[1m{best_score}\x1b[0m, best weights = \x1b[1m{best_weights}\x1b[0m")
 
-        return candidate
+        return best_weights
 
     @staticmethod
     def _prune_pipe(
