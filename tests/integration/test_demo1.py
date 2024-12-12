@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import os
-import pickle
-
+import tempfile
+from os.path import join as pjoin
 from sklearn.metrics import roc_auc_score
 
 from lightautoml.automl.base import AutoML
@@ -17,12 +16,15 @@ from lightautoml.pipelines.selection.importance_based import (
 )
 from lightautoml.reader.base import PandasToPandasReader
 
+from integration_utils import load_and_test_automl, get_target_name
 
-def test_cutoff_selector_in_pipeline(sampled_app_train_test, binary_task):
+
+def test_cutoff_selector_in_pipeline(sampled_app_train_test, sampled_app_roles, binary_task):
 
     train_data, test_data = sampled_app_train_test
 
     task = binary_task
+    target_name = get_target_name(sampled_app_roles)
 
     reader = PandasToPandasReader(task, cv=5, random_state=1)
 
@@ -93,25 +95,20 @@ def test_cutoff_selector_in_pipeline(sampled_app_train_test, binary_task):
         debug=True,
     )
 
-    automl.fit_predict(train_data, roles={"target": "TARGET"}, verbose=5)
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        path_to_save = pjoin(tmpdirname, "model.joblib")
+        automl.fit_predict(train_data, roles={"target": "TARGET"}, verbose=5, path_to_save=path_to_save)
 
-    # just checking if methods can be called
-    selector.get_features_score()
-    automl.levels[-1][0].ml_algos[0].get_features_score()
-    automl.levels[0][0].ml_algos[0].get_features_score()
-    automl.levels[0][0].ml_algos[1].get_features_score()
+        # just checking if methods can be called
+        selector.get_features_score()
+        automl.levels[-1][0].ml_algos[0].get_features_score()
+        automl.levels[0][0].ml_algos[0].get_features_score()
+        automl.levels[0][0].ml_algos[1].get_features_score()
 
-    test_pred = automl.predict(test_data)
+        test_pred = automl.predict(test_data)
+        test_score = roc_auc_score(test_data["TARGET"].values, test_pred.data[:, 0])
+        assert test_score > 0.65
 
-    with open("automl.pickle", "wb") as f:
-        pickle.dump(automl, f)
-
-    with open("automl.pickle", "rb") as f:
-        automl = pickle.load(f)
-
-    test_pred = automl.predict(test_data)
-    test_score = roc_auc_score(test_data["TARGET"].values, test_pred.data[:, 0])
-
-    assert test_score > 0.65
-
-    os.remove("automl.pickle")
+        load_and_test_automl(
+            path_to_save, task=task, score=test_score, pred=test_pred, data=test_data, target_name=target_name
+        )

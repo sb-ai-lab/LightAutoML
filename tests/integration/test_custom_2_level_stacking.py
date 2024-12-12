@@ -1,16 +1,11 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import os
-import pickle
 import tempfile
-
-from sklearn.metrics import log_loss
-from sklearn.metrics import mean_squared_error
+from os.path import join as pjoin
 from sklearn.metrics import roc_auc_score
 
 from lightautoml.automl.base import AutoML
-from lightautoml.dataset.roles import TargetRole
 from lightautoml.ml_algo.boost_lgbm import BoostLGBM
 from lightautoml.ml_algo.tuning.optuna import OptunaTuner
 from lightautoml.pipelines.features.lgb_pipeline import LGBSimpleFeatures
@@ -21,32 +16,7 @@ from lightautoml.pipelines.selection.importance_based import (
 )
 from lightautoml.reader.base import PandasToPandasReader
 
-
-def check_pickling(automl, ho_score, task, test, target_name):
-    with tempfile.TemporaryDirectory() as tmpdirname:
-        filename = os.path.join(tmpdirname, "automl.pickle")
-        with open(filename, "wb") as f:
-            pickle.dump(automl, f)
-
-        with open(filename, "rb") as f:
-            automl = pickle.load(f)
-
-        test_pred = automl.predict(test)
-
-        if task.name == "binary":
-            ho_score_new = roc_auc_score(test[target_name].values, test_pred.data[:, 0])
-        elif task.name == "multiclass":
-            ho_score_new = log_loss(test[target_name].map(automl.reader.class_mapping), test_pred.data)
-        elif task.name == "reg":
-            ho_score_new = mean_squared_error(test[target_name].values, test_pred.data[:, 0])
-
-        assert ho_score == ho_score_new
-
-
-def get_target_name(roles):
-    for key, value in roles.items():
-        if (key == "target") or isinstance(key, TargetRole):
-            return value
+from integration_utils import get_target_name, load_and_test_automl
 
 
 def test_manual_pipeline(sampled_app_train_test, sampled_app_roles, binary_task):
@@ -145,16 +115,30 @@ def test_manual_pipeline(sampled_app_train_test, sampled_app_roles, binary_task)
         skip_conn=False,
     )
 
-    # Start AutoML training
-    oof_predictions = automl.fit_predict(train, roles=sampled_app_roles)
+    with tempfile.TemporaryDirectory() as tmpdirname:
 
-    # predict for test data
-    ho_predictions = automl.predict(test)
+        path_to_save = pjoin(tmpdirname, "model.joblib")
+        # Start AutoML training
+        oof_predictions = automl.fit_predict(
+            train,
+            roles=sampled_app_roles,
+            path_to_save=path_to_save,
+        )
 
-    oof_score = roc_auc_score(train[target_name].values, oof_predictions.data[:, 0])
-    ho_score = roc_auc_score(test[target_name].values, ho_predictions.data[:, 0])
+        # predict for test data
+        ho_predictions = automl.predict(test)
 
-    assert oof_score > 0.67
-    assert ho_score > 0.67
+        oof_score = roc_auc_score(train[target_name].values, oof_predictions.data[:, 0])
+        ho_score = roc_auc_score(test[target_name].values, ho_predictions.data[:, 0])
 
-    check_pickling(automl, ho_score, binary_task, test, target_name)
+        assert oof_score > 0.67
+        assert ho_score > 0.67
+
+        load_and_test_automl(
+            filename=path_to_save,
+            task=binary_task,
+            score=ho_score,
+            pred=ho_predictions,
+            data=test,
+            target_name=target_name,
+        )

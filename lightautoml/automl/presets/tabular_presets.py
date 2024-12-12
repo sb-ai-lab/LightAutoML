@@ -683,6 +683,7 @@ class TabularAutoML(AutoMLPreset):
         valid_features: Optional[Sequence[str]] = None,
         log_file: str = None,
         verbose: int = 0,
+        path_to_save: Optional[str] = None,
     ) -> NumpyDataset:
         """Fit and get prediction on validation dataset.
 
@@ -713,6 +714,7 @@ class TabularAutoML(AutoMLPreset):
                 >=4 : the training process for every algorithm is displayed;
             log_file: Filename for writing logging messages. If log_file is specified,
                 the messages will be saved in a the file. If the file exists, it will be overwritten.
+            path_to_save: The path that joblib will use to save the model after fit stage is completed. Use *.joblib format.
 
         Returns:
             Dataset with predictions. Call ``.data`` to get predictions array.
@@ -734,7 +736,14 @@ class TabularAutoML(AutoMLPreset):
         if self.is_time_series:
             train = {"seq": {"seq0": train}}
 
-        oof_pred = super().fit_predict(train, roles=roles, cv_iter=cv_iter, valid_data=valid_data, verbose=verbose)
+        oof_pred = super().fit_predict(
+            train,
+            roles=roles,
+            cv_iter=cv_iter,
+            valid_data=valid_data,
+            verbose=verbose,
+            path_to_save=path_to_save,
+        )
 
         return cast(NumpyDataset, oof_pred)
 

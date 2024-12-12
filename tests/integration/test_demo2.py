@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import os
-import pickle
-
+import tempfile
+from os.path import join as pjoin
 
 from sklearn.metrics import roc_auc_score
 
@@ -21,9 +20,13 @@ from lightautoml.pipelines.selection.permutation_importance_based import (
 from lightautoml.reader.base import PandasToPandasReader
 
 
-def test_permutation_importance_based_iterative_selector(sampled_app_train_test, binary_task):
+from integration_utils import load_and_test_automl, get_target_name
+
+
+def test_permutation_importance_based_iterative_selector(sampled_app_train_test, sampled_app_roles, binary_task):
 
     train_data, test_data = sampled_app_train_test
+    target_name = get_target_name(sampled_app_roles)
 
     task = binary_task
 
@@ -97,18 +100,14 @@ def test_permutation_importance_based_iterative_selector(sampled_app_train_test,
         debug=True,
     )
 
-    automl.fit_predict(train_data, roles={"target": "TARGET"}, verbose=0)
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        path_to_save = pjoin(tmpdirname, "model.joblib")
+        automl.fit_predict(train_data, roles={"target": "TARGET"}, verbose=0, path_to_save=path_to_save)
 
-    test_pred = automl.predict(test_data)
-    test_score = roc_auc_score(test_data["TARGET"].values, test_pred.data[:, 0])
-    assert test_score > 0.55
+        test_pred = automl.predict(test_data)
+        test_score = roc_auc_score(test_data["TARGET"].values, test_pred.data[:, 0])
+        assert test_score > 0.55
 
-    with open("automl.pickle", "wb") as f:
-        pickle.dump(automl, f)
-
-    with open("automl.pickle", "rb") as f:
-        automl = pickle.load(f)
-
-    test_pred = automl.predict(test_data)
-
-    os.remove("automl.pickle")
+        load_and_test_automl(
+            path_to_save, task=task, score=test_score, pred=test_pred, data=test_data, target_name=target_name
+        )

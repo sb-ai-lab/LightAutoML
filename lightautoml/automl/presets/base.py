@@ -168,6 +168,7 @@ class AutoMLPreset(AutoML):
         valid_data: Optional[Any] = None,
         valid_features: Optional[Sequence[str]] = None,
         verbose: int = 0,
+        path_to_save: Optional[str] = None,
     ) -> LAMLDataset:
         """Fit on input data and make prediction on validation part.
 
@@ -182,6 +183,7 @@ class AutoMLPreset(AutoML):
             valid_features: Optional validation dataset features if can't be
                 inferred from `valid_data`.
             verbose: Verbosity level that are passed to each automl.
+            path_to_save: The path that joblib will use to save the model after fit stage is completed. Use *.joblib format.
 
         Returns:
             Dataset with predictions. Call ``.data`` to get predictions array.
@@ -213,6 +215,7 @@ class AutoMLPreset(AutoML):
             valid_data,
             valid_features,
             verbose=verbose,
+            path_to_save=path_to_save,
         )
 
         logger.info("\x1b[1mAutoml preset training completed in {:.2f} seconds\x1b[0m\n".format(self.timer.time_spent))

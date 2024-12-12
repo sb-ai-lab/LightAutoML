@@ -19,6 +19,7 @@ from ..utils.timer import PipelineTimer
 from ..validation.utils import create_validation_iterator
 from .blend import BestModelSelector
 from .blend import Blender
+from joblib import dump
 
 
 logger = logging.getLogger(__name__)
@@ -157,6 +158,7 @@ class AutoML:
         valid_data: Optional[Any] = None,
         valid_features: Optional[Sequence[str]] = None,
         verbose: int = 0,
+        path_to_save: Optional[str] = None,
     ) -> LAMLDataset:
         """Fit on input data and make prediction on validation part.
 
@@ -176,6 +178,7 @@ class AutoML:
                 >=2 : the information about folds processing is also displayed;
                 >=3 : the hyperparameters optimization process is also displayed;
                 >=4 : the training process for every algorithm is displayed.
+            path_to_save: The path that joblib will use to save the model after fit stage is completed. Use *.joblib format.
 
         Returns:
             Predicted values.
@@ -279,6 +282,14 @@ class AutoML:
         self.reader.upd_used_features(remove=list(set(self.reader.used_features) - set(self.collect_used_feats())))
 
         del self._levels
+
+        # saving automl model with joblib
+        if path_to_save is not None:
+            # There is 1 parameter for model save:
+            # "path_to_save" - name of model for saving.
+
+            dump_name = path_to_save if path_to_save.endswith(".joblib") else f"{path_to_save}.joblib"
+            dump(self, dump_name, compress=0)
 
         if self.return_all_predictions:
             return concatenate(level_predictions)
