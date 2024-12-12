@@ -3,9 +3,9 @@
 
 """2 level stacking using AutoML class with different algos on first level including LGBM, Linear and LinearL1."""
 
-import os
-import pickle
 
+import tempfile
+from os.path import join as pjoin
 import numpy as np
 
 from sklearn.metrics import roc_auc_score
@@ -34,6 +34,7 @@ from lightautoml.pipelines.selection.permutation_importance_based import (
 )
 from lightautoml.reader.base import PandasToPandasReader
 
+from integration_utils import load_and_test_automl
 
 np.random.seed(42)
 
@@ -41,6 +42,7 @@ np.random.seed(42)
 def test_blending(sampled_app_train_test, binary_task):
 
     train, test = sampled_app_train_test
+    task = binary_task
 
     feat_sel_0 = LGBSimpleFeatures()
     mod_sel_0 = BoostLGBM()
@@ -91,7 +93,7 @@ def test_blending(sampled_app_train_test, binary_task):
     )
 
     reader = PandasToPandasReader(
-        binary_task,
+        task,
         samples=None,
         max_nan_rate=1,
         max_constant_rate=1,
@@ -113,24 +115,22 @@ def test_blending(sampled_app_train_test, binary_task):
         DatetimeRole(base_date=True, seasonality=(), base_feats=False): "report_dt",
     }
 
-    oof_pred = automl.fit_predict(train, roles=roles, verbose=2)
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        path_to_save = pjoin(tmpdirname, "model.joblib")
 
-    test_pred = automl.predict(test)
+        oof_pred = automl.fit_predict(train, roles=roles, verbose=2, path_to_save=path_to_save)
 
-    not_nan = np.any(~np.isnan(oof_pred.data), axis=1)
+        test_pred = automl.predict(test)
 
-    oof_score = roc_auc_score(train[roles["target"]].values[not_nan], oof_pred.data[not_nan][:, 0])
-    assert oof_score > 0.7
+        not_nan = np.any(~np.isnan(oof_pred.data), axis=1)
 
-    test_score = roc_auc_score(test[roles["target"]].values, test_pred.data[:, 0])
-    assert test_score > 0.7
+        oof_score = roc_auc_score(train[roles["target"]].values[not_nan], oof_pred.data[not_nan][:, 0])
+        assert oof_score > 0.7
 
-    with open("automl.pickle", "wb") as f:
-        pickle.dump(automl, f)
+        test_score = roc_auc_score(test[roles["target"]].values, test_pred.data[:, 0])
+        assert test_score > 0.7
 
-    with open("automl.pickle", "rb") as f:
-        automl = pickle.load(f)
-
-    test_pred = automl.predict(test)
-
-    os.remove("automl.pickle")
+        target_name = roles["target"]
+        load_and_test_automl(
+            path_to_save, task=task, score=test_score, pred=test_pred, data=test, target_name=target_name
+        )

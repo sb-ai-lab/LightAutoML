@@ -3,8 +3,6 @@
 
 """Building ML pipeline from blocks and fit + predict the pipeline itself."""
 
-import os
-import pickle
 import time
 
 import numpy as np
@@ -147,16 +145,6 @@ def test_simple_pipeline(sampled_app_roles, binary_task):
     start_time = time.time()
     train_pred = total.predict(pd_dataset)
     assert time.time() - start_time < MAX_PREDICT_TIME
-
-    # Pickle automl
-    with open("automl.pickle", "wb") as f:
-        pickle.dump(total, f)
-
-    with open("automl.pickle", "rb") as f:
-        total = pickle.load(f)
-
-    train_pred = total.predict(pd_dataset)
-    os.remove("automl.pickle")
 
     assert train_pred.shape == (10000, 2)
 

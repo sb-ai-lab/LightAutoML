@@ -23,6 +23,8 @@ from ...utils.logging import set_stdout_level
 from ...utils.logging import verbosity_to_loglevel
 from ...utils.timer import PipelineTimer
 
+from joblib import dump
+
 
 logger = logging.getLogger(__name__)
 
@@ -226,6 +228,7 @@ class TimeUtilization:
         valid_features: Optional[Sequence[str]] = None,
         verbose: int = 0,
         log_file: str = None,
+        path_to_save: Optional[str] = None,
     ) -> LAMLDataset:
         """Fit and get prediction on validation dataset.
 
@@ -253,6 +256,7 @@ class TimeUtilization:
                 if cannot be inferred from `valid_data`.
             verbose: Verbose.
             log_file: Log filename.
+            path_to_save: The path that joblib will use to save the model after fit stage is completed. Use *.joblib format.
 
         Returns:
             Dataset with predictions. Call ``.data`` to get predictions array.
@@ -360,6 +364,14 @@ class TimeUtilization:
         else:
             val_pred = concatenate(inner_preds)
             self.outer_pipes = inner_pipes
+
+        # saving automl model with joblib
+        if path_to_save is not None:
+            # There is 1 parameter for model save:
+            # "path_to_save" - name of model for saving.
+
+            dump_name = path_to_save if path_to_save.endswith(".joblib") else f"{path_to_save}.joblib"
+            dump(self, dump_name, compress=0)
 
         return val_pred
 
