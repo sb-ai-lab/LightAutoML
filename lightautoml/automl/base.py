@@ -195,7 +195,9 @@ class AutoML:
             self.classes_ = roles["target"]
         elif self.reader.task.name == "reg":
             self.classes_ = [roles["target"]]
-        else:
+        elif self.reader.task.name == "multilabel":
+            self.classes_ = roles["target"]
+        else:  # multiclass
             self.classes_ = (
                 sorted(self.reader.class_mapping, key=self.reader.class_mapping.get, reverse=False)
                 if self.reader.class_mapping

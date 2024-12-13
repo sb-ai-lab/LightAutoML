@@ -22,13 +22,13 @@ from lightautoml.tasks import Task
 RANDOM_STATE = 1234
 
 
-def map_to_corect_order_of_classes(values, classes_):  # noqa D103
-    class_mapping = {n: x for (x, n) in enumerate(classes_)}
+def map_to_corect_order_of_classes(values, targets_order):  # noqa D103
+    class_mapping = {n: x for (x, n) in enumerate(targets_order)}
     mapped = list(map(class_mapping.get, values))
     return mapped
 
 
-def main(dataset_name: str, cpu_limit: int, memory_limit: int):  # noqa D103
+def main(dataset_name: str, cpu_limit: int, memory_limit: int, save_model: bool):  # noqa D103
     cml_task = clearml.Task.get_task(clearml.config.get_remote_task_id())
     logger = cml_task.get_logger()
 
@@ -48,7 +48,7 @@ def main(dataset_name: str, cpu_limit: int, memory_limit: int):  # noqa D103
         task=task,
         cpu_limit=cpu_limit,
         memory_limit=memory_limit,
-        timeout=10 * 60 * 60,
+        timeout=15 * 60,
         general_params={
             # "use_algos": [["mlp"]]
         },  # ['nn', 'mlp', 'dense', 'denselight', 'resnet', 'snn', 'node', 'autoint', 'fttransformer'] or custom torch model
@@ -64,10 +64,25 @@ def main(dataset_name: str, cpu_limit: int, memory_limit: int):  # noqa D103
 
     cml_task.connect(automl)
 
-    target_name = test.columns[-1]
+    if task_type == "multilabel":
+        target_name = [x for x in test.columns if x.startswith("target")]
+    else:
+        target_name = test.columns[-1]
+
+    kwargs = {}
+    if save_model:
+        kwargs["path_to_save"] = "model"
 
     with Timer() as timer_training:
-        oof_predictions = automl.fit_predict(train, roles={"target": target_name}, verbose=10)
+        oof_predictions = automl.fit_predict(train, roles={"target": target_name}, verbose=10, **kwargs)
+
+    # add and upload local file artifact
+    cml_task.upload_artifact(
+        name="model.joblib",
+        artifact_object=os.path.join(
+            "model.joblib",
+        ),
+    )
 
     with Timer() as timer_predict:
         test_predictions = automl.predict(test)
@@ -84,16 +99,24 @@ def main(dataset_name: str, cpu_limit: int, memory_limit: int):  # noqa D103
         except:
             # Some datasets can have dtype=float of target,
             # so we must map this target for correct log_loss calculating (if we didn't caclulate it in the try block)
-            # and this mapping must be in the correct order so we extract automl.classes_ and map values
-            y_true = map_to_corect_order_of_classes(values=train[target_name].values[not_nan], classes_=automl.classes_)
+            # and this mapping must be in the correct order so we extract automl.targets_ and map values
+            y_true = map_to_corect_order_of_classes(
+                values=train[target_name].values[not_nan], targets_order=oof_predictions.features
+            )
             metric_oof = log_loss(y_true, oof_predictions.data[not_nan, :])
 
-            y_true = map_to_corect_order_of_classes(values=test[target_name], classes_=automl.classes_)
+            y_true = map_to_corect_order_of_classes(values=test[target_name], targets_order=automl.targets_)
             metric_ho = log_loss(y_true, test_predictions.data)
 
     elif task_type == "reg":
         metric_oof = task.metric_func(train[target_name].values, oof_predictions.data[:, 0])
         metric_ho = task.metric_func(test[target_name].values, test_predictions.data[:, 0])
+
+    elif task_type == "multilabel":
+        metric_oof = task.metric_func(train[target_name].values, oof_predictions.data)
+        metric_ho = task.metric_func(test[target_name].values, test_predictions.data)
+    else:
+        raise ValueError("Bad task type.")
 
     print(f"Score for out-of-fold predictions: {metric_oof}")
     print(f"Score for hold-out: {metric_ho}")
@@ -114,6 +137,9 @@ if __name__ == "__main__":
     parser.add_argument("--dataset", type=str, help="dataset name or id", default="sampled_app_train")
     parser.add_argument("--cpu_limit", type=int, help="", default=8)
     parser.add_argument("--memory_limit", type=int, help="", default=16)
+    parser.add_argument("--save_model", action="store_true")
     args = parser.parse_args()
 
-    main(dataset_name=args.dataset, cpu_limit=args.cpu_limit, memory_limit=args.memory_limit)
+    main(
+        dataset_name=args.dataset, cpu_limit=args.cpu_limit, memory_limit=args.memory_limit, save_model=args.save_model
+    )

@@ -19,6 +19,7 @@ def main(  # noqa D103
     dataset_project: str = None,
     dataset_partial_name: str = None,
     n_datasets: int = -1,
+    save_model: bool = False,
 ):
     if dataset_name is not None:
         dataset_list = [dataset_name]
@@ -66,7 +67,7 @@ def main(  # noqa D103
         tags = f"--tags {' '.join(tags)}" if len(tags) else ""
 
         os.system(
-            f'clearml-task --project {project} --name {curr_task_name} --script scripts/experiments/run_tabular.py --queue {queue} {tags} --docker {image} --docker_args "--cpus={cpu_limit} --memory={memory_limit}g" --args dataset={dataset_name}'
+            f'clearml-task --project {project} --name {curr_task_name} --script scripts/experiments/run_tabular.py --queue {queue} {tags} --docker {image} --docker_args "--cpus={cpu_limit} --memory={memory_limit}g" --args dataset={dataset_name} save_model={save_model}'
         )
 
 
@@ -84,6 +85,7 @@ if __name__ == "__main__":
     parser.add_argument("--image", type=str, help="docker image", default="for_clearml:latest")
     parser.add_argument("--n_datasets", type=int, help="number of datasets", default=-1)
     parser.add_argument("--min_num_obs", type=int, help="min number of samples", default=None)
+    parser.add_argument("--save_model", action="store_true")
     args = parser.parse_args()
 
     main(
@@ -99,4 +101,5 @@ if __name__ == "__main__":
         image=args.image,
         n_datasets=args.n_datasets,
         min_num_obs=args.min_num_obs,
+        save_model=args.save_model,
     )
