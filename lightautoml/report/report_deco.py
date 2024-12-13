@@ -147,14 +147,14 @@ def plot_distribution_of_logits(data, path):
     data["proba_logit"] = np.log(data["y_pred"].values / (1 - data["y_pred"].values))
     sns.kdeplot(
         data[data["y_true"] == 0]["proba_logit"],
-        shade=True,
+        fill=True,
         color="r",
         label="Class 0 logits",
         ax=axs,
     )
     sns.kdeplot(
         data[data["y_true"] == 1]["proba_logit"],
-        shade=True,
+        fill=True,
         color="g",
         label="Class 1 logits",
         ax=axs,
@@ -242,7 +242,7 @@ def f1_score_w_co(input_data, min_co=0.01, max_co=0.99, step=0.01):
 
 
 def get_bins_table(data):
-    bins_table = data.groupby("bin").agg({"y_true": [len, np.mean], "y_pred": [np.min, np.mean, np.max]}).reset_index()
+    bins_table = data.groupby("bin").agg({"y_true": [len, "mean"], "y_pred": ["min", "mean", "max"]}).reset_index()
     bins_table.columns = [
         "Bin number",
         "Amount of objects",
@@ -261,12 +261,12 @@ def plot_target_distribution_1(data, path):
     sns.set(style="whitegrid", font_scale=1.5)
     fig, axs = plt.subplots(2, 1, figsize=(16, 20))
 
-    sns.kdeplot(data["y_true"], shade=True, color="g", ax=axs[0])
+    sns.kdeplot(data["y_true"], fill=True, color="g", ax=axs[0])
     axs[0].set_xlabel("Target value")
     axs[0].set_ylabel("Density")
     axs[0].set_title("Target distribution (y_true)")
 
-    sns.kdeplot(data["y_pred"], shade=True, color="r", ax=axs[1])
+    sns.kdeplot(data["y_pred"], fill=True, color="r", ax=axs[1])
     axs[1].set_xlabel("Target value")
     axs[1].set_ylabel("Density")
     axs[1].set_title("Target distribution (y_pred)")
@@ -279,8 +279,8 @@ def plot_target_distribution_2(data, path):
     sns.set(style="whitegrid", font_scale=1.5)
     fig, axs = plt.subplots(figsize=(16, 10))
 
-    sns.kdeplot(data["y_true"], shade=True, color="g", label="y_true", ax=axs)
-    sns.kdeplot(data["y_pred"], shade=True, color="r", label="y_pred", ax=axs)
+    sns.kdeplot(data["y_true"], fill=True, color="g", label="y_true", ax=axs)
+    sns.kdeplot(data["y_pred"], fill=True, color="r", label="y_pred", ax=axs)
     axs.set_xlabel("Target value")
     axs.set_ylabel("Density")
     axs.set_title("Target distribution")
@@ -319,7 +319,7 @@ def plot_error_hist(data, path):
     sns.set(style="whitegrid", font_scale=1.5)
     fig, ax = plt.subplots(figsize=(16, 10))
 
-    sns.kdeplot(data["y_pred"] - data["y_true"], shade=True, color="m", ax=ax)
+    sns.kdeplot(data["y_pred"] - data["y_true"], fill=True, color="m", ax=ax)
     ax.set_xlabel("Error = y_pred - y_true")
     ax.set_ylabel("Density")
     ax.set_title("Error histogram")
@@ -430,7 +430,7 @@ class ReportDeco:
 
     @property
     def mapping(self):
-        return self._model.reader.class_mapping
+        return self._model.reader.targets_mapping
 
     @property
     def task(self):
@@ -1181,7 +1181,7 @@ class ReportDecoUtilized(ReportDeco):
 
     @property
     def mapping(self):
-        return self._model.outer_pipes[0].ml_algos[0].models[0][0].reader.class_mapping
+        return self._model.outer_pipes[0].ml_algos[0].models[0][0].reader.targets_mapping
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -2025,11 +2025,11 @@ class ReportDecoUplift(ReportDeco):
         data["bin"] = (np.arange(data.shape[0]) / data.shape[0] * self.n_bins).astype(int)
         # 'Uplift fact'
         mean_target_treatment = (
-            data[data["treatment"].values == 1].groupby("bin").agg({"y_true": [np.mean]}).values[:, 0]
+            data[data["treatment"].values == 1].groupby("bin").agg({"y_true": ["mean"]}).values[:, 0]
         )
-        mean_target_control = data[data["treatment"].values == 0].groupby("bin").agg({"y_true": [np.mean]}).values[:, 0]
+        mean_target_control = data[data["treatment"].values == 0].groupby("bin").agg({"y_true": ["mean"]}).values[:, 0]
         uplift_fact = mean_target_treatment - mean_target_control
-        bins_table = data.groupby("bin").agg({"y_true": [len], "y_pred": [np.min, np.mean, np.max]}).reset_index()
+        bins_table = data.groupby("bin").agg({"y_true": [len], "y_pred": ["min", "mean", "max"]}).reset_index()
         bins_table.columns = [
             "Bin number",
             "Amount of objects",
@@ -2044,7 +2044,7 @@ class ReportDecoUplift(ReportDeco):
         sns.set(style="whitegrid", font_scale=1.5)
         fig, axs = plt.subplots(figsize=(16, 10))
 
-        sns.kdeplot(data["y_pred"], shade=True, color="g", label="y_pred", ax=axs)
+        sns.kdeplot(data["y_pred"], fill=True, color="g", label="y_pred", ax=axs)
         axs.set_xlabel("Uplift value")
         axs.set_ylabel("Density")
         axs.set_title("Uplift distribution")

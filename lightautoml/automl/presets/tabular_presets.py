@@ -1082,7 +1082,7 @@ class TabularUtilizedAutoML(TimeUtilization):
             used_feats.update(pipe.ml_algos[0].models[0][0].collect_used_feats())
 
         fi = calc_feats_permutation_imps(
-            self,
+            automl,
             list(used_feats),
             data,
             automl.reader.target,
