@@ -190,17 +190,17 @@ class AutoML:
 
         # Saving class mapping
         if self.reader.task.name == "binary":
-            self.classes_ = [1]
+            self.targets_order = [1]
         elif self.reader.task.name == "multi:reg":
-            self.classes_ = roles["target"]
+            self.targets_order = roles["target"]
         elif self.reader.task.name == "reg":
-            self.classes_ = [roles["target"]]
+            self.targets_order = [roles["target"]]
         elif self.reader.task.name == "multilabel":
-            self.classes_ = roles["target"]
+            self.targets_order = roles["target"]
         else:  # multiclass
-            self.classes_ = (
-                sorted(self.reader.class_mapping, key=self.reader.class_mapping.get, reverse=False)
-                if self.reader.class_mapping
+            self.targets_order = (
+                sorted(self.reader.targets_mapping, key=self.reader.targets_mapping.get, reverse=False)
+                if self.reader.targets_mapping
                 else None
             )
 
@@ -278,7 +278,7 @@ class AutoML:
             else:
                 break
 
-        blended_prediction, last_pipes = self.blender.fit_predict(level_predictions, pipes, self.classes_)
+        blended_prediction, last_pipes = self.blender.fit_predict(level_predictions, pipes, self.targets_order)
         self.levels.append(last_pipes)
 
         self.reader.upd_used_features(remove=list(set(self.reader.used_features) - set(self.collect_used_feats())))

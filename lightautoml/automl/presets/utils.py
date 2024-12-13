@@ -81,6 +81,7 @@ def calc_feats_permutation_imps(model, used_feats, data, target, metric, silent=
 
     # convert holdout data to LAMLDataset
     data = model.reader.read(data, add_array_attrs=False)
+    used_feats_leveled[0] = [feature for feature in data.features if feature not in target]
 
     # iterate through all the levels
     for level in sorted(used_feats_leveled.keys()):
@@ -226,8 +227,8 @@ def plot_pdp_with_distribution(
         else:
             g0 = sns.boxplot(data=data, x="x", y="y", ax=axs[0], showfliers=False, color="b")
     else:
-        if reader.class_mapping:
-            classes = sorted(reader.class_mapping, key=reader.class_mapping.get)[:top_n_classes]
+        if reader.targets_mapping:
+            classes = sorted(reader.targets_mapping, key=reader.targets_mapping.get)[:top_n_classes]
         else:
             classes = np.arange(min(n_classes, top_n_classes))
         data = pd.concat(

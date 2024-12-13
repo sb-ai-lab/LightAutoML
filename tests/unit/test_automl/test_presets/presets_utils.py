@@ -24,7 +24,7 @@ def check_pickling(automl, ho_score, task, test_data, target_name):
         if task.name == "binary":
             ho_score_new = roc_auc_score(test_data[target_name].values, test_pred.data[:, 0])
         elif task.name == "multiclass":
-            ho_score_new = log_loss(test_data[target_name].map(automl.reader.class_mapping), test_pred.data)
+            ho_score_new = log_loss(test_data[target_name].map(automl.reader.target_mapping), test_pred.data)
         elif task.name == "reg":
             ho_score_new = mean_squared_error(test_data[target_name].values, test_pred.data[:, 0])
 

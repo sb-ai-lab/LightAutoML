@@ -259,7 +259,7 @@ class PandasToPandasReader(Reader):
         }
 
         self.params = kwargs
-        self.class_mapping: Optional[Union[Mapping, Dict[str, Mapping]]] = None
+        self.targets_mapping: Optional[Union[Mapping, Dict[str, Mapping]]] = None
         self._n_classes: Optional[int] = None
 
     def fit_read(
@@ -415,16 +415,16 @@ class PandasToPandasReader(Reader):
             Transformed target.
 
         """
-        self.class_mapping = None
+        self.targets_mapping = None
 
         if (self.task.name == "binary") or (self.task.name == "multiclass"):
-            target, self.class_mapping = self.check_class_target(target)
+            target, self.targets_mapping = self.check_class_target(target)
         elif self.task.name == "multilabel":
-            self.class_mapping = {}
+            self.targets_mapping = {}
 
             for col in target.columns:
-                target_col, class_mapping = self.check_class_target(target[col])
-                self.class_mapping[col] = class_mapping
+                target_col, targets_mapping = self.check_class_target(target[col])
+                self.targets_mapping[col] = targets_mapping
                 target.loc[:, col] = target_col.values
 
             self._n_classes = len(target.columns) * 2
@@ -470,8 +470,8 @@ class PandasToPandasReader(Reader):
             return target, None
 
         # case - create mapping
-        class_mapping = {n: x for (x, n) in enumerate(unqiues)}
-        return target.map(class_mapping).astype(np.int32), class_mapping
+        targets_mapping = {n: x for (x, n) in enumerate(unqiues)}
+        return target.map(targets_mapping).astype(np.int32), targets_mapping
 
     def _get_default_role_from_str(self, name) -> RoleType:
         """Get default role for string name according to automl's defaults and user settings.
@@ -576,17 +576,17 @@ class PandasToPandasReader(Reader):
                 except KeyError:
                     continue
 
-                if array_attr == "target" and self.class_mapping is not None:
+                if array_attr == "target" and self.targets_mapping is not None:
                     if len(val.shape) == 1:
                         val = Series(
-                            val.map(self.class_mapping).values,
+                            val.map(self.targets_mapping).values,
                             index=data.index,
                             name=col_name,
                         )
                     else:
                         for col in val.columns:
-                            if self.class_mapping[col] is not None:
-                                val.loc[:, col] = val.loc[:, col].map(self.class_mapping[col])
+                            if self.targets_mapping[col] is not None:
+                                val.loc[:, col] = val.loc[:, col].map(self.targets_mapping[col])
 
                 kwargs[array_attr] = val
 
@@ -1105,13 +1105,13 @@ class DictToPandasSeqReader(PandasToPandasReader):
                 except KeyError:
                     continue
 
-                if array_attr == "target" and self.class_mapping is not None:
+                if array_attr == "target" and self.targets_mapping is not None:
                     if len(val.shape) == 1:
-                        val = Series(val.map(self.class_mapping).values, index=plain_data.index, name=col_name)
+                        val = Series(val.map(self.targets_mapping).values, index=plain_data.index, name=col_name)
                     else:
                         for col in val.columns:
-                            if self.class_mapping[col] is not None:
-                                val.loc[:, col] = val.loc[:, col].map(self.class_mapping[col])
+                            if self.targets_mapping[col] is not None:
+                                val.loc[:, col] = val.loc[:, col].map(self.targets_mapping[col])
                 kwargs[array_attr] = val
 
         dataset = PandasDataset(

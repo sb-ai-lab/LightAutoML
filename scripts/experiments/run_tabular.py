@@ -23,8 +23,9 @@ RANDOM_STATE = 1234
 
 
 def map_to_corect_order_of_classes(values, targets_order):  # noqa D103
-    class_mapping = {n: x for (x, n) in enumerate(targets_order)}
-    mapped = list(map(class_mapping.get, values))
+    target_mapping = {n: x for (x, n) in enumerate(targets_order)}
+    mapped = list(map(target_mapping.get, values))
+
     return mapped
 
 
@@ -97,15 +98,18 @@ def main(dataset_name: str, cpu_limit: int, memory_limit: int, save_model: bool)
             metric_oof = log_loss(train[target_name].values[not_nan], oof_predictions.data[not_nan, :])
             metric_ho = log_loss(test[target_name], test_predictions.data)
         except:
+            if np.unique(train[target_name].values[not_nan]).shape != np.unique(oof_predictions.data[not_nan, :]).shape:
+                raise ValueError("Vectors have different number of classes")
             # Some datasets can have dtype=float of target,
-            # so we must map this target for correct log_loss calculating (if we didn't caclulate it in the try block)
-            # and this mapping must be in the correct order so we extract automl.targets_ and map values
+            # so we must map this target for correct log_loss calculating (if we didn't calсulate it in the try block)
+            # and this mapping must be in the correct order so we extract automl.targets_order and map values
             y_true = map_to_corect_order_of_classes(
-                values=train[target_name].values[not_nan], targets_order=oof_predictions.features
+                values=train[target_name].values[not_nan], targets_order=automl.targets_order
             )
             metric_oof = log_loss(y_true, oof_predictions.data[not_nan, :])
 
-            y_true = map_to_corect_order_of_classes(values=test[target_name], targets_order=automl.targets_)
+            y_true = map_to_corect_order_of_classes(values=test[target_name], targets_order=automl.targets_order)
+
             metric_ho = log_loss(y_true, test_predictions.data)
 
     elif task_type == "reg":
