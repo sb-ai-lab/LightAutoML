@@ -386,10 +386,9 @@ class WeightedBlender(Blender):
         # the set of initial weights for blending
         candidate = np.ones(len(splitted_preds), dtype=np.float32) / len(splitted_preds)
 
-        best_pred = self._get_weighted_pred(splitted_preds, candidate)
-        best_score = self.score(best_pred)
+        best_score = self.score(self._get_weighted_pred(splitted_preds, candidate))
         best_weights = candidate
-        logger.info(f"Blending: optimization starts with equal weights. Score = \x1b[1m{best_score}\x1b[0m")
+        logger.info(f"Blending: optimization starts with equal weights. Score = \x1b[1m{best_score:.7f}\x1b[0m")
 
         for iteration_num in range(self.max_iters):
             flg_no_upd = True
@@ -412,14 +411,17 @@ class WeightedBlender(Blender):
                     best_score = score
                     best_weights = candidate
 
-            logger.info(
-                f"Blending: iteration \x1b[1m{iteration_num}\x1b[0m: score = \x1b[1m{score}\x1b[0m, weights = \x1b[1m{candidate}\x1b[0m"
-            )
-
             if flg_no_upd:
                 logger.info("Blending: no improvements for score. Terminated.\n")
                 break
-        logger.info(f"Blending: best score = \x1b[1m{best_score}\x1b[0m, best weights = \x1b[1m{best_weights}\x1b[0m")
+            else:
+                logger.info(
+                    f"Blending: iteration \x1b[1m{iteration_num}\x1b[0m: score = \x1b[1m{best_score:.7f}\x1b[0m, weights = \x1b[1m{best_weights}\x1b[0m"
+                )
+
+        logger.info(
+            f"Blending: best score = \x1b[1m{best_score:.7f}\x1b[0m, best weights = \x1b[1m{best_weights}\x1b[0m"
+        )
 
         return best_weights
 
