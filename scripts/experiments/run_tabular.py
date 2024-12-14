@@ -51,8 +51,18 @@ def main(dataset_name: str, cpu_limit: int, memory_limit: int, save_model: bool)
             train[target_name].nunique() == test[target_name].nunique()
         ), "train and test has different unique values."
 
-        assert min(train[target_name].nunique() > 1) is True, "Only one class present in train target."
-        assert min(test[target_name].nunique() > 1) is True, "Only one class present in test target."
+        is_train_unique_ok = train[target_name].nunique() > 1
+        is_test_unique_ok = test[target_name].nunique() > 1
+
+        if isinstance(is_train_unique_ok, bool):
+            assert is_train_unique_ok, "Only one class present in train target."
+        else:
+            (is_train_unique_ok).all(), "Only one class present in train target."
+
+        if isinstance(is_test_unique_ok, bool):
+            assert is_test_unique_ok, "Only one class present in test target."
+        else:
+            (is_test_unique_ok).all(), "Only one class present in test target."
 
     assert train.isnull().values.any() is False, "train has nans in target."
     assert test.isnull().values.any() is False, "test has nans in target."
