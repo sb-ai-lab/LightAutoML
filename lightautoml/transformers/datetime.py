@@ -53,12 +53,10 @@ def datetime_check(dataset: LAMLDataset):
 class TimeToNum(LAMLTransformer):
     """Basic conversion strategy, used in selection one-to-one transformers.
 
-    Datetime converted to difference
-    with basic_date (``basic_date == '2020-01-01'``).
+    Datetime converted to difference with random date from the corresponding column.
 
     """
 
-    basic_time = "2020-01-01"
     basic_interval = "D"
 
     _fname_prefix = "dtdiff"
@@ -84,9 +82,10 @@ class TimeToNum(LAMLTransformer):
         # transform
         roles = NumericRole(np.float32)
 
-        new_arr = ((data - np.datetime64(self.basic_time)) / np.timedelta64(1, self.basic_interval)).values.astype(
-            np.float32
-        )
+        new_arr = ((data - data.iloc[0]) / np.timedelta64(1, self.basic_interval)).values.astype(np.float32)
+        # new_arr = data.apply(lambda x: ((x - x[0]) / np.timedelta64(1, self.basic_interval)), axis=1).values.astype(
+        #     np.float32
+        # )
 
         # create resulted
         output = dataset.empty().to_numpy()

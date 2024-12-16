@@ -22,11 +22,9 @@ from lightautoml.tasks import Task
 RANDOM_STATE = 1234
 
 
-def map_to_corect_order_of_classes(values, targets_order):  # noqa D103
-    target_mapping = {n: x for (x, n) in enumerate(targets_order)}
-    mapped = list(map(target_mapping.get, values))
-
-    return mapped
+def fix_labels(values, renamed_labels):  # noqa D103
+    target_mapping = {n: x for (x, n) in enumerate(renamed_labels)}
+    return list(map(target_mapping.get, values))
 
 
 def main(dataset_name: str, cpu_limit: int, memory_limit: int, save_model: bool):  # noqa D103
@@ -64,8 +62,8 @@ def main(dataset_name: str, cpu_limit: int, memory_limit: int, save_model: bool)
         else:
             (is_test_unique_ok).all(), "Only one class present in test target."
 
-    assert train.isnull().values.any() is False, "train has nans in target."
-    assert test.isnull().values.any() is False, "test has nans in target."
+    assert train[target_name].isnull().values.any() is np.False_, "train has nans in target."
+    assert test[target_name].isnull().values.any() is np.False_, "test has nans in target."
 
     task = Task(task_type)
 
@@ -75,10 +73,10 @@ def main(dataset_name: str, cpu_limit: int, memory_limit: int, save_model: bool)
         task=task,
         cpu_limit=cpu_limit,
         memory_limit=memory_limit,
-        timeout=15 * 60,
-        # general_params={
-        # "use_algos": [["mlp"]]
-        # },  # ['nn', 'mlp', 'dense', 'denselight', 'resnet', 'snn', 'node', 'autoint', 'fttransformer'] or custom torch model
+        timeout=2 * 60 * 60,
+        general_params={
+            "use_algos": [["nn", "mlp", "dense", "denselight", "resnet", "snn", "node", "autoint", "fttransformer"]]
+        },  # ['nn', 'mlp', 'dense', 'denselight', 'resnet', 'snn', 'node', 'autoint', 'fttransformer'] or custom torch model
         # nn_params={"n_epochs": 10, "bs": 512, "num_workers": 0, "path_to_save": None, "freeze_defaults": True},
         # nn_pipeline_params={"use_qnt": True, "use_te": False},
         reader_params={
@@ -114,24 +112,18 @@ def main(dataset_name: str, cpu_limit: int, memory_limit: int, save_model: bool)
         metric_ho = roc_auc_score(test[target_name].values, test_predictions.data[:, 0])
 
     elif task_type == "multiclass":
-        not_nan = np.any(~np.isnan(oof_predictions.data), axis=1)
         try:
-            metric_oof = log_loss(train[target_name].values[not_nan], oof_predictions.data[not_nan, :])
+            metric_oof = log_loss(train[target_name].values, oof_predictions.data)
             metric_ho = log_loss(test[target_name], test_predictions.data)
         except:
-            if np.unique(train[target_name].values[not_nan]).shape != np.unique(oof_predictions.data[not_nan, :]).shape:
-                raise ValueError("Vectors have different number of classes")
             # Some datasets can have dtype=float of target,
-            # so we must map this target for correct log_loss calculating (if we didn't calсulate it in the try block)
-            # and this mapping must be in the correct order so we extract automl.targets_order and map values
-            y_true = map_to_corect_order_of_classes(
-                values=train[target_name].values[not_nan], targets_order=automl.targets_order
+            # so we must map labels for correct log_loss calculating (if we didn't calсulate it in the try block)
+            metric_oof = log_loss(
+                fix_labels(values=train[target_name].values, renamed_labels=automl.targets_order), oof_predictions.data
             )
-            metric_oof = log_loss(y_true, oof_predictions.data[not_nan, :])
-
-            y_true = map_to_corect_order_of_classes(values=test[target_name], targets_order=automl.targets_order)
-
-            metric_ho = log_loss(y_true, test_predictions.data)
+            metric_ho = log_loss(
+                fix_labels(values=test[target_name], renamed_labels=automl.targets_order), test_predictions.data
+            )
 
     elif task_type == "reg":
         metric_oof = task.metric_func(train[target_name].values, oof_predictions.data[:, 0])
