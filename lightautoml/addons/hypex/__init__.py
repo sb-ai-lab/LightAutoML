@@ -31,8 +31,7 @@ try:
     hypex = importlib.import_module(MODULE_NAME)
 except ImportError:
     raise ImportError(
-        f"{MODULE_NAME} is not installed. Please install it using "
-        f"'pip install lightautoml[{MODULE_NAME}]'."
+        f"{MODULE_NAME} is not installed. Please install it using " f"'pip install lightautoml[{MODULE_NAME}]'."
     )
 
 sys.modules["lightautoml.addons.hypex"] = hypex
