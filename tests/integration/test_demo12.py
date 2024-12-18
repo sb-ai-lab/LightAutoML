@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import os
 import numpy as np
+import tempfile
 
 from sklearn.metrics import roc_auc_score
 
@@ -32,9 +34,12 @@ def test_tabular_with_dates(sampled_app_train_test, binary_task):
         timeout=200,
     )
     oof_pred = automl.fit_predict(train, train_features=["AMT_CREDIT", "AMT_ANNUITY"], cv_iter=cv_iter)
-    # prediction can be made on file by
-    test.to_csv("temp_test_data.csv", index=False)
-    test_pred = automl.predict("temp_test_data.csv", batch_size=100, n_jobs=4)
+
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        # prediction can be made on file by
+        tmp_file = os.path.join(tmpdirname, "temp_test_data.csv")
+        test.to_csv(tmp_file, index=False)
+        test_pred = automl.predict(tmp_file, batch_size=100, n_jobs=4)
 
     oof_prediction = oof_pred.data[:, 0]
     not_empty = np.logical_not(np.isnan(oof_prediction))
