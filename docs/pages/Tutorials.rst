@@ -6,8 +6,6 @@ This section contains tutorials for both **LightAutoML** and **HypEx**, covering
 LightAutoML Tutorials
 ---------------------
 
-Core Features
-~~~~~~~~~~~~~
 
 .. toctree::
     :maxdepth: 1
@@ -18,8 +16,6 @@ Core Features
     tutorials/Tutorial_3_sql_data_source.nblink
     tutorials/Tutorial_4_NLP_Interpretation.nblink
 
-Advanced Topics
-~~~~~~~~~~~~~~~
 
 .. toctree::
     :maxdepth: 1
@@ -38,8 +34,6 @@ Advanced Topics
 HypEx Tutorials
 ---------------
 
-A/B and A/A Testing
-~~~~~~~~~~~~~~~~~~~
 
 .. toctree::
     :maxdepth: 1
@@ -49,8 +43,6 @@ A/B and A/A Testing
     tutorials/Tutorial_13_AA_Test_multigroup_split.nblink
     tutorials/Tutorial_14_AB_Test.nblink
 
-Matching
-~~~~~~~~~~~~~~~~~~~~~~
 
 .. toctree::
     :maxdepth: 1
@@ -59,8 +51,6 @@ Matching
     tutorials/Tutorial_15_Matching.nblink
     tutorials/Tutorial_16_Matching_without_replacement.nblink
 
-Modeling and Testing Limits
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. toctree::
     :maxdepth: 1
