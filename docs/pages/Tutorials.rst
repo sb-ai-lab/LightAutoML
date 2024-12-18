@@ -29,7 +29,6 @@ LightAutoML Tutorials
     tutorials/Tutorial_10_relational_data_with_star_scheme.nblink
     tutorials/Tutorial_11_time_series.nblink
 
----
 
 HypEx Tutorials
 ---------------
