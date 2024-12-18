@@ -67,6 +67,7 @@ autosummary_mock_imports = [
     "seaborn",
     "json2html",
     "faiss",
+    "hypex"
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -161,6 +162,7 @@ intersphinx_mapping = {
     "pandas": ("https://pandas.pydata.org/pandas-docs/stable/", None),
     "sklearn": ("https://scikit-learn.org/stable/", None),
     "PIL": ("https://pillow.readthedocs.io/en/stable/", None),
+    "hypex": ("https://hypex.readthedocs.io/en/latest/", None),
 }
 
 autodoc_type_aliases = {
