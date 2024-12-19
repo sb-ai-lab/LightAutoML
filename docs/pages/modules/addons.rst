@@ -21,16 +21,8 @@ Utilization
 HypEx -- Hypothesises and Experiments
 -------------------------------------
 
-.. currentmodule:: lightautoml.addons.hypex
+The official HypEx documentation can be found at:
 
-.. autosummary::
-    :toctree: ./generated
-    :nosignatures:
-    :template: classtemplate.rst
+`HypEx Documentation <https://hypex.readthedocs.io/en/latest/>`_
 
-    ~matcher.Matcher
-    algorithms.faiss_matcher.FaissMatcher
-    algorithms.no_replacement_matching.MatcherNoReplacement
-    selectors.lama_feature_selector.LamaFeatureSelector
-    selectors.outliers_filter.OutliersFilter
-    selectors.spearman_filter.SpearmanFilter
+For a detailed reference, visit the HypEx API documentation.

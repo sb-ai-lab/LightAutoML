@@ -89,7 +89,7 @@ weasyprint = {version = "52.5", optional = true}
 cffi = {version = "1.14.5", optional = true}
 
 # HypEx
-faiss-cpu = {version = "*", optional = true}
+hypex = {version = "*", optional = true}
 
 
 [tool.poetry.extras]
@@ -116,8 +116,7 @@ afg = [
 ]
 
 hypex = [
-    "faiss-cpu",
-    "ipython"
+    "hypex",
 ]
 
 all = [
@@ -133,8 +132,7 @@ all = [
     "cffi",
     "weasyprint",
     "featuretools",
-    "faiss-cpu",
-    "ipython"
+    "hypex",
 ]
 
 
@@ -173,6 +171,6 @@ use_parentheses = true
 filter_files = true
 
 [tool.codespell]
-skip = '*.git,*.csv,./lightautoml/addons/hypex/*,./lightautoml/addons/interpretation/*,*.ipynb'
+skip = '*.git,*.csv,./lightautoml/addons/interpretation/*,*.ipynb'
 #
 ignore-words-list = 'LAMA,Lama,lama,MAPE,mape,splitted,fpr'
