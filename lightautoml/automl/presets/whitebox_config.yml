@@ -49,7 +49,7 @@ whitebox_params:
     max_bin_count: 5
     select_type: None
     pearson_th: 0.9
-    auc_th: .505
+    metric_th: .505
     vif_th: 10.
     imp_th: 0
     th_const: 32
@@ -87,8 +87,8 @@ whitebox_params:
   #            Threshold for feature selection by correlation. All features with
   #            the absolute value of correlation coefficient greater then
   #            pearson_th will be discarded.
-  #        auc_th: .5 < auc_th < 1
-  #            Threshold for feature selection by one-dimensional AUC. WoE with AUC < auc_th will
+  #        metric_th: .5 < metric_th < 1
+  #            Threshold for feature selection by one-dimensional AUC. WoE with AUC < metric_th will
   #            be discarded.
   #        vif_th: vif_th > 0
   #            Threshold for feature selection by VIF. Features with VIF > vif_th
@@ -119,8 +119,8 @@ whitebox_params:
   #            if large values work better, for example: [2, 4]
   #        min_gains_to_split: list of floats >= 0
   #            min_gain_to_split values that will be iterated to find the best split.
-  #        auc_tol: 1e-5 <= auc_tol <=1e-2
-  #            AUC tolerance. You can lower the auc_tol value from the maximum
+  #        metric_tol: 1e-5 <= metric_tol <=1e-2
+  #            Metric tolerance. You can lower the metric_tol value from the maximum
   #            to make the model simpler.
   #        cat_alpha: float > 0
   #            Regularizer for category encoding.

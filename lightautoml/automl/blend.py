@@ -43,7 +43,7 @@ class Blender:
         return self._outp_dim
 
     def fit_predict(
-        self, predictions: Sequence[LAMLDataset], pipes: Sequence[MLPipeline], targets_mapping: Dict
+        self, predictions: Sequence[LAMLDataset], pipes: Sequence[MLPipeline], class_mapping: Dict
     ) -> Tuple[LAMLDataset, Sequence[MLPipeline]]:
         """Wraps custom ``._fit_predict`` methods of blenders.
 
@@ -55,7 +55,7 @@ class Blender:
         Args:
             predictions: Sequence of datasets with predictions.
             pipes: Sequence of pipelines.
-            targets_mapping: Mapping for target classes.
+            class_mapping: Mapping for target classes.
 
         Returns:
             Single prediction dataset and sequence of pruned pipelines.
@@ -65,17 +65,17 @@ class Blender:
             self._bypass = True
             return predictions[0], pipes
 
-        return self._fit_predict(predictions, pipes, targets_mapping)
+        return self._fit_predict(predictions, pipes, class_mapping)
 
     def _fit_predict(
-        self, predictions: Sequence[LAMLDataset], pipes: Sequence[MLPipeline], targets_mapping: Dict
+        self, predictions: Sequence[LAMLDataset], pipes: Sequence[MLPipeline], class_mapping: Dict
     ) -> Tuple[LAMLDataset, Sequence[MLPipeline]]:
         """Defines how to fit, predict and prune - Abstract.
 
         Args:
             predictions: Sequence of datasets with predictions.
             pipes: Sequence of pipelines.
-            targets_mapping: Mapping for target classes.
+            class_mapping: Mapping for target classes.
 
         Returns:  # noqa: DAR202
             Single prediction dataset and sequence of pruned ``MLPipelines``.
@@ -137,7 +137,7 @@ class Blender:
 
         return splitted_preds, model_idx, pipe_idx
 
-    def _set_metadata(self, predictions: Sequence[LAMLDataset], pipes: Sequence[MLPipeline], targets_mapping: Dict):
+    def _set_metadata(self, predictions: Sequence[LAMLDataset], pipes: Sequence[MLPipeline], class_mapping: Dict):
 
         pred0 = predictions[0]
         pipe0 = pipes[0]
@@ -146,7 +146,7 @@ class Blender:
         self._outp_prob = pred0.task.name in ["binary", "multiclass"]
         self._score = predictions[0].task.get_dataset_metric()
 
-        self._targets_mapping = targets_mapping
+        self._class_mapping = class_mapping
 
     def score(self, dataset: LAMLDataset) -> float:
         """Score metric for blender.
@@ -173,7 +173,7 @@ class BestModelSelector(Blender):
     """
 
     def _fit_predict(
-        self, predictions: Sequence[LAMLDataset], pipes: Sequence[MLPipeline], targets_mapping: Dict
+        self, predictions: Sequence[LAMLDataset], pipes: Sequence[MLPipeline], class_mapping: Dict
     ) -> Tuple[LAMLDataset, Sequence[MLPipeline]]:
         """Simple fit - just take one best.
 
@@ -244,20 +244,20 @@ class MeanBlender(Blender):
         return outp
 
     def _fit_predict(
-        self, predictions: Sequence[NumpyDataset], pipes: Sequence[MLPipeline], targets_mapping: Dict
+        self, predictions: Sequence[NumpyDataset], pipes: Sequence[MLPipeline], class_mapping: Dict
     ) -> Tuple[NumpyDataset, Sequence[MLPipeline]]:
         """Simple fit_predict - just average and no prune.
 
         Args:
             predictions: Sequence of predictions.
             pipes: Sequence of pipelines.
-            targets_mapping: Mapping for target classes.
+            class_mapping: Mapping for target classes.
 
         Returns:
             Single prediction dataset and Sequence of pruned pipelines.
 
         """
-        self._set_metadata(predictions, pipes, targets_mapping)
+        self._set_metadata(predictions, pipes, class_mapping)
         splitted_preds, _, __ = cast(List[NumpyDataset], self.split_models(predictions))
 
         outp = self._get_mean_pred(splitted_preds)
@@ -327,7 +327,7 @@ class WeightedBlender(Blender):
         outp = splitted_preds[0].empty()
         outp.set_data(
             weighted_pred,
-            self._targets_mapping if self._targets_mapping else list(range(weighted_pred.shape[1])),
+            self._class_mapping if self._class_mapping else list(range(weighted_pred.shape[1])),
             NumericRole(np.float32, prob=self._outp_prob),
         )
 
@@ -444,14 +444,14 @@ class WeightedBlender(Blender):
         return new_pipes, wts
 
     def _fit_predict(
-        self, predictions: Sequence[NumpyDataset], pipes: Sequence[MLPipeline], targets_mapping: Dict
+        self, predictions: Sequence[NumpyDataset], pipes: Sequence[MLPipeline], class_mapping: Dict
     ) -> Tuple[NumpyDataset, Sequence[MLPipeline]]:
         """Perform coordinate descent.
 
         Args:
             predictions: Sequence of prediction datasets.
             pipes: Sequence of pipelines.
-            targets_mapping: Mapping for target classes.
+            class_mapping: Mapping for target classes.
 
         Returns:
             Single prediction dataset and Sequence of pruned pipelines.
@@ -460,7 +460,7 @@ class WeightedBlender(Blender):
             Dataset and MLPipeline.
 
         """
-        self._set_metadata(predictions, pipes, targets_mapping)
+        self._set_metadata(predictions, pipes, class_mapping)
         splitted_preds, _, pipe_idx = cast(List[NumpyDataset], self.split_models(predictions))
 
         wts = self._optimize(splitted_preds)

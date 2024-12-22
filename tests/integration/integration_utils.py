@@ -16,7 +16,7 @@ def load_and_test_automl(filename, task, score, pred, data, target_name):
     if task.name == "binary":
         score_new = roc_auc_score(data[target_name].values, test_pred_joblib.data[:, 0])
     elif task.name == "multiclass":
-        score_new = log_loss(data[target_name].map(automl.reader.class_mapping), test_pred_joblib.data)
+        score_new = log_loss(data[target_name].map(automl.reader.targets_mapping), test_pred_joblib.data)
     elif task.name == "reg":
         score_new = mean_squared_error(data[target_name].values, test_pred_joblib.data[:, 0])
 

@@ -938,6 +938,7 @@ class RLearner(MetaLearner):
             self.propensity_learner = TabularAutoML(
                 task=Task("binary"),
                 timeout=tabular_timeout,
+                reader_params={"treatment": {"force_input": True}},
             )
         else:
             self.propensity_learner = propensity_learner
@@ -949,12 +950,14 @@ class RLearner(MetaLearner):
             self.mean_outcome_learner = TabularAutoML(
                 task=base_task,
                 timeout=tabular_timeout,
+                reader_params={"treatment": {"force_input": True}},
             )
 
         if effect_learner is None:
             self.effect_learner = TabularAutoML(
                 task=Task("reg"),
                 timeout=tabular_timeout,
+                reader_params={"treatment": {"force_input": True}},
             )
         else:
             self.effect_learner = effect_learner

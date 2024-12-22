@@ -4,6 +4,7 @@
 
 import copy
 
+import optuna
 import pandas as pd
 
 from sklearn.metrics import roc_auc_score
@@ -18,7 +19,7 @@ data = pd.read_csv("./data/sampled_app_train.csv")
 train_data, test_data = train_test_split(data, test_size=0.2, stratify=data["TARGET"], random_state=42)
 
 
-def sample(optimization_search_space, trial, suggested_params):
+def sample(estimated_n_trials: int, trial: optuna.trial.Trial, suggested_params: dict):
     trial_values = copy.copy(suggested_params)
 
     for feature_fraction in range(10):
