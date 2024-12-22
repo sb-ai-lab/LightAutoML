@@ -619,7 +619,7 @@ class TorchModel(TabularMLAlgo):
         return pred
 
     def _get_default_search_spaces(self, suggested_params: Dict, estimated_n_trials: int) -> Dict:
-        def sample(optimization_search_space, trial: optuna.trial.Trial, suggested_params: Dict) -> Dict:
+        def sample(estimated_n_trials: int, trial: optuna.trial.Trial, suggested_params: Dict) -> Dict:
             """Implements simple tuning sampling strategy.
 
             Args:

@@ -47,19 +47,17 @@ There are two ways to solve machine learning problems using LightAutoML:
 
 ### Google Colab tutorials and [other examples](examples/):
 
-- [`Tutorial_1_basics.ipynb`](https://colab.research.google.com/github/AILab-MLTools/LightAutoML/blob/master/examples/tutorials/Tutorial_1_basics.ipynb) - get started with LightAutoML on tabular data.
-- [`Tutorial_2_WhiteBox_AutoWoE.ipynb`](https://colab.research.google.com/github/AILab-MLTools/LightAutoML/blob/master/examples/tutorials/Tutorial_2_WhiteBox_AutoWoE.ipynb) - creating interpretable models.
-- [`Tutorial_3_sql_data_source.ipynb`](https://colab.research.google.com/github/AILab-MLTools/LightAutoML/blob/master/examples/tutorials/Tutorial_3_sql_data_source.ipynb) - shows how to use LightAutoML presets (both standalone and time utilized variants) for solving ML tasks on tabular data from SQL data base instead of CSV.
-- [`Tutorial_4_NLP_Interpretation.ipynb`](https://colab.research.google.com/github/AILab-MLTools/LightAutoML/blob/master/examples/tutorials/Tutorial_4_NLP_Interpretation.ipynb) - example of using TabularNLPAutoML preset, LimeTextExplainer.
-- [`Tutorial_5_uplift.ipynb`](https://colab.research.google.com/github/AILab-MLTools/LightAutoML/blob/master/examples/tutorials/Tutorial_5_uplift.ipynb) - shows how to use LightAutoML for a uplift-modeling task.
-- [`Tutorial_6_custom_pipeline.ipynb`](https://colab.research.google.com/github/AILab-MLTools/LightAutoML/blob/master/examples/tutorials/Tutorial_6_custom_pipeline.ipynb) - shows how to create your own pipeline from specified blocks: pipelines for feature generation and feature selection, ML algorithms, hyperparameter optimization etc.
-- [`Tutorial_7_ICE_and_PDP_interpretation.ipynb`](https://colab.research.google.com/github/AILab-MLTools/LightAutoML/blob/master/examples/tutorials/Tutorial_7_ICE_and_PDP_interpretation.ipynb) - shows how to obtain local and global interpretation of model results using ICE and PDP approaches.
-- [`Tutorial_8_CV_preset.ipynb`](https://colab.research.google.com/github/AILab-MLTools/LightAutoML/blob/master/examples/tutorials/Tutorial_8_CV_preset.ipynb) - example of using TabularCVAutoML preset in CV multi-class classification task.
-- [`Tutorial_9_neural_networks.ipynb`](https://colab.research.google.com/github/AILab-MLTools/LightAutoML/blob/master/examples/tutorials/Tutorial_9_neural_networks.ipynb) - example of using Tabular preset with neural networks.
-- [`Tutorial_10_relational_data_with_star_scheme.ipynb`](https://colab.research.google.com/github/AILab-MLTools/LightAutoML/blob/master/examples/tutorials/Tutorial_10_relational_data_with_star_scheme.ipynb) - example of using Tabular preset with neural networks.
-- [`Tutorial_11_time_series.ipynb`](https://colab.research.google.com/github/AILab-MLTools/LightAutoML/blob/master/examples/tutorials/Tutorial_11_time_series.ipynb) - example of using Tabular preset with timeseries data.
-- [`Tutorial_12_Matching.ipynb`](https://colab.research.google.com/github/AILab-MLTools/LightAutoML/blob/master/examples/tutorials/Tutorial_12_Matching.ipynb) - example of using addon for matchig.
-
+- [`Tutorial_1_basics.ipynb`](https://colab.research.google.com/github/sb-ai-lab/LightAutoML/blob/master/examples/tutorials/Tutorial_1_basics.ipynb) - get started with LightAutoML on tabular data.
+- [`Tutorial_2_WhiteBox_AutoWoE.ipynb`](https://colab.research.google.com/github/sb-ai-lab/LightAutoML/blob/master/examples/tutorials/Tutorial_2_WhiteBox_AutoWoE.ipynb) - creating interpretable models.
+- [`Tutorial_3_sql_data_source.ipynb`](https://colab.research.google.com/github/sb-ai-lab/LightAutoML/blob/master/examples/tutorials/Tutorial_3_sql_data_source.ipynb) - shows how to use LightAutoML presets (both standalone and time utilized variants) for solving ML tasks on tabular data from SQL data base instead of CSV.
+- [`Tutorial_4_NLP_Interpretation.ipynb`](https://colab.research.google.com/github/sb-ai-lab/LightAutoML/blob/master/examples/tutorials/Tutorial_4_NLP_Interpretation.ipynb) - example of using TabularNLPAutoML preset, LimeTextExplainer.
+- [`Tutorial_5_uplift.ipynb`](https://colab.research.google.com/github/sb-ai-lab/LightAutoML/blob/master/examples/tutorials/Tutorial_5_uplift.ipynb) - shows how to use LightAutoML for a uplift-modeling task.
+- [`Tutorial_6_custom_pipeline.ipynb`](https://colab.research.google.com/github/sb-ai-lab/LightAutoML/blob/master/examples/tutorials/Tutorial_6_custom_pipeline.ipynb) - shows how to create your own pipeline from specified blocks: pipelines for feature generation and feature selection, ML algorithms, hyperparameter optimization etc.
+- [`Tutorial_7_ICE_and_PDP_interpretation.ipynb`](https://colab.research.google.com/github/sb-ai-lab/LightAutoML/blob/master/examples/tutorials/Tutorial_7_ICE_and_PDP_interpretation.ipynb) - shows how to obtain local and global interpretation of model results using ICE and PDP approaches.
+- [`Tutorial_8_CV_preset.ipynb`](https://colab.research.google.com/github/sb-ai-lab/LightAutoML/blob/master/examples/tutorials/Tutorial_8_CV_preset.ipynb) - example of using TabularCVAutoML preset in CV multi-class classification task.
+- [`Tutorial_9_neural_networks.ipynb`](https://colab.research.google.com/github/sb-ai-lab/LightAutoML/blob/master/examples/tutorials/Tutorial_9_neural_networks.ipynb) - example of using Tabular preset with neural networks.
+- [`Tutorial_10_relational_data_with_star_scheme.ipynb`](https://colab.research.google.com/github/sb-ai-lab/LightAutoML/blob/master/examples/tutorials/Tutorial_10_relational_data_with_star_scheme.ipynb) - example of using Tabular preset with neural networks.
+- [`Tutorial_11_time_series.ipynb`](https://colab.research.google.com/github/sb-ai-lab/LightAutoML/blob/master/examples/tutorials/Tutorial_11_time_series.ipynb) - example of using Tabular preset with timeseries data.
 
 **Note 1**: for production you have no need to use profiler (which increase work time and memory consomption), so please do not turn it on - it is in off state by default
 
@@ -94,6 +92,8 @@ pip install -U lightautoml
 # For partial installation use corresponding option
 # Extra dependencies: [nlp, cv, report] or use 'all' to install all dependencies
 pip install -U lightautoml[nlp]
+# Or extra dependencies with specific version
+pip install 'lightautoml[all]==0.4.0'
 ```
 
 Additionally, run following commands to enable pdf report generation:
@@ -126,11 +126,11 @@ If you are interested in contributing to LightAutoML, please read the [Contribut
 
 <a name="support"></a>
 # Support and feature requests
-- Seek prompt advice at [Telegram group](https://t.me/joinchat/sp8P7sdAqaU0YmRi).
-- Open bug reports and feature requests on GitHub [issues](https://github.com/AILab-MLTools/LightAutoML/issues).
+- Seek prompt advice in [Telegram group](https://t.me/joinchat/sp8P7sdAqaU0YmRi).
+- Open bug reports and feature requests on GitHub [issues](https://github.com/sb-ai-lab/LightAutoML/issues).
 
 <a name="license"></a>
 # License
-This project is licensed under the Apache License, Version 2.0. See [LICENSE](https://github.com/AILab-MLTools/LightAutoML/blob/master/LICENSE) file for more details.
+This project is licensed under the Apache License, Version 2.0. See [LICENSE](https://github.com/sb-ai-lab/LightAutoML/blob/master/LICENSE) file for more details.
 
 [Back to top](#toc)

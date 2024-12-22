@@ -275,7 +275,7 @@ class TimeUtilization:
 
         amls = [[] for _ in range(len(self.configs_list))]
         aml_preds = [[] for _ in range(len(self.configs_list))]
-        targets_mapping = None
+        class_mapping = None
         n_ms = 0
         n_cfg = 0
         upd_state_val = 0
@@ -325,14 +325,14 @@ class TimeUtilization:
                     log_file=log_file,
                 )
 
-                current_targets_mapping = automl.reader.targets_mapping
+                current_class_mapping = automl.reader.class_mapping
 
-                if targets_mapping is None:
-                    targets_mapping = current_targets_mapping
+                if class_mapping is None:
+                    class_mapping = current_class_mapping
                 else:
                     assert (
-                        targets_mapping == current_targets_mapping
-                    ), "targets_mappings are different for different AutoML for some reason."
+                        class_mapping == current_class_mapping
+                    ), "class_mappings are different for different AutoML for some reason."
 
                 logger.info("=" * 50)
 
@@ -362,7 +362,7 @@ class TimeUtilization:
 
         for preds, pipes in zip(aml_preds, amls):
             inner_blend = deepcopy(self.inner_blend)
-            val_pred, inner_pipe = inner_blend.fit_predict(preds, pipes, targets_mapping=targets_mapping)
+            val_pred, inner_pipe = inner_blend.fit_predict(preds, pipes, class_mapping=class_mapping)
             inner_pipe = [x.ml_algos[0].models[0] for x in inner_pipe]
 
             inner_preds.append(val_pred)
@@ -371,15 +371,13 @@ class TimeUtilization:
         # outer blend - blend of blends
         if not self.return_all_predictions:
             val_pred, self.outer_pipes = self.outer_blend.fit_predict(
-                inner_preds, inner_pipes, targets_mapping=targets_mapping
+                inner_preds, inner_pipes, class_mapping=class_mapping
             )
         else:
             val_pred = concatenate(inner_preds)
             self.outer_pipes = inner_pipes
 
-        self.targets_order = (
-            sorted(targets_mapping, key=targets_mapping.get, reverse=False) if targets_mapping else None
-        )
+        self.targets_order = sorted(class_mapping, key=class_mapping.get, reverse=False) if class_mapping else None
 
         # saving automl model with joblib
         if path_to_save is not None:

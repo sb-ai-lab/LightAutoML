@@ -273,7 +273,7 @@ class OptunaTuner(ParamsTuner):
             if callable(optimization_search_space):
                 _ml_algo.params = optimization_search_space(
                     trial=trial,
-                    optimization_search_space=optimization_search_space,
+                    estimated_n_trials=estimated_n_trials,
                     suggested_params=_ml_algo.init_params_on_input(train_valid_iterator),
                 )
             else:

@@ -76,7 +76,8 @@ class SelectionPipeline:
 
         """
         assert self._selected_features is not None, "Should be fitted first"
-        return self._selected_features
+        forced_features = self.forced_features if self.forced_features is not None else []
+        return list(set(self._selected_features + forced_features))
 
     @selected_features.setter
     def selected_features(self, val: List[str]):
@@ -138,6 +139,7 @@ class SelectionPipeline:
         self._selected_features = None
         self._in_features = None
         self.mapped_importances = None
+        self.forced_features = None
 
     def perform_selection(self, train_valid: Optional[TrainValidIterator]):
         """Select features from train-valid iterator.
@@ -201,13 +203,10 @@ class SelectionPipeline:
         selected_features = copy(self.selected_features)
 
         # Add forced features
-        selected_features = selected_features + [
-            feature
-            for feature in dataset.features
-            if dataset.roles[feature].force_input and (feature not in selected_features)
-        ]
+        if self.forced_features is None:
+            self.forced_features = [feature for feature in dataset.features if dataset.roles[feature].force_input]
 
-        return dataset[:, selected_features]
+        return dataset[:, set(selected_features + self.forced_features)]
 
     def map_raw_feature_importances(self, raw_importances: Series):
         """Calculate input feature importances.

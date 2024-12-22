@@ -199,8 +199,8 @@ class AutoML:
             self.targets_order = roles["target"]
         else:  # multiclass
             self.targets_order = (
-                sorted(self.reader.targets_mapping, key=self.reader.targets_mapping.get, reverse=False)
-                if self.reader.targets_mapping
+                sorted(self.reader.class_mapping, key=self.reader.class_mapping.get, reverse=False)
+                if self.reader.class_mapping
                 else None
             )
 

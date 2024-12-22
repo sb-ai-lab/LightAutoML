@@ -300,7 +300,7 @@ class LimeTextExplainer:
         self.tokenizer = _tokenizer_by_lang[lang](is_stemmer=False)
         self.distance_metric = distance_metric
 
-        class_names = automl.reader.targets_mapping
+        class_names = automl.reader.class_mapping
         if class_names is None:
             if self.task_name == "reg":
                 class_names = [0]

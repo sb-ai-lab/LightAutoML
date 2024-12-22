@@ -430,7 +430,7 @@ class ReportDeco:
 
     @property
     def mapping(self):
-        return self._model.reader.targets_mapping
+        return self._model.reader.class_mapping
 
     @property
     def task(self):
@@ -1181,7 +1181,7 @@ class ReportDecoUtilized(ReportDeco):
 
     @property
     def mapping(self):
-        return self._model.outer_pipes[0].ml_algos[0].models[0][0].reader.targets_mapping
+        return self._model.outer_pipes[0].ml_algos[0].models[0][0].reader.class_mapping
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

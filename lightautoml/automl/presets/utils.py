@@ -227,8 +227,8 @@ def plot_pdp_with_distribution(
         else:
             g0 = sns.boxplot(data=data, x="x", y="y", ax=axs[0], showfliers=False, color="b")
     else:
-        if reader.targets_mapping:
-            classes = sorted(reader.targets_mapping, key=reader.targets_mapping.get)[:top_n_classes]
+        if reader.class_mapping:
+            classes = sorted(reader.class_mapping, key=reader.class_mapping.get)[:top_n_classes]
         else:
             classes = np.arange(min(n_classes, top_n_classes))
         data = pd.concat(
