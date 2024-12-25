@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "LightAutoML"
-version = "0.4.0"
+version = "0.4.1dev1"
 description = "Fast and customizable framework for automatic ML model creation (AutoML)"
 authors = [
     "Alexander Ryzhkov <alexmryzhkov@gmail.com>",
@@ -43,10 +43,7 @@ scipy = [
     {version = "*", python = ">=3.9"},
     {version = "<=1.11", python = "<3.9"},
 ]
-scikit-learn = [
-    {version = ">=0.22, <=0.24.2", python = "<3.10"},
-    {version = ">=0.22", python = ">=3.10"},
-]
+scikit-learn = ">=0.22"
 lightgbm = [
     {version = ">=2.3"},
     {version = "^4.4.0", platform = "darwin"}, # https://github.com/microsoft/LightGBM/issues/5328#issuecomment-2169128216

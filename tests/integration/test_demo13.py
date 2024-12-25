@@ -46,4 +46,4 @@ def test_autots(ai92_value_77_train_test):
     forecast, _ = automl.predict(train)
 
     test_score = mean_absolute_error(test[roles["target"]].values, forecast)
-    assert test_score < 2e5
+    assert test_score < 210_00
