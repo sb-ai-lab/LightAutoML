@@ -44,24 +44,10 @@ class BoostXGB(TabularMLAlgo, ImportanceEstimator):
     _name: str = "XGBoost"
 
     _default_params = {
-        # "task": "train",
-        # "learning_rate": 0.05, #eta
-        # "max_leaves": 128,
-        # "colsample_bytree": 0.7,
-        # "subsample": 0.7 ,
-        # # "bagging_freq": 1,
-        # "max_depth": -1,
-        # "verbosity": -1,
-        # "reg_alpha": 1,
-        # "reg_lambda": 0.0,
-        # "gamma": 0.0,
-        # # "zero_as_missing": False,
-        # "nthread": 4,
-        # "max_bin": 255,
-        # # "min_data_in_bin": 3,
         "n_estimators": 3000,
         "early_stopping_rounds": 100,
         "seed": 42,
+        "verbose_eval": 100,
     }
 
     def _infer_params(
@@ -78,8 +64,7 @@ class BoostXGB(TabularMLAlgo, ImportanceEstimator):
         params = copy(self.params)
         early_stopping_rounds = params.pop("early_stopping_rounds")
         num_trees = params.pop("n_estimators")
-
-        verbose_eval = 100
+        verbose_eval = params.pop("verbose_eval")
 
         # get objective params
         loss = self.task.losses["xgb"]
@@ -117,61 +102,6 @@ class BoostXGB(TabularMLAlgo, ImportanceEstimator):
         if self.freeze_defaults:
             # if user change defaults manually - keep it
             return suggested_params
-
-        # if task == "reg":
-        #     suggested_params = {
-        #         "learning_rate": 0.05,
-        #         "num_leaves": 32,
-        #         "feature_fraction": 0.9,
-        #         "bagging_fraction": 0.9,
-        #     }
-
-        # if rows_num <= 10000:
-        #     init_lr = 0.01
-        #     ntrees = 3000
-        #     es = 200
-
-        # elif rows_num <= 20000:
-        #     init_lr = 0.02
-        #     ntrees = 3000
-        #     es = 200
-
-        # elif rows_num <= 100000:
-        #     init_lr = 0.03
-        #     ntrees = 1200
-        #     es = 200
-        # elif rows_num <= 300000:
-        #     init_lr = 0.04
-        #     ntrees = 2000
-        #     es = 100
-        # else:
-        #     init_lr = 0.05
-        #     ntrees = 2000
-        #     es = 100
-
-        # if rows_num > 300000:
-        #     suggested_params["num_leaves"] = 128 if task == "reg" else 244
-        # elif rows_num > 100000:
-        #     suggested_params["num_leaves"] = 64 if task == "reg" else 128
-        # elif rows_num > 50000:
-        #     suggested_params["num_leaves"] = 32 if task == "reg" else 64
-        #     # params['reg_alpha'] = 1 if task == 'reg' else 0.5
-        # elif rows_num > 20000:
-        #     suggested_params["num_leaves"] = 32 if task == "reg" else 32
-        #     suggested_params["reg_alpha"] = 0.5 if task == "reg" else 0.0
-        # elif rows_num > 10000:
-        #     suggested_params["num_leaves"] = 32 if task == "reg" else 64
-        #     suggested_params["reg_alpha"] = 0.5 if task == "reg" else 0.2
-        # elif rows_num > 5000:
-        #     suggested_params["num_leaves"] = 24 if task == "reg" else 32
-        #     suggested_params["reg_alpha"] = 0.5 if task == "reg" else 0.5
-        # else:
-        #     suggested_params["num_leaves"] = 16 if task == "reg" else 16
-        #     suggested_params["reg_alpha"] = 1 if task == "reg" else 1
-
-        # suggested_params["learning_rate"] = init_lr
-        # suggested_params["num_trees"] = ntrees
-        # suggested_params["early_stopping_rounds"] = es
 
         return suggested_params
 
@@ -237,17 +167,26 @@ class BoostXGB(TabularMLAlgo, ImportanceEstimator):
         dtrain = xgboost.DMatrix(train.data, label=train_target, weight=train_weight)
         dval = xgboost.DMatrix(valid.data, label=valid_target, weight=valid_weight)
 
-        with redirect_stdout(LoggerStream(logger, verbose_eval=100)):
-            # maximize=None, evals_result=None, xgb_model=None, callbacks=None, custom_metric=None)
+        with redirect_stdout(LoggerStream(logger, verbose_eval=verbose_eval)):
+            early_stopping_params = {
+                "rounds": early_stopping_rounds,
+                "data_name": "valid",
+            }
+
+            if feval is not None:
+                early_stopping_params["metric_name"] = "Opt_metric"
+                early_stopping_params["maximize"] = feval.greater_is_better
+
+            early_stopping = xgboost.callback.EarlyStopping(**early_stopping_params)
+
             model = xgboost.train(
                 params=params,
                 dtrain=dtrain,
                 num_boost_round=num_trees,
-                evals=[(dval, "valid"), (dtrain, "train")],
+                evals=[(dval, "valid")],
                 obj=fobj,
-                feval=feval,
-                early_stopping_rounds=early_stopping_rounds,
-                verbose_eval=verbose_eval,
+                custom_metric=feval,
+                callbacks=[early_stopping],
             )
 
         val_pred = model.predict(data=dval)
