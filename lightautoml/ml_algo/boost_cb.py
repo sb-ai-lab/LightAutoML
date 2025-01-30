@@ -71,9 +71,10 @@ class BoostCB(TabularMLAlgo, ImportanceEstimator):
         # "silent": False,
         "verbose": 100,
         "allow_writing_files": False,
+        "verbose_eval": 100,
     }
 
-    def _infer_params(self) -> Tuple[dict, int, int, Callable, Callable]:
+    def _infer_params(self) -> Tuple[dict, int, int, int, Callable, Callable]:
         """Infer all parameters.
 
         Returns:
@@ -83,6 +84,7 @@ class BoostCB(TabularMLAlgo, ImportanceEstimator):
         params = copy(self.params)
         early_stopping_rounds = params.pop("od_wait")
         num_trees = params.pop("num_trees")
+        verbose_eval = params.pop("verbose_eval")
 
         loss = self.task.losses["cb"]
         fobj = loss.fobj_name
@@ -93,7 +95,7 @@ class BoostCB(TabularMLAlgo, ImportanceEstimator):
 
         # TODO: what if parameter of metric occurs in list of parameters of loss -> intersection...
 
-        return params, num_trees, early_stopping_rounds, fobj, feval
+        return params, num_trees, early_stopping_rounds, verbose_eval, fobj, feval
 
     def init_params_on_input(self, train_valid_iterator: TrainValidIterator) -> dict:
         """Get model parameters depending on input dataset parameters.
@@ -282,7 +284,7 @@ class BoostCB(TabularMLAlgo, ImportanceEstimator):
             Tuple (model, predicted_values).
 
         """
-        params, num_trees, early_stopping_rounds, fobj, feval = self._infer_params()
+        params, num_trees, early_stopping_rounds, verbose_eval, fobj, feval = self._infer_params()
 
         cb_train = self._get_pool(train)
         cb_valid = self._get_pool(valid)
@@ -302,7 +304,7 @@ class BoostCB(TabularMLAlgo, ImportanceEstimator):
             }
         )
 
-        model.fit(cb_train, eval_set=cb_valid, log_cout=LoggerStream(logger, verbose_eval=100))
+        model.fit(cb_train, eval_set=cb_valid, verbose_eval=verbose_eval, log_cout=LoggerStream(logger))
 
         val_pred = self._predict(model, cb_valid, params)
 
