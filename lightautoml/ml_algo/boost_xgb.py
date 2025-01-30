@@ -1,4 +1,4 @@
-"""Wrapped LightGBM for tabular datasets."""
+"""Wrapped XGBoost for tabular datasets."""
 
 import logging
 
@@ -56,8 +56,8 @@ class BoostXGB(TabularMLAlgo, ImportanceEstimator):
         """Infer all parameters in lightgbm format.
 
         Returns:
-            Tuple (params, num_trees, early_stopping_rounds, verbose_eval, fobj, feval).
-            About parameters: https://lightgbm.readthedocs.io/en/latest/_modules/lightgbm/engine.html
+            Tuple (params, num_trees, early_stopping_rounds, fobj, feval).
+            About parameters: https://xgboost.readthedocs.io/en/stable/parameter.html
 
         """
         # TODO: Check how it works with custom tasks
@@ -91,12 +91,6 @@ class BoostXGB(TabularMLAlgo, ImportanceEstimator):
             Parameters of model.
 
         """
-        # TODO: use features_num
-        # features_num = len(train_valid_iterator.features())
-
-        # rows_num = len(train_valid_iterator.train)
-        # task = train_valid_iterator.train.task.name
-
         suggested_params = copy(self.default_params)
 
         if self.freeze_defaults:
@@ -167,7 +161,7 @@ class BoostXGB(TabularMLAlgo, ImportanceEstimator):
         dtrain = xgboost.DMatrix(train.data, label=train_target, weight=train_weight)
         dval = xgboost.DMatrix(valid.data, label=valid_target, weight=valid_weight)
 
-        with redirect_stdout(LoggerStream(logger, verbose_eval=verbose_eval)):
+        with redirect_stdout(LoggerStream(logger)):
             early_stopping_params = {
                 "rounds": early_stopping_rounds,
                 "data_name": "valid",
@@ -182,6 +176,7 @@ class BoostXGB(TabularMLAlgo, ImportanceEstimator):
             model = xgboost.train(
                 params=params,
                 dtrain=dtrain,
+                verbose_eval=verbose_eval,
                 num_boost_round=num_trees,
                 evals=[(dval, "valid")],
                 obj=fobj,
@@ -210,7 +205,7 @@ class BoostXGB(TabularMLAlgo, ImportanceEstimator):
         return pred
 
     def get_features_score(self) -> Series:
-        """Computes feature importance as mean values of feature importance provided by lightgbm per all models.
+        """Computes feature importance as mean values of feature importance provided by xgboost per all models.
 
         Returns:
             Series with feature importances.
