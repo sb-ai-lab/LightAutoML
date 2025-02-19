@@ -12,6 +12,7 @@ from typing import Sequence
 from ..dataset.base import LAMLDataset
 from ..dataset.utils import concatenate
 from ..pipelines.ml.base import MLPipeline
+from lightautoml.dataset.roles import TargetRole
 from ..reader.base import Reader
 from ..utils.logging import set_stdout_level
 from ..utils.logging import verbosity_to_loglevel
@@ -189,14 +190,15 @@ class AutoML:
         train_dataset = self.reader.fit_read(train_data, train_features, roles)
 
         # Saving class mapping
+        target_col_name = roles["target"] if "target" in roles else roles[TargetRole()]
         if self.reader.task.name == "binary":
             self.targets_order = [1]
         elif self.reader.task.name == "multi:reg":
-            self.targets_order = roles["target"]
+            self.targets_order = target_col_name
         elif self.reader.task.name == "reg":
-            self.targets_order = [roles["target"]]
+            self.targets_order = [target_col_name]
         elif self.reader.task.name == "multilabel":
-            self.targets_order = roles["target"]
+            self.targets_order = target_col_name
         else:  # multiclass
             self.targets_order = (
                 sorted(self.reader.class_mapping, key=self.reader.class_mapping.get, reverse=False)

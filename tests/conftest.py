@@ -22,10 +22,18 @@ RANDOM_STATE = 42
 np.random.seed(RANDOM_STATE)
 
 
+def get_target_name(roles):
+    for key, value in roles.items():
+        if (key == "target") or isinstance(key, TargetRole):
+            return value
+
+
 @pytest.fixture()
 def jobs_train_test(nrows=None):
     data = pd.read_csv("./examples/data/jobs_train.csv", nrows=nrows)
-    train_data, test_data = train_test_split(data.drop("enrollee_id", axis=1), test_size=0.2, stratify=data["target"])
+    train_data, test_data = train_test_split(
+        data.drop("enrollee_id", axis=1), test_size=0.2, stratify=data["target"], random_state=RANDOM_STATE
+    )
 
     return train_data, test_data
 
@@ -36,9 +44,50 @@ def jobs_roles():
 
 
 @pytest.fixture()
+def uplift_data_train_test(sampled_app_roles, nrows=None):
+    data = pd.read_csv(
+        "./examples/data/sampled_app_train.csv",
+        nrows=nrows,
+    )
+    sampled_app_roles["treatment"] = "CODE_GENDER"
+
+    data["BIRTH_DATE"] = (np.datetime64("2018-01-01") + data["DAYS_BIRTH"].astype(np.dtype("timedelta64[D]"))).astype(
+        str
+    )
+    data["EMP_DATE"] = (
+        np.datetime64("2018-01-01") + np.clip(data["DAYS_EMPLOYED"], None, 0).astype(np.dtype("timedelta64[D]"))
+    ).astype(str)
+    data["report_dt"] = np.datetime64("2018-01-01")
+    data["constant"] = 1
+    data["allnan"] = np.nan
+    data.drop(["DAYS_BIRTH", "DAYS_EMPLOYED"], axis=1, inplace=True)
+    data["CODE_GENDER"] = (data["CODE_GENDER"] == "M").astype(int)
+    data["__fold__"] = np.random.randint(0, 5, len(data))
+
+    stratify_value = data[get_target_name(sampled_app_roles)] + 10 * data[sampled_app_roles["treatment"]]
+    train, test = train_test_split(data, test_size=3000, stratify=stratify_value, random_state=42)
+    test_target, test_treatment = (
+        test[get_target_name(sampled_app_roles)].values.ravel(),
+        test[sampled_app_roles["treatment"]].values.ravel(),
+    )
+
+    return train, test, test_target, test_treatment
+
+
+# @pytest.fixture()
+# def uplift_data_roles():
+#     return {
+#         'target': 'conversion',
+#         'treatment': 'CODE_GENDER',
+#         CategoryRole(): ['zip_code', 'channel', 'offer'],
+#         NumericRole(): ['recency', 'history', 'used_discount', 'used_bogo'],
+#     }
+
+
+@pytest.fixture()
 def avito1k_train_test(nrows=None):
     data = pd.read_csv("./examples/data/avito1k_train.csv")
-    train_data, test_data = train_test_split(data, test_size=500, random_state=42)
+    train_data, test_data = train_test_split(data, test_size=500, random_state=RANDOM_STATE)
 
     return train_data, test_data
 
