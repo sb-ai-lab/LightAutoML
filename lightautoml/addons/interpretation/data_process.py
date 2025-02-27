@@ -21,7 +21,7 @@ from torch.utils.data import Sampler
 
 
 class LengthDataset(Dataset):
-    """Default dict like PyTorch dataset, with additional info about lenght of sequence.
+    """Default dict like PyTorch dataset, with additional info about length of sequence.
 
     Args:
         tokens: List of tokens number, numbering from zero to dictionary size.
@@ -45,7 +45,7 @@ class LengthDataset(Dataset):
 
 
 class BySequenceLengthSampler(Sampler):
-    """PyTorch sampler with binning by sequnce length.
+    """PyTorch sampler with binning by sequence length.
 
     Args:
         data_source: Dataset in dict like format, with key `'len'`.
@@ -121,7 +121,7 @@ class BySequenceLengthSampler(Sampler):
         return bucket_id
 
     def shuffle_tensor(self, t):
-        """Shuffle tensor along lenght."""
+        """Shuffle tensor along length."""
         if self.shuffle:
             return t[torch.randperm(len(t))]
         else:
@@ -196,7 +196,7 @@ def get_vocab(tokenized: List[List[str]], max_len_vocab: int) -> Tuple[Dict[str,
 
 
 def get_embedding_matrix(id_to_word: Dict[int, str], embedder: Any, embedder_dim: int) -> torch.FloatTensor:
-    """Create embedding matrix from lookup table and (optionaly) embedder.
+    """Create embedding matrix from lookup table and (optionally) embedder.
 
     Args:
         id_to_word: Dictionary token-id to word.
@@ -233,7 +233,7 @@ def map_tokenized_to_id(
     Args:
         tokenized: Dataset of words.
         word_to_id: Dictionary word to token-id.
-        min_k: Parameter for minumum sequence length (used for padding).
+        min_k: Parameter for minimum sequence length (used for padding).
 
     Returns:
         Dataset with token ids.
@@ -262,11 +262,11 @@ def get_len_dataset(tokenized: List[List[str]], target: np.ndarray) -> LengthDat
         Length Dataset.
 
     Raises:
-        ValueError: Length missmatch of target and tokenized.
+        ValueError: Length mismatch of target and tokenized.
 
     """
     if len(tokenized) != len(target):
-        raise ValueError("Missmatch of lengths tokenized ({}) and target ({})".format(len(tokenized), len(target)))
+        raise ValueError("Mismatch of lengths tokenized ({}) and target ({})".format(len(tokenized), len(target)))
     return LengthDataset(tokenized, target)
 
 
@@ -279,7 +279,7 @@ def get_len_dataloader(
     """Get len dataloader.
 
     Args:
-        dataset: Lenght dataset.
+        dataset: Length dataset.
         batch_size: Size of batch.
         boundaries: List of binning boundaries.
         mode: Stage of dataloader.

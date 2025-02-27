@@ -6,6 +6,65 @@ import clearml
 import numpy as np
 
 
+def bench_bonus(path_to_bonus, task_name, project):  # noqa D103
+    from run_tabular import main as run_tabular
+
+    for inner_dir in os.listdir(path_to_bonus):
+        if not os.path.isdir(f"{path_to_bonus}/{inner_dir}"):
+            continue
+
+        for dirname in os.listdir(f"{path_to_bonus}/{inner_dir}"):
+            if dirname.startswith("."):
+                continue
+
+            full_dir = f"{path_to_bonus}/{inner_dir}/{dirname}"
+            if not os.path.isdir(full_dir):
+                continue
+            print(full_dir)
+
+            train_name = None
+            test_name = None
+            for fname in os.listdir(full_dir):
+                if "train" in fname:
+                    train_name = fname
+                elif ("test" in fname) or ("OOT" in fname):
+                    test_name = fname
+            assert train_name is not None and test_name is not None
+
+            train, test = pd.read_csv(os.path.join(full_dir, train_name)), pd.read_csv(
+                os.path.join(full_dir, test_name)
+            )
+            # Lower column names in train and test dataframes
+            train.columns = [col.lower() for col in train.columns]
+            test.columns = [col.lower() for col in test.columns]
+
+            if len(train["target"].unique()) == 2:
+                task_type = "binary"
+            elif (len(train["target"].unique()) > 2) and (len(train["target"].unique()) < 100):
+                task_type = "multiclass"
+            else:
+                task_type = "regression"
+
+            try:
+                run_tabular(
+                    project=project,
+                    train=train,
+                    test=test,
+                    task_type=task_type,
+                    task_name=task_name,
+                    dataset_name=None,
+                    cpu_limit=16,
+                    memory_limit=32,
+                    save_model=False,
+                    dataset_id=os.path.join(inner_dir, dirname),
+                )
+            except Exception as e:
+                print(f"Error processing {full_dir}: {e}")
+                continue
+
+    return
+
+
 def main(  # noqa D103
     task_name: str,
     dataset_name: str,
@@ -73,6 +132,7 @@ def main(  # noqa D103
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="")
+    parser.add_argument("--bonus", type=str, help="path to bonus", default=None)
     parser.add_argument("--name", type=str, help="name for task", default=None)
     parser.add_argument("--dataset", type=str, help="dataset name or id", default=None)
     parser.add_argument("--dataset_project", type=str, help="dataset_project", default="Datasets_with_metadata")
@@ -88,18 +148,21 @@ if __name__ == "__main__":
     parser.add_argument("--save_model", action="store_true")
     args = parser.parse_args()
 
-    main(
-        task_name=args.name,
-        dataset_name=args.dataset,
-        cpu_limit=args.cpu_limit,
-        memory_limit=args.memory_limit,
-        dataset_partial_name=args.dataset_partial_name,
-        dataset_project=args.dataset_project,
-        tags=args.tags,
-        queue=args.queue,
-        project=args.project,
-        image=args.image,
-        n_datasets=args.n_datasets,
-        min_num_obs=args.min_num_obs,
-        save_model=args.save_model,
-    )
+    if args.bonus is not None:
+        bench_bonus(args.bonus, task_name=args.name, project=args.project)
+    else:
+        main(
+            task_name=args.name,
+            dataset_name=args.dataset,
+            cpu_limit=args.cpu_limit,
+            memory_limit=args.memory_limit,
+            dataset_partial_name=args.dataset_partial_name,
+            dataset_project=args.dataset_project,
+            tags=args.tags,
+            queue=args.queue,
+            project=args.project,
+            image=args.image,
+            n_datasets=args.n_datasets,
+            min_num_obs=args.min_num_obs,
+            save_model=args.save_model,
+        )
