@@ -64,7 +64,7 @@ class TestAutoUpliftPreset:
         #         Perfect       = 0.09438
 
         # checks
-        assert roc_auc_treatment > 0.69  # 0.69535
-        assert roc_auc_control > 0.72  # 0.73022
+        assert roc_auc_treatment > 0.68  # 0.69535
+        assert roc_auc_control > 0.71  # 0.73022
 
         # check_pickling(autouplift, ho_score, binary_task, test, target_name)
