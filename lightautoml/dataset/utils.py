@@ -1,5 +1,7 @@
 """Utilities for working with the structure of a dataset."""
 
+import copy
+
 from typing import Callable
 from typing import Dict
 from typing import Optional
@@ -37,11 +39,11 @@ def roles_parser(init_roles: Dict[Union[ColumnRole, str], Union[str, Sequence[st
         feat = init_roles[r]
 
         if isinstance(feat, str):
-            roles[feat] = r
+            roles[feat] = copy.deepcopy(r)
 
         else:
             for f in init_roles[r]:
-                roles[f] = r
+                roles[f] = copy.deepcopy(r)
 
     return roles
 

@@ -54,7 +54,7 @@ docs:
   before_script:
     - pip install tox
   script:
-    - tox -e codespell,build
+    - tox -e codespell
 
 
 mirror-code:

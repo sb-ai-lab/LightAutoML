@@ -21,7 +21,7 @@ class TestTabularAutoMLXGB:
         ho_score = roc_auc_score(test[target_name].values, ho_predictions.data[:, 0])
 
         # checks
-        assert oof_score > 0.65
-        assert ho_score > 0.65
+        assert oof_score > 0.69
+        assert ho_score > 0.69
 
         check_pickling(automl, ho_score, binary_task, test, target_name)

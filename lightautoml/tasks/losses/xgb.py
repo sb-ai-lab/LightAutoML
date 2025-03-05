@@ -93,6 +93,7 @@ class XGBFunc:
         label = dtrain.get_label()
 
         weights = dtrain.get_weight()
+        weights = None if len(weights) == 0 else weights
 
         if label.shape[0] != pred.shape[0]:
             pred = pred.reshape((label.shape[0], -1), order="F")
@@ -109,7 +110,7 @@ class XGBFunc:
 
         # TODO: what if grouped case
 
-        return "Opt metric", val, self.greater_is_better
+        return "Opt_metric", val
 
 
 class XGBLoss(Loss):

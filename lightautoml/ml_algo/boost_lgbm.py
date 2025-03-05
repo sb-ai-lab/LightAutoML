@@ -62,6 +62,7 @@ class BoostLGBM(TabularMLAlgo, ImportanceEstimator):
         "num_trees": 3000,
         "early_stopping_rounds": 100,
         "random_state": 42,
+        "verbose_eval": 100,
     }
 
     def _infer_params(
@@ -70,7 +71,7 @@ class BoostLGBM(TabularMLAlgo, ImportanceEstimator):
         """Infer all parameters in lightgbm format.
 
         Returns:
-            Tuple (params, num_trees, early_stopping_rounds, verbose_eval, fobj, feval).
+            Tuple (params, num_trees, early_stopping_rounds, fobj, feval).
             About parameters: https://lightgbm.readthedocs.io/en/latest/_modules/lightgbm/engine.html
 
         """
@@ -78,8 +79,7 @@ class BoostLGBM(TabularMLAlgo, ImportanceEstimator):
         params = copy(self.params)
         early_stopping_rounds = params.pop("early_stopping_rounds")
         num_trees = params.pop("num_trees")
-
-        verbose_eval = 100
+        verbose_eval = params.pop("verbose_eval")
 
         # get objective params
         loss = self.task.losses["lgb"]
@@ -251,7 +251,7 @@ class BoostLGBM(TabularMLAlgo, ImportanceEstimator):
         lgb_train = lgb.Dataset(train.data, label=train_target, weight=train_weight)
         lgb_valid = lgb.Dataset(valid.data, label=valid_target, weight=valid_weight)
 
-        with redirect_stdout(LoggerStream(logger, verbose_eval=100)):
+        with redirect_stdout(LoggerStream(logger)):
             lgb_kwargs = {
                 "params": params,
                 "train_set": lgb_train,
