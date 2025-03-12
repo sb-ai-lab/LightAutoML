@@ -99,10 +99,10 @@ def main(  # noqa D103
         )
 
         if min_num_obs is not None:
-            for indx, dataset in enumerate(dataset_list):
+            for index, dataset in enumerate(dataset_list):
                 metadata = clearml.Dataset.get(dataset_id=None, dataset_name=dataset["name"]).get_metadata()
                 if metadata["num_obs"].iloc[0] < min_num_obs:
-                    dataset_list.pop(indx)
+                    dataset_list.pop(index)
 
         if len(dataset_list) <= 0:
             raise ValueError("No one dataset was found with passed parameters.")

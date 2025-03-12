@@ -26,7 +26,7 @@ There are two ways to solve machine learning problems using LightAutoML:
     ```
 
 * As a framework:</br>
-    LighAutoML framework has a lot of ready-to-use parts and extensive customization options, to learn more check out the [resources](#resources) section.
+    LightAutoML framework has a lot of ready-to-use parts and extensive customization options, to learn more check out the [resources](#resources) section.
 
 <a name="resources"></a>
 # Resources

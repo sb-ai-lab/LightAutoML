@@ -162,7 +162,6 @@ class GroupByTransformer(LAMLTransformer):
         # create resulted
         output = dataset.empty().to_numpy()
         output.set_data(feats_block, self.features, NumericRole(dtype=np.float32))
-        # print(output.shape)
         return output
 
     def _transform_one(self, stats_from_fit, feature_vals, transform_type):

@@ -228,8 +228,6 @@ class SeqNumCountsTransformer(LAMLTransformer):
         data = dataset.apply_func((slice(None)), len).reshape(-1, 1)
         # transform
 
-        # print('name', dataset.name)
-        # print('scheme', dataset.scheme)
         # create resulted
         return NumpyDataset(data, self.features, NumericRole(np.float32))
 

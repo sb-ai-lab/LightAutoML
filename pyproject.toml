@@ -168,6 +168,5 @@ use_parentheses = true
 filter_files = true
 
 [tool.codespell]
-skip = '*.git,*.csv,./lightautoml/addons/interpretation/*,*.ipynb'
-#
-ignore-words-list = 'LAMA,Lama,lama,MAPE,mape,splitted,fpr'
+skip = '*.ipynb'
+ignore-words-list = 'LAMA,MAPE,mape,splitted,fpr'

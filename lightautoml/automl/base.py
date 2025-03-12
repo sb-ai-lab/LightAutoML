@@ -225,13 +225,13 @@ class AutoML:
 
         self.levels = []
 
-        for leven_number, level in enumerate(self._levels, 1):
+        for level_number, level in enumerate(self._levels, 1):
             pipes = []
             level_predictions = []
-            flg_last_level = leven_number == len(self._levels)
+            flg_last_level = level_number == len(self._levels)
 
             logger.info(
-                f"Layer \x1b[1m{leven_number}\x1b[0m train process start. Time left {self.timer.time_left:.2f} secs"
+                f"Layer \x1b[1m{level_number}\x1b[0m train process start. Time left {self.timer.time_left:.2f} secs"
             )
 
             for k, ml_pipe in enumerate(level):
@@ -253,12 +253,12 @@ class AutoML:
                 if self.timer.child_out_of_time:
                     logger.info(
                         "Time limit exceeded in one of the tasks. AutoML will blend level {0} models.\n".format(
-                            leven_number
+                            level_number
                         )
                     )
                     flg_last_level = True
 
-            logger.info("\x1b[1mLayer {} training completed.\x1b[0m\n".format(leven_number))
+            logger.info("\x1b[1mLayer {} training completed.\x1b[0m\n".format(level_number))
 
             # here is split on exit condition
             if not flg_last_level:
