@@ -285,7 +285,7 @@ def draw_html(
     if not draw_order:
         order_s = ""
         scale_word = ""
-    lord = 0.5 * len(order_s) + 1.5  # lenght order
+    lord = 0.5 * len(order_s) + 1.5  # order length
     inorm_const = 1 / norm_const
     if cmap is None:
         cmap = plt.get_cmap("bwr")

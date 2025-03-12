@@ -75,7 +75,7 @@ class L2XTextExplainer:
 
     Additional info:
 
-    1. After traning all models will be on cpu and in evaluation mode.
+    1. After training all models will be on cpu and in evaluation mode.
 
 
     How should it works:
@@ -101,7 +101,7 @@ class L2XTextExplainer:
             that deal with sentence in string to list of tokens.
             of list of strings. If None the lang
             from automl's text_params will be used.
-        train_device: Device that will be used for traning L2X.
+        train_device: Device that will be used for training L2X.
             Name of device should be valid for torch.device.
         inference_device: Device that will be used for inference L2X.
             Name of device should be valid for torch.device.
@@ -113,7 +113,7 @@ class L2XTextExplainer:
             like linspace), 'hist' (histogram binning).
         bins_number: Number of bins.
         n_important: Number of imembeddportant tokens.
-        learning_rate: Learning rate of optimizer for traning L2X.
+        learning_rate: Learning rate of optimizer for training L2X.
         n_epochs: Number of epochs for training L2X.
         optimizer: Should be optimizer in pytorch format.
         optimizer_params: Additional params of optimizer,
@@ -130,9 +130,9 @@ class L2XTextExplainer:
         conv_ksize: Size of convolution kernel.
         hidden_dim: Size of fully connected layer in L2X.
         drop_rate: Dropout rates in L2X.
-        importance_sampler: Specifices method of sampling importance.
+        importance_sampler: Specifies method of sampling importance.
         embedder: Embedding dictionary or path to fasttext/dict of embeddings.
-        embedding_dim: Dimention of embeddings.
+        embedding_dim: Dimension of embeddings.
         trainable_embeds: To train embeddings of L2X.
         max_vocab_length: Maximum vocabulary length. If -1 then include all in train set.
         gamma: Special coefficient, that encourage neighborhood of important tokens.
@@ -210,14 +210,14 @@ class L2XTextExplainer:
         elif callable(tokenizer):
             self.tokenizer = tokenizer
         else:
-            raise TypeError("Unkown type of tokenizer: {}".format(type(tokenizer)))
+            raise TypeError("Unknown type of tokenizer: {}".format(type(tokenizer)))
 
         self.train_device = torch.device(train_device)
         self.inference_device = torch.device(inference_device)
         self.verbose = verbose
 
         if binning_mode not in ["linear", "hist"]:
-            raise ValueError("Only avaliable 'linear', 'hist' binning mods, but {} given".format(binning_mode))
+            raise ValueError("Only available 'linear', 'hist' binning mods, but {} given".format(binning_mode))
         self.binning_mode = binning_mode
         self.bins_number = bins_number
         self.k = n_important
@@ -253,7 +253,7 @@ class L2XTextExplainer:
             )
         self.conv_ksize = conv_ksize
         if hidden_dim <= 0:
-            raise ValueError("Dimention of hidden layer should be positive, but {} given".format(hidden_dim))
+            raise ValueError("Dimension of hidden layer should be positive, but {} given".format(hidden_dim))
         self.hidden_dim = hidden_dim
         if drop_rate >= 1 or drop_rate < 0:
             raise ValueError("Dropout rate should be in [0, 1), but {} given".format(drop_rate))
@@ -294,7 +294,7 @@ class L2XTextExplainer:
             raise TypeError("max_vocab_length should be int, but {} given".format(type(max_vocab_length)))
         elif max_vocab_length < -1 or max_vocab_length == 0:
             raise ValueError(
-                "Only avaliable values for max_vocab_length: -1 or grater 0, but {} given".format(max_vocab_length)
+                "Only available values for max_vocab_length: -1 or grater 0, but {} given".format(max_vocab_length)
             )
         self.max_vocab_length = max_vocab_length
 
@@ -541,7 +541,7 @@ class L2XTextExplainer:
             gamma: Gamma.
 
         Returns:
-            Accumalated loss.
+            Accumulated loss.
 
         """
         model.train()
@@ -623,7 +623,7 @@ class L2XTextExplainer:
         return np.r_[0, np.hist(lens, self.bins_number)[1]]
 
     def _mi_bins(self, data, target) -> np.ndarray:
-        raise NotImplementedError("Mutual information binning is not avaliable")
+        raise NotImplementedError("Mutual information binning is not available")
 
     def __getitem__(self, col) -> np.ndarray:
         if col not in self.explainers:
@@ -747,7 +747,7 @@ class L2XExplanation:
 
         """
         if len(tokens) != len(mask):
-            raise ValueError("Dimention mismatch for tokens and mask")
+            raise ValueError("Dimension mismatch for tokens and mask")
         self.tokens = tokens
         self.mask = mask
         self.task_name = task_name
