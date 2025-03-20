@@ -83,7 +83,7 @@ def get_common_concat(
     ):
         return numpy_or_pandas_and_seq_concat, None
 
-    raise TypeError("Unable to concatenate dataset types {0}".format(list(dataset_types)))
+    raise TypeError(f"Unable to concatenate dataset types {list(dataset_types)}")
 
 
 def numpy_and_pandas_concat(datasets: Sequence[Union[NumpyDataset, PandasDataset]]) -> PandasDataset:

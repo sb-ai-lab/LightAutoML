@@ -17,11 +17,11 @@ if not os.path.exists(HTML_PATH):
 
 html_filenames = [os.path.splitext(name)[0] + ".html" for name in os.listdir(RSTS_PATH) if ".rst" in name]
 html_filenames = sorted(html_filenames)
-logging.debug(".rst filenames: {}".format(html_filenames))
+logging.debug(f".rst filenames: {html_filenames}")
 
 for fname in html_filenames:
     fpath = os.path.join(HTML_PATH, fname)
-    logging.debug("Check {}".format(fname))
-    assert os.path.exists(fpath), "File {} doesn`t exist.".format(fpath)
+    logging.debug(f"Check {fname}")
+    assert os.path.exists(fpath), f"File {fpath} doesn`t exist."
 
 logging.debug("All files exists.")

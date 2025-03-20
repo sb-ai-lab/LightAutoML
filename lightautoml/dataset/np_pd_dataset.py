@@ -107,7 +107,7 @@ class NumpyDataset(LAMLDataset):
             self._features = copy(val)
         else:
             prefix = val if val is not None else "feat"
-            self._features = ["{0}_{1}".format(prefix, x) for x in range(self.data.shape[1])]
+            self._features = [f"{prefix}_{x}" for x in range(self.data.shape[1])]
 
     @property
     def roles(self) -> RolesDict:
@@ -166,7 +166,7 @@ class NumpyDataset(LAMLDataset):
         features: NpFeatures = (),
         roles: NpRoles = None,
         task: Optional[Task] = None,
-        **kwargs: np.ndarray
+        **kwargs: np.ndarray,
     ):
 
         self._initialize(task, **kwargs)
@@ -407,7 +407,7 @@ class CSRSparseDataset(NumpyDataset):
         features: NpFeatures = (),
         roles: NpRoles = None,
         task: Optional[Task] = None,
-        **kwargs: np.ndarray
+        **kwargs: np.ndarray,
     ):
         """Create dataset from csr_matrix.
 
@@ -520,7 +520,7 @@ class PandasDataset(LAMLDataset):
         data: Optional[DataFrame] = None,
         roles: Optional[RolesDict] = None,
         task: Optional[Task] = None,
-        **kwargs: Series
+        **kwargs: Series,
     ):
         if roles is None:
             roles = {}

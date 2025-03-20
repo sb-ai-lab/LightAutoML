@@ -1101,7 +1101,7 @@ class TabularUtilizedAutoML(TimeUtilization):
             )
             for it1, m in enumerate(model.ml_algos[0].models[0]):
                 cur_model_desc = m.create_model_str_desc(pref_tab_num + 2, split_line_len)
-                res += "\t" * (pref_tab_num + 1) + "    Model #{}.\n{}\n\n".format(it1, cur_model_desc)
+                res += "\t" * (pref_tab_num + 1) + f"    Model #{it1}.\n{cur_model_desc}\n\n"
 
         return res
 

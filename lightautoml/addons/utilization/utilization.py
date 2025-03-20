@@ -292,15 +292,15 @@ class TimeUtilization:
                 upd_state_val += 1
 
                 logger.info(f"Start {n_cfg} automl preset configuration:")
-                logger.info("\x1b[1m{}\x1b[0m, random state: {}".format(config.split("/")[-1], random_states))
+                logger.info(f"\x1b[1m{config.split('/')[-1]}\x1b[0m, random state: {random_states}")
 
                 cur_kwargs = self.kwargs.copy()
                 for k in random_states.keys():
                     if k in self.kwargs:
-                        logger.info3("Found {} in kwargs, need to combine".format(k))
+                        logger.info3(f"Found {k} in kwargs, need to combine")
                         random_states[k] = {**cur_kwargs[k], **random_states[k]}
                         del cur_kwargs[k]
-                        logger.info3("Merged variant for {} = {}".format(k, random_states[k]))
+                        logger.info3(f"Merged variant for {k} = {random_states[k]}")
 
                 automl = self.automl_factory(
                     self.task,

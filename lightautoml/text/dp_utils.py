@@ -72,7 +72,7 @@ def parallel_apply_predict(modules, inputs, kwargs_tup=None, devices=None):
                 results[i] = output
         except Exception:
             with lock:
-                results[i] = ExceptionWrapper(where="in replica {} on device {}".format(i, device))
+                results[i] = ExceptionWrapper(where=f"in replica {i} on device {device}")
 
     if len(modules) > 1:
         threads = [

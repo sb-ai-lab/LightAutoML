@@ -286,7 +286,7 @@ class OHEEncoder(LAMLTransformer):
         features = []
         for cats, name in zip(self.ohe.categories_, dataset.features):
             # cats = cats[cats != 1]
-            features.extend(["ohe_{0}__{1}".format(x, name) for x in cats])
+            features.extend([f"ohe_{x}__{name}" for x in cats])
 
         self._features = features
 
@@ -612,7 +612,7 @@ class MultiClassTargetEncoder(LAMLTransformer):
         self._features = []
         for i in dataset.features:
             for j in range(n_classes):
-                self._features.append("{0}_{1}__{2}".format("multioof", j, i))
+                self._features.append(f"multioof_{j}__{i}")
 
         for n in range(data.shape[1]):
             vec = data[:, n]
@@ -796,7 +796,7 @@ class MultioutputTargetEncoder(LAMLTransformer):
         self._features = []
         for i in dataset.features:
             for j in range(n_classes):
-                self._features.append("{0}_{1}__{2}".format("multioof", j, i))
+                self._features.append(f"multioof_{j}__{i}")
 
         for n in range(data.shape[1]):
             vec = data[:, n].astype(int)
@@ -943,7 +943,7 @@ class CatIntersectstions(LabelEncoder):
         roles = {}
         new_df = DataFrame(index=df.index)
         for comb in self.intersections:
-            name = "({0})".format("__".join(comb))
+            name = f"({'__'.join(comb)})"
             new_df[name] = self._make_category(df, comb)
             roles[name] = CategoryRole(
                 object,

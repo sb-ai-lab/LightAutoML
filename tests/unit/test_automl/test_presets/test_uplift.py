@@ -51,12 +51,12 @@ class TestAutoUpliftPreset:
 
         print("--- Check scores ---")
         print('OOF scores "ROC_AUC":')
-        print("\tTreatment = {:.5f}".format(roc_auc_treatment))
-        print("\tControl   = {:.5f}".format(roc_auc_control))
+        print(f"\tTreatment = {roc_auc_treatment:.5f}")
+        print(f"\tControl   = {roc_auc_control:.5f}")
         print('Uplift score of test group (default="adj_qini"):')
-        print("\tBaseline      = {:.5f}".format(auc_base))
-        print("\tAlgo (Normed) = {:.5f} ({:.5f})".format(uplift_auc_algo, uplift_auc_algo_normed))
-        print("\tPerfect       = {:.5f}".format(auc_perfect))
+        print(f"\tBaseline      = {auc_base:.5f}")
+        print(f"\tAlgo (Normed) = {uplift_auc_algo:.5f} ({uplift_auc_algo_normed:.5f})")
+        print(f"\tPerfect       = {auc_perfect:.5f}")
 
         # Uplift score of test group (default="adj_qini"):
         #         Baseline      = 0.01340

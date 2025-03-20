@@ -56,7 +56,7 @@ class TextBert(nn.Module):
     def __init__(self, model_name: str = "bert-base-uncased", pooling: str = "cls"):
         super(TextBert, self).__init__()
         if pooling not in self._poolers:
-            raise ValueError("pooling - {} - not in the list of available types {}".format(pooling, self._poolers))
+            raise ValueError(f"pooling - {pooling} - not in the list of available types {self._poolers}")
 
         self.transformer = AutoModel.from_pretrained(model_name)
         self.n_out = self.transformer.config.hidden_size

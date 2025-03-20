@@ -93,7 +93,7 @@ class MLPipeline:
                 # case when only model is defined
                 mod, tuner = mt_pair, DefaultTuner()
 
-            mod.set_prefix("Mod_{0}".format(n))
+            mod.set_prefix(f"Mod_{n}")
 
             self._ml_algos.append(mod)
             self.params_tuners.append(tuner)

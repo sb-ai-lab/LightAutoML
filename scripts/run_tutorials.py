@@ -23,7 +23,7 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
 
 def _starts_with_any(s: str, prefixs: Tuple[int]) -> bool:
-    cond = (s.startswith("{}_{}".format(TUTORIAL_PREFIX, p)) for p in prefixs)
+    cond = (s.startswith(f"{TUTORIAL_PREFIX}_{p}") for p in prefixs)
     return any(cond)
 
 

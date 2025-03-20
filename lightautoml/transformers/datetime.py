@@ -139,7 +139,7 @@ class BaseDiff(LAMLTransformer):
         """
         self._features = []
         for col in self.base_names:
-            self._features.extend(["basediff_{0}__{1}".format(col, x) for x in self.diff_names])
+            self._features.extend([f"basediff_{col}__{x}" for x in self.diff_names])
 
         for check_func in self._fit_checks:
             check_func(dataset)
@@ -224,9 +224,9 @@ class DateSeasons(LAMLTransformer):
             seas = roles[col].seasonality
             self.transformations[col] = seas
             for s in seas:
-                self._features.append("season_{0}__{1}".format(s, col))
+                self._features.append(f"season_{s}__{col}")
             if roles[col].country is not None:
-                self._features.append("season_hol__{0}".format(col))
+                self._features.append(f"season_hol__{col}")
 
         return self
 
