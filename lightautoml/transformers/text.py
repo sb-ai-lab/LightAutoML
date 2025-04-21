@@ -2,6 +2,7 @@
 
 import gc
 import logging
+import tempfile
 import os
 import pickle
 
@@ -15,11 +16,11 @@ from typing import Union
 
 
 try:
-    import gensim
+    import fasttext
 except:
     import warnings
 
-    warnings.warn("'gensim' - package isn't installed")
+    warnings.warn("'fasttext' - package isn't installed")
 
 import numpy as np
 import pandas as pd
@@ -590,7 +591,7 @@ class AutoNLPWrap(LAMLTransformer):
             into sentence embedding.
         transformer_params: Aggregating model parameters.
         embedding_model: Word level embedding model with dict
-            interface or path to gensim fasttext model.
+            interface or path to fasttext model.
         cache_dir: If ``None`` - do not cache transformed datasets.
         bert_model: Name of HuggingFace transformer model.
         subs: Subsample to calculate freqs. If None - full data.
@@ -608,7 +609,7 @@ class AutoNLPWrap(LAMLTransformer):
     _fit_checks = (text_check,)
     _transform_checks = ()
     _fname_prefix = "emb"
-    fasttext_params = {"vector_size": 64, "window": 3, "min_count": 1}
+    fasttext_params = {"dim": 64, "ws": 3}
     _names = {"random_lstm", "random_lstm_bert", "pooled_bert", "wat", "borep"}
     _trainable = {"wat", "borep", "random_lstm"}
 
@@ -659,13 +660,7 @@ class AutoNLPWrap(LAMLTransformer):
         self._update_bert_model(bert_model)
         if embedding_model is not None:
             if isinstance(embedding_model, str):
-                try:
-                    embedding_model = gensim.models.FastText.load(embedding_model)
-                except:
-                    try:
-                        embedding_model = gensim.models.FastText.load_fasttext_format(embedding_model)
-                    except:
-                        embedding_model = gensim.models.KeyedVectors.load(embedding_model)
+                embedding_model = fasttext.load_model(embedding_model)
 
             self.transformer_params = self._update_transformers_emb_model(self.transformer_params, embedding_model)
 
@@ -692,28 +687,7 @@ class AutoNLPWrap(LAMLTransformer):
         self, params: Dict, model: Any, emb_size: Optional[int] = None
     ) -> Dict[str, Any]:
         if emb_size is None:
-            try:
-                # Gensim checker [1]
-                emb_size = model.vector_size
-            except:
-                try:
-                    # Gensim checker[2]
-                    emb_size = model.vw.vector_size
-                except:
-                    try:
-                        # Natasha checker
-                        emb_size = model[model.vocab.words[0]].shape[0]
-                    except:
-                        try:
-                            # Dict of embeddings checker
-                            emb_size = next(iter(model.values())).shape[0]
-                        except:
-                            raise ValueError("Unrecognized embedding dimension, please specify it in model_params")
-        try:
-            model = model.wv
-        except:
-            pass
-
+            emb_size = model.dim
         if self.model_name == "wat":
             params["embed_size"] = emb_size
             params["embedding_model"] = model
@@ -756,14 +730,15 @@ class AutoNLPWrap(LAMLTransformer):
         for n, i in enumerate(subs.columns):
             transformer_params = deepcopy(self.transformer_params)
             if self.train_fasttext:
-                embedding_model = gensim.models.FastText(**self.fasttext_params)
-                common_texts = [i.split(" ") for i in subs[i].values]
-                embedding_model.build_vocab(corpus_iterable=common_texts)
-                embedding_model.train(
-                    corpus_iterable=common_texts,
-                    total_examples=len(common_texts),
-                    epochs=self.fasttext_epochs,
-                )
+
+                with tempfile.NamedTemporaryFile("w", delete=False) as temp:
+                    for line in subs[i].values:
+                        temp.write(line + "\n")
+                    temp_path = temp.name
+
+                embedding_model = fasttext.train_unsupervised(input=temp_path, **self.fasttext_params)
+
+                os.remove(temp_path)
                 transformer_params = self._update_transformers_emb_model(transformer_params, embedding_model)
 
             transformer = self.transformer(
@@ -778,7 +753,7 @@ class AutoNLPWrap(LAMLTransformer):
             feats = [self._fname_prefix + "_" + emb_name + "_" + str(x) + "__" + i for x in range(emb_size)]
 
             self.dicts[i] = {
-                "transformer": deepcopy(transformer.fit(subs[i])),
+                "transformer": transformer.fit(subs[i]),
                 "feats": feats,
             }
             names.extend(feats)

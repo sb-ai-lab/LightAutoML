@@ -223,7 +223,7 @@ class LimeTextExplainer:
         Ribeiro et al. <https://arxiv.org/abs/1602.04938>`_
 
     Note:
-        Basic usage of explaier.
+        Basic usage of explainer.
 
         >>> task = Task('reg')
         >>> automl = TabularNLPAutoML(task=task,

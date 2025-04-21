@@ -392,9 +392,9 @@ class TorchModel(TabularMLAlgo):
             else bias
         )
 
-        bias[bias == np.inf] = np.nanmax(bias[bias != np.inf])
-        bias[bias == -np.inf] = np.nanmin(bias[bias != -np.inf])
-        bias[bias == np.NaN] = np.nanmean(bias[bias != np.NaN])
+        bias[np.isposinf(bias)] = np.nanmax(bias[~np.isposinf(bias)])
+        bias[np.isneginf(bias)] = np.nanmin(bias[~np.isneginf(bias)])
+        bias[np.isnan(bias)] = np.nanmean(bias[~np.isnan(bias)])
 
         return bias
 
