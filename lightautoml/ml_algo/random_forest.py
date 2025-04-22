@@ -193,7 +193,7 @@ class RandomForestSklearn(TabularMLAlgo, ImportanceEstimator):
 
         metric = self.task.losses["sklearn"].metric_func
         score = metric(valid.target, val_pred, valid.weights)
-        logger.info2("Score for RF model: {:5f}".format(score))
+        logger.info2(f"Score for RF model: {score:5f}")
 
         return model, val_pred
 

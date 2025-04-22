@@ -49,7 +49,7 @@ class ColumnRole:
         """
         params = [(x, self.__dict__[x]) for x in self.__dict__ if x not in ["dtype", "name"]]
 
-        return "{0} role, dtype {1}. Additional params: {2}".format(self.name, self.dtype, params)
+        return f"{self.name} role, dtype {self.dtype}. Additional params: {params}"
 
     def __hash__(self) -> int:
         """Define how to hash - hash from str view.
@@ -131,7 +131,7 @@ class ColumnRole:
         if name in ["treatment"]:
             return TreatmentRole()
 
-        raise ValueError("Unknown string role: {}".format(name))
+        raise ValueError(f"Unknown string role: {name}")
 
 
 class NumericRole(ColumnRole):

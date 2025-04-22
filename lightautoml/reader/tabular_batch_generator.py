@@ -110,7 +110,7 @@ def _check_csv_params(**read_csv_params: dict):
         if par in read_csv_params:
             read_csv_params.pop(par)
             warnings.warn(
-                "Parameter {0} will be ignored in parallel mode".format(par),
+                f"Parameter {par} will be ignored in parallel mode",
                 UserWarning,
             )
 
@@ -418,8 +418,8 @@ def read_data(
         upd_roles = {}
         for k in data:
             if k != "data":
-                name = "__{0}__".format(k.upper())
-                assert name not in df.columns, "Not supported feature name {0}".format(name)
+                name = f"__{k.upper()}__"
+                assert name not in df.columns, f"Not supported feature name {name}"
                 df[name] = data[k]
                 upd_roles[k] = name
         return df, upd_roles

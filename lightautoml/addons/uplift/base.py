@@ -1267,7 +1267,7 @@ class AutoUpliftTX(BaseAutoUplift):
         ) in self._extract_stages():
             if stage.full_name() == full_name:
                 return stage
-        raise Exception("Can't find stage {}".format(full_name))
+        raise Exception(f"Can't find stage {full_name}")
 
     def _set_stage_baselearners(
         self,
@@ -1373,7 +1373,7 @@ class AutoUpliftTX(BaseAutoUplift):
             for bl_name, idxs in k2n.items():
                 if len(idxs) > 1:
                     for idx in idxs:
-                        renaming_by_idxs[idx] = "{}__#{}__".format(bl_name, idx)
+                        renaming_by_idxs[idx] = f"{bl_name}__#{idx}__"
 
             baselearners_t = []
             for idx, bl in enumerate(baselearners):
@@ -1671,7 +1671,7 @@ class AutoUpliftTX(BaseAutoUplift):
         for bl in self._trained_stage_baselearners[metalearner_stage]:
             if bl.stage_bl.name == baselearner_name:
                 return bl
-        raise Exception("There isn't baselearner {}".format(baselearner_name))
+        raise Exception(f"There isn't baselearner {baselearner_name}")
 
     def _create_metalearner_wrap(
         self,
@@ -1688,7 +1688,7 @@ class AutoUpliftTX(BaseAutoUplift):
             Best metalearner wrap.
 
         """
-        ml_wrap_name = "__ML__{ML}".format(ML=metalearner_name)
+        ml_wrap_name = f"__ML__{metalearner_name}"
 
         ml_wrap: Optional[MetaLearnerWrapper] = None
         if metalearner_name == "TLearner":

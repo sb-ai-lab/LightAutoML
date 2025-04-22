@@ -230,7 +230,7 @@ class XGBLoss(Loss):
         if self.fobj_name in _xgb_force_metric:
             metric, greater_is_better, metric_params = _xgb_force_metric[self.fobj_name]
             logger.info2(
-                "For xgb {0} callback metric switched to {1}".format(self.fobj_name, metric),
+                f"For xgb {self.fobj_name} callback metric switched to {metric}",
                 UserWarning,
             )
 

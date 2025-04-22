@@ -198,7 +198,7 @@ class L2XTextExplainer:
 
         if isinstance(tokenizer, str):
             if tokenizer not in ["ru", "en"]:
-                raise ValueError("Tokenizer must be one 'ru' or 'en', but {} given".format(tokenizer))
+                raise ValueError(f"Tokenizer must be one 'ru' or 'en', but {tokenizer} given")
             self._tokenizer = _tokenizer_by_lang[tokenizer](is_stemmer=False)
             self.tokenizer = WrappedTokenizer(self._tokenizer)
         elif tokenizer is None:
@@ -210,24 +210,24 @@ class L2XTextExplainer:
         elif callable(tokenizer):
             self.tokenizer = tokenizer
         else:
-            raise TypeError("Unknown type of tokenizer: {}".format(type(tokenizer)))
+            raise TypeError(f"Unknown type of tokenizer: {type(tokenizer)}")
 
         self.train_device = torch.device(train_device)
         self.inference_device = torch.device(inference_device)
         self.verbose = verbose
 
         if binning_mode not in ["linear", "hist"]:
-            raise ValueError("Only available 'linear', 'hist' binning mods, but {} given".format(binning_mode))
+            raise ValueError(f"Only available 'linear', 'hist' binning mods, but {binning_mode} given")
         self.binning_mode = binning_mode
         self.bins_number = bins_number
         self.k = n_important
         self.learning_rate = learning_rate
         if n_epochs <= 0:
-            raise ValueError("Epochs number should be positive, but {} given".format(n_epochs))
+            raise ValueError(f"Epochs number should be positive, but {n_epochs} given")
         self.n_epochs = n_epochs
 
         if not issubclass(optimizer, torch.optim.Optimizer):
-            raise TypeError("Not torch.optim.Optimizer like optimizer format, {} given".format(type(optimizer)))
+            raise TypeError(f"Not torch.optim.Optimizer like optimizer format, {type(optimizer)} given")
         self.optimizer = optimizer
         optimizer_params = optimizer_params or {}
         self.optim_params = {**optimizer_params, "lr": self.learning_rate}
@@ -235,28 +235,24 @@ class L2XTextExplainer:
         self.valid_batch_size = valid_batch_size
 
         if temperature <= 0:
-            raise ValueError("Temperature should be positive, but {} given".format(temperature))
+            raise ValueError(f"Temperature should be positive, but {temperature} given")
         self.T = temperature
 
         if temp_anneal_factor <= 0:
-            raise ValueError("Temperature annealing factor should be positive, but {} given".format(temp_anneal_factor))
+            raise ValueError(f"Temperature annealing factor should be positive, but {temp_anneal_factor} given")
         self.temp_anneal_factor = temp_anneal_factor
 
         if conv_filters <= 0:
-            raise ValueError(
-                "Number of filters in convolution layers should be positive, but {} given".format(conv_filters)
-            )
+            raise ValueError(f"Number of filters in convolution layers should be positive, but {conv_filters} given")
         self.conv_filters = conv_filters
         if conv_ksize <= 0:
-            raise ValueError(
-                "Kernel size of filters in convolution layers should be positive, but {} given".format(conv_ksize)
-            )
+            raise ValueError(f"Kernel size of filters in convolution layers should be positive, but {conv_ksize} given")
         self.conv_ksize = conv_ksize
         if hidden_dim <= 0:
-            raise ValueError("Dimension of hidden layer should be positive, but {} given".format(hidden_dim))
+            raise ValueError(f"Dimension of hidden layer should be positive, but {hidden_dim} given")
         self.hidden_dim = hidden_dim
         if drop_rate >= 1 or drop_rate < 0:
-            raise ValueError("Dropout rate should be in [0, 1), but {} given".format(drop_rate))
+            raise ValueError(f"Dropout rate should be in [0, 1), but {drop_rate} given")
         self.drop_rate = drop_rate
 
         if importance_sampler not in ["gumbeltopk", "softsub"]:
@@ -287,14 +283,14 @@ class L2XTextExplainer:
             self.embedder = embedder
             self.embedding_dim = self.embedder.vector_size
         else:
-            raise TypeError("Unknown embedder type: {}".format(embedder))
+            raise TypeError(f"Unknown embedder type: {embedder}")
         self.trainable_embeds = trainable_embeds
 
         if not isinstance(max_vocab_length, int):
-            raise TypeError("max_vocab_length should be int, but {} given".format(type(max_vocab_length)))
+            raise TypeError(f"max_vocab_length should be int, but {type(max_vocab_length)} given")
         elif max_vocab_length < -1 or max_vocab_length == 0:
             raise ValueError(
-                "Only available values for max_vocab_length: -1 or grater 0, but {} given".format(max_vocab_length)
+                f"Only available values for max_vocab_length: -1 or grater 0, but {max_vocab_length} given"
             )
         self.max_vocab_length = max_vocab_length
 
@@ -302,7 +298,7 @@ class L2XTextExplainer:
             logger.info2("For now sparse token highlighting will be encouraged, since gamma < 0")
         self.gamma = gamma
         if gamma_anneal_factor <= 0:
-            raise ValueError("Gamma annealing factor should be positive, but {} given".format(temp_anneal_factor))
+            raise ValueError(f"Gamma annealing factor should be positive, but {temp_anneal_factor} given")
         self.gamma_anneal_factor = gamma_anneal_factor
         self.explainers = {}
         self.random_seed = random_seed
@@ -326,7 +322,7 @@ class L2XTextExplainer:
         if cache_dir is None:
             cache_dir = automl.autonlp_params["cache_dir"] or "./l2x_cache"
         if not isinstance(cache_dir, str):
-            raise TypeError("Unknown type for cache_dir: {}".format(type(cache_dir)))
+            raise TypeError(f"Unknown type for cache_dir: {type(cache_dir)}")
         os.makedirs(cache_dir, exist_ok=True)
         self.cache_dir = cache_dir
         self._checkpoint_path = cache_dir + "/l2x_checkpoint.pt"
@@ -384,7 +380,7 @@ class L2XTextExplainer:
         else:
             for col in cols_to_explain:
                 if self.roles[col].name != "Text":
-                    raise ValueError("Column {} is not text column".format(col))
+                    raise ValueError(f"Column {col} is not text column")
 
         return cols_to_explain
 
@@ -498,7 +494,7 @@ class L2XTextExplainer:
                 valid_loss_logs.append(valid_loss)
             if self.verbose:
                 if valid_loss is None:
-                    logger.info3("Epoch: {}/{}, train loss: {}".format(epoch + 1, self.n_epochs, train_loss))
+                    logger.info3(f"Epoch: {epoch + 1}/{self.n_epochs}, train loss: {train_loss}")
                 else:
                     logger.info3(
                         "Epoch: {}/{}, train loss: {}, valid loss: {}".format(
@@ -571,7 +567,7 @@ class L2XTextExplainer:
             iters += 1
 
             if self.verbose:
-                train_dataloader.set_description("train nll (loss={:.4f})".format(accum_loss / iters))
+                train_dataloader.set_description(f"train nll (loss={accum_loss / iters:.4f})")
 
         return accum_loss / iters
 
@@ -627,7 +623,7 @@ class L2XTextExplainer:
 
     def __getitem__(self, col) -> np.ndarray:
         if col not in self.explainers:
-            raise ValueError("There is no explanation for {}".format(col))
+            raise ValueError(f"There is no explanation for {col}")
         return self.explainers[col]
 
 

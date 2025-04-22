@@ -49,5 +49,5 @@ test_pred = automl.predict(test)
 not_nan = np.any(~np.isnan(oof_pred.data), axis=1)
 
 print("Check scores...")
-print("OOF score: {}".format(roc_auc_score(train[roles["target"]].values[not_nan], oof_pred.data[not_nan][:, 0])))
-print("TEST score: {}".format(roc_auc_score(test[roles["target"]].values, test_pred.data[:, 0])))
+print(f"OOF score: {roc_auc_score(train[roles['target']].values[not_nan], oof_pred.data[not_nan][:, 0])}")
+print(f"TEST score: {roc_auc_score(test[roles['target']].values, test_pred.data[:, 0])}")

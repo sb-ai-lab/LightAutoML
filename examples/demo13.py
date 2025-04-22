@@ -46,4 +46,4 @@ train_pred, _ = automl.fit_predict(train, roles, verbose=4)
 forecast, _ = automl.predict(train)
 
 print("Check scores...")
-print("TEST score: {}".format(mean_absolute_error(test[roles["target"]].values, forecast.data)))
+print(f"TEST score: {mean_absolute_error(test[roles['target']].values, forecast.data)}")

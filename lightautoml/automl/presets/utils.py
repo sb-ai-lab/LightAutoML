@@ -46,14 +46,14 @@ def calc_one_feat_imp(iters, level, feat, model, data, norm_score, target, metri
     new_score = metric(preds)
 
     if not silent:
-        logger.info3("{}/{} Calculated score for {}: {:.7f}".format(iters[0], iters[1], feat, norm_score - new_score))
+        logger.info3(f"{iters[0]}/{iters[1]} Calculated score for {feat}: {norm_score - new_score:.7f}")
     return feat, norm_score - new_score
 
 
 def calc_feats_permutation_imps(model, used_feats, data, target, metric, silent=False):
     n_used_feats = len(used_feats)
     if not silent:
-        logger.info3("LightAutoML ts master used {} feats".format(n_used_feats))
+        logger.info3(f"LightAutoML ts master used {n_used_feats} feats")
     data = data.reset_index(drop=True)
     preds = model.predict(data)
     target_col = data[target]

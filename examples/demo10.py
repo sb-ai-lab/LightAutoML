@@ -123,18 +123,18 @@ oof_pred = automl.fit_predict(train, roles={"target": "TARGET"})
 print("Finished fitting...")
 
 test_pred = automl.predict(test)
-print("Prediction for test data:\n{}\nShape = {}".format(test_pred, test_pred.shape))
+print(f"Prediction for test data:\n{test_pred}\nShape = {test_pred.shape}")
 # ======================================================================================
 print("Check scores...")
 # use only not nan
 not_nan = np.any(~np.isnan(oof_pred.data), axis=1)
 
-print("OOF score: {}".format(log_loss(train["TARGET"].values[not_nan], oof_pred.data[not_nan])))
-print("TEST score: {}".format(log_loss(test["TARGET"].values, test_pred.data)))
+print(f"OOF score: {log_loss(train['TARGET'].values[not_nan], oof_pred.data[not_nan])}")
+print(f"TEST score: {log_loss(test['TARGET'].values, test_pred.data)}")
 # ======================================================================================
 for dat, df, name in zip([oof_pred, test_pred], [train, test], ["train", "test"]):
-    print("Check aucs {0}...".format(name))
+    print(f"Check aucs {name}...")
     for c in range(3):
         _sc = roc_auc_score((df["TARGET"].values == c).astype(np.float32), dat.data[:, c])
-        print("Cl {0} auc score: {1}".format(c, _sc))
+        print(f"Cl {c} auc score: {_sc}")
 # ======================================================================================

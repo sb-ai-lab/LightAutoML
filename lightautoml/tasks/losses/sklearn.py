@@ -85,6 +85,6 @@ class SKLoss(Loss):
         """
         if self.loss in _sk_force_metric:
             metric, greater_is_better, metric_params = _sk_force_metric[self.loss]
-            logger.info2("For sklearn {0} callback metric switched to {1}".format(self.loss, metric))
+            logger.info2(f"For sklearn {self.loss} callback metric switched to {metric}")
 
         super().set_callback_metric(metric, greater_is_better, metric_params, task_name)

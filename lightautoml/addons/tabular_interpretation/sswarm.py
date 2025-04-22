@@ -88,7 +88,7 @@ class SSWARM:
                 if "TorchNN" in algo:
                     # model contains neural network
                     raise ValueError(
-                        "Model contains neural network: {0}. ".format(algo)
+                        f"Model contains neural network: {algo}. "
                         + "Set the n_jobs parameter to 1. "
                         + "Read more in a docstring."
                     )

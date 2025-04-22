@@ -230,7 +230,7 @@ class LGBLoss(Loss):
         if self.fobj_name in _lgb_force_metric:
             metric, greater_is_better, metric_params = _lgb_force_metric[self.fobj_name]
             logger.info2(
-                "For lgbm {0} callback metric switched to {1}".format(self.fobj_name, metric),
+                f"For lgbm {self.fobj_name} callback metric switched to {metric}",
                 UserWarning,
             )
 

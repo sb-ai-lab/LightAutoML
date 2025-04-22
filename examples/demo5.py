@@ -64,7 +64,7 @@ print("Split data...")
 train, test = train_test_split(data, test_size=0.2, random_state=42)
 train.reset_index(drop=True, inplace=True)
 test.reset_index(drop=True, inplace=True)
-print("Data splitted. Parts sizes: train_data = {}, test_data = {}".format(train.shape, test.shape))
+print(f"Data splitted. Parts sizes: train_data = {train.shape}, test_data = {test.shape}")
 
 print("Start creation selector_0...")
 feat_sel_0 = LGBSimpleFeatures()
@@ -157,13 +157,13 @@ oof_pred = automl.fit_predict(train, roles=roles)
 print("End fit automl...")
 
 test_pred = automl.predict(test)
-print("Prediction for test data:\n{}\nShape = {}".format(test_pred, test_pred.shape))
+print(f"Prediction for test data:\n{test_pred}\nShape = {test_pred.shape}")
 
 not_nan = np.any(~np.isnan(oof_pred.data), axis=1)
 
 print("Check scores...")
-print("OOF score: {}".format(roc_auc_score(train[roles["target"]].values[not_nan], oof_pred.data[not_nan][:, 0])))
-print("TEST score: {}".format(roc_auc_score(test[roles["target"]].values, test_pred.data[:, 0])))
+print(f"OOF score: {roc_auc_score(train[roles['target']].values[not_nan], oof_pred.data[not_nan][:, 0])}")
+print(f"TEST score: {roc_auc_score(test[roles['target']].values, test_pred.data[:, 0])}")
 print("Pickle automl")
 with open("automl.pickle", "wb") as f:
     pickle.dump(automl, f)
@@ -174,6 +174,6 @@ with open("automl.pickle", "rb") as f:
 
 print("Predict loaded automl")
 test_pred = automl.predict(test)
-print("TEST score, loaded: {}".format(roc_auc_score(test["TARGET"].values, test_pred.data[:, 0])))
+print(f"TEST score, loaded: {roc_auc_score(test['TARGET'].values, test_pred.data[:, 0])}")
 
 os.remove("automl.pickle")

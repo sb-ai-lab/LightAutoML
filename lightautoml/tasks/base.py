@@ -349,11 +349,11 @@ class Task:
                 try:
                     self.losses[loss_key] = loss_factory(loss, loss_params=loss_params)
                 except (AssertionError, TypeError, ValueError):
-                    logger.info2("{0} doesn't support in general case {1} and will not be used.".format(loss_key, loss))
+                    logger.info2(f"{loss_key} doesn't support in general case {loss} and will not be used.")
 
                 # self.losses[loss_key] = loss_factory(loss, loss_params=loss_params)
 
-            assert len(self.losses) > 0, "None of frameworks supports {0} loss.".format(loss)
+            assert len(self.losses) > 0, f"None of frameworks supports {loss} loss."
 
         elif type(loss) is dict:
             # case - dict passed directly
@@ -429,7 +429,7 @@ class Task:
             required_params = set()
         given_params = set(loss_params)
         extra_params = given_params - required_params
-        assert len(extra_params) == 0, "For loss {0} given extra params {1}".format(loss_name, extra_params)
+        assert len(extra_params) == 0, f"For loss {loss_name} given extra params {extra_params}"
         needed_params = required_params - given_params
         assert len(needed_params) == 0, "For loss {0} required params {1} are not defined".format(
             loss_name, needed_params
@@ -443,7 +443,7 @@ class Task:
             required_params = set()
         given_params = set(metric_params)
         extra_params = given_params - required_params
-        assert len(extra_params) == 0, "For metric {0} given extra params {1}".format(metric_name, extra_params)
+        assert len(extra_params) == 0, f"For metric {metric_name} given extra params {extra_params}"
         needed_params = required_params - given_params
         assert len(needed_params) == 0, "For metric {0} required params {1} are not defined".format(
             metric_name, needed_params

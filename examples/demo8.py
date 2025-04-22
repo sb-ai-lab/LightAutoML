@@ -122,10 +122,10 @@ oof_pred = automl.fit_predict(train, roles={"target": "TARGET"})
 print("Finished fitting...")
 
 test_pred = automl.predict(test)
-print("Prediction for test data:\n{}\nShape = {}".format(test_pred, test_pred.shape))
+print(f"Prediction for test data:\n{test_pred}\nShape = {test_pred.shape}")
 # ======================================================================================
 not_nan = np.any(~np.isnan(oof_pred.data), axis=1)
 
 print("Check scores...")
-print("OOF score: {}".format(log_loss(train["TARGET"].values[not_nan], oof_pred.data[not_nan, :])))
-print("TEST score: {}".format(log_loss(test["TARGET"].values, test_pred.data)))
+print(f"OOF score: {log_loss(train['TARGET'].values[not_nan], oof_pred.data[not_nan, :])}")
+print(f"TEST score: {log_loss(test['TARGET'].values, test_pred.data)}")

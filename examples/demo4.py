@@ -37,7 +37,7 @@ train_data, test_data = train_test_split(data, test_size=2000, stratify=data["TA
 
 train_data.reset_index(drop=True, inplace=True)
 test_data.reset_index(drop=True, inplace=True)
-print("Data splitted. Parts sizes: train_data = {}, test_data = {}".format(train_data.shape, test_data.shape))
+print(f"Data splitted. Parts sizes: train_data = {train_data.shape}, test_data = {test_data.shape}")
 
 for task_params, target in zip(
     [
@@ -101,11 +101,11 @@ for task_params, target in zip(
     print("Start AutoML pipeline fit_predict...")
     start_time = time.time()
     oof_pred = automl.fit_predict(train_data, roles={"target": target})
-    print("AutoML pipeline fitted and predicted. Time = {:.3f} sec".format(time.time() - start_time))
+    print(f"AutoML pipeline fitted and predicted. Time = {time.time() - start_time:.3f} sec")
 
     test_pred = automl.predict(test_data)
-    print("Prediction for test data:\n{}\nShape = {}".format(test_pred, test_pred.shape))
+    print(f"Prediction for test data:\n{test_pred}\nShape = {test_pred.shape}")
 
     print("Check scores...")
-    print("OOF score: {}".format(task.metric_func(train_data[target].values, oof_pred.data[:, 0])))
-    print("TEST score: {}".format(task.metric_func(test_data[target].values, test_pred.data[:, 0])))
+    print(f"OOF score: {task.metric_func(train_data[target].values, oof_pred.data[:, 0])}")
+    print(f"TEST score: {task.metric_func(test_data[target].values, test_pred.data[:, 0])}")

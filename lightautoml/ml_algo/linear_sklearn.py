@@ -298,17 +298,17 @@ class LinearL1CD(TabularMLAlgo):
                 if np.allclose(model.coef_, 0):
                     if n == (len(cs) - 1):
                         logger.info2(
-                            "All model coefs are 0. Model with l1_ratio {0} is dummy".format(l1_ratio),
+                            f"All model coefs are 0. Model with l1_ratio {l1_ratio} is dummy",
                             UserWarning,
                         )
                     else:
-                        logger.debug("C = {0} all model coefs are 0".format(c))
+                        logger.debug(f"C = {c} all model coefs are 0")
                         continue
 
                 pred = self._predict_w_model_type(model, valid.data)
                 score = metric(valid_target, pred, valid_weight)
 
-                logger.debug("C = {0}, l1_ratio = {1}, score = {2}".format(c, 1, score))
+                logger.debug(f"C = {c}, l1_ratio = {1}, score = {score}")
 
                 # TODO: check about greater and equal
                 if score >= c_best_score:
