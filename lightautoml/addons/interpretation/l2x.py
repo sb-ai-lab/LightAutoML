@@ -1,6 +1,5 @@
 import logging
 import os
-import fasttext
 
 from html import escape
 from numbers import Number
@@ -14,6 +13,14 @@ from typing import Union
 
 import numpy as np
 import pandas as pd
+
+
+try:
+    import fasttext
+except:
+    import warnings
+
+    warnings.warn("'fasttext' - package isn't installed")
 
 import torch
 import torch.nn as nn
