@@ -609,7 +609,7 @@ class AutoNLPWrap(LAMLTransformer):
     _fit_checks = (text_check,)
     _transform_checks = ()
     _fname_prefix = "emb"
-    fasttext_params = {"dim": 64, "ws": 3}
+    fasttext_params = {"dim": 64, "ws": 3, "minCount": 1}
     _names = {"random_lstm", "random_lstm_bert", "pooled_bert", "wat", "borep"}
     _trainable = {"wat", "borep", "random_lstm"}
 
@@ -736,7 +736,9 @@ class AutoNLPWrap(LAMLTransformer):
                         temp.write(line + "\n")
                     temp_path = temp.name
 
-                embedding_model = fasttext.train_unsupervised(input=temp_path, **self.fasttext_params)
+                embedding_model = fasttext.train_unsupervised(
+                    input=temp_path, model="cbow", epoch=self.fasttext_epochs, **self.fasttext_params
+                )
 
                 os.remove(temp_path)
                 transformer_params = self._update_transformers_emb_model(transformer_params, embedding_model)
