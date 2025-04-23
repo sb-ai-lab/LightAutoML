@@ -30,7 +30,7 @@ jobs:
           python-version: "3.9"
 
       - name: pre-commit
-        uses: pre-commit/action@v2.0.3
+        uses: pre-commit/action@v3.0.1
 
   linux-py39-tests:
     needs: pre-commit
