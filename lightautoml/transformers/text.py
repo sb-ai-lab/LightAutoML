@@ -637,7 +637,7 @@ class AutoNLPWrap(LAMLTransformer):
         **kwargs: Any,
     ):
         if train_fasttext:
-            assert model_name in self._trainable, f"If train fasstext then model must be in {self._trainable}"
+            assert model_name in self._trainable, f"If train fasttext then model must be in {self._trainable}"
 
         assert model_name in self._names, f"Model name must be one of {self._names}"
         self.device = device

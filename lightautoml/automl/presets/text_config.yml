@@ -344,7 +344,7 @@ autonlp_params:
   embedding_model: null
   # concat all text columns to one with <SEP>
   is_concat: True
-  # train new fasstext model
+  # train new fasttext model
   # only for 'random_lstm', 'borep', 'wat'
   train_fasttext: False
   # dict with fasttext params if train_fasttext:True

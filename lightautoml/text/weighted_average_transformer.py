@@ -25,7 +25,7 @@ class WeightedAverageTransformer(TransformerMixin):
     Calculate sentence embedding as weighted average of word embeddings.
 
     Args:
-        embedding_model: word2vec, fasstext, etc.
+        embedding_model: word2vec, fasttext, etc.
             Should have dict interface {<word>: <embedding>}.
         embed_size: Size of embedding.
         weight_type: 'idf' for idf weights, 'sif' for
