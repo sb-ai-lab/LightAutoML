@@ -67,7 +67,7 @@ SQLAlchemy = ">=2.0"
 
 
 # NLP
-fasttext = {version = "*", optional = true}
+fasttext-numpy2 = {version = "*", optional = true}
 nltk = {version = "*", optional = true}
 transformers = {version = ">=4", optional = true}
 
@@ -99,7 +99,7 @@ cv = [
     "torchvision"
 ]
 nlp = [
-    "fasttext",
+    "fasttext-numpy2",
     "nltk",
     "transformers"
 ]
@@ -123,13 +123,12 @@ all = [
     "PyWavelets",
     "scikit-image",
     "torchvision",
-    "fasttext",
+    "fasttext-numpy2",
     "nltk",
     "transformers",
     "cffi",
     "weasyprint",
     "featuretools",
-    "hypex",
 ]
 
 

@@ -731,16 +731,15 @@ class AutoNLPWrap(LAMLTransformer):
             transformer_params = deepcopy(self.transformer_params)
             if self.train_fasttext:
 
-                with tempfile.NamedTemporaryFile("w", delete=False) as temp:
+                with tempfile.NamedTemporaryFile("w") as temp:
                     for line in subs[i].values:
                         temp.write(line + "\n")
                     temp_path = temp.name
 
-                embedding_model = fasttext.train_unsupervised(
-                    input=temp_path, model="cbow", epoch=self.fasttext_epochs, **self.fasttext_params
-                )
+                    embedding_model = fasttext.train_unsupervised(
+                        input=temp_path, model="cbow", epoch=self.fasttext_epochs, **self.fasttext_params
+                    )
 
-                os.remove(temp_path)
                 transformer_params = self._update_transformers_emb_model(transformer_params, embedding_model)
 
             transformer = self.transformer(
