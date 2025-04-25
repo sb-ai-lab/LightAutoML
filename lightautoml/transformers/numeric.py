@@ -3,6 +3,8 @@
 from typing import Optional
 from typing import Union
 
+import warnings
+
 import numpy as np
 
 from sklearn.preprocessing import QuantileTransformer as SklQntTr
@@ -126,8 +128,10 @@ class FillnaMedian(LAMLTransformer):
         dataset = dataset.to_numpy()
         data = dataset.data
 
-        self.meds = np.nanmedian(data, axis=0)
-        self.meds[np.isnan(self.meds)] = 0
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=RuntimeWarning)
+            self.meds = np.nanmedian(data, axis=0)
+            self.meds[np.isnan(self.meds)] = 0
 
         return self
 
@@ -181,8 +185,10 @@ class FillnaMean(LAMLTransformer):
         dataset = dataset.to_numpy()
         data = dataset.data
 
-        self.means = np.nanmean(data, axis=0)
-        self.means[np.isnan(self.means)] = 0
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=RuntimeWarning)
+            self.means = np.nanmean(data, axis=0)
+            self.means[np.isnan(self.means)] = 0
 
         return self
 
