@@ -1558,7 +1558,7 @@ class AutoUpliftTX(BaseAutoUplift):
                         if trained_sbl.prev_stage_bl is None:
                             ml_bls[ml_stage_full_name] = trained_sbl
                         else:
-                            if not ml_stage_full_name[0:1] in set_bls:
+                            if ml_stage_full_name[0:1] not in set_bls:
                                 continue
 
                             if trained_sbl.prev_stage_bl.name == set_bls[ml_stage_full_name[0:1]].stage_bl.name:

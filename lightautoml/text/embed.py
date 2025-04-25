@@ -532,7 +532,7 @@ class NLinearMemoryEfficient(nn.Module):
 
     def forward(self, x):
         """Forward-pass."""
-        return torch.stack([l(x[:, i]) for i, l in enumerate(self.layers)], 1)
+        return torch.stack([layer(x[:, i]) for i, layer in enumerate(self.layers)], 1)
 
 
 class Periodic(nn.Module):
