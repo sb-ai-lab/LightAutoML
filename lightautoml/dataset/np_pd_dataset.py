@@ -147,7 +147,7 @@ class NumpyDataset(LAMLDataset):
         """
         # dtypes = list(set(map(lambda x: x.dtype, self.roles.values())))
         dtypes = list(set([i.dtype for i in self.roles.values()]))
-        self.dtype = np.find_common_type(dtypes, [])
+        self.dtype = np.result_type(*dtypes) if len(dtypes) else None
 
         for f in self.roles:
             self._roles[f].dtype = self.dtype

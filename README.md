@@ -128,7 +128,7 @@ If you are interested in contributing to LightAutoML, please read the [Contribut
 
 <a name="citation"></a>
 # Citation
-If you mention LightAutoML in your publications, please cite to our article:
+If you mention LightAutoML in your publications, please cite our paper:
 Vakhrushev, et al. ["LightAutoML: AutoML Solution for a Large Financial Services
 Ecosystem"](https://arxiv.org/pdf/2109.01528) arXiv:2109.01528, 2021.
 
@@ -147,4 +147,3 @@ BibTeX entry:
 This project is licensed under the Apache License, Version 2.0. See [LICENSE](https://github.com/sb-ai-lab/LightAutoML/blob/master/LICENSE) file for more details.
 
 [Back to top](#toc)
-
