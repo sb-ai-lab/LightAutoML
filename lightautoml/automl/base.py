@@ -129,6 +129,12 @@ class AutoML:
         """
         assert len(levels) > 0, "At least 1 level should be defined"
 
+        assert all(len(lvl) > 0 for lvl in levels), "Some level is empty"
+        assert all(isinstance(lvl, (Sequence, str)) for lvl in levels), "Some level is not sequence or str"
+        for i, lvl in enumerate(levels):
+            if isinstance(lvl, str):
+                levels[i] = [lvl]
+
         self.timer = timer
         if timer is None:
             self.timer = PipelineTimer()

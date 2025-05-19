@@ -687,7 +687,20 @@ class AutoNLPWrap(LAMLTransformer):
         self, params: Dict, model: Any, emb_size: Optional[int] = None
     ) -> Dict[str, Any]:
         if emb_size is None:
-            emb_size = model.dim
+            try:
+                # fasttext checker
+                emb_size = model.dim
+            except:
+                try:
+                    # Natasha checker
+                    emb_size = model[model.vocab.words[0]].shape[0]
+                except:
+                    try:
+                        # Dict of embeddings checker
+                        emb_size = next(iter(model.values())).shape[0]
+                    except:
+                        raise ValueError("Unrecognized embedding dimension, please specify it in model_params")
+
         if self.model_name == "wat":
             params["embed_size"] = emb_size
             params["embedding_model"] = model
