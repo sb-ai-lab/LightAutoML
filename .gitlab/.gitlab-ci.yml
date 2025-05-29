@@ -58,9 +58,9 @@ docs:
 
 
 mirror-code:
-  <<: *ssh_key_configuration
   stage: mirror
   image: python:3.10
+  <<: *ssh_key_configuration
   script: |
     if [[ "${CI_COMMIT_REF_NAME}" =~ ^(experiment|exp-|AUTOML-|MLT2-).* ]]
     then
