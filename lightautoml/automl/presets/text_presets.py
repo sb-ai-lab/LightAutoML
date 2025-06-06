@@ -26,6 +26,7 @@ from ...ml_algo.tuning.optuna import OptunaTuner
 from ...pipelines.features.base import FeaturesPipeline
 from ...pipelines.features.lgb_pipeline import LGBAdvancedPipeline
 from ...pipelines.features.linear_pipeline import LinearFeatures
+from ...pipelines.features.torch_pipeline import TorchSimpleFeatures
 from ...pipelines.features.text_pipeline import NLPTFiDFFeatures
 from ...pipelines.features.text_pipeline import TextAutoFeatures
 from ...pipelines.features.text_pipeline import TextBertFeatures
@@ -254,7 +255,7 @@ class TabularNLPAutoML(TabularAutoML):
         force_calc = []
 
         text_nn_feats = self.get_nlp_pipe(self.nn_pipeline_params["text_features"])
-        nn_feats = LinearFeatures(output_categories=True, **self.linear_pipeline_params)
+        nn_feats = TorchSimpleFeatures(**self.nn_pipeline_params)
         if text_nn_feats is not None:
             nn_feats.append(text_nn_feats)
 

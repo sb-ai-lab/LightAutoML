@@ -607,6 +607,5 @@ class EmptyTransformer(LAMLTransformer):
             Same dataset with new attributes.
 
         """
-        print(dataset.__dict__)
 
         return dataset

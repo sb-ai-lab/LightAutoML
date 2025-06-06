@@ -224,6 +224,8 @@ class TorchUniversalModel(nn.Module):
         if self.text_embedder is not None:
             outputs.append(self.text_embedder(inp))
 
+        assert len(outputs) > 0, "No embeddings found"
+
         if len(outputs) > 1:
             output = torch.cat(outputs, dim=1)
         else:

@@ -26,17 +26,15 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from ..dataset.np_pd_dataset import NumpyDataset
 from ..tasks.losses.torch import TorchLossWrapper
-from ..utils.installation import __validate_extra_deps
 from ..validation.base import TrainValidIterator
 
 
-__validate_extra_deps("nlp")
 
 try:
     from transformers import AutoTokenizer
 
     from ..pipelines.features.text_pipeline import _model_name_by_lang
-except:
+except ImportError:
     import warnings
 
     warnings.warn("'transformers' - package isn't installed")
@@ -116,7 +114,6 @@ cat_embedder_by_name_flat = {
     "weighted": WeightedCatEmbeddingFlat,
 }
 cat_embedder_by_name = {
-    "cat_no_dropout": BasicCatEmbedding,
     "cat_no_dropout": BasicCatEmbedding,
     "weighted": WeightedCatEmbedding,
 }
@@ -376,7 +373,7 @@ class TorchModel(TabularMLAlgo):
             Array with bias values.
 
         """
-        if isinstance(target, pd.Series) or isinstance(target, pd.DataFrame):
+        if isinstance(target, (pd.Series, pd.DataFrame)):
             target = target.values
         target = target.reshape(target.shape[0], -1)
         bias = (
@@ -497,22 +494,20 @@ class TorchModel(TabularMLAlgo):
             Dataloaders.
 
         """
-        datasets = {}
+        dataloaders = {}
+        features = {
+            "text": self.params["text_features"],
+            "cat": self.params["cat_features"],
+            "cont": self.params["cont_features"],
+        }
         for stage, value in data_dict.items():
             data = {
                 name: value.data[cols].values
-                for name, cols in zip(
-                    ["text", "cat", "cont"],
-                    [
-                        self.params["text_features"],
-                        self.params["cat_features"],
-                        self.params["cont_features"],
-                    ],
-                )
+                for name, cols in features.items()
                 if len(cols) > 0
             }
 
-            datasets[stage] = self.train_params["dataset"](
+            stage_dataset = self.train_params["dataset"](
                 data=data,
                 y=value.target.values if stage != "test" else np.ones(len(value.data)),
                 w=value.weights.values if value.weights is not None else np.ones(len(value.data)),
@@ -521,18 +516,16 @@ class TorchModel(TabularMLAlgo):
                 stage=stage,
             )
 
-        dataloaders = {
-            stage: torch.utils.data.DataLoader(
-                datasets[stage],
+            dataloaders[stage] = torch.utils.data.DataLoader(
+                stage_dataset,
                 batch_size=self.train_params["bs"],
                 shuffle=is_shuffle(stage),
                 num_workers=self.train_params["num_workers"],
                 collate_fn=collate_dict,
                 pin_memory=self.train_params["pin_memory"],
-                drop_last={"train": True}.get(stage, False),
+                drop_last=(stage == "train"),
             )
-            for stage, value in data_dict.items()
-        }
+
         return dataloaders
 
     def fit_predict(self, train_valid_iterator: TrainValidIterator) -> NumpyDataset:
