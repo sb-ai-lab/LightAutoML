@@ -832,7 +832,7 @@ class ReportDeco:
             and valid_data.shape[0] > self.fi_params["n_sample"]
         ):
             valid_data = valid_data.sample(n=self.fi_params["n_sample"])
-            print(
+            logger.info(
                 "valid_data was sampled for feature importance calculation: n_sample = {}".format(
                     self.fi_params["n_sample"]
                 )
@@ -890,7 +890,7 @@ class ReportDeco:
                 interpretaton_subsection
             )
             self._interpretation_top.append(interpretation_subsection)
-            print(f"Interpretation info for {feature_name} appended")
+            logger.info(f"Interpretation info for {feature_name} appended")
         self._interpretation_content["interpretation_top"] = self._interpretation_top
 
     def _generate_interpretation_section(self, test_data):
@@ -906,7 +906,7 @@ class ReportDeco:
     def _plot_pdp(self, test_data, feature_name, path):
         feature_role = self._model.reader._roles[feature_name].name
         # I. Count interpretation
-        print(f"Calculating interpretation for {feature_name}:")
+        logger.info(f"Calculating interpretation for {feature_name}:")
         grid, ys, counts = self._model.get_individual_pdp(
             test_data=test_data,
             feature_name=feature_name,
@@ -1135,7 +1135,7 @@ class ReportDeco:
                     os.path.join(self.output_path, self.pdf_file_name)
                 )
             except ModuleNotFoundError:
-                print("Can't generate PDF report: check manual for installing pdf extras.")
+                logger.warning("Can't generate PDF report: check manual for installing pdf extras.")
 
 
 _config_name_desc_dict = {

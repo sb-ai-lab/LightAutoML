@@ -399,7 +399,7 @@ class Task:
             try:
                 self.losses[loss_key].set_callback_metric(metric, greater_is_better, self.metric_params, self.name)
             except:
-                print(f"{self.name} isn`t supported in {loss_key}")
+                logger.warning(f"{self.name} isn`t supported in {loss_key}")
 
     def get_dataset_metric(self) -> LAMLMetric:
         """Create metric for dataset.
