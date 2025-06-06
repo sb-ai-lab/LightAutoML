@@ -180,7 +180,7 @@ To build the documentation:
 1. Clone repository to your device.
 
 ```
-git clone https://github.com/AILab-MLTools/LightAutoML
+git clone https://github.com/sb-ai-lab/LightAutoML
 cd LightAutoML
 ```
 
