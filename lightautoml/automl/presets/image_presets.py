@@ -76,7 +76,17 @@ class TabularCVAutoML(TabularAutoML):
 
     _default_config_path = "image_config.yml"
 
-    _time_scores = {"lgb": 1, "lgb_tuned": 3, "linear_l2": 0.7, "cb": 2, "cb_tuned": 6, "nn": 10, "nn_tuned": 20, "rf": 5, "rf_tuned": 10}
+    _time_scores = {
+        "lgb": 1,
+        "lgb_tuned": 3,
+        "linear_l2": 0.7,
+        "cb": 2,
+        "cb_tuned": 6,
+        "nn": 10,
+        "nn_tuned": 20,
+        "rf": 5,
+        "rf_tuned": 10,
+    }
 
     def __init__(
         self,

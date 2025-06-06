@@ -607,5 +607,4 @@ class EmptyTransformer(LAMLTransformer):
             Same dataset with new attributes.
 
         """
-
         return dataset

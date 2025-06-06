@@ -29,7 +29,6 @@ from ..tasks.losses.torch import TorchLossWrapper
 from ..validation.base import TrainValidIterator
 
 
-
 try:
     from transformers import AutoTokenizer
 
@@ -501,11 +500,7 @@ class TorchModel(TabularMLAlgo):
             "cont": self.params["cont_features"],
         }
         for stage, value in data_dict.items():
-            data = {
-                name: value.data[cols].values
-                for name, cols in features.items()
-                if len(cols) > 0
-            }
+            data = {name: value.data[cols].values for name, cols in features.items() if len(cols) > 0}
 
             stage_dataset = self.train_params["dataset"](
                 data=data,
