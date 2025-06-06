@@ -293,8 +293,8 @@ class TLearner(MetaLearner):
         control_train_data = train_data[train_data[treatment_col] == 0]
         treatment_train_data = train_data[train_data[treatment_col] == 1]
 
-        control_train_data.drop(treatment_col, axis=1, inplace=True)
-        treatment_train_data.drop(treatment_col, axis=1, inplace=True)
+        control_train_data = control_train_data.drop(treatment_col, axis=1)
+        treatment_train_data = treatment_train_data.drop(treatment_col, axis=1)
 
         self.treatment_learner.fit_predict(
             treatment_train_data,
