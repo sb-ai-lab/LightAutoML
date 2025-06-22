@@ -200,9 +200,8 @@ class SelectionPipeline:
             New dataset with selected features only.
 
         """
-        # Add forced features
-        if self.forced_features is None:
-            self.forced_features = [feature for feature in dataset.features if dataset.roles[feature].force_input]
+        # Update forced features
+        self.forced_features = [feature for feature in dataset.features if dataset.roles[feature].force_input]
 
         return dataset[:, self.selected_features]
 
