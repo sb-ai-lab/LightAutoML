@@ -385,8 +385,8 @@ class AutoUplift(BaseAutoUplift):
         else:
             _, target_col = uplift_utils._get_target_role(roles)
             _, treatment_col = uplift_utils._get_treatment_role(roles)
-            test_treatment = test_data[treatment_col].to_numpy()
-            test_target = test_data[target_col].to_numpy()
+            test_treatment = test_data[treatment_col].ravel()
+            test_target = test_data[target_col].ravel()
 
         best_metalearner: Optional[MetaLearner] = None
         best_metalearner_candidate_info: Optional[MetaLearnerWrapper] = None
@@ -423,7 +423,7 @@ class AutoUplift(BaseAutoUplift):
                     _,
                     _,
                 ) = metalearner.predict(test_data)
-                uplift_pred = uplift_pred.to_numpy()
+                uplift_pred = uplift_pred.ravel()
 
                 metric_value = self.calculate_metric(
                     test_target,
@@ -1410,7 +1410,7 @@ class AutoUpliftTX(BaseAutoUplift):
         bl = bl_wrap()
 
         bl.fit_predict(train_data, train_roles, verbose)
-        test_pred = bl.predict(test).data.to_numpy()
+        test_pred = bl.predict(test).data.ravel()
 
         tsbl = TrainedStageBaseLearner(
             stage_bl=bl_wrap,
@@ -1469,12 +1469,12 @@ class AutoUpliftTX(BaseAutoUplift):
 
             if stage_name == "effect_control":
                 train_data = train[train[treatment_col] == 0].drop(treatment_col, axis=1)
-                opposite_gr_pred = prev_stage_bl.predict(train_data).data.to_numpy()
+                opposite_gr_pred = prev_stage_bl.predict(train_data).data.ravel()
 
                 train_data[target_col] = opposite_gr_pred - train_data[target_col]
             elif stage_name == "effect_treatment":
                 train_data = train[train[treatment_col] == 1].drop(treatment_col, axis=1)
-                opposite_gr_pred = prev_stage_bl.predict(train_data).data.to_numpy()
+                opposite_gr_pred = prev_stage_bl.predict(train_data).data.ravel()
 
                 train_data[target_col] = train_data[target_col] - opposite_gr_pred
             else:
@@ -1606,7 +1606,7 @@ class AutoUpliftTX(BaseAutoUplift):
         else:
             raise Exception()
 
-        return uplift_pred.to_numpy()
+        return uplift_pred.ravel()
 
     def _set_best_metalearner(self):
         """Select the best metalearner from the trained ones."""

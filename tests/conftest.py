@@ -67,8 +67,8 @@ def uplift_data_train_test(sampled_app_roles, nrows=None):
     stratify_value = data[get_target_name(sampled_app_roles)] + 10 * data[sampled_app_roles["treatment"]]
     train, test = train_test_split(data, test_size=3000, stratify=stratify_value, random_state=42)
     test_target, test_treatment = (
-        test[get_target_name(sampled_app_roles)].values.to_numpy(),
-        test[sampled_app_roles["treatment"]].values.to_numpy(),
+        test[get_target_name(sampled_app_roles)].values.ravel(),
+        test[sampled_app_roles["treatment"]].values.ravel(),
     )
 
     return train, test, test_target, test_treatment

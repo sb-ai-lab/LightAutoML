@@ -167,7 +167,7 @@ def plot_distribution_of_logits(data, path):
 
 
 def plot_pie_f1_metric(data, F1_thresh, path):
-    tn, fp, fn, tp = confusion_matrix(data["y_true"], (data["y_pred"] > F1_thresh).astype(int)).to_numpy()
+    tn, fp, fn, tp = confusion_matrix(data["y_true"], (data["y_pred"] > F1_thresh).astype(int)).ravel()
     (_, prec), (_, rec), (_, F1), (_, _) = precision_recall_fscore_support(
         data["y_true"], (data["y_pred"] > F1_thresh).astype(int)
     )
@@ -921,7 +921,7 @@ class ReportDeco:
         n_classes = ys[0].shape[1]
         if n_classes == 1:
             data = pd.concat(
-                [pd.DataFrame({"x": grid[i], "y": ys[i].to_numpy()}) for i, _ in enumerate(grid)]
+                [pd.DataFrame({"x": grid[i], "y": ys[i].ravel()}) for i, _ in enumerate(grid)]
             ).reset_index(drop=True)
             if feature_role in ["Numeric", "Datetime"]:
                 g0 = sns.lineplot(data=data, x="x", y="y", ax=axs[0], color="m")
@@ -2059,12 +2059,12 @@ class ReportDecoUplift(ReportDeco):
         # treatment
         treatment_train_data = train_data[train_data[self._treatment_col] == 1]
         treatment_target = treatment_train_data[self._target].values
-        treatment_train_data.drop(self._treatment_col, axis=1, inplace=True)
+        treatment_train_data = treatment_train_data.drop(self._treatment_col, axis=1)
         treatment_preds = self._model.treatment_learner.fit_predict(treatment_train_data, new_roles)
         # control
         control_train_data = train_data[train_data[self._treatment_col] == 0]
         control_target = control_train_data[self._target].values
-        control_train_data.drop(self._treatment_col, axis=1, inplace=True)
+        control_train_data = control_train_data.drop(self._treatment_col, axis=1)
         control_preds = self._model.control_learner.fit_predict(control_train_data, new_roles)
 
         self._generate_fit_section(treatment_preds, control_preds, treatment_target, control_target)
@@ -2082,7 +2082,7 @@ class ReportDecoUplift(ReportDeco):
         # treatment
         treatment_train_data = train_data[train_data[self._treatment_col] == 1]
         treatment_train_data.drop(self._treatment_col, axis=1, inplace=True)
-        outcome_pred = self._model.learners["outcome"]["control"].predict(treatment_train_data).data.to_numpy()
+        outcome_pred = self._model.learners["outcome"]["control"].predict(treatment_train_data).data.ravel()
         treatment_train_data[self._target] = treatment_train_data[self._target] - outcome_pred
         treatment_target = treatment_train_data[self._target].values
         treatment_preds = self._model.learners["effect"]["treatment"].fit_predict(treatment_train_data, new_roles)
@@ -2090,7 +2090,7 @@ class ReportDecoUplift(ReportDeco):
         # control
         control_train_data = train_data[train_data[self._treatment_col] == 0]
         control_train_data.drop(self._treatment_col, axis=1, inplace=True)
-        outcome_pred = self._model.learners["outcome"]["treatment"].predict(control_train_data).data.to_numpy()
+        outcome_pred = self._model.learners["outcome"]["treatment"].predict(control_train_data).data.ravel()
         control_train_data[self._target] = control_train_data[self._target] - outcome_pred
         control_train_data[self._target] *= -1
         control_target = control_train_data[self._target].values

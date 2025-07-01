@@ -39,7 +39,7 @@ class TestAutoUpliftPreset:
         _ = best_metalearner.predict(test)
 
         uplift_pred, treatment_pred, control_pred = best_metalearner.predict(test)
-        uplift_pred = uplift_pred.to_numpy()
+        uplift_pred = uplift_pred.ravel()
 
         # calculate scores
         roc_auc_treatment = roc_auc_score(test_target[test_treatment == 1], treatment_pred[test_treatment == 1])
