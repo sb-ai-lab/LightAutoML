@@ -423,7 +423,7 @@ class AutoUplift(BaseAutoUplift):
                     _,
                     _,
                 ) = metalearner.predict(test_data)
-                uplift_pred = uplift_pred.ravel()
+                uplift_pred = uplift_pred.to_numpy()
 
                 metric_value = self.calculate_metric(
                     test_target,
@@ -1410,7 +1410,7 @@ class AutoUpliftTX(BaseAutoUplift):
         bl = bl_wrap()
 
         bl.fit_predict(train_data, train_roles, verbose)
-        test_pred = bl.predict(test).data.ravel()
+        test_pred = bl.predict(test).data.to_numpy()
 
         tsbl = TrainedStageBaseLearner(
             stage_bl=bl_wrap,
@@ -1469,12 +1469,12 @@ class AutoUpliftTX(BaseAutoUplift):
 
             if stage_name == "effect_control":
                 train_data = train[train[treatment_col] == 0].drop(treatment_col, axis=1)
-                opposite_gr_pred = prev_stage_bl.predict(train_data).data.ravel()
+                opposite_gr_pred = prev_stage_bl.predict(train_data).data.to_numpy()
 
                 train_data[target_col] = opposite_gr_pred - train_data[target_col]
             elif stage_name == "effect_treatment":
                 train_data = train[train[treatment_col] == 1].drop(treatment_col, axis=1)
-                opposite_gr_pred = prev_stage_bl.predict(train_data).data.ravel()
+                opposite_gr_pred = prev_stage_bl.predict(train_data).data.to_numpy()
 
                 train_data[target_col] = train_data[target_col] - opposite_gr_pred
             else:
@@ -1606,7 +1606,7 @@ class AutoUpliftTX(BaseAutoUplift):
         else:
             raise Exception()
 
-        return uplift_pred.ravel()
+        return uplift_pred.to_numpy()
 
     def _set_best_metalearner(self):
         """Select the best metalearner from the trained ones."""

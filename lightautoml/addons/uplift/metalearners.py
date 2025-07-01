@@ -201,10 +201,10 @@ class SLearner(MetaLearner):
         data_c = data.copy()
 
         data_c[self._treatment_col] = 0
-        control_pred = self.learner.predict(data_c).data.ravel()
+        control_pred = self.learner.predict(data_c).data.to_numpy()
 
         data_c[self._treatment_col] = 1
-        treatment_pred = self.learner.predict(data_c).data.ravel()
+        treatment_pred = self.learner.predict(data_c).data.to_numpy()
 
         uplift_pred = treatment_pred - control_pred
 
@@ -320,8 +320,8 @@ class TLearner(MetaLearner):
             effect_wo_interaction: Predictions of base task values on control-group
 
         """
-        treatment_pred = self.treatment_learner.predict(data).data.ravel()
-        control_pred = self.control_learner.predict(data).data.ravel()
+        treatment_pred = self.treatment_learner.predict(data).data.to_numpy()
+        control_pred = self.control_learner.predict(data).data.to_numpy()
 
         uplift = treatment_pred - control_pred
 
@@ -447,9 +447,9 @@ class T2Learner(MetaLearner):
         """
         data_с = data.copy()
         data_с[self._treatment_col] = True
-        treatment_pred = self.treatment_learner.predict(data_с).data.ravel()
+        treatment_pred = self.treatment_learner.predict(data_с).data.to_numpy()
         data_с[self._treatment_col] = False
-        control_pred = self.control_learner.predict(data_с).data.ravel()
+        control_pred = self.control_learner.predict(data_с).data.to_numpy()
 
         uplift = treatment_pred - control_pred
 
@@ -562,7 +562,7 @@ class TDLearner(MetaLearner):
 
         independent_learner.fit_predict(independent_train_data, new_roles)
         self._check_timer()
-        sg_oof_pred = independent_learner.predict(dependent_train_data).data.ravel()
+        sg_oof_pred = independent_learner.predict(dependent_train_data).data.to_numpy()
         dependent_train_data[self._other_group_pred_col] = sg_oof_pred
         self._check_timer()
         dependent_learner.fit_predict(dependent_train_data, new_roles)
@@ -592,9 +592,9 @@ class TDLearner(MetaLearner):
                 self.treatment_learner,
             )
 
-        independent_pred = independent_learner.predict(data_c).data.ravel()
+        independent_pred = independent_learner.predict(data_c).data.to_numpy()
         data_c[self._other_group_pred_col] = independent_pred
-        dependent_pred = dependent_learner.predict(data_c).data.ravel()
+        dependent_pred = dependent_learner.predict(data_c).data.to_numpy()
 
         if self._dependent_group == 1:
             control_pred, treatment_pred = (
@@ -841,7 +841,7 @@ class XLearner(MetaLearner):
                 inplace=True,
             )
 
-            outcome_pred = self.learners["outcome"][opposite_group_name].predict(train_data_effect).data.ravel()
+            outcome_pred = self.learners["outcome"][opposite_group_name].predict(train_data_effect).data.to_numpy()
             train_data_effect[target_col] = train_data_effect[target_col] - outcome_pred
 
             if group_name == "control":
@@ -867,12 +867,12 @@ class XLearner(MetaLearner):
             effect_wo_interaction: Predictions of base task values on control-group
 
         """
-        outcome_control_pred = self.learners["outcome"]["control"].predict(data).data.ravel()
-        outcome_treatment_pred = self.learners["outcome"]["treatment"].predict(data).data.ravel()
+        outcome_control_pred = self.learners["outcome"]["control"].predict(data).data.to_numpy()
+        outcome_treatment_pred = self.learners["outcome"]["treatment"].predict(data).data.to_numpy()
 
-        propensity_score = self.learners["propensity"].predict(data).data.ravel()
-        uplift_control_pred = self.learners["effect"]["control"].predict(data).data.ravel()
-        uplift_treatment_pred = self.learners["effect"]["treatment"].predict(data).data.ravel()
+        propensity_score = self.learners["propensity"].predict(data).data.to_numpy()
+        uplift_control_pred = self.learners["effect"]["control"].predict(data).data.to_numpy()
+        uplift_treatment_pred = self.learners["effect"]["treatment"].predict(data).data.to_numpy()
         uplift = propensity_score * uplift_treatment_pred + (1.0 - propensity_score) * uplift_control_pred
 
         return (
@@ -1001,7 +1001,7 @@ class RLearner(MetaLearner):
 
         """
         return (
-            self.effect_learner.predict(data).data.ravel(),
+            self.effect_learner.predict(data).data.to_numpy(),
             None,
             None,
         )
@@ -1045,7 +1045,7 @@ class RLearner(MetaLearner):
             train_cp,
             propensity_roles,
             verbose=verbose,
-        ).data.ravel()
+        ).data.to_numpy()
 
         return propensity_pred
 
@@ -1079,7 +1079,7 @@ class RLearner(MetaLearner):
         train_cp = train_data.copy()
         train_cp.drop(treatment_col, axis=1, inplace=True)
 
-        mean_outcome_pred = self.mean_outcome_learner.fit_predict(train_cp, outcome_roles).data.ravel()
+        mean_outcome_pred = self.mean_outcome_learner.fit_predict(train_cp, outcome_roles).data.to_numpy()
 
         return mean_outcome_pred
 
