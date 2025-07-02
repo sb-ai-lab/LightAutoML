@@ -3,7 +3,7 @@ import numpy as np
 from sklearn.metrics import mean_squared_error
 
 from lightautoml.automl.presets.text_presets import TabularNLPAutoML
-from tests.unit.test_automl.test_presets.presets_utils import get_target_name
+from tests.unit.test_automl.test_presets.presets_utils import check_pickling, get_target_name
 
 
 class TestTabularNLPAutoML:
@@ -24,3 +24,5 @@ class TestTabularNLPAutoML:
         # checks
         assert oof_score < 0.7
         assert ho_score < 0.7
+
+        check_pickling(automl, ho_score, regression_task, test, target_name)
