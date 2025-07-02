@@ -26,6 +26,7 @@ from ...ml_algo.tuning.optuna import OptunaTuner
 from ...pipelines.features.base import FeaturesPipeline
 from ...pipelines.features.lgb_pipeline import LGBAdvancedPipeline
 from ...pipelines.features.linear_pipeline import LinearFeatures
+from ...pipelines.features.torch_pipeline import TorchSimpleFeatures
 from ...pipelines.features.text_pipeline import NLPTFiDFFeatures
 from ...pipelines.features.text_pipeline import TextAutoFeatures
 from ...pipelines.features.text_pipeline import TextBertFeatures
@@ -41,21 +42,6 @@ from .tabular_presets import TabularAutoML
 
 
 logger = logging.getLogger(__name__)
-
-
-_base_dir = os.path.dirname(__file__)
-# set initial runtime rate guess for first level models
-_time_scores = {
-    "lgb": 1,
-    "lgb_tuned": 3,
-    "linear_l2": 0.7,
-    "cb": 2,
-    "cb_tuned": 6,
-    "nn": 10,
-    "nn_tuned": 20,
-    "rf": 5,
-    "rf_tuned": 10,
-}
 
 
 # TODO: add text feature selection
@@ -118,7 +104,8 @@ class TabularNLPAutoML(TabularAutoML):
         "linear_l2": 0.7,
         "cb": 2,
         "cb_tuned": 6,
-        "nn": 1,
+        "nn": 10,
+        "nn_tuned": 20,
         "rf": 5,
         "rf_tuned": 10,
     }
@@ -268,7 +255,7 @@ class TabularNLPAutoML(TabularAutoML):
         force_calc = []
 
         text_nn_feats = self.get_nlp_pipe(self.nn_pipeline_params["text_features"])
-        nn_feats = LinearFeatures(output_categories=True, **self.linear_pipeline_params)
+        nn_feats = TorchSimpleFeatures(**self.nn_pipeline_params)
         if text_nn_feats is not None:
             nn_feats.append(text_nn_feats)
 

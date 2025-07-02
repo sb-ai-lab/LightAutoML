@@ -21,7 +21,7 @@ Then,
 
 .. code-block:: bash
 
-    git clone git@github.com:AILab-MLTools/LightAutoML.git
+    git clone git@github.com:sb-ai-lab/LightAutoML.git
     cd LightAutoML
 
     # Create virtual environment inside your project directory

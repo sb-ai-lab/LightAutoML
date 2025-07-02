@@ -186,7 +186,7 @@ def plot_pdp_with_distribution(
                 pd.DataFrame(
                     {
                         "x": grid[i],
-                        "y": ys[i].ravel(),
+                        "y": ys[i].to_numpy(),
                         "unit": np.arange(ys[i].shape[0]),
                     }
                 )

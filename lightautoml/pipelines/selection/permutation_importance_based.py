@@ -30,14 +30,12 @@ def _create_chunks_from_list(lst, n):
         lst: List of elements.
         n: Size of chunk.
 
-    Returns:
-        Sequential chunks.
+    Yields:
+        Sequential chunks of size `n`.
 
     """
-    chunks = []
     for i in range(0, len(lst), n):
-        chunks.append(lst[i : i + n])
-    return chunks
+        yield lst[i : i + n]
 
 
 class NpPermutationImportanceEstimator(ImportanceEstimator):

@@ -264,8 +264,8 @@ class BaseAutoUplift(metaclass=abc.ABCMeta):
             random_state=self.random_state,
             shuffle=True,
         )
-        test_treatment = test_data[treatment_col].ravel()
-        test_target = test_data[target_col].ravel()
+        test_treatment = test_data[treatment_col].to_numpy()
+        test_target = test_data[target_col].to_numpy()
 
         return (
             train_data,

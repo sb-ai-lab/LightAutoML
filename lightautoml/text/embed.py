@@ -170,7 +170,7 @@ class ContEmbedder(nn.Module):
 class BasicCatEmbedding(nn.Module):
     """A basic embedding that creates an embedded vector for each field value from https://github.com/jrfiedler/xynn.
 
-    The same as CatEmbedder, but without dropout, and it can be presented as a sequance.
+    The same as CatEmbedder, but without dropout, and it can be presented as a sequence.
 
     Args:
         embedding_size : int, optional

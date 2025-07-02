@@ -320,16 +320,8 @@ class TabularMLAlgo(MLAlgo):
         """
         assert self.models != [], "Should be fitted first."
         preds_ds = dataset.empty().to_numpy()
-        preds_arr = None
 
-        for model in self.models:
-            if preds_arr is None:
-                preds_arr = self.predict_single_fold(model, dataset)
-            else:
-                preds_arr += self.predict_single_fold(model, dataset)
-
-        preds_arr /= len(self.models)
+        preds_arr = np.mean([self.predict_single_fold(model, dataset) for model in self.models], axis=0)
         preds_arr = preds_arr.reshape((preds_arr.shape[0], -1))
-        preds_ds = self._set_prediction(preds_ds, preds_arr)
 
-        return preds_ds
+        return self._set_prediction(preds_ds, preds_arr)
