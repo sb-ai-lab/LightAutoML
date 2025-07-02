@@ -262,7 +262,7 @@ class BOREP(nn.Module):
         max_length: int = 200,
         init: str = "orthogonal",
         pos_encoding: bool = False,
-        **kwargs: Any
+        **kwargs: Any,
     ):
         super(BOREP, self).__init__()
         self.embed_size = embed_size
@@ -348,7 +348,7 @@ class RandomLSTM(nn.Module):
     ):
         super(RandomLSTM, self).__init__()
         if pooling not in self._poolers:
-            raise ValueError("pooling - {} - not in the list of available types {}".format(pooling, self._poolers))
+            raise ValueError(f"pooling - {pooling} - not in the list of available types {self._poolers}")
         seed_everything(42)
         self.hidden_size = hidden_size
         self.lstm = nn.LSTM(
@@ -419,7 +419,7 @@ class BertEmbedder(nn.Module):
     def __init__(self, model_name: str, pooling: str = "none", **kwargs: Any):
         super(BertEmbedder, self).__init__()
         if pooling not in self._poolers:
-            raise ValueError("pooling - {} - not in the list of available types {}".format(pooling, self._poolers))
+            raise ValueError(f"pooling - {pooling} - not in the list of available types {self._poolers}")
 
         self.pooling = pooling_by_name[pooling]()
 

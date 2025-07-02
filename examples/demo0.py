@@ -76,13 +76,13 @@ task = Task("binary")
 print("Creating PandasDataset")
 start_time = time.time()
 pd_dataset = PandasDataset(data, roles_parser(check_roles), task=task)
-print("PandasDataset created. Time = {:.3f} sec".format(time.time() - start_time))
+print(f"PandasDataset created. Time = {time.time() - start_time:.3f} sec")
 
 # # Print pandas dataset feature roles
 print("Print pandas dataset feature roles")
 roles = pd_dataset.roles
 for role in roles:
-    print("{}: {}".format(role, roles[role]))
+    print(f"{role}: {roles[role]}")
 
 # # Feature selection part
 print("Feature selection part")
@@ -106,10 +106,10 @@ mbie = ModelBasedImportanceEstimator()
 selector = ImportanceCutoffSelector(pipe, model0, mbie, cutoff=10)
 start_time = time.time()
 selector.fit(selector_iterator)
-print("Feature selector fitted. Time = {:.3f} sec".format(time.time() - start_time))
+print(f"Feature selector fitted. Time = {time.time() - start_time:.3f} sec")
 
 print("Feature selector scores:")
-print("\n{}".format(selector.get_features_score()))
+print(f"\n{selector.get_features_score()}")
 
 # # Build AutoML pipeline
 print("Start building AutoML pipeline")
@@ -142,21 +142,21 @@ print("Full train valid iterator created")
 print("Start AutoML pipeline fit_predict")
 start_time = time.time()
 pred = total.fit_predict(train_valid)
-print("Fit_predict finished. Time = {:.3f} sec".format(time.time() - start_time))
+print(f"Fit_predict finished. Time = {time.time() - start_time:.3f} sec")
 
 # # Check preds
 print("Preds:")
-print("\n{}".format(pred))
-print("Preds.shape = {}".format(pred.shape))
+print(f"\n{pred}")
+print(f"Preds.shape = {pred.shape}")
 
 # # Predict full train dataset
 print("Predict full train dataset")
 start_time = time.time()
 train_pred = total.predict(pd_dataset)
-print("Predict finished. Time = {:.3f} sec".format(time.time() - start_time))
+print(f"Predict finished. Time = {time.time() - start_time:.3f} sec")
 print("Preds:")
-print("\n{}".format(train_pred))
-print("Preds.shape = {}".format(train_pred.shape))
+print(f"\n{train_pred}")
+print(f"Preds.shape = {train_pred.shape}")
 
 print("Pickle automl")
 with open("automl.pickle", "wb") as f:
@@ -171,8 +171,8 @@ train_pred = total.predict(pd_dataset)
 os.remove("automl.pickle")
 
 # # Check preds feature names
-print("Preds features: {}".format(train_pred.features))
+print(f"Preds features: {train_pred.features}")
 
 # # Check model feature scores
-print("Feature scores for model_1:\n{}".format(model1.get_features_score()))
-print("Feature scores for model_2:\n{}".format(model2.get_features_score()))
+print(f"Feature scores for model_1:\n{model1.get_features_score()}")
+print(f"Feature scores for model_2:\n{model2.get_features_score()}")

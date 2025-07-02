@@ -150,7 +150,7 @@ class AutoML:
         for i, lvl in enumerate(self._levels):
 
             for j, pipe in enumerate(lvl):
-                pipe.upd_model_names("Lvl_{0}_Pipe_{1}".format(i, j))
+                pipe.upd_model_names(f"Lvl_{i}_Pipe_{j}")
 
         self.skip_conn = skip_conn
         self.return_all_predictions = return_all_predictions
@@ -246,7 +246,7 @@ class AutoML:
                 level_predictions.append(pipe_pred)
                 pipes.append(ml_pipe)
 
-                logger.info("Time left {:.2f} secs\n".format(self.timer.time_left))
+                logger.info(f"Time left {self.timer.time_left:.2f} secs\n")
 
                 if self.timer.time_limit_exceeded():
                     logger.info(
@@ -264,7 +264,7 @@ class AutoML:
                     )
                     flg_last_level = True
 
-            logger.info("\x1b[1mLayer {} training completed.\x1b[0m\n".format(level_number))
+            logger.info(f"\x1b[1mLayer {level_number} training completed.\x1b[0m\n")
 
             # here is split on exit condition
             if not flg_last_level:

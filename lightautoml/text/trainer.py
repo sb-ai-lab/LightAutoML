@@ -290,7 +290,7 @@ class Trainer:
         stop_by_metric: bool = False,
         clip_grad: bool = False,
         clip_grad_params: Optional[Dict] = None,
-        **kwargs
+        **kwargs,
     ):
         self.net = net
         self.net_params = net_params
@@ -540,7 +540,7 @@ class Trainer:
                             vl=np.mean(val_loss),
                         )
                     )
-                loader.set_description("train (loss=%g)" % (running_loss / c))
+                loader.set_description(f"train (loss={running_loss / c:g})")
 
         return loss_log
 

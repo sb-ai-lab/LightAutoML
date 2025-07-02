@@ -237,7 +237,7 @@ class TabularNLPAutoML(TabularAutoML):
         self.nn_params["lang"] = self.nn_params["lang"] or self.text_params["lang"]
         self.nn_params["bert_name"] = self.nn_params["bert_name"] or self.text_params["bert_model"]
 
-        logger.info3("Model language mode: {}".format(self.nn_params["lang"]))
+        logger.info3(f"Model language mode: {self.nn_params['lang']}")
 
         if isinstance(self.autonlp_params["transformer_params"], dict):
             if "loader_params" in self.autonlp_params["transformer_params"]:
@@ -338,7 +338,7 @@ class TabularNLPAutoML(TabularAutoML):
             force_calc=True,
             pre_selection=pre_selector,
             features_pipeline=linear_l2_feats,
-            **self.nested_cv_params
+            **self.nested_cv_params,
         )
         return linear_l2_pipe
 

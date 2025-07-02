@@ -277,7 +277,7 @@ class PandasToPandasReader(Reader):
             Dataset with selected features.
 
         """
-        logger.info("\x1b[1mTrain data shape: {}\x1b[0m\n".format(train_data.shape))
+        logger.info(f"\x1b[1mTrain data shape: {train_data.shape}\x1b[0m\n")
 
         if roles is None:
             roles = {}
@@ -331,7 +331,7 @@ class PandasToPandasReader(Reader):
         for feat in subsample.columns:
             assert isinstance(
                 feat, str
-            ), "Feature names must be string," " find feature name: {}, with type: {}".format(feat, type(feat))
+            ), f"Feature names must be string, find feature name: {feat}, with type: {type(feat)}"
             if feat in parsed_roles:
                 r = parsed_roles[feat]
                 # handle datetimes
@@ -660,7 +660,7 @@ class PandasToPandasReader(Reader):
             )
             top_scores = pd.concat([null_scores, top_scores], axis=1).max(axis=1)
             rejected = list(top_scores[top_scores < drop_co].index)
-            logger.info3("Feats was rejected during automatic roles guess: {0}".format(rejected))
+            logger.info3(f"Feats was rejected during automatic roles guess: {rejected}")
             new_roles_dict = {**new_roles_dict, **{x: DropRole() for x in rejected}}
 
         return new_roles_dict
@@ -783,7 +783,7 @@ class DictToPandasSeqReader(PandasToPandasReader):
         for feat in seq_dataset.columns:
             assert isinstance(
                 feat, str
-            ), "Feature names must be string," " find feature name: {}, with type: {}".format(feat, type(feat))
+            ), f"Feature names must be string, find feature name: {feat}, with type: {type(feat)}"
 
             if feat in parsed_roles:
                 r = parsed_roles[feat]
@@ -967,7 +967,7 @@ class DictToPandasSeqReader(PandasToPandasReader):
             for feat in subsample.columns:
                 assert isinstance(
                     feat, str
-                ), "Feature names must be string," " find feature name: {}, with type: {}".format(feat, type(feat))
+                ), f"Feature names must be string, find feature name: {feat}, with type: {type(feat)}"
                 if feat in parsed_roles:
                     r = parsed_roles[feat]
                     # handle datetimes

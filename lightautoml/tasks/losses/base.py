@@ -152,7 +152,7 @@ class Loss:
             "multi:reg",
             "multiclass",
             "multilabel",
-        ], "Incorrect task name: {}".format(task_name)
+        ], f"Incorrect task name: {task_name}"
         self.metric = metric
 
         if metric_params is None:

@@ -81,7 +81,7 @@ def plot_roc_curve_image(data, path):
     plt.xticks(np.arange(0, 1.01, 0.05), rotation=45)
     plt.yticks(np.arange(0, 1.01, 0.05))
     plt.grid(color="gray", linestyle="-", linewidth=1)
-    plt.title("ROC curve (GINI = {:.3f})".format(2 * auc_score - 1))
+    plt.title(f"ROC curve (GINI = {2 * auc_score - 1:.3f})")
     plt.savefig(path, bbox_extra_artists=(lgd,), bbox_inches="tight")
     plt.close()
     return auc_score
@@ -113,7 +113,7 @@ def plot_pr_curve_image(data, path):
     plt.xticks(np.arange(0, 1.01, 0.05), rotation=45)
     plt.yticks(np.arange(0, 1.01, 0.05))
     plt.grid(color="gray", linestyle="-", linewidth=1)
-    plt.title("PR curve (AP = {:.3f})".format(ap_score))
+    plt.title(f"PR curve (AP = {ap_score:.3f})")
     plt.savefig(path, bbox_extra_artists=(lgd,), bbox_inches="tight")
     plt.close()
 
@@ -176,10 +176,10 @@ def plot_pie_f1_metric(data, F1_thresh, path):
     fig, ax = plt.subplots(figsize=(20, 10), subplot_kw=dict(aspect="equal"))
 
     recipe = [
-        "{} True Positives".format(tp),
-        "{} False Positives".format(fp),
-        "{} False Negatives".format(fn),
-        "{} True Negatives".format(tn),
+        f"{tp} True Positives",
+        f"{fp} False Positives",
+        f"{fn} False Negatives",
+        f"{tn} True Negatives",
     ]
 
     wedges, texts = ax.pie([tp, fp, fn, tn], wedgeprops=dict(width=0.5), startangle=-40)
@@ -197,7 +197,7 @@ def plot_pie_f1_metric(data, F1_thresh, path):
         y = np.sin(np.deg2rad(ang))
         x = np.cos(np.deg2rad(ang))
         horizontalalignment = {-1: "right", 1: "left"}[int(np.sign(x))]
-        connectionstyle = "angle,angleA=0,angleB={}".format(ang)
+        connectionstyle = f"angle,angleA=0,angleB={ang}"
         kw["arrowprops"].update({"connectionstyle": connectionstyle})
         ax.annotate(
             recipe[i], xy=(x, y), xytext=(1.35 * np.sign(x), 1.4 * y), horizontalalignment=horizontalalignment, **kw
@@ -757,10 +757,10 @@ class ReportDeco:
         if self.task == "binary":
             # filling for html
             self._inference_content = {}
-            self._inference_content["roc_curve"] = "test_roc_curve_{}.png".format(self._n_test_sample)
-            self._inference_content["pr_curve"] = "test_pr_curve_{}.png".format(self._n_test_sample)
-            self._inference_content["pie_f1_metric"] = "test_pie_f1_metric_{}.png".format(self._n_test_sample)
-            self._inference_content["bins_preds"] = "test_bins_preds_{}.png".format(self._n_test_sample)
+            self._inference_content["roc_curve"] = f"test_roc_curve_{self._n_test_sample}.png"
+            self._inference_content["pr_curve"] = f"test_pr_curve_{self._n_test_sample}.png"
+            self._inference_content["pie_f1_metric"] = f"test_pie_f1_metric_{self._n_test_sample}.png"
+            self._inference_content["bins_preds"] = f"test_bins_preds_{self._n_test_sample}.png"
             self._inference_content["preds_distribution_by_bins"] = "test_preds_distribution_by_bins_{}.png".format(
                 self._n_test_sample
             )
@@ -771,7 +771,7 @@ class ReportDeco:
             auc_score, prec, rec, F1 = self._binary_classification_details(data)
 
             if self._n_test_sample >= 2:
-                self._model_summary["Test sample {}".format(self._n_test_sample)] = [
+                self._model_summary[f"Test sample {self._n_test_sample}"] = [
                     auc_score,
                     prec,
                     rec,
@@ -786,13 +786,13 @@ class ReportDeco:
             self._inference_content["target_distribution"] = "test_target_distribution_{}.png".format(
                 self._n_test_sample
             )
-            self._inference_content["error_hist"] = "test_error_hist_{}.png".format(self._n_test_sample)
-            self._inference_content["scatter_plot"] = "test_scatter_plot_{}.png".format(self._n_test_sample)
+            self._inference_content["error_hist"] = f"test_error_hist_{self._n_test_sample}.png"
+            self._inference_content["scatter_plot"] = f"test_scatter_plot_{self._n_test_sample}.png"
             # graphics
             mean_ae, median_ae, mse, r2, evs = self._regression_details(data)
             # update model section
             if self._n_test_sample >= 2:
-                self._model_summary["Test sample {}".format(self._n_test_sample)] = [
+                self._model_summary[f"Test sample {self._n_test_sample}"] = [
                     mean_ae,
                     median_ae,
                     mse,
@@ -803,16 +803,16 @@ class ReportDeco:
                 self._model_summary["Test sample"] = [mean_ae, median_ae, mse, r2, evs]
 
         elif self.task == "multiclass":
-            self._inference_content["confusion_matrix"] = "test_confusion_matrix_{}.png".format(self._n_test_sample)
+            self._inference_content["confusion_matrix"] = f"test_confusion_matrix_{self._n_test_sample}.png"
             test_summary = self._multiclass_details(data)
             if self._n_test_sample >= 2:
-                self._model_summary["Test sample {}".format(self._n_test_sample)] = test_summary
+                self._model_summary[f"Test sample {self._n_test_sample}"] = test_summary
             else:
                 self._model_summary["Test sample"] = test_summary
 
         # layout depends on number of test samples
         if self._n_test_sample >= 2:
-            self._inference_content["title"] = "Results on test sample {}".format(self._n_test_sample)
+            self._inference_content["title"] = f"Results on test sample {self._n_test_sample}"
 
         else:
             self._inference_content["title"] = "Results on test sample"
@@ -906,7 +906,7 @@ class ReportDeco:
     def _plot_pdp(self, test_data, feature_name, path):
         feature_role = self._model.reader._roles[feature_name].name
         # I. Count interpretation
-        print("Calculating interpretation for {}:".format(feature_name))
+        print(f"Calculating interpretation for {feature_name}:")
         grid, ys, counts = self._model.get_individual_pdp(
             test_data=test_data,
             feature_name=feature_name,
@@ -990,7 +990,7 @@ class ReportDeco:
         numerical_features_df = []
         for feature_name in numerical_features:
             item = {"Feature name": feature_name}
-            item["NaN ratio"] = "{:.4f}".format(train_data[feature_name].isna().sum() / train_data.shape[0])
+            item["NaN ratio"] = f"{train_data[feature_name].isna().sum() / train_data.shape[0]:.4f}"
             # check if column dtype is bool
             if train_data[feature_name].dtype == bool:
                 values = train_data[feature_name].astype(float).dropna().values
@@ -1009,15 +1009,15 @@ class ReportDeco:
         categorical_features_df = []
         for feature_name in categorical_features:
             item = {"Feature name": feature_name}
-            item["NaN ratio"] = "{:.4f}".format(train_data[feature_name].isna().sum() / train_data.shape[0])
+            item["NaN ratio"] = f"{train_data[feature_name].isna().sum() / train_data.shape[0]:.4f}"
             value_counts = train_data[feature_name].value_counts(normalize=True)
             values = value_counts.index.values
             counts = value_counts.values
             item["Number of unique values"] = len(counts)
             item["Most frequent value"] = values[0]
-            item["Occurrence of most frequent"] = "{:.1f}%".format(100 * counts[0])
+            item["Occurrence of most frequent"] = f"{100 * counts[0]:.1f}%"
             item["Least frequent value"] = values[-1]
-            item["Occurrence of least frequent"] = "{:.1f}%".format(100 * counts[-1])
+            item["Occurrence of least frequent"] = f"{100 * counts[-1]:.1f}%"
             categorical_features_df.append(item)
         self._categorical_features_table = list2table(categorical_features_df)
 
@@ -1025,7 +1025,7 @@ class ReportDeco:
         datetime_features_df = []
         for feature_name in datetime_features:
             item = {"Feature name": feature_name}
-            item["NaN ratio"] = "{:.4f}".format(train_data[feature_name].isna().sum() / train_data.shape[0])
+            item["NaN ratio"] = f"{train_data[feature_name].isna().sum() / train_data.shape[0]:.4f}"
             values = train_data[feature_name].dropna().values
             item["min"] = np.min(values)
             item["max"] = np.max(values)
@@ -1353,7 +1353,7 @@ class ReportDecoUtilized(ReportDeco):
         numerical_features_df = []
         for feature_name in numerical_features:
             item = {"Feature name": feature_name}
-            item["NaN ratio"] = "{:.4f}".format(train_data[feature_name].isna().sum() / train_data.shape[0])
+            item["NaN ratio"] = f"{train_data[feature_name].isna().sum() / train_data.shape[0]:.4f}"
             # check if column dtype is bool
             if train_data[feature_name].dtype == bool:
                 values = train_data[feature_name].astype(float).dropna().values
@@ -1372,15 +1372,15 @@ class ReportDecoUtilized(ReportDeco):
         categorical_features_df = []
         for feature_name in categorical_features:
             item = {"Feature name": feature_name}
-            item["NaN ratio"] = "{:.4f}".format(train_data[feature_name].isna().sum() / train_data.shape[0])
+            item["NaN ratio"] = f"{train_data[feature_name].isna().sum() / train_data.shape[0]:.4f}"
             value_counts = train_data[feature_name].value_counts(normalize=True)
             values = value_counts.index.values
             counts = value_counts.values
             item["Number of unique values"] = len(counts)
             item["Most frequent value"] = values[0]
-            item["Occurrence of most frequent"] = "{:.1f}%".format(100 * counts[0])
+            item["Occurrence of most frequent"] = f"{100 * counts[0]:.1f}%"
             item["Least frequent value"] = values[-1]
-            item["Occurrence of least frequent"] = "{:.1f}%".format(100 * counts[-1])
+            item["Occurrence of least frequent"] = f"{100 * counts[-1]:.1f}%"
             categorical_features_df.append(item)
         self._categorical_features_table = list2table(categorical_features_df)
 
@@ -1388,7 +1388,7 @@ class ReportDecoUtilized(ReportDeco):
         datetime_features_df = []
         for feature_name in datetime_features:
             item = {"Feature name": feature_name}
-            item["NaN ratio"] = "{:.4f}".format(train_data[feature_name].isna().sum() / train_data.shape[0])
+            item["NaN ratio"] = f"{train_data[feature_name].isna().sum() / train_data.shape[0]:.4f}"
             values = train_data[feature_name].dropna().values
             item["min"] = np.min(values)
             item["max"] = np.max(values)
@@ -1472,7 +1472,7 @@ class ReportDecoUtilized(ReportDeco):
             preset_name = model.ml_algos[0].models[0][0].config_path.split("/")[-1]
             preset_desc = _config_name_desc_dict.get(preset_name, None)
             if preset_desc is not None:
-                preset_name = "{0} ({1})".format(preset_desc, preset_name)
+                preset_name = f"{preset_desc} ({preset_name})"
 
             model_parameters = json2html.convert(extract_params(model.ml_algos[0].models[0][0]))
             preset_section = env.get_template(self._preset_section_path).render(
@@ -1828,7 +1828,7 @@ def plot_uplift_curve(test_target, uplift_pred, test_treatment, path):
         linestyle="--",
         label="random model",
     )
-    axs[0].set_title("Uplift qini, AUC={:.3f}".format(uplift_auc))
+    axs[0].set_title(f"Uplift qini, AUC={uplift_auc:.3f}")
     axs[0].legend(loc="lower right")
     # cum_gain
     xs, ys, xs_perfect, ys_perfect, uplift_auc = get_uplift_data(
@@ -1845,7 +1845,7 @@ def plot_uplift_curve(test_target, uplift_pred, test_treatment, path):
         linestyle="--",
         label="random model",
     )
-    axs[1].set_title("Uplift cum_gain, AUC={:.3f}".format(uplift_auc))
+    axs[1].set_title(f"Uplift cum_gain, AUC={uplift_auc:.3f}")
     axs[1].legend(loc="lower right")
     # adj_qini
     xs, ys, xs_perfect, ys_perfect, uplift_auc = get_uplift_data(
@@ -1862,7 +1862,7 @@ def plot_uplift_curve(test_target, uplift_pred, test_treatment, path):
         linestyle="--",
         label="random model",
     )
-    axs[2].set_title("Uplift adj_qini, AUC={:.3f}".format(uplift_auc))
+    axs[2].set_title(f"Uplift adj_qini, AUC={uplift_auc:.3f}")
     axs[2].legend(loc="lower right")
 
     plt.savefig(path, bbox_inches="tight")
@@ -1959,8 +1959,8 @@ class ReportDecoUplift(ReportDeco):
         uplift, treatment_preds, control_preds = self._model.predict(test_data)
 
         if self._n_test_sample >= 2:
-            treatment_title = "Treatment test {}".format(self._n_test_sample)
-            control_title = "Control test {}".format(self._n_test_sample)
+            treatment_title = f"Treatment test {self._n_test_sample}"
+            control_title = f"Control test {self._n_test_sample}"
         else:
             treatment_title = "Treatment test"
             control_title = "Control test"
@@ -1989,9 +1989,9 @@ class ReportDecoUplift(ReportDeco):
         # uplift section
         self._uplift_content = {}
         if self._n_test_sample >= 2:
-            self._uplift_content["title"] = "Test sample {}".format(self._n_test_sample)
-            self._uplift_content["uplift_curve"] = "uplift_curve_{}.png".format(self._n_test_sample)
-            self._uplift_content["uplift_distribution"] = "uplift_distribution_{}.png".format(self._n_test_sample)
+            self._uplift_content["title"] = f"Test sample {self._n_test_sample}"
+            self._uplift_content["uplift_curve"] = f"uplift_curve_{self._n_test_sample}.png"
+            self._uplift_content["uplift_distribution"] = f"uplift_distribution_{self._n_test_sample}.png"
         else:
             self._uplift_content["title"] = "Test sample"
             self._uplift_content["uplift_curve"] = "uplift_curve.png"
@@ -2163,13 +2163,13 @@ class ReportDecoUplift(ReportDeco):
         self._inference_content["title"] = title
         if self.task == "binary":
             # filling for html
-            self._inference_content["roc_curve"] = prefix + "_roc_curve_{}.png".format(self._n_test_sample)
-            self._inference_content["pr_curve"] = prefix + "_pr_curve_{}.png".format(self._n_test_sample)
-            self._inference_content["pie_f1_metric"] = prefix + "_pie_f1_metric_{}.png".format(self._n_test_sample)
-            self._inference_content["bins_preds"] = prefix + "_bins_preds_{}.png".format(self._n_test_sample)
-            self._inference_content[
-                "preds_distribution_by_bins"
-            ] = prefix + "_preds_distribution_by_bins_{}.png".format(self._n_test_sample)
+            self._inference_content["roc_curve"] = prefix + f"_roc_curve_{self._n_test_sample}.png"
+            self._inference_content["pr_curve"] = prefix + f"_pr_curve_{self._n_test_sample}.png"
+            self._inference_content["pie_f1_metric"] = prefix + f"_pie_f1_metric_{self._n_test_sample}.png"
+            self._inference_content["bins_preds"] = prefix + f"_bins_preds_{self._n_test_sample}.png"
+            self._inference_content["preds_distribution_by_bins"] = (
+                prefix + f"_preds_distribution_by_bins_{self._n_test_sample}.png"
+            )
             self._inference_content["distribution_of_logits"] = prefix + "_distribution_of_logits_{}.png".format(
                 self._n_test_sample
             )
@@ -2180,8 +2180,8 @@ class ReportDecoUplift(ReportDeco):
             self._inference_content["target_distribution"] = prefix + "_target_distribution_{}.png".format(
                 self._n_test_sample
             )
-            self._inference_content["error_hist"] = prefix + "_error_hist_{}.png".format(self._n_test_sample)
-            self._inference_content["scatter_plot"] = prefix + "_scatter_plot_{}.png".format(self._n_test_sample)
+            self._inference_content["error_hist"] = prefix + f"_error_hist_{self._n_test_sample}.png"
+            self._inference_content["scatter_plot"] = prefix + f"_scatter_plot_{self._n_test_sample}.png"
             # graphics
             self._model_summary[title] = self._regression_details(data)
 
@@ -2219,7 +2219,7 @@ class ReportDecoUplift(ReportDeco):
         numerical_features_df = []
         for feature_name in numerical_features:
             item = {"Feature name": feature_name}
-            item["NaN ratio"] = "{:.4f}".format(train_data[feature_name].isna().sum() / train_data.shape[0])
+            item["NaN ratio"] = f"{train_data[feature_name].isna().sum() / train_data.shape[0]:.4f}"
             values = train_data[feature_name].dropna().values
             item["min"] = np.min(values)
             item["quantile_25"] = np.quantile(values, 0.25)
@@ -2238,15 +2238,15 @@ class ReportDecoUplift(ReportDeco):
         categorical_features_df = []
         for feature_name in categorical_features:
             item = {"Feature name": feature_name}
-            item["NaN ratio"] = "{:.4f}".format(train_data[feature_name].isna().sum() / train_data.shape[0])
+            item["NaN ratio"] = f"{train_data[feature_name].isna().sum() / train_data.shape[0]:.4f}"
             value_counts = train_data[feature_name].value_counts(normalize=True)
             values = value_counts.index.values
             counts = value_counts.values
             item["Number of unique values"] = len(counts)
             item["Most frequent value"] = values[0]
-            item["Occurrence of most frequent"] = "{:.1f}%".format(100 * counts[0])
+            item["Occurrence of most frequent"] = f"{100 * counts[0]:.1f}%"
             item["Least frequent value"] = values[-1]
-            item["Occurrence of least frequent"] = "{:.1f}%".format(100 * counts[-1])
+            item["Occurrence of least frequent"] = f"{100 * counts[-1]:.1f}%"
             categorical_features_df.append(item)
         if categorical_features_df == []:
             self._categorical_features_table = None
@@ -2258,7 +2258,7 @@ class ReportDecoUplift(ReportDeco):
         datetime_features_df = []
         for feature_name in datetime_features:
             item = {"Feature name": feature_name}
-            item["NaN ratio"] = "{:.4f}".format(train_data[feature_name].isna().sum() / train_data.shape[0])
+            item["NaN ratio"] = f"{train_data[feature_name].isna().sum() / train_data.shape[0]:.4f}"
             values = train_data[feature_name].dropna().values
             item["min"] = np.min(values)
             item["max"] = np.max(values)

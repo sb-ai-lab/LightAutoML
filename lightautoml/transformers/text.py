@@ -833,5 +833,5 @@ class AutoNLPWrap(LAMLTransformer):
         elif mode == "l1":
             return np.abs(x).sum(axis=1, keepdims=True)
         if mode is not None:
-            logger.info2("Unknown sentence scaler mode: sent_scaler={}, " "no normalization will be used".format(mode))
+            logger.info2(f"Unknown sentence scaler mode: sent_scaler={mode}, no normalization will be used")
         return 1

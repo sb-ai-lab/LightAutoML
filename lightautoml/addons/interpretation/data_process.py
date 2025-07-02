@@ -266,7 +266,7 @@ def get_len_dataset(tokenized: List[List[str]], target: np.ndarray) -> LengthDat
 
     """
     if len(tokenized) != len(target):
-        raise ValueError("Mismatch of lengths tokenized ({}) and target ({})".format(len(tokenized), len(target)))
+        raise ValueError(f"Mismatch of lengths tokenized ({len(tokenized)}) and target ({len(target)})")
     return LengthDataset(tokenized, target)
 
 

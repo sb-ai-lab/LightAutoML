@@ -56,7 +56,7 @@ class TextBert(nn.Module):
     def __init__(self, model_name: str = "bert-base-uncased", pooling: str = "cls"):
         super(TextBert, self).__init__()
         if pooling not in self._poolers:
-            raise ValueError("pooling - {} - not in the list of available types {}".format(pooling, self._poolers))
+            raise ValueError(f"pooling - {pooling} - not in the list of available types {self._poolers}")
 
         self.transformer = AutoModel.from_pretrained(model_name)
         self.n_out = self.transformer.config.hidden_size
@@ -532,7 +532,7 @@ class NLinearMemoryEfficient(nn.Module):
 
     def forward(self, x):
         """Forward-pass."""
-        return torch.stack([l(x[:, i]) for i, l in enumerate(self.layers)], 1)
+        return torch.stack([layer(x[:, i]) for i, layer in enumerate(self.layers)], 1)
 
 
 class Periodic(nn.Module):

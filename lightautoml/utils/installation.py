@@ -26,7 +26,7 @@ def __validate_extra_deps(extra_section: str, error: bool = False) -> None:
     ignore_deps = os.environ.get("DOCUMENTATION_ENV", False)
 
     md = distribution("lightautoml").metadata
-    extra_pattern = 'extra == "{}"'.format(extra_section)
+    extra_pattern = f'extra == "{extra_section}"'
     reqs_info = []
     for k, v in md.items():
         if k == "Requires-Dist" and extra_pattern in v:
