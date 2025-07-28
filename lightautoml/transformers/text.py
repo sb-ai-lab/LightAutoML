@@ -583,6 +583,61 @@ class ConcatTextTransformer(LAMLTransformer):
         return output
 
 
+class FastTextWrapper:
+    """Wrapper class for FaceBook FastText to be ready for pickle.dump."""
+
+    def __init__(self, model=None):
+        self.model = model
+
+    def __getstate__(self):
+        if self.model is None:
+            return None
+
+        with tempfile.NamedTemporaryFile(suffix=".bin") as tmp:
+            self.model.save_model(tmp.name)
+
+            with open(tmp.name, "rb") as f:
+                model_data = f.read()
+
+        return model_data
+
+    def __setstate__(self, state):
+        if state is None:
+            self.model = None
+            return
+
+        with tempfile.NamedTemporaryFile() as temp_file:
+            with open(temp_file.name, "wb") as f:
+                f.write(state)
+
+            self.model = fasttext.load_model(temp_file.name)
+        return self.model
+
+    @property
+    def dim(self):  # noqa D102
+        return self.model.get_dimension()
+
+    @property
+    def words(self):  # noqa D102
+        return self.model.words
+
+    def __getitem__(self, word):
+        return self.model.get_word_vector(word)
+
+    def predict(self, text, k=1):
+        """Predict by FastText model."""
+        return self.model.predict(text, k=k)
+
+
+def train_unsupervised(**kwargs):
+    """Train unsupervised FastText model.
+
+    Returns FastTextWrapper object.
+    """
+    model = fasttext.train_unsupervised(**kwargs)
+    return FastTextWrapper(model)
+
+
 class AutoNLPWrap(LAMLTransformer):
     """Calculate text embeddings.
 
@@ -660,7 +715,7 @@ class AutoNLPWrap(LAMLTransformer):
         self._update_bert_model(bert_model)
         if embedding_model is not None:
             if isinstance(embedding_model, str):
-                embedding_model = fasttext.load_model(embedding_model)
+                embedding_model = FastTextWrapper(embedding_model)
 
             self.transformer_params = self._update_transformers_emb_model(self.transformer_params, embedding_model)
 
@@ -687,6 +742,7 @@ class AutoNLPWrap(LAMLTransformer):
         self, params: Dict, model: Any, emb_size: Optional[int] = None
     ) -> Dict[str, Any]:
         if emb_size is None:
+            emb_size = model.dim
             try:
                 # fasttext checker
                 emb_size = model.dim
@@ -749,7 +805,7 @@ class AutoNLPWrap(LAMLTransformer):
                         temp.write(line + "\n")
                     temp_path = temp.name
 
-                    embedding_model = fasttext.train_unsupervised(
+                    embedding_model = train_unsupervised(
                         input=temp_path, model="cbow", epoch=self.fasttext_epochs, **self.fasttext_params
                     )
 
