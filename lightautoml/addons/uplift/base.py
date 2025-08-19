@@ -264,8 +264,8 @@ class BaseAutoUplift(metaclass=abc.ABCMeta):
             random_state=self.random_state,
             shuffle=True,
         )
-        test_treatment = test_data[treatment_col].ravel()
-        test_target = test_data[target_col].ravel()
+        test_treatment = test_data[treatment_col].to_numpy()
+        test_target = test_data[target_col].to_numpy()
 
         return (
             train_data,
@@ -385,8 +385,8 @@ class AutoUplift(BaseAutoUplift):
         else:
             _, target_col = uplift_utils._get_target_role(roles)
             _, treatment_col = uplift_utils._get_treatment_role(roles)
-            test_treatment = test_data[treatment_col].ravel()
-            test_target = test_data[target_col].ravel()
+            test_treatment = test_data[treatment_col].to_numpy()
+            test_target = test_data[target_col].to_numpy()
 
         best_metalearner: Optional[MetaLearner] = None
         best_metalearner_candidate_info: Optional[MetaLearnerWrapper] = None
