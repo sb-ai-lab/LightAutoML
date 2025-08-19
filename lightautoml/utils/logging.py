@@ -124,6 +124,8 @@ def set_stdout_level(level):
             if handler.level == level:
                 has_console_handler = True
             else:
+                if hasattr(handler, "stream") and handler.stream:
+                    handler.close()
                 _logger.handlers.remove(handler)
 
     if not has_console_handler:

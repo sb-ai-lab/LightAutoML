@@ -147,7 +147,7 @@ nn_params:
   # params of Adam optimizer
   opt_params: { 'lr': 0.00001 }
   # params of ReduceLROnPlateau scheduler
-  scheduler_params: { 'patience': 5, 'factor': 0.5, 'verbose': True }
+  scheduler_params: { 'patience': 5, 'factor': 0.5}
   # using snapshot ensembles
   # https://arxiv.org/abs/1704.00109
   is_snap: False
