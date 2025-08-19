@@ -16,11 +16,11 @@ import pandas as pd
 
 
 try:
-    import gensim
+    import fasttext
 except:
     import warnings
 
-    warnings.warn("'gensim' - package isn't installed")
+    warnings.warn("'fasttext' - package isn't installed")
 
 import torch
 import torch.nn as nn
@@ -268,20 +268,11 @@ class L2XTextExplainer:
                 raise ValueError("At least embedding_dim or embedder should be not none")
             self.embedding_dim = embedding_dim
         elif isinstance(embedder, str):
-            try:
-                self.embedder = gensim.models.FastText.load(embedder).wv
-            except:
-                try:
-                    self.embedder = gensim.models.FastText.load_fasttext_format(embedder).wv
-                except:
-                    self.embedder = gensim.models.KeyedVectors.load(embedder).wv
-            self.embedding_dim = self.embedder.vector_size
+            self.embedder = fasttext.load_model(embedder)
+            self.embedding_dim = self.embedder.dim
         elif isinstance(embedder, dict):
             self.embedder = embedder
             self.embedding_dim = next(iter(embedder.values())).shape[0]
-        elif isinstance(embedder, gensim.models.KeyedVectors):
-            self.embedder = embedder
-            self.embedding_dim = self.embedder.vector_size
         else:
             raise TypeError(f"Unknown embedder type: {embedder}")
         self.trainable_embeds = trainable_embeds

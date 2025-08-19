@@ -275,7 +275,7 @@ class TorchModel(TabularMLAlgo):
         if params["bert_name"] is None and params["use_text"]:
             params["bert_name"] = _model_name_by_lang[params.get("lang", "en")]
 
-        is_text = (len(params["text_features"]) > 0) and (params["use_text"]) and (params["device"].type == "cuda")
+        is_text = (len(params["text_features"]) > 0) and (params["use_text"])
         is_cat = (len(params["cat_features"]) > 0) and (params["use_cat"])
         is_cont = (len(params["cont_features"]) > 0) and (params["use_cont"])
 
@@ -388,9 +388,9 @@ class TorchModel(TabularMLAlgo):
             else bias
         )
 
-        bias[bias == np.inf] = np.nanmax(bias[bias != np.inf])
-        bias[bias == -np.inf] = np.nanmin(bias[bias != -np.inf])
-        bias[bias == np.NaN] = np.nanmean(bias[bias != np.NaN])
+        bias[np.isposinf(bias)] = np.nanmax(bias[~np.isposinf(bias)])
+        bias[np.isneginf(bias)] = np.nanmin(bias[~np.isneginf(bias)])
+        bias[np.isnan(bias)] = np.nanmean(bias[~np.isnan(bias)])
 
         return bias
 

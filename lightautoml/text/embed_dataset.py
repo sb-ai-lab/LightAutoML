@@ -54,7 +54,7 @@ class EmbedDataset:
 
     Args:
         sentences: List of tokenized sentences.
-        embedding_model: word2vec, fasstext, etc.
+        embedding_model: word2vec, fasttext, etc.
             Should have dict interface {<word>: <embedding>}.
         max_length: Max sentence length.
         embed_size: Size of embedding.

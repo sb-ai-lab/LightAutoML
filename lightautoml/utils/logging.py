@@ -119,17 +119,14 @@ def set_stdout_level(level):
 
     has_console_handler = False
 
-    to_remove = []
     for handler in _logger.handlers:
         if isinstance(handler, logging.StreamHandler):
             if handler.level == level:
                 has_console_handler = True
             else:
-                to_remove.append(handler)
-
-    for handler in to_remove:
-        _logger.handlers.remove(handler)
-        handler.close()
+                if hasattr(handler, "stream") and handler.stream:
+                    handler.close()
+                _logger.handlers.remove(handler)
 
     if not has_console_handler:
         handler = logging.StreamHandler(sys.stdout)
@@ -143,17 +140,12 @@ def add_filehandler(filename: str, level=logging.DEBUG):
     if filename:
         has_file_handler = False
 
-        to_remove = []
         for handler in _logger.handlers:
             if isinstance(handler, logging.FileHandler):
                 if handler.baseFilename == filename or handler.baseFilename == os.path.join(os.getcwd(), filename):
                     has_file_handler = True
                 else:
-                    to_remove.append(handler)
-
-        for handler in to_remove:
-            _logger.handlers.remove(handler)
-            handler.close()
+                    _logger.handlers.remove(handler)
 
         if not has_file_handler:
             file_handler = logging.FileHandler(filename, mode="w")
@@ -170,13 +162,9 @@ def add_filehandler(filename: str, level=logging.DEBUG):
 
             _logger.addHandler(file_handler)
     else:
-        to_remove = []
         for handler in _logger.handlers:
             if isinstance(handler, logging.FileHandler):
-                to_remove.append(handler)
-        for handler in to_remove:
-            _logger.handlers.remove(handler)
-            handler.close()
+                _logger.handlers.remove(handler)
 
 
 class DuplicateFilter(object):
