@@ -370,7 +370,7 @@ class LimeTextExplainer:
         if self.task_name == "binary":
             pred = np.concatenate([1 - pred, pred], axis=1)
 
-        distance = pairwise_distances(dataset, dataset[0].reshape(1, -1), metric=self.distance_metric).ravel()
+        distance = pairwise_distances(dataset, dataset[0].reshape(1, -1), metric=self.distance_metric).to_numpy()
 
         expl = TextExplanation(idx_str, self.task_name, pred[0], self.class_names, self.random_state)
 

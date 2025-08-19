@@ -358,7 +358,9 @@ class TokenizerTransformer(LAMLTransformer):
     _transform_checks = ()
     _fname_prefix = "tokenized"
 
-    def __init__(self, tokenizer: BaseTokenizer = SimpleEnTokenizer()):
+    def __init__(self, tokenizer: Optional[BaseTokenizer] = None):
+        if tokenizer is None:
+            tokenizer = SimpleEnTokenizer()
         self.tokenizer = tokenizer
 
     def transform(self, dataset: NumpyOrPandas) -> PandasDataset:
