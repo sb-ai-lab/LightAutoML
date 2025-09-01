@@ -213,7 +213,7 @@ class OptunaTuner(ParamsTuner):
                     if get_stdout_level() in [logging.INFO, logging.INFO2]
                     else [update_trial_time, check_fail_tolerance]
                 ),
-                catch=[Exception],
+                catch=(Exception,),
             )
 
             # Close the progress bar if it was initialized
