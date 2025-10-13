@@ -334,6 +334,7 @@ class Trainer:
         """Init all models."""
         self.model = self.net(**self.net_params)
         if self.device_ids is not None:
+            self.device_ids = self.validate_device_availability(self.device_ids)
             self.model = CustomDataParallel(self.model, device_ids=self.device_ids)
 
         self.se = SnapshotEns(self.device, **self.snap_params)
@@ -362,6 +363,7 @@ class Trainer:
         else:
             checkpoint = path
 
+        self.device = self.validate_device_availability(self.device)
         self._init()
         if checkpoint["se"] is not None:
             self.se.load_state_dict(checkpoint["se"], self.model)
@@ -622,3 +624,43 @@ class Trainer:
         """
         loss, (target, pred), _ = self.test(stage=stage, snap=self.is_snap, dataloader=dataloader)
         return pred
+
+    @staticmethod
+    def validate_device_availability(device: Union[int, list, torch.device]):
+        """Validates requested device(s) and returns available equivalents, preserving input types.
+
+        If a requested CUDA device is unavailable, falls back to the first available GPU or CPU.
+
+        Args:
+            device (int, torch.device, or list): Device index, torch.device, or a list of them.
+
+        Returns:
+            int, torch.device, or list: Processed device(s) with original type(s) preserved.
+        """
+        cuda_available = torch.cuda.is_available()
+        device_count = torch.cuda.device_count()
+
+        def to_torch_device(dev):
+            if isinstance(dev, torch.device):
+                if dev.type == "cuda":
+                    if cuda_available and (dev.index is None or dev.index < device_count):
+                        return dev
+                    elif cuda_available and device_count > 0:
+                        return torch.device("cuda:0")
+                    else:
+                        return torch.device("cpu")
+                return dev
+            elif isinstance(dev, int):
+                if cuda_available and dev < device_count:
+                    return dev
+                elif cuda_available and device_count > 0:
+                    return 0
+                else:
+                    return torch.device("cpu")
+            else:
+                raise ValueError(f"Unknown device type: {type(dev)}")
+
+        if isinstance(device, list):
+            return [to_torch_device(d) for d in device]
+
+        return to_torch_device(device)
