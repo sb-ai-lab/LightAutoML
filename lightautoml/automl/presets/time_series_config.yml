@@ -143,7 +143,7 @@ nn_params:
   embedding_size: 10
   # str in ['cat', 'cat_no_dropout', 'weighted']
   cat_embedder: "cat"
-  # str in ['cont', 'linear', 'dense']
+  # str in ['cont', 'linear', 'dense', 'plr',  'soft', 'piecewise']
   cont_embedder: "cont"
   # use model with custom embeddings
   model_with_emb: false

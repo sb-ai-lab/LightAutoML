@@ -21,7 +21,6 @@ from tqdm import tqdm
 from ..utils.logging import get_stdout_level
 from .dp_utils import CustomDataParallel
 
-
 try:
     from apex import amp
 except:
@@ -338,7 +337,10 @@ class Trainer:
             self.model = CustomDataParallel(self.model, device_ids=self.device_ids)
 
         self.se = SnapshotEns(self.device, **self.snap_params)
-        self.optimizer = self.opt(self.model.parameters(), **self.opt_params)
+
+        model_parameters = self.model.parameters()
+
+        self.optimizer = self.opt(model_parameters, **self.opt_params)
         self.amp = amp if self.apex else None
         if self.amp is not None:
             opt_level = "O1"

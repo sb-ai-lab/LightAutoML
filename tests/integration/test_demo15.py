@@ -58,6 +58,7 @@ def test_groupby_features(sampled_app_train_test, binary_task):
         reader_params={"n_jobs": N_THREADS, "cv": N_FOLDS, "random_state": RANDOM_STATE},
         general_params={"use_algos": [["lgb"]]},
         gbm_pipeline_params={"use_groupby": True, "groupby_triplets": groupby_triplets},
+        debug=True,
     )
     automl.fit_predict(train, roles=roles)
 

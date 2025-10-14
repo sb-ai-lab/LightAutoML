@@ -2,7 +2,7 @@
 
 import logging
 
-from typing import Any, List, Tuple, Type
+from typing import Any, List, Tuple, Type, Literal
 from typing import Dict
 from typing import Optional
 from typing import Sequence
@@ -10,14 +10,16 @@ from typing import Union
 from functools import reduce
 import torch
 import torch.nn as nn
+from torch.nn.parameter import Parameter
 from torch import Tensor
 import operator
 import numpy as np
+from ..transformers.categorical import _check_bins
+import warnings
 
 try:
     from transformers import AutoModel
 except:
-    import warnings
 
     warnings.warn("'transformers' - package isn't installed")
 
@@ -535,6 +537,49 @@ class NLinearMemoryEfficient(nn.Module):
         return torch.stack([layer(x[:, i]) for i, layer in enumerate(self.layers)], 1)
 
 
+# _NLinear is a simplified copy of delu.nn.NLinear:
+# https://yura52.github.io/delu/stable/api/generated/delu.nn.NLinear.html
+class _NLinear(nn.Module):
+    """N *separate* linear layers for N feature embeddings.
+
+    Original sources:
+    - 'On Embeddings for Numerical Features in Tabular Deep Learning' Gorishniy et al. (2022)
+    (https://arxiv.org/pdf/2203.05556, https://github.com/yandex-research/rtdl-num-embeddings).
+
+    In other words,
+    each feature embedding is transformed by its own dedicated linear layer.
+    """
+
+    def __init__(self, n: int, in_features: int, out_features: int, bias: bool = True) -> None:
+        super().__init__()
+        self.weight = Parameter(torch.empty(n, in_features, out_features))
+        self.bias = Parameter(torch.empty(n, out_features)) if bias else None
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        """Reset the parameters."""
+        d_in_rsqrt = self.weight.shape[-2] ** -0.5
+        nn.init.uniform_(self.weight, -d_in_rsqrt, d_in_rsqrt)
+        if self.bias is not None:
+            nn.init.uniform_(self.bias, -d_in_rsqrt, d_in_rsqrt)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Do the forward pass."""
+        if x.ndim != 3:
+            raise ValueError(
+                "_NLinear supports only inputs with exactly one batch dimension,"
+                " so `x` must have a shape like (BATCH_SIZE, N_FEATURES, D_EMBEDDING)."
+            )
+        assert x.shape[-(self.weight.ndim - 1) :] == self.weight.shape[:-1]
+
+        x = x.transpose(0, 1)
+        x = x @ self.weight
+        x = x.transpose(0, 1)
+        if self.bias is not None:
+            x = x + self.bias
+        return x
+
+
 class Periodic(nn.Module):
     """Periodic positional embedding for numeric features from https://github.com/yandex-research/tabular-dl-num-embeddings/tree/c1d9eb63c0685b51d7e1bc081cdce6ffdb8886a8.
 
@@ -601,7 +646,7 @@ class PLREmbedding(nn.Module):
         super().__init__()
         self.num_dims = num_dims
         self.embedding_size = embedding_size
-        self.layers: list[nn.Module] = []
+        self.layers: List[nn.Module] = []
         self.layers.append(Periodic(num_dims, emb_size_periodic, sigma_periodic))
         self.layers.append(NLinearMemoryEfficient(num_dims, 2 * emb_size_periodic, embedding_size))
         self.layers.append(nn.ReLU())
@@ -638,7 +683,7 @@ class PLREmbedding(nn.Module):
 
 
 class PLREmbeddingFlat(PLREmbedding):
-    """Flatten version of BasicCatEmbedding."""
+    """Flatten version of PLREmbedding."""
 
     def __init__(self, *args, **kwargs):
         super(PLREmbeddingFlat, self).__init__(*args, **{**kwargs, **{"flatten_output": True}})
@@ -701,7 +746,341 @@ class SoftEmbedding(torch.nn.Module):
 
 
 class SoftEmbeddingFlat(SoftEmbedding):
-    """Flatten version of BasicCatEmbedding."""
+    """Flatten version of SoftEmbedding."""
 
     def __init__(self, *args, **kwargs):
         super(SoftEmbeddingFlat, self).__init__(*args, **{**kwargs, **{"flatten_output": True}})
+
+
+def _check_input_shape(x: Tensor, expected_n_features: int) -> None:
+    if x.ndim < 1:
+        raise ValueError(f"The input must have at least one dimension, however: {x.ndim=}")
+    if x.shape[-1] != expected_n_features:
+        raise ValueError(
+            "The last dimension of the input was expected to be" f" {expected_n_features}, however, {x.shape[-1]=}"
+        )
+
+
+class LinearEmbeddings(nn.Module):
+    """Linear embeddings for continuous features.
+
+    **Shape**
+
+    - Input: `(*, n_features)`
+    - Output: `(*, n_features, d_embedding)`
+
+    **Examples**
+
+    >>> batch_size = 2
+    >>> n_cont_features = 3
+    >>> x = torch.randn(batch_size, n_cont_features)
+    >>> d_embedding = 4
+    >>> m = LinearEmbeddings(n_cont_features, d_embedding)
+    >>> m.get_output_shape()
+    torch.Size([3, 4])
+    >>> m(x).shape
+    torch.Size([2, 3, 4])
+
+    Args:
+        n_features: the number of continuous features.
+        d_embedding: the embedding size.
+    """
+
+    def __init__(self, n_features: int, d_embedding: int) -> None:
+        if n_features <= 0:
+            raise ValueError(f"n_features must be positive, however: {n_features=}")
+        if d_embedding <= 0:
+            raise ValueError(f"d_embedding must be positive, however: {d_embedding=}")
+
+        super().__init__()
+        self.weight = Parameter(torch.empty(n_features, d_embedding))
+        self.bias = Parameter(torch.empty(n_features, d_embedding))
+        self.reset_parameters()
+
+    def reset_parameters(self) -> None:
+        """Init parameters."""
+        d_rqsrt = self.weight.shape[1] ** -0.5
+        nn.init.uniform_(self.weight, -d_rqsrt, d_rqsrt)
+        nn.init.uniform_(self.bias, -d_rqsrt, d_rqsrt)
+
+    def get_output_shape(self) -> torch.Size:
+        """Get the output shape without the batch dimensions."""
+        return self.weight.shape
+
+    def forward(self, x: Tensor) -> Tensor:
+        """Do the forward pass."""
+        _check_input_shape(x, self.weight.shape[0])
+        return torch.addcmul(self.bias, self.weight, x[..., None])
+
+
+class _PiecewiseLinearEncodingImpl(nn.Module):
+    """Piecewise-linear encoding.
+
+    Original sources:
+    - 'On Embeddings for Numerical Features in Tabular Deep Learning' Gorishniy et al. (2022)
+    (https://arxiv.org/pdf/2203.05556, https://github.com/yandex-research/rtdl-num-embeddings).
+
+
+    NOTE: THIS CLASS SHOULD NOT BE USED DIRECTLY.
+    In particular, this class does *not* add any positional information
+    to feature encodings. Thus, for Transformer-like models,
+    `PiecewiseLinearEmbeddings` is the only valid option.
+
+    Note:
+        This is the *encoding* module, not the *embedding* module,
+        so it only implements Equation 1 (Figure 1) from the paper,
+        and does not have trainable parameters.
+
+    **Shape**
+
+    * Input: ``(*, n_features)``
+    * Output: ``(*, n_features, max_n_bins)``,
+      where ``max_n_bins`` is the maximum number of bins over all features:
+      ``max_n_bins = max(len(b) - 1 for b in bins)``.
+
+    To understand the output structure,
+    consider a feature with the number of bins ``n_bins``.
+    Formally, its piecewise-linear encoding is a vector of the size ``n_bins``
+    that looks as follows::
+
+        x_ple = [1, ..., 1, (x - this_bin_left_edge) / this_bin_width, 0, ..., 0]
+
+    However, this class will instead produce a vector of the size ``max_n_bins``::
+
+        x_ple_actual = [*x_ple[:-1], *zeros(max_n_bins - n_bins), x_ple[-1]]
+
+    In other words:
+
+    * The last encoding component is **always** located in the end,
+      even if ``n_bins == 1`` (i.e. even if it is the only component).
+    * The leading ``n_bins - 1`` components are located in the beginning.
+    * Everything in-between is always set to zeros (like "padding", but in the middle).
+
+    This implementation is *significantly* faster than the original one.
+    It relies on two key observations:
+
+    * The piecewise-linear encoding is just
+      a non-trainable linear transformation followed by a clamp-based activation.
+      Pseudocode: `PiecewiseLinearEncoding(x) = Activation(Linear(x))`.
+      The parameters of the linear transformation are defined by the bin edges.
+    * Aligning the *last* encoding channel across all features
+      allows applying the aforementioned activation simultaneously to all features
+      without the loop over features.
+
+    Args:
+        bins: the bins computed by `compute_bins`.
+    """
+
+    weight: Tensor
+    """The weight of the linear transformation mentioned in the class docstring."""
+
+    bias: Tensor
+    """The bias of the linear transformation mentioned in the class docstring."""
+
+    single_bin_mask: Optional[Tensor]
+    """The indicators of the features with only one bin."""
+
+    mask: Optional[Tensor]
+    """The indicators of the "valid" (i.e. "non-padding") part of the encoding."""
+
+    def __init__(self, bins: List[torch.Tensor]) -> None:
+        assert len(bins) > 0
+        super().__init__()
+
+        n_features = len(bins)
+        n_bins = [len(x) - 1 for x in bins]
+        max_n_bins = max(n_bins)
+
+        self.register_buffer("weight", torch.zeros(n_features, max_n_bins))
+        self.register_buffer("bias", torch.zeros(n_features, max_n_bins))
+
+        single_bin_mask = torch.tensor(n_bins) == 1
+        self.register_buffer("single_bin_mask", single_bin_mask if single_bin_mask.any() else None)
+
+        self.register_buffer(
+            "mask",
+            # The mask is needed if features have different number of bins.
+            None
+            if all(len(x) == len(bins[0]) for x in bins)
+            else torch.row_stack(
+                [
+                    torch.cat(
+                        [
+                            # The number of bins for this feature, minus 1:
+                            torch.ones((len(x) - 1) - 1, dtype=torch.bool),
+                            # Unused components (always zeros):
+                            torch.zeros(max_n_bins - (len(x) - 1), dtype=torch.bool),
+                            # The last bin:
+                            torch.ones(1, dtype=torch.bool),
+                        ]
+                    )
+                    # x is a tensor containing the bin bounds for a given feature.
+                    for x in bins
+                ]
+            ),
+        )
+
+        for i, bin_edges in enumerate(bins):
+            # Formally, the piecewise-linear encoding of one feature looks as follows:
+            # `[1, ..., 1, (x - this_bin_left_edge) / this_bin_width, 0, ..., 0]`
+            # The linear transformation based on the weight and bias defined below
+            # implements the expression in the middle before the clipping to [0, 1].
+            # Note that the actual encoding layout produced by this class
+            # is slightly different. See the docstring of this class for details.
+            bin_width = bin_edges.diff()
+            w = 1.0 / bin_width
+            b = -bin_edges[:-1] / bin_width
+            # The last encoding component:
+            self.weight[i, -1] = w[-1]
+            self.bias[i, -1] = b[-1]
+            # The leading encoding components:
+            self.weight[i, : n_bins[i] - 1] = w[:-1]
+            self.bias[i, : n_bins[i] - 1] = b[:-1]
+            # All in-between components will always be zeros,
+            # because the weight and bias are initialized with zeros.
+
+    def get_max_n_bins(self) -> int:
+        return self.weight.shape[-1]
+
+    def forward(self, x: torch.Tensor) -> Tensor:
+        """Do the forward pass."""
+        x = torch.addcmul(self.bias, self.weight, x[..., None])
+        if x.shape[-1] > 1:
+            x = torch.cat(
+                [
+                    x[..., :1].clamp_max(1.0),
+                    x[..., 1:-1].clamp(0.0, 1.0),
+                    (
+                        x[..., -1:].clamp_min(0.0)
+                        if self.single_bin_mask is None
+                        else torch.where(
+                            # For features with only one bin,
+                            # the whole "piecewise-linear" encoding effectively behaves
+                            # like mix-max scaling
+                            # (assuming that the edges of the single bin
+                            #  are the minimum and maximum feature values).
+                            self.single_bin_mask[..., None],
+                            x[..., -1:],
+                            x[..., -1:].clamp_min(0.0),
+                        )
+                    ),
+                ],
+                dim=-1,
+            )
+        return x
+
+
+class PiecewiseLinearEmbeddings(nn.Module):
+    """Piecewise-linear embeddings actually is just a Piecewise-linear encodings with simple differentiable layers on top.
+
+    Original sources:
+    1) 'On Embeddings for Numerical Features in Tabular Deep Learning' Gorishniy et al. (2022):
+    https://arxiv.org/pdf/2203.05556, https://github.com/yandex-research/rtdl-num-embeddings
+    2) 'TabM: Advancing Tabular Deep Learning with Parameter-Efficient Ensembling' Gorishniy et al. (2025):
+    https://arxiv.org/abs/2410.24210v3.
+
+    The intuition behind PiecewiseLinearEmbeddings is that each bin receives its own trainable embedding,
+    and the feature embedding is the aggregation of its bin embeddings with the aggregation weights provided
+    by the piecewise-linear encoding.
+
+    PiecewiseLinearEncoding represents a fixed (non-trainable) transformation, fully defined by the provided bin
+    boundaries. Its output is the concatenation of the piecewise-linear representations of all features, i.e.
+    this representation has the shape (d_encoding,), where d_encoding equals the total number of bins across all features.
+    Because of that, PiecewiseLinearEncoding can be used only with MLP-like models, but not with Transformer-like models.
+
+    In practice, if there is enough data to train additional weights, PiecewiseLinearEmbeddings may be a better starting
+    point even for MLP-like models. In particular, PiecewiseLinearEmbeddings makes it possible to set a large number of
+    bins, but a small embedding size.
+
+    Input: ``(batch_size, n_features)``
+    Output: ``(batch_size, n_features, embedding_size)`` or ``(batch_size, n_features * embedding_size)``
+
+    Args:
+        num_dims: Number of numeric features.
+        bins: the quantile-based or target-aware bins computed by `compute_bins`.
+        embedding_size: the embedding size.
+        activation: if True, the ReLU activation is additionally applied in the end.
+        version: the preset for various implementation details, such as
+            parametrization and initialization. "A" is the original version used in the paper.
+            "B" is the version used in the different paper about the TabM model. "A" denotes (ReLU) ◦ Linear ◦ PLE in terms from paper.
+            "B" adds LinearEmbedding to "A". In version "B", the whole embedding behaves like a linear embedding at the start,
+            and the piecewise-linear component is incrementally learnt during training.
+        flatten_output: bool: output shape is (batch_size, n_features, embedding_size)`` or ``(batch_size, n_features * embedding_size).
+    """
+
+    def __init__(
+        self,
+        num_dims: int,
+        embedding_size: int,
+        bins: List[Tensor] = None,
+        activation: bool = False,
+        version: Literal[None, "A", "B"] = "B",
+        flatten_output: bool = False,
+        **kwargs,
+    ) -> None:
+        if embedding_size <= 0:
+            raise ValueError(f"embedding_size must be a positive integer, however: {embedding_size=}")
+
+        super().__init__()
+
+        _check_bins(bins)
+        self.bins = bins
+        n_features = len(bins)
+        is_version_B = version == "B"
+
+        self.linear0 = LinearEmbeddings(n_features, embedding_size) if is_version_B else None
+        self.impl = _PiecewiseLinearEncodingImpl(bins)
+        self.linear = _NLinear(
+            len(bins),
+            self.impl.get_max_n_bins(),
+            embedding_size,
+            bias=not is_version_B,  # For the version "B", the bias is already presented in self.linear0.
+        )
+        if is_version_B:
+            # Because of the following line, at initialization,
+            # the whole embedding behaves like a linear embedding.
+            # The piecewise-linear component is incrementally learnt during training.
+            nn.init.zeros_(self.linear.weight)
+        self.activation = nn.ReLU() if activation else None
+
+        self.num_dims = num_dims
+        self.flatten_output = flatten_output
+        self.embedding_size = embedding_size
+
+    def get_out_shape(self) -> int:
+        """Output shape.
+
+        Returns:
+            int with module output shape.
+
+        """
+        if self.flatten_output:
+            return self.num_dims * self.embedding_size
+        else:
+            return self.num_dims
+
+    def forward(self, X: Dict) -> Tensor:
+        """Forward pass."""
+        x = X["cont"]
+
+        if x.ndim != 2:
+            raise ValueError("For now, only inputs with exactly one batch dimension are supported.")
+
+        x_linear = None if self.linear0 is None else self.linear0(x)
+
+        x_ple = self.impl(x)
+        x_ple = self.linear(x_ple)
+        if self.activation is not None:
+            x_ple = self.activation(x_ple)
+        output = x_ple if x_linear is None else x_linear + x_ple
+
+        if self.flatten_output:
+            return output.contiguous().view(output.shape[0], -1)
+        return output
+
+
+class PiecewiseLinearEmbeddingsFlat(PiecewiseLinearEmbeddings):
+    """Flatten version of PiecewiseLinearEmbeddings."""
+
+    def __init__(self, *args, **kwargs):
+        super(PiecewiseLinearEmbeddingsFlat, self).__init__(*args, **{**kwargs, **{"flatten_output": True}})

@@ -64,6 +64,10 @@ jinja2 = "*"
 json2html = "*"
 seaborn = "*"
 SQLAlchemy = ">=2.0"
+tabm = [
+    {version = "*", python = ">=3.9"},
+]
+
 
 
 # NLP
