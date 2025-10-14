@@ -27,6 +27,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from ..dataset.np_pd_dataset import NumpyDataset
 from ..tasks.losses.torch import TorchLossWrapper
 from ..validation.base import TrainValidIterator
+from ..transformers.categorical import compute_bins
 
 
 try:
@@ -55,6 +56,8 @@ from ..text.embed import (
     WeightedCatEmbedding,
     BasicCatEmbedding,
     WeightedCatEmbeddingFlat,
+    PiecewiseLinearEmbeddings,
+    PiecewiseLinearEmbeddingsFlat,
 )
 from ..text.embed import ContEmbedder
 from ..text.embed import TextBert
@@ -78,6 +81,17 @@ from .torch_based.nn_models import _LinearLayer
 from .torch_based.nn_models import AutoInt
 from .torch_based.nn_models import FTTransformer
 
+# Import TabM only if available (Python 3.9+)
+try:
+    from .torch_based.nn_models import TabM
+    from .torch_based.tabm.sampler import TabMBatchSampler
+
+    TABM_AVAILABLE = True
+except (ImportError, RuntimeError):
+    TabM = None
+    TabMBatchSampler = None
+    TABM_AVAILABLE = False
+
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +108,11 @@ model_by_name = {
     "tabnet": TabNet,
     "fttransformer": FTTransformer,
 }
+
+# Add TabM only if available
+if TABM_AVAILABLE:
+    model_by_name["tabm"] = TabM
+
 input_type_by_name = {
     "denselight": "flat",
     "dense": "flat",
@@ -106,6 +125,7 @@ input_type_by_name = {
     "autoint": "seq",
     "tabnet": "flat",
     "fttransformer": "seq",
+    "tabm": "flat",
 }
 cat_embedder_by_name_flat = {
     "cat": CatEmbedder,
@@ -123,6 +143,7 @@ cont_embedder_by_name_flat = {
     "dense": DenseEmbeddingFlat,
     "plr": PLREmbeddingFlat,
     "soft": SoftEmbeddingFlat,
+    "piecewise": PiecewiseLinearEmbeddingsFlat,
 }
 cont_embedder_by_name = {
     "cont": LinearEmbedding,
@@ -130,6 +151,7 @@ cont_embedder_by_name = {
     "dense": DenseEmbedding,
     "plr": PLREmbedding,
     "soft": SoftEmbedding,
+    "piecewise": PiecewiseLinearEmbeddings,
 }
 
 
@@ -204,6 +226,7 @@ class TorchModel(TabularMLAlgo):
         "act_fun": nn.ReLU,
         "use_noise": False,
         "use_bn": True,
+        "share_training_batches": True,  # Параметр для TabM
     }
 
     _default_params = {
@@ -251,7 +274,7 @@ class TorchModel(TabularMLAlgo):
         **_default_models_params,
     }
 
-    def _infer_params(self):
+    def _infer_params(self, train=None):
         if self.params["path_to_save"] is not None:
             self.path_to_save = os.path.relpath(self.params["path_to_save"])
             if not os.path.exists(self.path_to_save):
@@ -278,6 +301,15 @@ class TorchModel(TabularMLAlgo):
         is_text = (len(params["text_features"]) > 0) and (params["use_text"])
         is_cat = (len(params["cat_features"]) > 0) and (params["use_cat"])
         is_cont = (len(params["cont_features"]) > 0) and (params["use_cont"])
+
+        bins = None
+        if "bins" in self.params:
+            bins = self.params["bins"]
+        elif (train is not None) and (len(self.params["cont_features"]) > 0):
+            x_cont = train.data[self.params["cont_features"]].values
+
+            bins = compute_bins(torch.Tensor(x_cont))
+            self.params["bins"] = bins
 
         torch_model = params["model"]
 
@@ -314,7 +346,8 @@ class TorchModel(TabularMLAlgo):
                     # "input_bn": params["input_bn"],
                     # "device": params["device"],
                     # "embedding_size": params["embedding_size"],
-                    **params
+                    "bins": bins,
+                    **params,
                 }
                 if is_cont
                 else None,
@@ -502,7 +535,7 @@ class TorchModel(TabularMLAlgo):
         for stage, value in data_dict.items():
             data = {name: value.data[cols].values for name, cols in features.items() if len(cols) > 0}
 
-            stage_dataset = self.train_params["dataset"](
+            dataset = self.train_params["dataset"](
                 data=data,
                 y=value.target.values if stage != "test" else np.ones(len(value.data)),
                 w=value.weights.values if value.weights is not None else np.ones(len(value.data)),
@@ -511,15 +544,38 @@ class TorchModel(TabularMLAlgo):
                 stage=stage,
             )
 
-            dataloaders[stage] = torch.utils.data.DataLoader(
-                stage_dataset,
-                batch_size=self.train_params["bs"],
-                shuffle=is_shuffle(stage),
-                num_workers=self.train_params["num_workers"],
-                collate_fn=collate_dict,
-                pin_memory=self.train_params["pin_memory"],
-                drop_last=(stage == "train"),
-            )
+            if (self.params.get("model") == "tabm") and (stage == "train"):
+                if not TABM_AVAILABLE:
+                    raise RuntimeError(
+                        "TabM model requires Python 3.9+ and the 'tabm' package. "
+                        "Please upgrade Python or install tabm: pip install tabm"
+                    )
+                # Custom DataLoader for TabM
+                dataloaders[stage] = torch.utils.data.DataLoader(
+                    dataset=dataset,
+                    batch_sampler=TabMBatchSampler(
+                        dataset_size=len(dataset),
+                        batch_size=self.train_params["bs"],
+                        shuffle=is_shuffle(stage),
+                        k=self.params.get("k", 32),
+                        share_training_batches=self.params.get("share_training_batches", True),
+                        device=self.params.get("device", torch.device("cuda:0")),
+                    ),
+                    num_workers=self.train_params["num_workers"],
+                    collate_fn=collate_dict,
+                    pin_memory=self.train_params["pin_memory"],
+                )
+            else:
+                # Standard DataLoader
+                dataloaders[stage] = torch.utils.data.DataLoader(
+                    dataset,
+                    batch_size=self.train_params["bs"],
+                    shuffle=is_shuffle(stage),
+                    num_workers=self.train_params["num_workers"],
+                    collate_fn=collate_dict,
+                    pin_memory=self.train_params["pin_memory"],
+                    drop_last=(stage == "train"),
+                )
 
         return dataloaders
 
@@ -559,13 +615,14 @@ class TorchModel(TabularMLAlgo):
         target = train.target
         self.params["bias"] = self.get_mean_target(target, task_name) if self.params["init_bias"] else None
 
-        model = self._infer_params()
+        train_pd = train.to_pandas()
+        model = self._infer_params(train_pd)
 
         model_path = (
             os.path.join(self.path_to_save, f"{uuid.uuid4()}.pickle") if self.path_to_save is not None else None
         )
         # init datasets
-        dataloaders = self.get_dataloaders_from_dicts({"train": train.to_pandas(), "val": valid.to_pandas()})
+        dataloaders = self.get_dataloaders_from_dicts({"train": train_pd, "val": valid.to_pandas()})
 
         val_pred = model.fit(dataloaders)
 

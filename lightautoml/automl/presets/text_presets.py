@@ -303,7 +303,7 @@ class TabularNLPAutoML(TabularAutoML):
             force_calc.append(True if not len(ml_algos) - 1 else False)
 
         nn_pipe = NestedTabularMLPipeline(
-            ml_algos, force_calc, pre_selection=None, features_pipeline=nn_feats, **self.nested_cv_params
+            ml_algos, force_calc, pre_selection=pre_selector, features_pipeline=nn_feats, **self.nested_cv_params
         )
 
         return nn_pipe
@@ -407,7 +407,17 @@ class TabularNLPAutoML(TabularAutoML):
                     selector = pre_selector
                 lvl.append(self.get_gbms(gbm_models, n + 1, selector))
 
-            available_nn_models = ["nn", "mlp", "dense", "denselight", "resnet", "snn", "linear_layer", "_linear_layer"]
+            available_nn_models = [
+                "nn",
+                "mlp",
+                "dense",
+                "denselight",
+                "resnet",
+                "snn",
+                "linear_layer",
+                "_linear_layer",
+                "tabm",
+            ]
             available_nn_models = available_nn_models + [x + "_tuned" for x in available_nn_models]
             nn_models = [
                 x for x in names if x in available_nn_models or (isinstance(x, type) and issubclass(x, nn.Module))

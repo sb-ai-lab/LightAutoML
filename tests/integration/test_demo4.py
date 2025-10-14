@@ -62,7 +62,7 @@ def test_different_task_params(sampled_app_train_test):
                 [pipeline_lvl1],
             ],
             skip_conn=False,
-            # debug=True,
+            debug=True,
         )
 
         oof_pred = automl.fit_predict(train_data, roles={"target": target}, verbose=1)

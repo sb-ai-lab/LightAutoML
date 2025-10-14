@@ -453,7 +453,7 @@ class TabularAutoML(AutoMLPreset):
             force_calc.append(True if not len(ml_algos) - 1 else False)
 
         nn_pipe = NestedTabularMLPipeline(
-            ml_algos, force_calc, pre_selection=None, features_pipeline=nn_feats, **self.nested_cv_params
+            ml_algos, force_calc, pre_selection=pre_selector, features_pipeline=nn_feats, **self.nested_cv_params
         )
 
         return nn_pipe
@@ -625,6 +625,7 @@ class TabularAutoML(AutoMLPreset):
                 "autoint",
                 "tabnet",
                 "fttransformer",
+                "tabm",
             ]
             available_nn_models = available_nn_models + [x + "_tuned" for x in available_nn_models]
             nn_models = [

@@ -1,16 +1,15 @@
 """Text utility script."""
 
 import os
-import random
-
-from typing import Dict
-from typing import List
-from typing import Sequence
-
 import numpy as np
+import random
 import torch
 
 from sklearn.utils.murmurhash import murmurhash3_32
+
+from typing import List
+from typing import Dict
+from typing import Sequence
 
 
 _dtypes_mapping = {
