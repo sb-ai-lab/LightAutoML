@@ -101,6 +101,13 @@ linear_l2_params:
   default_params: { }
   freeze_defaults: False
 
+# params for TabICL model
+tabicl_params:
+  device: cpu
+  batch_size: 8
+  n_jobs: 4
+  freeze_defaults: False
+
 # params for NN model
 nn_params:
  # Look for NN train params here.

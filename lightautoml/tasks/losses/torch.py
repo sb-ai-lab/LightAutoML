@@ -40,7 +40,12 @@ class TorchLossWrapper(nn.Module):
     ):
         """Forward-pass."""
         if self.flatten:
-            y_true = y_true[:, 0].type(torch.int64)
+            if y_true.ndim == 2:
+                y_true = y_true[:, 0].type(torch.int64)
+            elif y_true.ndim == 1:
+                y_true = y_true.type(torch.int64)
+            else:
+                raise ValueError(f"Unexpected tensor dimension for y_true: {y_true.ndim}. Expected 1 or 2.")
 
         if self.log:
             y_pred = torch.log(y_pred)

@@ -58,9 +58,6 @@ class UniversalDataset:
         return len(self.y)
 
     def __getitem__(self, index: int) -> Dict[str, np.ndarray]:
-        # print(type(self.y))
-        # print(type(index))
-        # print("AAAAAAAAAAAAAA")
         res = {"label": self.y[index]}
         res.update({key: value[index] for key, value in self.data.items() if key != "text"})
         if (self.tokenizer is not None) and ("text" in self.data):
@@ -179,12 +176,18 @@ class TorchUniversalModel(nn.Module):
         self.text_embedder = None
 
         n_in = 0
+        start_scaling_init_chunks = []
         if cont_embedder_ is not None:
             self.cont_embedder = cont_embedder_(**cont_params)
-            n_in += self.cont_embedder.get_out_shape()
+            n_in_cont = self.cont_embedder.get_out_shape()
+            n_in += n_in_cont
+            start_scaling_init_chunks.extend(
+                [cont_params["embedding_size"]] * (n_in_cont // cont_params["embedding_size"])
+            )
         if cat_embedder_ is not None:
             self.cat_embedder = cat_embedder_(**cat_params)
             n_in += self.cat_embedder.get_out_shape()
+            start_scaling_init_chunks.extend([emb.embedding_dim for emb in self.cat_embedder.emb_layers])
         if text_embedder is not None:
             self.text_embedder = text_embedder(**text_params)
             n_in += self.text_embedder.get_out_shape()
@@ -198,6 +201,11 @@ class TorchUniversalModel(nn.Module):
                         "n_out": n_out,
                         "loss": loss,
                         "task": task,
+                        "backbone_params": {
+                            "start_scaling_init_chunks": start_scaling_init_chunks
+                            if len(start_scaling_init_chunks) > 0
+                            else None
+                        },
                     },
                 }
             )
@@ -324,9 +332,7 @@ class TorchUniversalModel(nn.Module):
 
         loss = self.loss(
             inp["label"],
-            # inp["label"].view(inp["label"].shape[0], -1),
             x.squeeze(-1),
-            # inp["weight"].view(inp["weight"].shape[0], -1) if "weight" in inp else None
             inp.get("weight", None),
         )
         return loss

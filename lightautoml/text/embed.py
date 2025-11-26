@@ -906,6 +906,13 @@ class _PiecewiseLinearEncodingImpl(nn.Module):
                 [
                     torch.cat(
                         [
+                            # Unused components (always zeros):
+                            torch.zeros(max_n_bins - (len(x) - 1), dtype=torch.bool),
+                            # The last bin:
+                            torch.ones(1, dtype=torch.bool),
+                        ]
+                        if len(x) < 2
+                        else [
                             # The number of bins for this feature, minus 1:
                             torch.ones((len(x) - 1) - 1, dtype=torch.bool),
                             # Unused components (always zeros):
