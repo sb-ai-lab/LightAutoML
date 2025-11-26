@@ -15,6 +15,7 @@ import torch
 
 from pandas import DataFrame
 
+from ...dataset.roles import TargetRole
 from ...ml_algo.boost_cb import BoostCB
 from ...ml_algo.boost_lgbm import BoostLGBM
 from ...ml_algo.linear_sklearn import LinearLBFGS
@@ -161,7 +162,7 @@ class TabularCVAutoML(TabularAutoML):
                 param = {}
             self.__dict__[name] = upd_params(self.__dict__[name], param)
 
-    def infer_auto_params(self, train_data: DataFrame, multilevel_avail: bool = False):
+    def infer_auto_params(self, train_data: DataFrame, multilevel_avail: bool = False, target_col: str = None):
         """Infer automatic parameters."""
         # infer gpu params
         gpu_cnt = torch.cuda.device_count()
@@ -196,7 +197,7 @@ class TabularCVAutoML(TabularAutoML):
             self.cv_simple_features["n_jobs"] = cpu_cnt
 
         # other params as tabular
-        super().infer_auto_params(train_data, multilevel_avail)
+        super().infer_auto_params(train_data, multilevel_avail, target_col)
 
     def get_cv_pipe(self, type: str = "simple") -> Optional[FeaturesPipeline]:
         """Get CV pipeline."""
@@ -280,7 +281,12 @@ class TabularCVAutoML(TabularAutoML):
 
         """
         train_data = fit_args["train_data"]
-        self.infer_auto_params(train_data)
+        self.infer_auto_params(
+            train_data,
+            target_col=fit_args["roles"]["target"]
+            if "target" in fit_args["roles"]
+            else fit_args["roles"][TargetRole()],
+        )
         reader = PandasToPandasReader(task=self.task, **self.reader_params)
 
         pre_selector = self.get_selector()

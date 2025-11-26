@@ -78,7 +78,6 @@ lgb_params:
     num_threads: 100
   freeze_defaults: False
 
-
 xgb_params:
   default_params:
     nthread: 100
@@ -101,6 +100,13 @@ rf_params:
 # no tuner needed for this algo - regularization params are found during fit
 linear_l2_params:
   default_params: { }
+  freeze_defaults: False
+
+# params for TabICL model
+tabicl_params:
+  device: cpu
+  batch_size: 8
+  n_jobs: 4
   freeze_defaults: False
 
 # params for NN model

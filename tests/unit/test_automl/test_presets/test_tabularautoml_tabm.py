@@ -59,8 +59,8 @@ class TestTabM:
             ho_score = roc_auc_score(test[target_name].values, ho_predictions.data[:, 0])
 
             # checks
-            assert oof_score > 0.62
-            assert ho_score > 0.62
+            assert oof_score > 0.64
+            assert ho_score > 0.63
 
             check_pickling(automl, ho_score, binary_task, test, target_name)
 
@@ -99,7 +99,7 @@ class TestTabM:
             ho_score = roc_auc_score(test[target_name].values, ho_predictions.data[:, 0])
 
             # checks
-            assert oof_score > 0.61
-            assert ho_score > 0.61
+            assert oof_score > 0.62
+            assert ho_score > 0.62
 
             check_pickling(automl, ho_score, binary_task, test, target_name)

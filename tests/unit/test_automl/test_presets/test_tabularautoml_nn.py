@@ -21,7 +21,7 @@ class TestTabularAutoML:
             task=binary_task,
             general_params=general_params,
             nn_params={
-                "n_epochs": 10,
+                "n_epochs": 2,
                 "bs": 128,
                 "num_workers": 0,
                 "path_to_save": None,

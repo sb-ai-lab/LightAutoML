@@ -18,6 +18,7 @@ import torch.nn as nn
 
 from pandas import DataFrame
 
+from ...dataset.roles import TargetRole
 from ...ml_algo.boost_cb import BoostCB
 from ...ml_algo.boost_lgbm import BoostLGBM
 from ...ml_algo.dl_model import TorchModel
@@ -194,7 +195,7 @@ class TabularNLPAutoML(TabularAutoML):
                 param = {}
             self.__dict__[name] = upd_params(self.__dict__[name], param)
 
-    def infer_auto_params(self, train_data: DataFrame, multilevel_avail: bool = False):
+    def infer_auto_params(self, train_data: DataFrame, multilevel_avail: bool = False, target_col: str = None):
 
         # infer gpu params
         gpu_cnt = torch.cuda.device_count()
@@ -236,7 +237,7 @@ class TabularNLPAutoML(TabularAutoML):
                 self.autonlp_params["transformer_params"]["loader_params"] = {"num_workers": cpu_cnt}
 
         # other params as tabular
-        super().infer_auto_params(train_data, multilevel_avail)
+        super().infer_auto_params(train_data, multilevel_avail, target_col)
 
     def get_nlp_pipe(self, type: str = "tfidf") -> Optional[FeaturesPipeline]:
         if type == "tfidf":
@@ -379,7 +380,8 @@ class TabularNLPAutoML(TabularAutoML):
 
         """
         train_data = fit_args["train_data"]
-        self.infer_auto_params(train_data)
+        target_col = fit_args["roles"]["target"] if "target" in fit_args["roles"] else fit_args["roles"][TargetRole()]
+        self.infer_auto_params(train_data, target_col=target_col)
         reader = PandasToPandasReader(task=self.task, **self.reader_params)
 
         pre_selector = self.get_selector()

@@ -212,7 +212,7 @@ class TimeSeriesIterator:
         uniques = np.unique(folds)
         assert (uniques == np.arange(uniques.shape[0])).all(), "Fold splits is incorrect"
         # sort in descending order - for holdout from custom be the biggest part
-        self.folds = uniques[::-1][folds]
+        self.folds = uniques[folds]
         self.n_splits = uniques.shape[0]
 
     def __len__(self) -> int:

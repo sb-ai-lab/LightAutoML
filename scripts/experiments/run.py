@@ -142,7 +142,7 @@ if __name__ == "__main__":
     parser.add_argument("--memory_limit", type=int, help="mem limit in GBs", default=16)
     parser.add_argument("--queue", type=str, help="clearml workers queue", default="cpu_queue")
     parser.add_argument("--project", type=str, help="clearml project", default="junk")
-    parser.add_argument("--image", type=str, help="docker image", default="for_clearml:latest")
+    parser.add_argument("--image", type=str, help="docker image", default="for_clearml:3.10")
     parser.add_argument("--n_datasets", type=int, help="number of datasets", default=-1)
     parser.add_argument("--min_num_obs", type=int, help="min number of samples", default=None)
     parser.add_argument("--save_model", action="store_true")

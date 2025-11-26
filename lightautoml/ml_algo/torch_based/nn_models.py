@@ -1121,15 +1121,7 @@ class TabM(nn.Module):
         self,
         n_in: int,
         n_out: int,
-        backbone_params: dict = {
-            "n_blocks": 3,
-            "d_block": 512,
-            "dropout": 0.1,
-            "activation": "ReLU",
-            "k": 32,
-            "arch_type": "tabm",
-            "start_scaling_init_chunks": None,
-        },
+        backbone_params: dict = None,
         share_training_batches: bool = True,
         device: Union[str, torch.device] = "cuda:0",
         **kwargs,
@@ -1145,15 +1137,27 @@ class TabM(nn.Module):
         self.share_training_batches = share_training_batches
         self.device = device
 
+        backbone_params = {} if backbone_params is None else backbone_params
+        backbone_params = {
+            **{
+                "d_block": 512,
+                "dropout": 0.1,
+                "activation": "ReLU",
+                "k": 32,
+                "arch_type": "tabm",
+                "start_scaling_init_chunks": None,
+            },
+            **backbone_params,
+        }
+
         # Create the ensemble input module.
         self.ensemble_view = EnsembleView(k=backbone_params["k"])
 
         # Create the backbone.
-        if "d_in" not in backbone_params:
-            backbone_params["d_in"] = n_in
-        if "start_scaling_init_chunks" not in backbone_params:
-            backbone_params["start_scaling_init_chunks"] = None
+        backbone_params["d_in"] = n_in
+
         has_num_embeddings = "cont_embedder" in kwargs
+
         if "start_scaling_init" not in backbone_params:
             backbone_params["start_scaling_init"] = (
                 None
@@ -1162,7 +1166,10 @@ class TabM(nn.Module):
                 if has_num_embeddings
                 else "random-signs"
             )
-        backbone_params["n_blocks"] = 2 if has_num_embeddings else 3
+
+        if "n_blocks" not in backbone_params:
+            backbone_params["n_blocks"] = 2 if has_num_embeddings else 3
+
         self.backbone = make_tabm_backbone(
             **backbone_params,
         )
