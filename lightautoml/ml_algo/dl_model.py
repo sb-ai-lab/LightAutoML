@@ -274,7 +274,7 @@ class TorchModel(TabularMLAlgo):
         **_default_models_params,
     }
 
-    def _infer_params(self, train=None):
+    def _infer_params(self, train=None, valid=None):
         if self.params["path_to_save"] is not None:
             self.path_to_save = os.path.relpath(self.params["path_to_save"])
             if not os.path.exists(self.path_to_save):
@@ -306,8 +306,9 @@ class TorchModel(TabularMLAlgo):
         if "bins" in self.params:
             bins = self.params["bins"]
         elif (train is not None) and (len(self.params["cont_features"]) > 0):
-            x_cont = train.data[self.params["cont_features"]].values
-
+            x_cont = np.concatenate(
+                [train.data[self.params["cont_features"]].values, valid.data[self.params["cont_features"]].values]
+            )
             bins = compute_bins(torch.Tensor(x_cont))
             self.params["bins"] = bins
 
@@ -616,13 +617,14 @@ class TorchModel(TabularMLAlgo):
         self.params["bias"] = self.get_mean_target(target, task_name) if self.params["init_bias"] else None
 
         train_pd = train.to_pandas()
-        model = self._infer_params(train_pd)
+        valid_pd = valid.to_pandas()
+        model = self._infer_params(train_pd, valid_pd)
 
         model_path = (
             os.path.join(self.path_to_save, f"{uuid.uuid4()}.pickle") if self.path_to_save is not None else None
         )
         # init datasets
-        dataloaders = self.get_dataloaders_from_dicts({"train": train_pd, "val": valid.to_pandas()})
+        dataloaders = self.get_dataloaders_from_dicts({"train": train_pd, "val": valid_pd})
 
         val_pred = model.fit(dataloaders)
 

@@ -232,9 +232,9 @@ class TabularAutoML(AutoMLPreset):
         length = train_data.shape[0]
         n_columns = train_data.shape[1]
         n_cells = length * n_columns
-        n_targets = train_data[target_col].nunique()
-        gpu_available = len(self.gpu_ids) > 0
-        is_classification = self.task.name in ["binary", "multiclass"]
+        # n_targets = train_data[target_col].nunique()
+        # gpu_available = len(self.gpu_ids) > 0
+        # is_classification = self.task.name in ["binary", "multiclass"]
 
         # infer optuna tuning iteration based on dataframe len
         if self.tuning_params["max_tuning_iter"] == "auto":
@@ -258,9 +258,9 @@ class TabularAutoML(AutoMLPreset):
                 if (self.task.name == "multi:reg") or (self.task.name == "multilabel"):
                     self.general_params["use_algos"] = [["linear_l2", "cb", "rf", "rf_tuned", "cb_tuned"]]
 
-            # Add TabICL for classification tasks with small datasets if GPU is available
-            if is_classification and length < 10_000 and n_columns < 100 and n_targets < 10 and gpu_available:
-                self.general_params["use_algos"][0].append("tabicl")
+            # # Add TabICL for classification tasks with small datasets if GPU is available
+            # if is_classification and length < 10_000 and n_columns < 100 and n_targets < 10 and gpu_available:
+            #     self.general_params["use_algos"][0].append("tabicl")
 
         with_tabicl = any(any("tabicl" in algo for algo in layer) for layer in self.general_params["use_algos"])
         if with_tabicl and (n_cells > 1_000_000 or length > 50_000 or n_columns > 100):
