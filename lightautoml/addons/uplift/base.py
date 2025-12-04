@@ -264,8 +264,8 @@ class BaseAutoUplift(metaclass=abc.ABCMeta):
             random_state=self.random_state,
             shuffle=True,
         )
-        test_treatment = test_data[treatment_col].ravel()
-        test_target = test_data[target_col].ravel()
+        test_treatment = test_data[treatment_col].to_numpy()
+        test_target = test_data[target_col].to_numpy()
 
         return (
             train_data,
@@ -385,8 +385,8 @@ class AutoUplift(BaseAutoUplift):
         else:
             _, target_col = uplift_utils._get_target_role(roles)
             _, treatment_col = uplift_utils._get_treatment_role(roles)
-            test_treatment = test_data[treatment_col].ravel()
-            test_target = test_data[target_col].ravel()
+            test_treatment = test_data[treatment_col].to_numpy()
+            test_target = test_data[target_col].to_numpy()
 
         best_metalearner: Optional[MetaLearner] = None
         best_metalearner_candidate_info: Optional[MetaLearnerWrapper] = None
@@ -1267,7 +1267,7 @@ class AutoUpliftTX(BaseAutoUplift):
         ) in self._extract_stages():
             if stage.full_name() == full_name:
                 return stage
-        raise Exception("Can't find stage {}".format(full_name))
+        raise Exception(f"Can't find stage {full_name}")
 
     def _set_stage_baselearners(
         self,
@@ -1373,7 +1373,7 @@ class AutoUpliftTX(BaseAutoUplift):
             for bl_name, idxs in k2n.items():
                 if len(idxs) > 1:
                     for idx in idxs:
-                        renaming_by_idxs[idx] = "{}__#{}__".format(bl_name, idx)
+                        renaming_by_idxs[idx] = f"{bl_name}__#{idx}__"
 
             baselearners_t = []
             for idx, bl in enumerate(baselearners):
@@ -1558,7 +1558,7 @@ class AutoUpliftTX(BaseAutoUplift):
                         if trained_sbl.prev_stage_bl is None:
                             ml_bls[ml_stage_full_name] = trained_sbl
                         else:
-                            if not ml_stage_full_name[0:1] in set_bls:
+                            if ml_stage_full_name[0:1] not in set_bls:
                                 continue
 
                             if trained_sbl.prev_stage_bl.name == set_bls[ml_stage_full_name[0:1]].stage_bl.name:
@@ -1671,7 +1671,7 @@ class AutoUpliftTX(BaseAutoUplift):
         for bl in self._trained_stage_baselearners[metalearner_stage]:
             if bl.stage_bl.name == baselearner_name:
                 return bl
-        raise Exception("There isn't baselearner {}".format(baselearner_name))
+        raise Exception(f"There isn't baselearner {baselearner_name}")
 
     def _create_metalearner_wrap(
         self,
@@ -1688,7 +1688,7 @@ class AutoUpliftTX(BaseAutoUplift):
             Best metalearner wrap.
 
         """
-        ml_wrap_name = "__ML__{ML}".format(ML=metalearner_name)
+        ml_wrap_name = f"__ML__{metalearner_name}"
 
         ml_wrap: Optional[MetaLearnerWrapper] = None
         if metalearner_name == "TLearner":

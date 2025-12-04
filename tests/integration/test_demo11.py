@@ -20,7 +20,7 @@ def test_tabularnlp(avito1k_train_test, avito1k_roles, regression_task):
 
     task = regression_task
 
-    automl = TabularNLPAutoML(task=task, timeout=600)
+    automl = TabularNLPAutoML(task=task, timeout=600, debug=True)
     oof_pred = automl.fit_predict(train, roles=roles)
     test_pred = automl.predict(test)
     not_nan = np.any(~np.isnan(oof_pred.data), axis=1)

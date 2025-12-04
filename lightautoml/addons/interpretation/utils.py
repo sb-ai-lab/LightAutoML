@@ -279,13 +279,13 @@ def draw_html(
     )
     ticks_styling = "margin-left: {}em; " "margin-right: {}em; "
     norm_const = max(map(lambda x: abs(x[1]), tokens_and_weights))
-    order = int("{:.2e}".format(norm_const).split("e")[1])
-    order_s = "✕ {:.0e}".format(10 ** order)
+    order = int(f"{norm_const:.2e}".split("e")[1])
+    order_s = f"✕ {10 ** order:.0e}"
     scale_word = "Scale"
     if not draw_order:
         order_s = ""
         scale_word = ""
-    lord = 0.5 * len(order_s) + 1.5  # lenght order
+    lord = 0.5 * len(order_s) + 1.5  # order length
     inorm_const = 1 / norm_const
     if cmap is None:
         cmap = plt.get_cmap("bwr")
@@ -309,9 +309,9 @@ def draw_html(
         pred_field = ""
     else:
         if task_name == "reg":
-            prediction = "{:.1e}".format(prediction)
+            prediction = f"{prediction:.1e}"
         else:
-            prediction = "{:.3f}".format(prediction)
+            prediction = f"{prediction:.3f}"
         pred_field = "AutoML's prediction"
 
     if grad_line:

@@ -60,12 +60,12 @@ _xgb_loss_mapping = {
     "logloss": ("binary:logistic", None, None),
     "mse": ("reg:squarederror", None, None),
     "mae": ("reg:absoluteerror", None, None),
-    # "mape": ("mape", None, None),
-    "crossentropy": ("multi:softmax", None, None),  # TODO
+    # "mape": ("mape", None, None), # not supported in XGBoost
+    "crossentropy": ("multi:softprob", None, None),
     "rmsle": ("reg:squaredlogerror", fw_rmsle, np.expm1),  # TODO: fw and bw
     "quantile": ("reg:quantileerror", None, None),
     "huber": ("reg:pseudohubererror", None, None),
-    # "fair": ("fair", None, None),
+    # "fair": ("fair", None, None), # not supported in XGBoost
     "f1": (lgb_f1_loss_multiclass, None, softmax_ax1),
 }
 
@@ -230,7 +230,7 @@ class XGBLoss(Loss):
         if self.fobj_name in _xgb_force_metric:
             metric, greater_is_better, metric_params = _xgb_force_metric[self.fobj_name]
             logger.info2(
-                "For xgb {0} callback metric switched to {1}".format(self.fobj_name, metric),
+                f"For xgb {self.fobj_name} callback metric switched to {metric}",
                 UserWarning,
             )
 

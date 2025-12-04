@@ -18,6 +18,7 @@ import torch.nn as nn
 
 from pandas import DataFrame
 
+from ...dataset.roles import TargetRole
 from ...ml_algo.boost_cb import BoostCB
 from ...ml_algo.boost_lgbm import BoostLGBM
 from ...ml_algo.dl_model import TorchModel
@@ -26,6 +27,7 @@ from ...ml_algo.tuning.optuna import OptunaTuner
 from ...pipelines.features.base import FeaturesPipeline
 from ...pipelines.features.lgb_pipeline import LGBAdvancedPipeline
 from ...pipelines.features.linear_pipeline import LinearFeatures
+from ...pipelines.features.torch_pipeline import TorchSimpleFeatures
 from ...pipelines.features.text_pipeline import NLPTFiDFFeatures
 from ...pipelines.features.text_pipeline import TextAutoFeatures
 from ...pipelines.features.text_pipeline import TextBertFeatures
@@ -41,21 +43,6 @@ from .tabular_presets import TabularAutoML
 
 
 logger = logging.getLogger(__name__)
-
-
-_base_dir = os.path.dirname(__file__)
-# set initial runtime rate guess for first level models
-_time_scores = {
-    "lgb": 1,
-    "lgb_tuned": 3,
-    "linear_l2": 0.7,
-    "cb": 2,
-    "cb_tuned": 6,
-    "nn": 10,
-    "nn_tuned": 20,
-    "rf": 5,
-    "rf_tuned": 10,
-}
 
 
 # TODO: add text feature selection
@@ -118,7 +105,8 @@ class TabularNLPAutoML(TabularAutoML):
         "linear_l2": 0.7,
         "cb": 2,
         "cb_tuned": 6,
-        "nn": 1,
+        "nn": 10,
+        "nn_tuned": 20,
         "rf": 5,
         "rf_tuned": 10,
     }
@@ -207,7 +195,7 @@ class TabularNLPAutoML(TabularAutoML):
                 param = {}
             self.__dict__[name] = upd_params(self.__dict__[name], param)
 
-    def infer_auto_params(self, train_data: DataFrame, multilevel_avail: bool = False):
+    def infer_auto_params(self, train_data: DataFrame, multilevel_avail: bool = False, target_col: str = None):
 
         # infer gpu params
         gpu_cnt = torch.cuda.device_count()
@@ -237,7 +225,7 @@ class TabularNLPAutoML(TabularAutoML):
         self.nn_params["lang"] = self.nn_params["lang"] or self.text_params["lang"]
         self.nn_params["bert_name"] = self.nn_params["bert_name"] or self.text_params["bert_model"]
 
-        logger.info3("Model language mode: {}".format(self.nn_params["lang"]))
+        logger.info3(f"Model language mode: {self.nn_params['lang']}")
 
         if isinstance(self.autonlp_params["transformer_params"], dict):
             if "loader_params" in self.autonlp_params["transformer_params"]:
@@ -249,7 +237,7 @@ class TabularNLPAutoML(TabularAutoML):
                 self.autonlp_params["transformer_params"]["loader_params"] = {"num_workers": cpu_cnt}
 
         # other params as tabular
-        super().infer_auto_params(train_data, multilevel_avail)
+        super().infer_auto_params(train_data, multilevel_avail, target_col)
 
     def get_nlp_pipe(self, type: str = "tfidf") -> Optional[FeaturesPipeline]:
         if type == "tfidf":
@@ -268,7 +256,7 @@ class TabularNLPAutoML(TabularAutoML):
         force_calc = []
 
         text_nn_feats = self.get_nlp_pipe(self.nn_pipeline_params["text_features"])
-        nn_feats = LinearFeatures(output_categories=True, **self.linear_pipeline_params)
+        nn_feats = TorchSimpleFeatures(**self.nn_pipeline_params)
         if text_nn_feats is not None:
             nn_feats.append(text_nn_feats)
 
@@ -316,7 +304,7 @@ class TabularNLPAutoML(TabularAutoML):
             force_calc.append(True if not len(ml_algos) - 1 else False)
 
         nn_pipe = NestedTabularMLPipeline(
-            ml_algos, force_calc, pre_selection=None, features_pipeline=nn_feats, **self.nested_cv_params
+            ml_algos, force_calc, pre_selection=pre_selector, features_pipeline=nn_feats, **self.nested_cv_params
         )
 
         return nn_pipe
@@ -338,7 +326,7 @@ class TabularNLPAutoML(TabularAutoML):
             force_calc=True,
             pre_selection=pre_selector,
             features_pipeline=linear_l2_feats,
-            **self.nested_cv_params
+            **self.nested_cv_params,
         )
         return linear_l2_pipe
 
@@ -392,7 +380,8 @@ class TabularNLPAutoML(TabularAutoML):
 
         """
         train_data = fit_args["train_data"]
-        self.infer_auto_params(train_data)
+        target_col = fit_args["roles"]["target"] if "target" in fit_args["roles"] else fit_args["roles"][TargetRole()]
+        self.infer_auto_params(train_data, target_col=target_col)
         reader = PandasToPandasReader(task=self.task, **self.reader_params)
 
         pre_selector = self.get_selector()
@@ -420,7 +409,17 @@ class TabularNLPAutoML(TabularAutoML):
                     selector = pre_selector
                 lvl.append(self.get_gbms(gbm_models, n + 1, selector))
 
-            available_nn_models = ["nn", "mlp", "dense", "denselight", "resnet", "snn", "linear_layer", "_linear_layer"]
+            available_nn_models = [
+                "nn",
+                "mlp",
+                "dense",
+                "denselight",
+                "resnet",
+                "snn",
+                "linear_layer",
+                "_linear_layer",
+                "tabm",
+            ]
             available_nn_models = available_nn_models + [x + "_tuned" for x in available_nn_models]
             nn_models = [
                 x for x in names if x in available_nn_models or (isinstance(x, type) and issubclass(x, nn.Module))

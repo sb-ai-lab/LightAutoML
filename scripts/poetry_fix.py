@@ -32,7 +32,7 @@ def _set_version(py_version: Optional[int] = None):
                 version = ALL_PYTHON_DEPS
             else:
                 version = PYTHON_DEPS[py_version]
-            line = 'python = "{}"\n'.format(version)
+            line = f'python = "{version}"\n'
 
         sys.stdout.write(line)
 

@@ -33,7 +33,7 @@ test_pred = automl.predict(test)
 not_nan = np.any(~np.isnan(oof_pred.data), axis=1)
 
 print("Check scores...")
-print("OOF score: {}".format(mean_squared_error(train[roles["target"]].values[not_nan], oof_pred.data[not_nan][:, 0])))
-print("TEST score: {}".format(mean_squared_error(test[roles["target"]].values, test_pred.data[:, 0])))
+print(f"OOF score: {mean_squared_error(train[roles['target']].values[not_nan], oof_pred.data[not_nan][:, 0])}")
+print(f"TEST score: {mean_squared_error(test[roles['target']].values, test_pred.data[:, 0])}")
 
 shutil.rmtree("./models", ignore_errors=True)

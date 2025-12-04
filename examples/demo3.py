@@ -51,7 +51,7 @@ print("Split data...")
 train_data, test_data = train_test_split(data, test_size=2000, stratify=data["TARGET"], random_state=13)
 train_data.reset_index(drop=True, inplace=True)
 test_data.reset_index(drop=True, inplace=True)
-print("Data splitted. Parts sizes: train_data = {}, test_data = {}".format(train_data.shape, test_data.shape))
+print(f"Data splitted. Parts sizes: train_data = {train_data.shape}, test_data = {test_data.shape}")
 
 print("Create task..")
 task = Task("binary")
@@ -158,13 +158,13 @@ print("AutoML pipeline created...")
 print("Start AutoML pipeline fit_predict...")
 start_time = time.time()
 oof_pred = automl.fit_predict(train_data, roles={"target": "TARGET"})
-print("AutoML pipeline fitted and predicted. Time = {:.3f} sec".format(time.time() - start_time))
+print(f"AutoML pipeline fitted and predicted. Time = {time.time() - start_time:.3f} sec")
 
-print("Feature importances of selector:\n{}".format(selector.get_features_score()))
+print(f"Feature importances of selector:\n{selector.get_features_score()}")
 
-print("oof_pred:\n{}\nShape = {}".format(oof_pred, oof_pred.shape))
+print(f"oof_pred:\n{oof_pred}\nShape = {oof_pred.shape}")
 
-print("Feature importances of top level algorithm:\n{}".format(automl.levels[-1][0].ml_algos[0].get_features_score()))
+print(f"Feature importances of top level algorithm:\n{automl.levels[-1][0].ml_algos[0].get_features_score()}")
 
 print(
     "Feature importances of lowest level algorithm - model 0:\n{}".format(
@@ -179,8 +179,8 @@ print(
 )
 
 test_pred = automl.predict(test_data)
-print("Prediction for test data:\n{}\nShape = {}".format(test_pred, test_pred.shape))
+print(f"Prediction for test data:\n{test_pred}\nShape = {test_pred.shape}")
 
 print("Check scores...")
-print("OOF score: {}".format(roc_auc_score(train_data["TARGET"].values, oof_pred.data[:, 0])))
-print("TEST score: {}".format(roc_auc_score(test_data["TARGET"].values, test_pred.data[:, 0])))
+print(f"OOF score: {roc_auc_score(train_data['TARGET'].values, oof_pred.data[:, 0])}")
+print(f"TEST score: {roc_auc_score(test_data['TARGET'].values, test_pred.data[:, 0])}")

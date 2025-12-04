@@ -132,7 +132,8 @@ class GroupByTransformer(LAMLTransformer):
             feat, trans = self._features_mapping[feature_name]
             feature_vals = dataset.data.iloc[:, self._feat_idx[feat]].to_numpy()
             group_stats[feature_name] = {
-                k: self._feature_stats(feature_vals[idx], trans) for k, idx in self._group_ids_dict.items()
+                **{0: self._feature_stats(feature_vals, trans)},  # global group
+                **{k: self._feature_stats(feature_vals[idx], trans) for k, idx in self._group_ids_dict.items()},
             }
         return group_stats
 
@@ -162,7 +163,6 @@ class GroupByTransformer(LAMLTransformer):
         # create resulted
         output = dataset.empty().to_numpy()
         output.set_data(feats_block, self.features, NumericRole(dtype=np.float32))
-        # print(output.shape)
         return output
 
     def _transform_one(self, stats_from_fit, feature_vals, transform_type):

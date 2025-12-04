@@ -67,7 +67,7 @@ class SeqNumpyPandasDataset(PandasDataset):
         # handle dates types
         for i in date_columns:
             dt_role = self.roles[i]
-            if not (self.data.dtypes[i] is np.datetime64):
+            if self.data.dtypes[i] is not np.datetime64:
                 self.data[i] = pd.to_datetime(
                     self.data[i], format=dt_role.format, unit=dt_role.unit, origin=dt_role.origin, cache=True
                 )

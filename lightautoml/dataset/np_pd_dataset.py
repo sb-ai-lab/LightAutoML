@@ -107,7 +107,7 @@ class NumpyDataset(LAMLDataset):
             self._features = copy(val)
         else:
             prefix = val if val is not None else "feat"
-            self._features = ["{0}_{1}".format(prefix, x) for x in range(self.data.shape[1])]
+            self._features = [f"{prefix}_{x}" for x in range(self.data.shape[1])]
 
     @property
     def roles(self) -> RolesDict:
@@ -147,7 +147,7 @@ class NumpyDataset(LAMLDataset):
         """
         # dtypes = list(set(map(lambda x: x.dtype, self.roles.values())))
         dtypes = list(set([i.dtype for i in self.roles.values()]))
-        self.dtype = np.find_common_type(dtypes, [])
+        self.dtype = np.result_type(*dtypes) if len(dtypes) else None
 
         for f in self.roles:
             self._roles[f].dtype = self.dtype
@@ -166,7 +166,7 @@ class NumpyDataset(LAMLDataset):
         features: NpFeatures = (),
         roles: NpRoles = None,
         task: Optional[Task] = None,
-        **kwargs: np.ndarray
+        **kwargs: np.ndarray,
     ):
 
         self._initialize(task, **kwargs)
@@ -407,7 +407,7 @@ class CSRSparseDataset(NumpyDataset):
         features: NpFeatures = (),
         roles: NpRoles = None,
         task: Optional[Task] = None,
-        **kwargs: np.ndarray
+        **kwargs: np.ndarray,
     ):
         """Create dataset from csr_matrix.
 
@@ -520,7 +520,7 @@ class PandasDataset(LAMLDataset):
         data: Optional[DataFrame] = None,
         roles: Optional[RolesDict] = None,
         task: Optional[Task] = None,
-        **kwargs: Series
+        **kwargs: Series,
     ):
         if roles is None:
             roles = {}
@@ -586,7 +586,7 @@ class PandasDataset(LAMLDataset):
         # handle dates types
         for i in date_columns:
             dt_role = self.roles[i]
-            if not (self.data.dtypes[i] is np.datetime64):
+            if self.data.dtypes[i] is not np.datetime64:
                 self.data[i] = pd.to_datetime(
                     self.data[i],
                     format=dt_role.format,

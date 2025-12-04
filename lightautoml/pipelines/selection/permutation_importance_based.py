@@ -30,14 +30,12 @@ def _create_chunks_from_list(lst, n):
         lst: List of elements.
         n: Size of chunk.
 
-    Returns:
-        Sequential chunks.
+    Yields:
+        Sequential chunks of size `n`.
 
     """
-    chunks = []
     for i in range(0, len(lst), n):
-        chunks.append(lst[i : i + n])
-    return chunks
+        yield lst[i : i + n]
 
 
 class NpPermutationImportanceEstimator(ImportanceEstimator):
@@ -70,7 +68,7 @@ class NpPermutationImportanceEstimator(ImportanceEstimator):
 
         """
         normal_score = ml_algo.score(preds)
-        logger.debug("Normal score = {}".format(normal_score))
+        logger.debug(f"Normal score = {normal_score}")
 
         valid_data = train_valid.get_validation_data()
         valid_data = valid_data.to_numpy()
@@ -79,7 +77,7 @@ class NpPermutationImportanceEstimator(ImportanceEstimator):
         permutation_importance = {}
 
         for it, col in enumerate(valid_data.features):
-            logger.debug("Start processing ({},{})".format(it, col))
+            logger.debug(f"Start processing ({it},{col})")
             # Save initial column
             save_col = deepcopy(valid_data[:, col])
 
@@ -171,10 +169,10 @@ class NpIterativeFeatureSelector(SelectionPipeline):
                 )
                 break
             selected_feats += chunk
-            logger.info3("Started iteration {}, chunk = {}, feats to check = {}".format(it, chunk, selected_feats))
+            logger.info3(f"Started iteration {it}, chunk = {chunk}, feats to check = {selected_feats}")
             cs = PredefinedSelector(selected_feats)
             selected_cols_iterator = train_valid.apply_selector(cs)
-            logger.info3("Features in SCI = {}".format(selected_cols_iterator.features))
+            logger.info3(f"Features in SCI = {selected_cols_iterator.features}")
 
             # Create copy of MLAlgo for iterative algo only
             ml_algo_for_iterative, preds = tune_and_fit_predict(
@@ -182,10 +180,10 @@ class NpIterativeFeatureSelector(SelectionPipeline):
             )
 
             cur_score = ml_algo_for_iterative.score(preds)
-            logger.debug("Current score = {}, current best score = {}".format(cur_score, cur_best_score))
+            logger.debug(f"Current score = {cur_score}, current best score = {cur_best_score}")
 
             if cur_best_score is None or cur_best_score < cur_score:
-                logger.info3("Update best score from {} to {}".format(cur_best_score, cur_score))
+                logger.info3(f"Update best score from {cur_best_score} to {cur_score}")
                 cur_best_score = cur_score
                 cnt_without_update = 0
             else:
@@ -196,12 +194,12 @@ class NpIterativeFeatureSelector(SelectionPipeline):
                     )
                 )
                 selected_feats = selected_feats[: -len(chunk)]
-                logger.debug("Selected feats after delete = {}".format(selected_feats))
+                logger.debug(f"Selected feats after delete = {selected_feats}")
 
         logger.debug("Update mapped importance")
         imp = imp[imp.index.isin(selected_feats)]
         self.map_raw_feature_importances(imp)
 
         selected_feats = list(self.mapped_importances.index)
-        logger.info3("Finally selected feats = {}".format(selected_feats))
+        logger.info3(f"Finally selected feats = {selected_feats}")
         self._selected_features = selected_feats

@@ -39,9 +39,7 @@ class LAMLTransformer:
         if "_features" not in self.__dict__:
             raise AttributeError("Should be fitted at first.")
 
-        feats = [
-            "{0}__{1}".format(self._fname_prefix, x) if self._fname_prefix is not None else x for x in self._features
-        ]
+        feats = [f"{self._fname_prefix}__{x}" if self._fname_prefix is not None else x for x in self._features]
 
         return feats
 
@@ -609,6 +607,4 @@ class EmptyTransformer(LAMLTransformer):
             Same dataset with new attributes.
 
         """
-        print(dataset.__dict__)
-
         return dataset

@@ -12,6 +12,15 @@ import torch
 import torch.nn as nn
 from ..tasks.base import Task
 
+# Import TabM only if available (Python 3.9+)
+try:
+    from ..ml_algo.torch_based.nn_models import TabM
+
+    TABM_AVAILABLE = True
+except (ImportError, RuntimeError):
+    TabM = None
+    TABM_AVAILABLE = False
+
 
 logger = logging.getLogger(__name__)
 
@@ -126,7 +135,39 @@ class TorchUniversalModel(nn.Module):
     ):
         super(TorchUniversalModel, self).__init__()
         self.n_out = n_out
-        self.loss = loss
+
+        def get_loss_fn(base_loss_fn) -> torch.Tensor:
+            # Some ensemble algorithms (such as TabM) produces k predictions.
+            # Each of them must be trained separately.
+            # Regression:     (batch_size, k)            -> (batch_size * k,)
+            # Classification: (batch_size, k, n_classes) -> (batch_size * k, n_classes)
+
+            def loss_fn_wrapper(
+                y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: Optional[torch.Tensor] = None
+            ) -> torch.Tensor:
+                """Loss function wrapper for TabM."""
+                k = y_pred.shape[1]
+                y_pred = y_pred.flatten(0, 1)
+                # в случае test фазы, у нас на вход label только для одного батча, а не на ансамбль
+                # поэтому нужно продублировать label на число моделей в ансамбле
+
+                if (y_true.ndim == 1) or ("share_training_batches" in kwargs) and kwargs["share_training_batches"]:
+                    # (batch_size,) -> (batch_size * k,)
+                    y_true = y_true.repeat_interleave(k, dim=0)
+                    if sample_weight is not None:
+                        sample_weight = sample_weight.repeat_interleave(k, dim=0)
+                else:
+                    # (batch_size, k) -> (batch_size * k,)
+                    y_true = y_true.flatten(0, 1)
+                    if sample_weight is not None:
+                        sample_weight = sample_weight.flatten(0, 1)
+                return base_loss_fn(y_true, y_pred, sample_weight)
+
+            return loss_fn_wrapper
+
+        self.loss = (
+            get_loss_fn(loss) if (TABM_AVAILABLE and torch_model == TabM) else loss
+        )  # use loss_fn in case of ensemble (such as TabM)
         self.task = task
         self.loss_on_logits = loss_on_logits
 
@@ -135,12 +176,18 @@ class TorchUniversalModel(nn.Module):
         self.text_embedder = None
 
         n_in = 0
+        start_scaling_init_chunks = []
         if cont_embedder_ is not None:
             self.cont_embedder = cont_embedder_(**cont_params)
-            n_in += self.cont_embedder.get_out_shape()
+            n_in_cont = self.cont_embedder.get_out_shape()
+            n_in += n_in_cont
+            start_scaling_init_chunks.extend(
+                [cont_params["embedding_size"]] * (n_in_cont // cont_params["embedding_size"])
+            )
         if cat_embedder_ is not None:
             self.cat_embedder = cat_embedder_(**cat_params)
             n_in += self.cat_embedder.get_out_shape()
+            start_scaling_init_chunks.extend([emb.embedding_dim for emb in self.cat_embedder.emb_layers])
         if text_embedder is not None:
             self.text_embedder = text_embedder(**text_params)
             n_in += self.text_embedder.get_out_shape()
@@ -154,6 +201,11 @@ class TorchUniversalModel(nn.Module):
                         "n_out": n_out,
                         "loss": loss,
                         "task": task,
+                        "backbone_params": {
+                            "start_scaling_init_chunks": start_scaling_init_chunks
+                            if len(start_scaling_init_chunks) > 0
+                            else None
+                        },
                     },
                 }
             )
@@ -166,7 +218,7 @@ class TorchUniversalModel(nn.Module):
 
         self.сlump = Clump()
         self.sig = nn.Sigmoid()
-        self.softmax = nn.Softmax(dim=1)
+        self.softmax = nn.Softmax(dim=-1)
 
     def _set_last_layer(self, torch_model, bias):
         use_skip = getattr(torch_model, "use_skip", False)
@@ -212,20 +264,31 @@ class TorchUniversalModel(nn.Module):
         except:
             logger.info3("Last linear layer not founded, so init_bias=False")
 
-    def get_logits(self, inp: Dict[str, torch.Tensor]) -> torch.Tensor:
+    def get_logits(self, inp: Dict[str, torch.Tensor], batch_size: int, n_dim: int) -> torch.Tensor:
         """Forward-pass of model with embeddings."""
         outputs = []
+
+        def unflatten_input(inp: Dict[str, torch.Tensor]):
+            # Unflatten the first dimension back to the original shape.
+            if n_dim == 3:
+                assert batch_size is not None, "batch_size is required when n_dim is 3"
+                return inp.unflatten(0, (batch_size, self.torch_model.backbone.k))  # (B * K, D) -> (B, K, D)
+            else:  # n_dim == 2
+                return inp
+
         if self.cont_embedder is not None:
-            outputs.append(self.cont_embedder(inp))
+            outputs.append(unflatten_input(self.cont_embedder(inp)))
 
         if self.cat_embedder is not None:
-            outputs.append(self.cat_embedder(inp))
+            outputs.append(unflatten_input(self.cat_embedder(inp)))
 
         if self.text_embedder is not None:
-            outputs.append(self.text_embedder(inp))
+            outputs.append(unflatten_input(self.text_embedder(inp)))
+
+        assert len(outputs) > 0, "No embeddings found"
 
         if len(outputs) > 1:
-            output = torch.cat(outputs, dim=1)
+            output = torch.cat(outputs, dim=-1)
         else:
             output = outputs[0]
 
@@ -244,17 +307,48 @@ class TorchUniversalModel(nn.Module):
 
         return out
 
+    def _reshape_input_to_2d(self, x: Optional[torch.Tensor]) -> Optional[torch.Tensor]:
+        if x is None:
+            return x
+        elif x.ndim == 3:
+            # (B, K, D) -> (B * K, D)
+            return x.flatten(0, -2)
+        else:
+            assert x.ndim == 2, "Internal error (this code must be unreachable; please, report a bug)"
+            return x
+
     def forward(self, inp: Dict[str, torch.Tensor]) -> torch.Tensor:
         """Forward-pass with output loss."""
-        x = self.get_logits(inp)
+        batch_size = inp["label"].shape[0]
+        n_dim = max(inp[key].ndim for key in inp.keys())  # 3 -- значит есть ансамбль, 2 -- значит нет
+
+        for key in inp.keys():
+            if (key not in ["label", "weight"]) and (inp[key].ndim == 3):
+                inp[key] = self._reshape_input_to_2d(inp[key])
+
+        x = self.get_logits(inp, batch_size=batch_size, n_dim=n_dim)
         if not self.loss_on_logits:
             x = self.get_preds_from_logits(x)
 
-        loss = self.loss(inp["label"].view(inp["label"].shape[0], -1), x, inp.get("weight", None))
+        loss = self.loss(
+            inp["label"],
+            x.squeeze(-1),
+            inp.get("weight", None),
+        )
         return loss
 
     def predict(self, inp: Dict[str, torch.Tensor]) -> torch.Tensor:
         """Prediction."""
-        x = self.get_logits(inp)
+        batch_size = inp["label"].shape[0]
+        n_dim = max(inp[key].ndim for key in inp.keys())
+
+        x = self.get_logits(inp, batch_size=batch_size, n_dim=n_dim)
         x = self.get_preds_from_logits(x)
+
+        if len(x.shape) > 2:  # in case of ensemble (such as TabM)
+            # Regression:     (batch_size, k)            -> (batch_size * k,)
+            # Classification: (batch_size, k, n_classes) -> (batch_size * k, n_classes)
+            # So we need to get the average from k predictions at infrerence. But NOT at training!
+            x = x.mean(dim=1)
+
         return x

@@ -32,6 +32,7 @@ def test_tabular_with_dates(sampled_app_train_test, binary_task):
     automl = TabularAutoML(
         task=task,
         timeout=200,
+        debug=True,
     )
     oof_pred = automl.fit_predict(train, train_features=["AMT_CREDIT", "AMT_ANNUITY"], cv_iter=cv_iter)
 

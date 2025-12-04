@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "LightAutoML"
-version = "0.4.1"
+version = "0.4.2"
 description = "Fast and customizable framework for automatic ML model creation (AutoML)"
 authors = [
     "Alexander Ryzhkov <alexmryzhkov@gmail.com>",
@@ -13,7 +13,7 @@ authors = [
 readme = "README.md"
 license = "Apache-2.0"
 homepage = "https://lightautoml.readthedocs.io/en/latest/"
-repository = "https://github.com/AILab-MLTools/LightAutoML"
+repository = "https://github.com/sb-ai-lab/LightAutoML"
 classifiers = [
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
@@ -36,8 +36,8 @@ python = ">=3.8"
 poetry-core = "^1.0.0"
 pandas = "*"
 numpy = [
-    {version = ">=1.22, <2.0.0", python = ">=3.10"},
-    {version = "<2.0.0"}
+    {version = ">=1.22", python = ">=3.10"},
+    {version = "*"}
 ]
 scipy = [
     {version = "*", python = ">=3.9"},
@@ -64,10 +64,15 @@ jinja2 = "*"
 json2html = "*"
 seaborn = "*"
 SQLAlchemy = ">=2.0"
+tabm = [
+    {version = "*", python = ">=3.9"},
+]
 
+
+tabicl = { version = "*", python = ">=3.9,<4.0"}
 
 # NLP
-gensim = {version = ">=4", optional = true}
+fasttext-numpy2 = {version = "*", optional = true}
 nltk = {version = "*", optional = true}
 transformers = {version = ">=4", optional = true}
 
@@ -99,7 +104,7 @@ cv = [
     "torchvision"
 ]
 nlp = [
-    "gensim",
+    "fasttext-numpy2",
     "nltk",
     "transformers"
 ]
@@ -123,13 +128,12 @@ all = [
     "PyWavelets",
     "scikit-image",
     "torchvision",
-    "gensim",
+    "fasttext-numpy2",
     "nltk",
     "transformers",
     "cffi",
     "weasyprint",
     "featuretools",
-    "hypex",
 ]
 
 
@@ -168,6 +172,5 @@ use_parentheses = true
 filter_files = true
 
 [tool.codespell]
-skip = '*.git,*.csv,./lightautoml/addons/interpretation/*,*.ipynb'
-#
-ignore-words-list = 'LAMA,Lama,lama,MAPE,mape,splitted,fpr'
+skip = '*.ipynb'
+ignore-words-list = 'LAMA,MAPE,mape,splitted,fpr'

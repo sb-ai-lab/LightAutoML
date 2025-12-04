@@ -129,6 +129,12 @@ class AutoML:
         """
         assert len(levels) > 0, "At least 1 level should be defined"
 
+        assert all(len(lvl) > 0 for lvl in levels), "Some level is empty"
+        assert all(isinstance(lvl, (Sequence, str)) for lvl in levels), "Some level is not sequence or str"
+        for i, lvl in enumerate(levels):
+            if isinstance(lvl, str):
+                levels[i] = [lvl]
+
         self.timer = timer
         if timer is None:
             self.timer = PipelineTimer()
@@ -144,7 +150,7 @@ class AutoML:
         for i, lvl in enumerate(self._levels):
 
             for j, pipe in enumerate(lvl):
-                pipe.upd_model_names("Lvl_{0}_Pipe_{1}".format(i, j))
+                pipe.upd_model_names(f"Lvl_{i}_Pipe_{j}")
 
         self.skip_conn = skip_conn
         self.return_all_predictions = return_all_predictions
@@ -225,13 +231,13 @@ class AutoML:
 
         self.levels = []
 
-        for leven_number, level in enumerate(self._levels, 1):
+        for level_number, level in enumerate(self._levels, 1):
             pipes = []
             level_predictions = []
-            flg_last_level = leven_number == len(self._levels)
+            flg_last_level = level_number == len(self._levels)
 
             logger.info(
-                f"Layer \x1b[1m{leven_number}\x1b[0m train process start. Time left {self.timer.time_left:.2f} secs"
+                f"Layer \x1b[1m{level_number}\x1b[0m train process start. Time left {self.timer.time_left:.2f} secs"
             )
 
             for k, ml_pipe in enumerate(level):
@@ -240,7 +246,7 @@ class AutoML:
                 level_predictions.append(pipe_pred)
                 pipes.append(ml_pipe)
 
-                logger.info("Time left {:.2f} secs\n".format(self.timer.time_left))
+                logger.info(f"Time left {self.timer.time_left:.2f} secs\n")
 
                 if self.timer.time_limit_exceeded():
                     logger.info(
@@ -253,12 +259,12 @@ class AutoML:
                 if self.timer.child_out_of_time:
                     logger.info(
                         "Time limit exceeded in one of the tasks. AutoML will blend level {0} models.\n".format(
-                            leven_number
+                            level_number
                         )
                     )
                     flg_last_level = True
 
-            logger.info("\x1b[1mLayer {} training completed.\x1b[0m\n".format(leven_number))
+            logger.info(f"\x1b[1mLayer {level_number} training completed.\x1b[0m\n")
 
             # here is split on exit condition
             if not flg_last_level:

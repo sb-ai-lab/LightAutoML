@@ -237,7 +237,7 @@ class MeanBlender(Blender):
 
         outp.set_data(
             pred,
-            ["MeanBlend_{0}".format(x) for x in range(pred.shape[1])],
+            [f"MeanBlend_{x}" for x in range(pred.shape[1])],
             NumericRole(np.float32, prob=self._outp_prob),
         )
 

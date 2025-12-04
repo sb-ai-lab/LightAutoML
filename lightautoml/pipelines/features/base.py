@@ -639,10 +639,10 @@ class TabularDataFeatures:
                 categorical_cols = [] if feat_name in numerical_names else [feat_name]
                 numeric_cols = [] if feat_name in categorical_names else [feat_name]
                 if len(categorical_cols) + len(numeric_cols) == 0:
-                    logging.info2("Feature is incorrect or dropped by preselector: {}".format(feat_name))
+                    logging.info2(f"Feature is incorrect or dropped by preselector: {feat_name}")
                     continue
                 if group_col not in categorical_names:
-                    logging.info2("Groupby column is incorrect or dropped by preselector: {}".format(group_col))
+                    logging.info2(f"Groupby column is incorrect or dropped by preselector: {group_col}")
                     continue
                 new_transformation = {
                     "group_col": group_col,

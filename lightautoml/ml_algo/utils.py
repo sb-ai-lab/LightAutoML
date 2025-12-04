@@ -57,7 +57,7 @@ def tune_and_fit_predict(
                 # TODO: Set some conditions to the tuner
                 new_algo, preds = params_tuner.fit(ml_algo, train_valid)
             except Exception as e:
-                logger.info2("Model {0} failed during params_tuner.fit call.\n\n{1}".format(ml_algo.name, e))
+                logger.info2(f"Model {ml_algo.name} failed during params_tuner.fit call.\n\n{e}")
                 return None, None
 
         if preds is not None:
@@ -76,7 +76,7 @@ def tune_and_fit_predict(
         try:
             preds = ml_algo.fit_predict(train_valid)
         except Exception as e:
-            logger.info2("Model {0} failed during ml_algo.fit_predict call.\n\n{1}".format(ml_algo.name, e))
+            logger.info2(f"Model {ml_algo.name} failed during ml_algo.fit_predict call.\n\n{e}")
             logger.info3(traceback.format_exc())
             return None, None
 

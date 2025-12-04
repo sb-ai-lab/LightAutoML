@@ -5,8 +5,8 @@ import logging
 from collections import Counter
 from itertools import repeat
 from typing import Any
-from typing import Dict
 from typing import Sequence
+from typing import Union
 
 import numpy as np
 
@@ -14,7 +14,6 @@ from scipy.linalg import svd
 from sklearn.base import TransformerMixin
 from sklearn.feature_extraction import DictVectorizer
 from tqdm import tqdm
-
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +24,7 @@ class WeightedAverageTransformer(TransformerMixin):
     Calculate sentence embedding as weighted average of word embeddings.
 
     Args:
-        embedding_model: word2vec, fasstext, etc.
+        embedding_model: word2vec, fasttext, etc.
             Should have dict interface {<word>: <embedding>}.
         embed_size: Size of embedding.
         weight_type: 'idf' for idf weights, 'sif' for
@@ -41,7 +40,7 @@ class WeightedAverageTransformer(TransformerMixin):
 
     def __init__(
         self,
-        embedding_model: Dict,
+        embedding_model: Any,
         embed_size: int,
         weight_type: str = "idf",
         use_svd: bool = True,
@@ -64,6 +63,7 @@ class WeightedAverageTransformer(TransformerMixin):
         self.u_ = None
         self.w_all = 0
         self.w_emb = 0
+        self.intersection_words_weights = set()
 
     def get_name(self) -> str:
         """Module name.
@@ -92,17 +92,26 @@ class WeightedAverageTransformer(TransformerMixin):
         """Get module statistics."""
         logger.info3(f"N_words: {self.w_all}, N_emb: {self.w_emb}, coverage: {self.w_emb / self.w_all}.")
 
-    def get_embedding_(self, sentence: Sequence[str]) -> np.ndarray:  # noqa: D102
+    def get_embedding_(self, sentence: Union[Sequence[str], str]) -> np.ndarray:  # noqa: D102
+        if len(sentence) == 0:
+            return np.zeros((1, self.embed_size))
+
+        if isinstance(sentence, str):
+            sentence = sentence.split()
+
+        assert isinstance(sentence, Sequence), f"Some sentence has wrong type: {type(sentence)}, should be sequence"
+
         result = np.zeros((self.embed_size,))
 
-        for word in sentence:
-            self.w_all += 1
-            if word in self.embedding_model and word in self.weights_:
-                self.w_emb += 1
-                result += self.embedding_model[word] * self.weights_[word]
+        sentence_counter = Counter(sentence)
+        intersection = self.weighted_embeddings.keys() & set(sentence_counter)
+        for word in intersection:
+            result += self.weighted_embeddings[word] * sentence_counter[word]
 
-        if len(sentence) > 0:
-            result = result / len(sentence)
+        result /= len(sentence)
+
+        self.w_all += len(sentence)
+        self.w_emb += len(intersection)
 
         return result.reshape(1, -1)
 
@@ -124,6 +133,17 @@ class WeightedAverageTransformer(TransformerMixin):
 
         else:
             self.weights_ = dict(zip(dict_vec.feature_names_, repeat(1)))
+
+        try:
+            words = self.embedding_model.vocab.words
+        except:
+            words = self.embedding_model.words
+
+        intersection_words_weights = set(self.weights_) & set(words)
+
+        self.weighted_embeddings = {
+            word: self.weights_[word] * self.embedding_model[word] for word in intersection_words_weights
+        }
 
         if self.use_svd:
             if self.verbose:

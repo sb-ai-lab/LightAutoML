@@ -290,11 +290,8 @@ class TLearner(MetaLearner):
         new_roles = copy.deepcopy(roles)
         new_roles.pop(treatment_role)
 
-        control_train_data = train_data[train_data[treatment_col] == 0]
-        treatment_train_data = train_data[train_data[treatment_col] == 1]
-
-        control_train_data.drop(treatment_col, axis=1, inplace=True)
-        treatment_train_data.drop(treatment_col, axis=1, inplace=True)
+        control_train_data = train_data[train_data[treatment_col] == 0].drop(treatment_col, axis=1)
+        treatment_train_data = train_data[train_data[treatment_col] == 1].drop(treatment_col, axis=1)
 
         self.treatment_learner.fit_predict(
             treatment_train_data,
@@ -544,8 +541,8 @@ class TDLearner(MetaLearner):
         control_train_data = train_data[train_data[treatment_col] == 0]
         treatment_train_data = train_data[train_data[treatment_col] == 1]
 
-        control_train_data.drop(treatment_col, axis=1, inplace=True)
-        treatment_train_data.drop(treatment_col, axis=1, inplace=True)
+        control_train_data = control_train_data.drop(treatment_col, axis=1)
+        treatment_train_data = treatment_train_data.drop(treatment_col, axis=1)
 
         if self._dependent_group == 1:
             dependent_train_data = treatment_train_data
@@ -563,7 +560,7 @@ class TDLearner(MetaLearner):
         independent_learner.fit_predict(independent_train_data, new_roles)
         self._check_timer()
         sg_oof_pred = independent_learner.predict(dependent_train_data).data.ravel()
-        dependent_train_data[self._other_group_pred_col] = sg_oof_pred
+        dependent_train_data.loc[:, self._other_group_pred_col] = sg_oof_pred
         self._check_timer()
         dependent_learner.fit_predict(dependent_train_data, new_roles)
 

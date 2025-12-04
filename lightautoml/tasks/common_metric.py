@@ -183,11 +183,11 @@ def auc_mu(
 
     """
     if not isinstance(y_pred, np.ndarray):
-        raise TypeError("Expected y_pred to be np.ndarray, got: {}".format(type(y_pred)))
+        raise TypeError(f"Expected y_pred to be np.ndarray, got: {type(y_pred)}")
     if not y_pred.ndim == 2:
         raise ValueError("Expected array with predictions be a 2-dimentional array")
     if not isinstance(y_true, np.ndarray):
-        raise TypeError("Expected y_true to be np.ndarray, got: {}".format(type(y_true)))
+        raise TypeError(f"Expected y_true to be np.ndarray, got: {type(y_true)}")
     if not y_true.ndim == 1:
         raise ValueError("Expected array with ground truths be a 1-dimentional array")
     if y_true.shape[0] != y_pred.shape[0]:
@@ -207,11 +207,11 @@ def auc_mu(
         class_weights /= class_weights.sum()
 
     if not isinstance(class_weights, np.ndarray):
-        raise TypeError("Expected class_weights to be np.ndarray, got: {}".format(type(class_weights)))
+        raise TypeError(f"Expected class_weights to be np.ndarray, got: {type(class_weights)}")
     if not class_weights.ndim == 2:
         raise ValueError("Expected class_weights to be a 2-dimentional array")
     if not class_weights.shape == (n_classes, n_classes):
-        raise ValueError("Expected class_weights size: {}, got: {}".format((n_classes, n_classes), class_weights.shape))
+        raise ValueError(f"Expected class_weights size: {n_classes, n_classes}, got: {class_weights.shape}")
     # check sum?
     confusion_matrix = np.ones((n_classes, n_classes)) - np.eye(n_classes)
     auc_full = 0.0

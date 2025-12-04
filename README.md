@@ -26,7 +26,7 @@ There are two ways to solve machine learning problems using LightAutoML:
     ```
 
 * As a framework:</br>
-    LighAutoML framework has a lot of ready-to-use parts and extensive customization options, to learn more check out the [resources](#resources) section.
+    LightAutoML framework has a lot of ready-to-use parts and extensive customization options, to learn more check out the [resources](#resources) section.
 
 <a name="resources"></a>
 # Resources
@@ -63,7 +63,7 @@ There are two ways to solve machine learning problems using LightAutoML:
 
 **Note 2**: to take a look at this report after the run, please comment last line of demo with report deletion command.
 
-### Courses, videos and papers
+### Courses, videos
 
 * **LightAutoML crash courses**:
     - (Russian) [AutoML course for OpenDataScience community](https://ods.ai/tracks/automl-course-part1)
@@ -74,9 +74,6 @@ There are two ways to solve machine learning problems using LightAutoML:
     - (English) [Automated Machine Learning with LightAutoML: theory and practice](https://www.youtube.com/watch?v=4pbO673B9Oo) ([Alexander Ryzhkov](https://kaggle.com/alexryzhkov))
     - (English) [LightAutoML framework general overview, benchmarks and advantages for business](https://vimeo.com/485383651) ([Alexander Ryzhkov](https://kaggle.com/alexryzhkov))
     - (English) [LightAutoML practical guide - ML pipeline presets overview](https://vimeo.com/487166940) ([Dmitry Simakov](https://kaggle.com/simakov))
-
-* **Papers**:
-    - Anton Vakhrushev, Alexander Ryzhkov, Dmitry Simakov, Rinchin Damdinov, Maxim Savchenko, Alexander Tuzhilin ["LightAutoML: AutoML Solution for a Large Financial Services Ecosystem"](https://arxiv.org/pdf/2109.01528.pdf). arXiv:2109.01528, 2021.
 
 * **Articles about LightAutoML**:
     - (English) [LightAutoML vs Titanic: 80% accuracy in several lines of code (Medium)](https://alexmryzhkov.medium.com/lightautoml-preset-usage-tutorial-2cce7da6f936)
@@ -128,6 +125,22 @@ If you are interested in contributing to LightAutoML, please read the [Contribut
 # Support and feature requests
 - Seek prompt advice in [Telegram group](https://t.me/joinchat/sp8P7sdAqaU0YmRi).
 - Open bug reports and feature requests on GitHub [issues](https://github.com/sb-ai-lab/LightAutoML/issues).
+
+<a name="citation"></a>
+# Citation
+If you mention LightAutoML in your publications, please cite our paper:
+Vakhrushev, et al. ["LightAutoML: AutoML Solution for a Large Financial Services
+Ecosystem"](https://arxiv.org/pdf/2109.01528) arXiv:2109.01528, 2021.
+
+BibTeX entry:
+```bibtex
+@article{vakhrushev2021lightautoml,
+  title={Lightautoml: Automl solution for a large financial services ecosystem},
+  author={Vakhrushev, Anton and Ryzhkov, Alexander and Savchenko, Maxim and Simakov, Dmitry and Damdinov, Rinchin and Tuzhilin, Alexander},
+  journal={arXiv preprint arXiv:2109.01528},
+  year={2021}
+}
+```
 
 <a name="license"></a>
 # License

@@ -13,13 +13,22 @@ class TestTabularAutoML:
         # load and prepare data
         train, test = sampled_app_train_test
 
+        general_params = {"use_algos": [["mlp"]]}
+
         # run automl
         automl = TabularAutoML(
             debug=True,
             task=binary_task,
-            general_params={"use_algos": [["mlp"]]},
-            nn_params={"n_epochs": 10, "bs": 128, "num_workers": 0, "path_to_save": None, "freeze_defaults": True},
+            general_params=general_params,
+            nn_params={
+                "n_epochs": 2,
+                "bs": 128,
+                "num_workers": 0,
+                "path_to_save": None,
+                "freeze_defaults": True,
+            },
         )
+
         oof_predictions = automl.fit_predict(train, roles=sampled_app_roles, verbose=10)
         ho_predictions = automl.predict(test)
 

@@ -15,6 +15,7 @@ import torch
 
 from pandas import DataFrame
 
+from ...dataset.roles import TargetRole
 from ...ml_algo.boost_cb import BoostCB
 from ...ml_algo.boost_lgbm import BoostLGBM
 from ...ml_algo.linear_sklearn import LinearLBFGS
@@ -33,11 +34,6 @@ from ..blend import WeightedBlender
 from .base import upd_params
 from .tabular_presets import NumpyDataset
 from .tabular_presets import TabularAutoML
-
-
-_base_dir = os.path.dirname(__file__)
-# set initial runtime rate guess for first level models
-_time_scores = {"lgb": 1, "lgb_tuned": 3, "linear_l2": 0.7, "cb": 2, "cb_tuned": 6, "nn": 1, "rf": 5, "rf_tuned": 10}
 
 
 # TODO: add text feature selection
@@ -81,7 +77,17 @@ class TabularCVAutoML(TabularAutoML):
 
     _default_config_path = "image_config.yml"
 
-    _time_scores = {"lgb": 1, "lgb_tuned": 3, "linear_l2": 0.7, "cb": 2, "cb_tuned": 6, "rf": 5, "rf_tuned": 10}
+    _time_scores = {
+        "lgb": 1,
+        "lgb_tuned": 3,
+        "linear_l2": 0.7,
+        "cb": 2,
+        "cb_tuned": 6,
+        "nn": 10,
+        "nn_tuned": 20,
+        "rf": 5,
+        "rf_tuned": 10,
+    }
 
     def __init__(
         self,
@@ -156,7 +162,7 @@ class TabularCVAutoML(TabularAutoML):
                 param = {}
             self.__dict__[name] = upd_params(self.__dict__[name], param)
 
-    def infer_auto_params(self, train_data: DataFrame, multilevel_avail: bool = False):
+    def infer_auto_params(self, train_data: DataFrame, multilevel_avail: bool = False, target_col: str = None):
         """Infer automatic parameters."""
         # infer gpu params
         gpu_cnt = torch.cuda.device_count()
@@ -191,7 +197,7 @@ class TabularCVAutoML(TabularAutoML):
             self.cv_simple_features["n_jobs"] = cpu_cnt
 
         # other params as tabular
-        super().infer_auto_params(train_data, multilevel_avail)
+        super().infer_auto_params(train_data, multilevel_avail, target_col)
 
     def get_cv_pipe(self, type: str = "simple") -> Optional[FeaturesPipeline]:
         """Get CV pipeline."""
@@ -275,7 +281,12 @@ class TabularCVAutoML(TabularAutoML):
 
         """
         train_data = fit_args["train_data"]
-        self.infer_auto_params(train_data)
+        self.infer_auto_params(
+            train_data,
+            target_col=fit_args["roles"]["target"]
+            if "target" in fit_args["roles"]
+            else fit_args["roles"][TargetRole()],
+        )
         reader = PandasToPandasReader(task=self.task, **self.reader_params)
 
         pre_selector = self.get_selector()

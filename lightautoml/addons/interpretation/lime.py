@@ -27,7 +27,7 @@ class TextExplanation:
     """Explanation of object for textual data.
 
     Args:
-        index_string: Pertrubing string object.
+        index_string: Perturbing string object.
         task_name: Task name. Can be
             one of ['binary', 'multiclass', 'reg'].
         prediction:
@@ -65,7 +65,7 @@ class TextExplanation:
         """Get feature weights as list.
 
         Args:
-            label: Explaing label. Not necessary
+            label: Explaining label. Not necessary
                 for regression. By default, for
                 regression 0 will be used, and 1 for
                 other task types.
@@ -75,10 +75,10 @@ class TextExplanation:
 
         """
         label = self._label(label)
-        ans = self.instance[label]["feature_weights"]
-        ans = [(x[0], float(x[1])) for x in ans]
+        weights_list = self.instance[label]["feature_weights"]
+        weights_list = [(x[0], float(x[1])) for x in weights_list]
 
-        return ans
+        return weights_list
 
     def as_features(
         self,
@@ -89,7 +89,7 @@ class TextExplanation:
         """Get feature weights as list with feature names.
 
         Args:
-            label: Explaing label. Not necessary
+            label: Explaining label. Not necessary
                 for regression. By default, for
                 regression 0 will be used, and 1 for
                 other task types.
@@ -116,23 +116,23 @@ class TextExplanation:
             for k, v in fw.items():
                 weights[self.idx_str.pos[k]] = v
 
-            ans = [(k, float(w) * norm_const) for k, w in zip(self.idx_str.as_np_, weights)]
+            weights_list = [(k, float(w) * norm_const) for k, w in zip(self.idx_str.as_np_, weights)]
         else:
-            ans = [(self.idx_str.word(k), float(v) * norm_const) for k, v in fw.items()]
+            weights_list = [(self.idx_str.word(k), float(v) * norm_const) for k, v in fw.items()]
 
-        return ans
+        return weights_list
 
     def as_map(self, label: Optional[int] = None) -> Dict[str, float]:
         """Get feature weights as list with features.
 
         Args:
-            label: Explaing label. Not necessary
+            label: Explaining label. Not necessary
                 for regression. By default, for
                 regression 0 will be used, and 1 for
                 other task types.
 
         Returns:
-            Dictonary of tokens and it's weights in format
+            Dictionary of tokens and it's weights in format
             ({token_id}_{position}, feature_weight).
 
         """
@@ -143,7 +143,7 @@ class TextExplanation:
         """Generates inline HTML with colors.
 
         Args:
-            label: Explaing label. Not necessary
+            label: Explaining label. Not necessary
                 for regression. By default, for
                 regression 0 will be used, and 1 for
                 other task types.
@@ -182,7 +182,7 @@ class TextExplanation:
         """Visualization of interpretation in IPython notebook.
 
         Args:
-            label: Explaing label. Not necessary
+            label: Explaining label. Not necessary
                 for regression. By default, for
                 regression 0 will be used, and 1 for
                 other task types.
@@ -223,7 +223,7 @@ class LimeTextExplainer:
         Ribeiro et al. <https://arxiv.org/abs/1602.04938>`_
 
     Note:
-        Basic usage of explaier.
+        Basic usage of explainer.
 
         >>> task = Task('reg')
         >>> automl = TabularNLPAutoML(task=task,
@@ -241,7 +241,7 @@ class LimeTextExplainer:
             By default, the squared-exponential kernel will be used.
         kernel_width: Kernel width.
         feature_selection: Feature selection type. For now,
-            'none', 'lasso' are availiable.
+            'none', 'lasso' are available.
         force_order: Whether to follow the word order.
         model_regressor: Model distilator. By default,
             Ridge regression will be used.
@@ -370,7 +370,7 @@ class LimeTextExplainer:
         if self.task_name == "binary":
             pred = np.concatenate([1 - pred, pred], axis=1)
 
-        distance = pairwise_distances(dataset, dataset[0].reshape(1, -1), metric=self.distance_metric).ravel()
+        distance = pairwise_distances(dataset, dataset[0].reshape(1, -1), metric=self.distance_metric).to_numpy()
 
         expl = TextExplanation(idx_str, self.task_name, pred[0], self.class_names, self.random_state)
 

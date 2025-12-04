@@ -12,8 +12,15 @@ from ..tabnet.utils import TabNetEncoder, _initialize_non_glu
 from .autoint.autoint_utils import AttnInteractionBlock, LeakyGate
 from .autoint.ghost_norm import GhostBatchNorm
 from .fttransformer.fttransformer_utils import Transformer
-
 from .node_nn_model import DenseODSTBlock, MeanPooling
+
+# Import tabm only for Python 3.9+
+try:
+    from tabm import EnsembleView, make_tabm_backbone, LinearEnsemble
+
+    TABM_AVAILABLE = True
+except ImportError:
+    TABM_AVAILABLE = False
 
 
 class GaussianNoise(nn.Module):
@@ -1091,6 +1098,91 @@ class FTTransformer(nn.Module):
 
         logits = self.to_logits(pool_tokens)
         return logits
+
+
+class TabM(nn.Module):
+    """TabM.
+
+    Original paper: https://arxiv.org/abs/2410.24210
+    Original code: https://github.com/yandex-research/tabm
+
+
+    backbone_params:
+        arch_type:
+            "plain",  # Plain feed-forward network without any kind of ensembling.
+            "tabm-packed",  # MLP + Packed Ensemble
+            "tabm-mini",  # MLP + MiniEnsemble
+            "tabm",  # MLP + BatchEnsemble + Better initialization
+            "tabm-normal",  # TabM. The first adapter is initialized from the normal distribution.
+            "tabm-mini-normal",  # TabM-mini. The adapter is initialized from the normal distribution.
+    """
+
+    def __init__(
+        self,
+        n_in: int,
+        n_out: int,
+        backbone_params: dict = None,
+        share_training_batches: bool = True,
+        device: Union[str, torch.device] = "cuda:0",
+        **kwargs,
+    ) -> None:
+        super().__init__()
+
+        if not TABM_AVAILABLE:
+            raise RuntimeError(
+                "TabM requires Python 3.9+ and the 'tabm' package. "
+                "Please upgrade Python or install tabm: pip install tabm"
+            )
+
+        self.share_training_batches = share_training_batches
+        self.device = device
+
+        backbone_params = {} if backbone_params is None else backbone_params
+        backbone_params = {
+            **{
+                "d_block": 512,
+                "dropout": 0.1,
+                "activation": "ReLU",
+                "k": 32,
+                "arch_type": "tabm",
+                "start_scaling_init_chunks": None,
+            },
+            **backbone_params,
+        }
+
+        # Create the ensemble input module.
+        self.ensemble_view = EnsembleView(k=backbone_params["k"])
+
+        # Create the backbone.
+        backbone_params["d_in"] = n_in
+
+        has_num_embeddings = "cont_embedder" in kwargs
+
+        if "start_scaling_init" not in backbone_params:
+            backbone_params["start_scaling_init"] = (
+                None
+                if backbone_params["arch_type"] == "tabm-packed"
+                else "normal"
+                if has_num_embeddings
+                else "random-signs"
+            )
+
+        if "n_blocks" not in backbone_params:
+            backbone_params["n_blocks"] = 2 if has_num_embeddings else 3
+
+        self.backbone = make_tabm_backbone(
+            **backbone_params,
+        )
+
+        # Create the prediction head.
+        self.output = LinearEnsemble(self.backbone.get_original_output_shape()[0], n_out, k=backbone_params["k"])
+
+    def forward(self, x):
+        """Forward-pass."""
+        x = self.ensemble_view(x)  # -> (B, k, D)
+        x = self.backbone(x)
+        x = self.output(x)
+        return x  # -> (B, k, d_out)
 
 
 class TabNet(torch.nn.Module):

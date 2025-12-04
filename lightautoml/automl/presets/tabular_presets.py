@@ -3,6 +3,7 @@
 
 import logging
 import os
+import sys
 
 from collections import Counter
 from copy import copy
@@ -60,6 +61,11 @@ from .base import upd_params
 from .utils import calc_feats_permutation_imps
 from .utils import change_datetime
 from .utils import plot_pdp_with_distribution
+
+from ...dataset.roles import TargetRole
+
+if sys.version_info >= (3, 9):
+    from ...ml_algo.icl import TabICL
 
 
 _base_dir = os.path.dirname(__file__)
@@ -154,6 +160,7 @@ class TabularAutoML(AutoMLPreset):
         xgb_params: Optional[dict] = None,
         rf_params: Optional[dict] = None,
         linear_l2_params: Optional[dict] = None,
+        tabicl_params: Optional[dict] = None,
         nn_params: Optional[dict] = None,
         gbm_pipeline_params: Optional[dict] = None,
         linear_pipeline_params: Optional[dict] = None,
@@ -178,6 +185,7 @@ class TabularAutoML(AutoMLPreset):
                 "xgb_params",
                 "rf_params",
                 "linear_l2_params",
+                "tabicl_params",
                 "nn_params",
                 "gbm_pipeline_params",
                 "linear_pipeline_params",
@@ -194,6 +202,7 @@ class TabularAutoML(AutoMLPreset):
                 xgb_params,
                 rf_params,
                 linear_l2_params,
+                tabicl_params,
                 nn_params,
                 gbm_pipeline_params,
                 linear_pipeline_params,
@@ -218,9 +227,14 @@ class TabularAutoML(AutoMLPreset):
                     param = {}
                 self.__dict__[name] = upd_params(self.__dict__[name], param)
 
-    def infer_auto_params(self, train_data: DataFrame, multilevel_avail: bool = False):
+    def infer_auto_params(self, train_data: DataFrame, multilevel_avail: bool = False, target_col: str = None):
 
         length = train_data.shape[0]
+        n_columns = train_data.shape[1]
+        n_cells = length * n_columns
+        # n_targets = train_data[target_col].nunique()
+        # gpu_available = len(self.gpu_ids) > 0
+        # is_classification = self.task.name in ["binary", "multiclass"]
 
         # infer optuna tuning iteration based on dataframe len
         if self.tuning_params["max_tuning_iter"] == "auto":
@@ -234,7 +248,6 @@ class TabularAutoML(AutoMLPreset):
                 self.tuning_params["max_tuning_iter"] = 5
 
         if self.general_params["use_algos"] == "auto":
-            # TODO: More rules and add cases
             self.general_params["use_algos"] = [["lgb", "lgb_tuned", "linear_l2", "cb", "cb_tuned"]]
             if self.task.name == "multi:reg" and self.is_time_series:
                 self.general_params["use_algos"] = [["cb", "linear_l2", "rf"]]
@@ -244,6 +257,14 @@ class TabularAutoML(AutoMLPreset):
 
                 if (self.task.name == "multi:reg") or (self.task.name == "multilabel"):
                     self.general_params["use_algos"] = [["linear_l2", "cb", "rf", "rf_tuned", "cb_tuned"]]
+
+            # # Add TabICL for classification tasks with small datasets if GPU is available
+            # if is_classification and length < 10_000 and n_columns < 100 and n_targets < 10 and gpu_available:
+            #     self.general_params["use_algos"][0].append("tabicl")
+
+        with_tabicl = any(any("tabicl" in algo for algo in layer) for layer in self.general_params["use_algos"])
+        if with_tabicl and (n_cells > 1_000_000 or length > 50_000 or n_columns > 100):
+            logger.info("TabICL can work slowly with this dataset")
 
         if not self.general_params["nested_cv"]:
             self.nested_cv_params["cv"] = 1
@@ -260,6 +281,8 @@ class TabularAutoML(AutoMLPreset):
             self.cb_params["default_params"]["devices"] = gpu_ids.replace(",", ":")
 
             self.xgb_params["default_params"]["device"] = f"cuda:{gpu_ids.split(',')[-1]}"  # TODO: add multigpu for xgb
+
+            self.tabicl_params["device"] = f"cuda:{gpu_ids.split(',')[-1]}"
         else:
             self.nn_params["device"] = "cpu"
 
@@ -295,6 +318,8 @@ class TabularAutoML(AutoMLPreset):
                 return LinearFeatures(output_categories=True, **self.linear_pipeline_params)
             if model == "gbm":
                 return LGBAdvancedPipeline(**self.gbm_pipeline_params, **kwargs)
+            if model == "icl":
+                return TorchSimpleFeatures(**self.nn_pipeline_params)
             if model == "rf":
                 if "fill_na" in kwargs:
                     return LGBAdvancedPipeline(**self.gbm_pipeline_params, **kwargs)
@@ -453,10 +478,22 @@ class TabularAutoML(AutoMLPreset):
             force_calc.append(True if not len(ml_algos) - 1 else False)
 
         nn_pipe = NestedTabularMLPipeline(
-            ml_algos, force_calc, pre_selection=None, features_pipeline=nn_feats, **self.nested_cv_params
+            ml_algos, force_calc, pre_selection=pre_selector, features_pipeline=nn_feats, **self.nested_cv_params
         )
 
         return nn_pipe
+
+    def get_icl(self):
+
+        algos = [TabICL(**self.tabicl_params)]
+        force_calc = [True]
+        features_pipeline = self.get_feature_pipeline(model="icl")
+
+        icl_pipeline = NestedTabularMLPipeline(
+            algos, force_calc, pre_selection=None, features_pipeline=features_pipeline, **self.nested_cv_params
+        )
+
+        return icl_pipeline
 
     def get_linear(self, n_level: int = 1, pre_selector: Optional[SelectionPipeline] = None) -> NestedTabularMLPipeline:
 
@@ -560,13 +597,14 @@ class TabularAutoML(AutoMLPreset):
         """
         train_data = fit_args["train_data"]
         multilevel_avail = fit_args["valid_data"] is None and fit_args["cv_iter"] is None
+        target_col = fit_args["roles"]["target"] if "target" in fit_args["roles"] else fit_args["roles"][TargetRole()]
 
         if self.is_time_series:
-            self.infer_auto_params(train_data["seq"]["seq0"], multilevel_avail)
+            self.infer_auto_params(train_data["seq"]["seq0"], multilevel_avail, target_col)
             reader = DictToPandasSeqReader(task=self.task, **self.reader_params)
             pre_selector = None
         else:
-            self.infer_auto_params(train_data, multilevel_avail)
+            self.infer_auto_params(train_data, multilevel_avail, target_col)
             reader = PandasToPandasReader(task=self.task, **self.reader_params)
             pre_selector = self.get_selector()
         levels = []
@@ -585,6 +623,13 @@ class TabularAutoML(AutoMLPreset):
                 ):
                     selector = pre_selector
                 lvl.append(self.get_rfs(rf_models, n + 1, selector))
+
+            if "tabicl" in names:
+                if sys.version_info >= (3, 9):
+                    selector = None
+                    lvl.append(self.get_icl())
+                else:
+                    logger.info("TabICL is not supported in Python 3.8 and below.")
 
             if "linear_l2" in names:
                 selector = None
@@ -625,6 +670,7 @@ class TabularAutoML(AutoMLPreset):
                 "autoint",
                 "tabnet",
                 "fttransformer",
+                "tabm",
             ]
             available_nn_models = available_nn_models + [x + "_tuned" for x in available_nn_models]
             nn_models = [
@@ -1101,7 +1147,7 @@ class TabularUtilizedAutoML(TimeUtilization):
             )
             for it1, m in enumerate(model.ml_algos[0].models[0]):
                 cur_model_desc = m.create_model_str_desc(pref_tab_num + 2, split_line_len)
-                res += "\t" * (pref_tab_num + 1) + "    Model #{}.\n{}\n\n".format(it1, cur_model_desc)
+                res += "\t" * (pref_tab_num + 1) + f"    Model #{it1}.\n{cur_model_desc}\n\n"
 
         return res
 

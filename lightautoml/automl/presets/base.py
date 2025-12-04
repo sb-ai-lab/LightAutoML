@@ -218,7 +218,7 @@ class AutoMLPreset(AutoML):
             path_to_save=path_to_save,
         )
 
-        logger.info("\x1b[1mAutoml preset training completed in {:.2f} seconds\x1b[0m\n".format(self.timer.time_spent))
+        logger.info(f"\x1b[1mAutoml preset training completed in {self.timer.time_spent:.2f} seconds\x1b[0m\n")
         logger.info(f"Model description:\n{self.create_model_str_desc()}\n")
 
         return result
@@ -241,14 +241,14 @@ class AutoMLPreset(AutoML):
                 level = int(model_name.split("_")[1])
                 if level != cur_level:
                     cur_level = level
-                    res += "\n" + prefix + "Models on level {}:\n".format(cur_level)
-                res += prefix + "\t {} averaged models {}\n".format(cnt_folds, model_name)
+                    res += "\n" + prefix + f"Models on level {cur_level}:\n"
+                res += prefix + f"\t {cnt_folds} averaged models {model_name}\n"
             res += "\n"
 
-        res += prefix + "Final prediction for new objects (level {}) = \n".format(last_lvl)
+        res += prefix + f"Final prediction for new objects (level {last_lvl}) = \n"
         for model_stat, weight in zip(last_lvl_models, self.blender.wts):
             model_name, cnt_folds = model_stat
-            res += prefix + "\t {:.5f} * ({} averaged models {}) +\n".format(weight, cnt_folds, model_name)
+            res += prefix + f"\t {weight:.5f} * ({cnt_folds} averaged models {model_name}) +\n"
 
         if split_line_len == 0:
             return res[:-2]

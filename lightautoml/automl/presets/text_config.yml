@@ -66,7 +66,7 @@ selection_params:
   # selection mode 0/1/2
   # 0 for no selection, 1 - cutoff selection, 2 - iterative selection
   # harder features selection means increasing train time, but much smaller and faster for inference model
-  mode: 0
+  mode: 1
   # importance type permutation/gain
   importance_type: 'gain'
   # pretrain selector on holdout set. True - fast/ False - accurate
@@ -125,13 +125,20 @@ linear_l2_params:
   default_params: { }
   freeze_defaults: False
 
+# params for TabICL model
+tabicl_params:
+  device: cpu
+  batch_size: 8
+  n_jobs: 4
+  freeze_defaults: False
+
 # params for NN model
 nn_params:
   # embedding_size if needed
   embedding_size: 10
   # str in ['cat', 'cat_no_dropout', 'weighted']
   cat_embedder: "cat"
-  # str in ['cont', 'linear', 'dense']
+  # str in ['cont', 'linear', 'dense', 'plr',  'soft', 'piecewise']
   cont_embedder: "cont"
   # early stopping and scheduler use metric
   stop_by_metric: False
@@ -147,7 +154,7 @@ nn_params:
   # params of Adam optimizer
   opt_params: { 'lr': 0.00001 }
   # params of ReduceLROnPlateau scheduler
-  scheduler_params: { 'patience': 5, 'factor': 0.5, 'verbose': True }
+  scheduler_params: { 'patience': 5, 'factor': 0.5}
   # using snapshot ensembles
   # https://arxiv.org/abs/1704.00109
   is_snap: False
@@ -344,7 +351,7 @@ autonlp_params:
   embedding_model: null
   # concat all text columns to one with <SEP>
   is_concat: True
-  # train new fasstext model
+  # train new fasttext model
   # only for 'random_lstm', 'borep', 'wat'
   train_fasttext: False
   # dict with fasttext params if train_fasttext:True

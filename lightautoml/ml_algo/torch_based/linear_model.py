@@ -383,7 +383,7 @@ class TorchBasedLinearEstimator:
 
             val_pred = self._score(data_val, data_val_cat)
             score = self.metric(y_val, val_pred, weights_val)
-            logger.info3("Linear model: C = {0} score = {1}".format(c, score))
+            logger.info3(f"Linear model: C = {c} score = {score}")
             if score > best_score:
                 best_score = score
                 best_model = deepcopy(self.model)
