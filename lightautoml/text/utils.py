@@ -110,8 +110,10 @@ def parse_devices(dvs, is_dp: bool = False) -> tuple:
         if isinstance(_device, str):
             if _device.startswith("cuda:"):
                 ids.append(int(_device.split("cuda:")[-1]))
+                _device = torch.device(_device)
             elif _device == "cuda":
                 ids.append(0)
+                _device = torch.device(_device)
             elif _device == "cpu":
                 return torch.device("cpu"), None
             else:

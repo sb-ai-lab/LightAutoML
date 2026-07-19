@@ -653,6 +653,11 @@ class TorchModel(TabularMLAlgo):
 
         """
         seed_everything(self.params["random_state"], self.params["deterministic"])
+
+        # model could be trained on another machine (e.g. with GPU),
+        # so the device stored in params may be unavailable here - re-validate it
+        self.params["device"], self.params["device_ids"] = parse_devices(self.params["device"], self.params["multigpu"])
+
         dataloaders = self.get_dataloaders_from_dicts({"test": dataset.to_pandas()})
 
         if isinstance(model, (str, dict)):

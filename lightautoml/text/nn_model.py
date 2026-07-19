@@ -305,7 +305,11 @@ class TorchUniversalModel(nn.Module):
         assert len(outputs) > 0, "No embeddings found"
 
         if len(outputs) > 1:
-            output = torch.cat(outputs, dim=-1)
+            # models with sequence input (autoint, fttransformer) get (bs, n_fields, emb)
+            # tensors from the embedders - concatenate them along the fields axis,
+            # flat models get (bs, n_features) - concatenate along the features axis
+            cat_dim = 1 if (outputs[0].ndim == 3 and n_dim == 2) else -1
+            output = torch.cat(outputs, dim=cat_dim)
         else:
             output = outputs[0]
 
