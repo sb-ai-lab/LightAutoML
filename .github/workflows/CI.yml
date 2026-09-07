@@ -47,6 +47,8 @@ jobs:
 
       - name: Set up Python
         uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
 
       - uses: Gr1N/setup-poetry@v8
         with:
