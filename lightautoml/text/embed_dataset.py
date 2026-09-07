@@ -38,7 +38,7 @@ class BertDataset:
         sent = self.sentences[idx]
         _split = sent.split("[SEP]")
         sent = _split if len(_split) == 2 else (sent,)
-        data = self.tokenizer.encode_plus(
+        data = self.tokenizer(
             *sent, add_special_tokens=True, max_length=self.max_length, padding="max_length", truncation=True
         )
         return {i: np.array(data[i]) for i in data.keys()}

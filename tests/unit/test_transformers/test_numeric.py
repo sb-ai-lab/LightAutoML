@@ -1,5 +1,6 @@
 import numpy as np
 
+from lightautoml.transformers.decomposition import PCATransformer
 from lightautoml.transformers.numeric import FillnaMean
 from lightautoml.transformers.numeric import FillnaMedian
 from lightautoml.transformers.numeric import QuantileTransformer
@@ -67,3 +68,11 @@ def test_quantiletransformer(lamldataset_30_2):
         atol=1e-5,
         rtol=1e-5,
     )
+
+
+def test_pca_feature_names_without_numpy_chararray(lamldataset_30_2):
+    transformer = PCATransformer(n_components=1)
+
+    transformer.fit(lamldataset_30_2)
+
+    assert transformer.features == ["pca_0__column0"]

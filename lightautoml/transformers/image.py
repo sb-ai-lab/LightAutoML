@@ -11,7 +11,6 @@ from typing import List
 from typing import Optional
 from typing import Union
 
-import numpy as np
 import torch
 
 from ..dataset.base import LAMLDataset
@@ -105,11 +104,9 @@ class ImageFeaturesTransformer(LAMLTransformer):
 
         feats = []
         self.dicts = {}
-        for n, i in enumerate(df.columns):
+        for i in df.columns:
             fg = CreateImageFeatures(self.hist_size, self.is_hsv, self.n_jobs, self.loader)
-            features = list(
-                np.char.array([self._fname_prefix + "_"]) + np.char.array(fg.fe.get_names()) + np.char.array(["__" + i])
-            )
+            features = [f"{self._fname_prefix}_{name}__{i}" for name in fg.fe.get_names()]
             self.dicts[i] = {"fg": fg, "feats": features}
             feats.extend(features)
         self._features = feats

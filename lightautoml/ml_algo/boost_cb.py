@@ -304,7 +304,14 @@ class BoostCB(TabularMLAlgo, ImportanceEstimator):
             }
         )
 
-        model.fit(cb_train, eval_set=cb_valid, verbose_eval=verbose_eval, log_cout=LoggerStream(logger))
+        log_stream = LoggerStream(logger)
+        model.fit(
+            cb_train,
+            eval_set=cb_valid,
+            verbose_eval=verbose_eval,
+            log_cout=log_stream,
+            log_cerr=log_stream,
+        )
 
         val_pred = self._predict(model, cb_valid, params)
 

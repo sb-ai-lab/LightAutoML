@@ -51,18 +51,23 @@ def uplift_data_train_test(sampled_app_roles, nrows=None):
     )
     sampled_app_roles["treatment"] = "CODE_GENDER"
 
-    data["BIRTH_DATE"] = (np.datetime64("2018-01-01") + data["DAYS_BIRTH"].astype(np.dtype("timedelta64[D]"))).astype(
-        str
-    )
-    data["EMP_DATE"] = (
-        np.datetime64("2018-01-01") + np.clip(data["DAYS_EMPLOYED"], None, 0).astype(np.dtype("timedelta64[D]"))
-    ).astype(str)
-    data["report_dt"] = np.datetime64("2018-01-01")
-    data["constant"] = 1
-    data["allnan"] = np.nan
-    data.drop(["DAYS_BIRTH", "DAYS_EMPLOYED"], axis=1, inplace=True)
     data["CODE_GENDER"] = (data["CODE_GENDER"] == "M").astype(int)
-    data["__fold__"] = np.random.randint(0, 5, len(data))
+    extra = pd.DataFrame(
+        {
+            "BIRTH_DATE": (np.datetime64("2018-01-01") + data["DAYS_BIRTH"].astype(np.dtype("timedelta64[D]"))).astype(
+                str
+            ),
+            "EMP_DATE": (
+                np.datetime64("2018-01-01") + np.clip(data["DAYS_EMPLOYED"], None, 0).astype(np.dtype("timedelta64[D]"))
+            ).astype(str),
+            "report_dt": np.datetime64("2018-01-01"),
+            "constant": 1,
+            "allnan": np.nan,
+            "__fold__": np.random.randint(0, 5, len(data)),
+        },
+        index=data.index,
+    )
+    data = pd.concat([data.drop(columns=["DAYS_BIRTH", "DAYS_EMPLOYED"]), extra], axis=1)
 
     stratify_value = data[get_target_name(sampled_app_roles)] + 10 * data[sampled_app_roles["treatment"]]
     train, test = train_test_split(data, test_size=3000, stratify=stratify_value, random_state=42)
@@ -108,13 +113,16 @@ def sampled_app_train_test(nrows=None):
         nrows=nrows,
     )
 
-    data["BIRTH_DATE"] = np.datetime64("2018-01-01") + data["DAYS_BIRTH"].astype(np.dtype("timedelta64[D]"))
-    data["EMP_DATE"] = np.datetime64("2018-01-01") + np.clip(data["DAYS_EMPLOYED"], None, 0).astype(
-        np.dtype("timedelta64[D]")
+    dates = pd.DataFrame(
+        {
+            "BIRTH_DATE": np.datetime64("2018-01-01") + data["DAYS_BIRTH"].astype(np.dtype("timedelta64[D]")),
+            "EMP_DATE": np.datetime64("2018-01-01")
+            + np.clip(data["DAYS_EMPLOYED"], None, 0).astype(np.dtype("timedelta64[D]")),
+            "__fold__": np.random.randint(0, 5, len(data)),
+        },
+        index=data.index,
     )
-    data.drop(["DAYS_BIRTH", "DAYS_EMPLOYED", "SK_ID_CURR"], axis=1, inplace=True)
-
-    data["__fold__"] = np.random.randint(0, 5, len(data))
+    data = pd.concat([data.drop(columns=["DAYS_BIRTH", "DAYS_EMPLOYED", "SK_ID_CURR"]), dates], axis=1)
 
     train_data, test_data = train_test_split(data, test_size=0.2, stratify=data["TARGET"], random_state=RANDOM_STATE)
 
