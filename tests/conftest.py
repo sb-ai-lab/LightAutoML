@@ -1,9 +1,21 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import warnings
+
 import numpy as np
 import pandas as pd
 import pytest
+
+
+def pytest_configure(config):
+    warnings.filterwarnings("ignore", category=UserWarning, module=r"torch\.cuda")
+    warnings.filterwarnings(
+        "ignore",
+        message=r".*`torch.jit.script` is deprecated.*",
+        category=FutureWarning,
+    )
+
 
 from sklearn.model_selection import train_test_split
 
