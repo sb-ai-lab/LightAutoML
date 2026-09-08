@@ -1,3 +1,5 @@
+import warnings
+
 import pytest
 import torch
 from sklearn.metrics import roc_auc_score
@@ -10,7 +12,9 @@ from tests.unit.test_automl.test_presets.presets_utils import get_target_name
 
 def gpu_available():
     """Проверяет доступность GPU для TabICL."""
-    return torch.cuda.is_available() and torch.cuda.device_count() > 0
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message="CUDA initialization:.*", category=UserWarning)
+        return torch.cuda.is_available() and torch.cuda.device_count() > 0
 
 
 class TestTabularAutoML_TabICL:
