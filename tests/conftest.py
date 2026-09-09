@@ -9,7 +9,7 @@ except ImportError:
     PyparsingDeprecationWarning = None
 
 if PyparsingDeprecationWarning is not None:
-    warnings.filterwarnings("ignore", category=PyparsingDeprecationWarning)
+    warnings.filterwarnings("ignore", category=PyparsingDeprecationWarning, append=False)
 
 import numpy as np
 import pandas as pd
