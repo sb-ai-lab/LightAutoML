@@ -1,3 +1,5 @@
+import warnings
+
 import pytest
 import torch
 from sklearn.metrics import roc_auc_score
@@ -8,14 +10,17 @@ from tests.unit.test_automl.test_presets.presets_utils import check_pickling
 from tests.unit.test_automl.test_presets.presets_utils import get_target_name
 
 
-def gpu_available():
-    """Проверяет доступность GPU для TabICL."""
-    return torch.cuda.is_available() and torch.cuda.device_count() > 0
+def require_gpu():
+    """Пропускает тест, если GPU недоступна для TabICL."""
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=UserWarning, module=r"torch\.cuda")
+        if not (torch.cuda.is_available() and torch.cuda.device_count() > 0):
+            pytest.skip("GPU недоступна для TabICL")
 
 
 class TestTabularAutoML_TabICL:
-    @pytest.mark.skipif(not gpu_available(), reason="GPU недоступна для TabICL")
     def test_fit_predict_binary(self, sampled_app_train_test, sampled_app_roles, binary_task):
+        require_gpu()
         # load and prepare data
         train, test = sampled_app_train_test
 
@@ -35,8 +40,8 @@ class TestTabularAutoML_TabICL:
 
         check_pickling(automl, ho_score, binary_task, test, target_name)
 
-    @pytest.mark.skipif(not gpu_available(), reason="GPU недоступна для TabICL")
     def test_fit_predict_multiclass(self, sampled_app_train_test):
+        require_gpu()
         # load and prepare data
         train, test = sampled_app_train_test
 

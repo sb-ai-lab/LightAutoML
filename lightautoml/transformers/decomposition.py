@@ -95,13 +95,7 @@ class PCATransformer(LAMLTransformer):
 
         orig_name = dataset.features[0].split("__")[-1]
 
-        feats = (
-            np.char.array([self._fname_prefix + "_"])
-            + np.arange(self.n_components).astype(str)
-            + np.char.array(["__" + orig_name])
-        )
-
-        self._features = list(feats)
+        self._features = [f"{self._fname_prefix}_{idx}__{orig_name}" for idx in range(self.n_components)]
         return self
 
     def transform(self, dataset: NumpyTransformable) -> NumpyDataset:
@@ -182,13 +176,7 @@ class SVDTransformer(LAMLTransformer):
 
         orig_name = dataset.features[0].split("__")[-1]
 
-        feats = (
-            np.char.array([self._fname_prefix + "_"])
-            + np.arange(self.n_components).astype(str)
-            + np.char.array(["__" + orig_name])
-        )
-
-        self._features = list(feats)
+        self._features = [f"{self._fname_prefix}_{idx}__{orig_name}" for idx in range(self.n_components)]
         return self
 
     def transform(self, dataset: NumpyCSR) -> NumpyDataset:
