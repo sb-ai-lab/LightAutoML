@@ -10,12 +10,8 @@ def test_linear_l1_uses_current_logistic_regression_api():
     algo = LinearL1CD(default_params={"max_iter": 10000})
     algo.task = Task("binary")
     model, _, l1_ratios, _ = algo._infer_params()
-    if model.get_params()["penalty"] != "l1":
-        model.set_params(l1_ratio=l1_ratios[0])
+    assert l1_ratios == (1,)
 
     with warnings.catch_warnings():
         warnings.simplefilter("error", FutureWarning)
         model.fit(np.array([[0, 0], [0, 1], [1, 0], [1, 1]]), np.array([0, 0, 1, 1]))
-
-    model_params = model.get_params()
-    assert model_params["penalty"] == "l1" or model_params["l1_ratio"] == 1

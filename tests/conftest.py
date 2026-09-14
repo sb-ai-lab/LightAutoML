@@ -22,6 +22,12 @@ def pytest_configure(config):
         message=r".*`torch.jit.script` is deprecated.*",
         category=FutureWarning,
     )
+    try:
+        from sklearn.exceptions import ConvergenceWarning
+
+        warnings.filterwarnings("ignore", category=ConvergenceWarning)
+    except ImportError:
+        pass
 
 
 from sklearn.model_selection import train_test_split
