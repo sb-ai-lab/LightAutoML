@@ -64,7 +64,7 @@ class UniversalDataset:
             sent = self.data["text"][index, 0]  # only one column
             _split = sent.split("[SEP]")
             sent = _split if len(_split) == 2 else (sent,)
-            data = self.tokenizer.encode_plus(
+            data = self.tokenizer(
                 *sent, add_special_tokens=True, max_length=self.max_length, padding="max_length", truncation=True
             )
 

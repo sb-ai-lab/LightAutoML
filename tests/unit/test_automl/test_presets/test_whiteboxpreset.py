@@ -1,3 +1,7 @@
+import sys
+
+import pytest
+
 from sklearn.metrics import roc_auc_score
 
 from lightautoml.automl.presets.whitebox_presets import WhiteBoxPreset
@@ -5,6 +9,9 @@ from tests.unit.test_automl.test_presets.presets_utils import check_pickling
 from tests.unit.test_automl.test_presets.presets_utils import get_target_name
 
 
+@pytest.mark.skipif(
+    sys.version_info >= (3, 12), reason="AutoWoE is not compatible with the Python 3.12 dependency stack"
+)
 class TestWhiteBoxPreset:
     def test_fit_predict(self, jobs_train_test, jobs_roles, binary_task):
         # load and prepare data
