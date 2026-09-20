@@ -31,7 +31,7 @@ classifiers = [
 
 
 [tool.poetry.dependencies]
-python = ">=3.8"
+python = ">=3.8,<4.0"
 
 poetry-core = "^1.0.0"
 pandas = "*"
@@ -91,7 +91,7 @@ weasyprint = {version = "52.5", optional = true}
 cffi = {version = "1.14.5", optional = true}
 
 # HypEx
-hypex = {version = "*", optional = true}
+hypex = {version = "*", optional = true, python = "<3.14"}
 
 
 [tool.poetry.extras]
