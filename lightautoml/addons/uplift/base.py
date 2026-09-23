@@ -16,6 +16,7 @@ from typing import Dict
 from typing import Generator
 from typing import List
 from typing import Optional
+from typing import TYPE_CHECKING
 from typing import Tuple
 from typing import Union
 
@@ -37,12 +38,25 @@ from lightautoml.addons.uplift.metrics import TUpliftMetric
 from lightautoml.addons.uplift.metrics import calculate_uplift_auc
 from lightautoml.automl.base import AutoML
 from lightautoml.automl.presets.tabular_presets import TabularAutoML
-from lightautoml.report.report_deco import ReportDecoUplift
 from lightautoml.tasks import Task
 from lightautoml.utils.timer import Timer
 
+if TYPE_CHECKING:
+    from lightautoml.report.report_deco import ReportDecoUplift
+
 
 logger = logging.getLogger(__name__)
+
+
+# Keep report dependencies optional when importing AutoUplift.
+_REPORT_AVAILABLE_METALEARNERS = (TLearner, XLearner)
+
+
+def _get_report_deco_uplift():
+    """Load report support only when it is requested."""
+    from lightautoml.report.report_deco import ReportDecoUplift
+
+    return ReportDecoUplift
 
 
 def noner(x, f):
@@ -488,7 +502,7 @@ class AutoUplift(BaseAutoUplift):
         need_report: bool = False,
         update_metalearner_params: Dict[str, Any] = {},
         update_baselearner_params: Dict[str, Any] = {},
-    ) -> Union[MetaLearner, ReportDecoUplift]:
+    ) -> Union[MetaLearner, "ReportDecoUplift"]:
         """Create 'raw' best metalearner with(without) report functionality.
 
         Returned metalearner should be refitted.
@@ -516,7 +530,7 @@ class AutoUplift(BaseAutoUplift):
 
         if need_report:
             if isinstance(self.metric, str):
-                rdu = ReportDecoUplift()
+                rdu = _get_report_deco_uplift()()
                 best_metalearner = rdu(best_metalearner)
             else:
                 logger.warning("Report doesn't work with custom metric, return just best_metalearner.")
@@ -562,14 +576,12 @@ class AutoUplift(BaseAutoUplift):
 
         self.uplift_candidates = self._default_uplift_candidates
         if self.has_report:
-            self.uplift_candidates = [
-                c for c in self.uplift_candidates if c.klass in ReportDecoUplift._available_metalearners
-            ]
+            self.uplift_candidates = [c for c in self.uplift_candidates if c.klass in _REPORT_AVAILABLE_METALEARNERS]
 
         if self.add_dd_candidates:
             dd_candidates = self._generate_data_depend_uplift_candidates(data, roles)
             if self.has_report:
-                dd_candidates = [c for c in dd_candidates if c.klass in ReportDecoUplift._available_metalearners]
+                dd_candidates = [c for c in dd_candidates if c.klass in _REPORT_AVAILABLE_METALEARNERS]
             self.uplift_candidates.extend(dd_candidates)
 
     def _calculate_tabular_time(self):
@@ -1108,7 +1120,7 @@ class AutoUpliftTX(BaseAutoUplift):
         need_report: bool = True,
         update_metalearner_params: Dict[str, Any] = {},
         update_baselearner_params: Dict[str, Any] = {},
-    ) -> Union[MetaLearner, ReportDecoUplift]:
+    ) -> Union[MetaLearner, "ReportDecoUplift"]:
         """Create 'raw' best metalearner with(without) report functionality.
 
         Returned metalearner should be refitted.
@@ -1137,7 +1149,7 @@ class AutoUpliftTX(BaseAutoUplift):
 
         if need_report:
             if isinstance(self.metric, str):
-                rdu = ReportDecoUplift()
+                rdu = _get_report_deco_uplift()()
                 best_metalearner_raw = rdu(best_metalearner_raw)
             else:
                 logger.warning("Report doesn't work with custom metric, return just best_metalearner.")

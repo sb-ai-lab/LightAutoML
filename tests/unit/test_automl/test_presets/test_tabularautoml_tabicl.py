@@ -6,6 +6,8 @@ from sklearn.metrics import roc_auc_score
 
 from lightautoml.tasks import Task
 from lightautoml.automl.presets.tabular_presets import TabularAutoML
+from lightautoml.ml_algo.icl import TabICL
+from lightautoml.ml_algo.icl import _TABICL_CHECKPOINT_VERSION
 from tests.unit.test_automl.test_presets.presets_utils import check_pickling
 from tests.unit.test_automl.test_presets.presets_utils import get_target_name
 
@@ -16,6 +18,11 @@ def require_gpu():
         warnings.filterwarnings("ignore", category=UserWarning, module=r"torch\.cuda")
         if not (torch.cuda.is_available() and torch.cuda.device_count() > 0):
             pytest.skip("GPU недоступна для TabICL")
+
+
+def test_tabicl_checkpoint_is_explicit():
+    """Keep the model used by LightAutoML independent of TabICL defaults."""
+    assert TabICL().clf.checkpoint_version == _TABICL_CHECKPOINT_VERSION
 
 
 class TestTabularAutoML_TabICL:

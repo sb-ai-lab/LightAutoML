@@ -3,19 +3,12 @@
 
 import warnings
 
-try:
-    from pyparsing.warnings import PyparsingDeprecationWarning
-except ImportError:
-    PyparsingDeprecationWarning = None
-
 import numpy as np
 import pandas as pd
 import pytest
 
 
 def pytest_configure(config):
-    if PyparsingDeprecationWarning is not None:
-        warnings.filterwarnings("ignore", category=PyparsingDeprecationWarning)
     warnings.filterwarnings("ignore", category=UserWarning, module=r"torch\.cuda")
     warnings.filterwarnings(
         "ignore",

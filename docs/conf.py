@@ -65,7 +65,6 @@ autosummary_mock_imports = [
     "autowoe",
     "matplotlib",
     "seaborn",
-    "json2html",
     "faiss",
     "hypex",
 ]
