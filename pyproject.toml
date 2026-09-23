@@ -68,7 +68,7 @@ tabm = [
 ]
 
 
-tabicl = { version = "*", python = ">=3.9,<4.0"}
+tabicl = { version = ">=2.0,<3.0", python = ">=3.9,<4.0"}
 
 # NLP
 fasttext-numpy2 = {version = "*", optional = true}
@@ -86,7 +86,6 @@ torchvision = {version = "*", optional = true}
 featuretools = {version = ">=1.11.1", optional = true}
 
 # Report (pdf)
-json2html = {version = "*", optional = true}
 weasyprint = {version = "52.5", optional = true}
 cffi = {version = "1.14.5", optional = true}
 
@@ -109,7 +108,6 @@ nlp = [
     "transformers"
 ]
 report = [
-    "json2html",
     "cffi",
     "weasyprint"
 ]
@@ -132,7 +130,6 @@ all = [
     "fasttext-numpy2",
     "nltk",
     "transformers",
-    "json2html",
     "cffi",
     "weasyprint",
     "featuretools",

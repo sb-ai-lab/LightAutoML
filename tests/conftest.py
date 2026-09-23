@@ -3,13 +3,6 @@
 
 import warnings
 
-try:
-    from pyparsing.warnings import PyparsingDeprecationWarning
-except ImportError:
-    pass
-else:
-    warnings.filterwarnings("ignore", category=PyparsingDeprecationWarning)
-
 import numpy as np
 import pandas as pd
 import pytest
