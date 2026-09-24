@@ -393,6 +393,11 @@ class TorchModel(TabularMLAlgo):
 
         return model
 
+    def _get_tabm_k(self) -> int:
+        """Get TabM ensemble size from model parameters."""
+        backbone_params = self.params.get("backbone_params") or {}
+        return backbone_params.get("k", self.params.get("k", 32))
+
     @staticmethod
     def get_mean_target(target, task_name: str):
         """Get target mean / inverse sigmoid transformation \
@@ -558,7 +563,7 @@ class TorchModel(TabularMLAlgo):
                         dataset_size=len(dataset),
                         batch_size=self.train_params["bs"],
                         shuffle=is_shuffle(stage),
-                        k=self.params.get("k", 32),
+                        k=self._get_tabm_k(),
                         share_training_batches=self.params.get("share_training_batches", True),
                         device=self.params.get("device", torch.device("cuda:0")),
                     ),
