@@ -20,6 +20,8 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Operating System :: OS Independent",
     "Intended Audience :: Science/Research",
     "Development Status :: 5 - Production/Stable",
@@ -53,7 +55,10 @@ xgboost = "^2.0.0"
 optuna = "*"
 torch = ">=1.9.0"
 holidays = "*"
-statsmodels = "<=0.14.0"
+statsmodels = [
+    {version = "<=0.14.0", python = "<3.13"},
+    {version = ">=0.15", python = ">=3.13"},
+]
 networkx = "*"
 cmaes = "*"
 pyyaml = "*"

@@ -11,7 +11,7 @@ from typing import Optional
 
 PYPROJECT_TOML = Path("pyproject.toml")
 ALL_PYTHON_DEPS = ">=3.8,<4.0"
-PYTHON_DEPS = {8: "~3.8.0", 9: "~3.9.0", 10: "~3.10.0", 11: "~3.11.0", 12: "~3.12.0"}
+PYTHON_DEPS = {8: "~3.8.0", 9: "~3.9.0", 10: "~3.10.0", 11: "~3.11.0", 12: "~3.12.0", 13: "~3.13.0", 14: "~3.14.0"}
 PYTHON_DEPS_PATTERN = '^python = ".*"$'
 
 
