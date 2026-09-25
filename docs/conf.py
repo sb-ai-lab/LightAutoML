@@ -15,6 +15,8 @@ import datetime
 import os
 import sys
 
+import pypandoc
+
 
 CURR_PATH = os.path.abspath(os.path.dirname(__file__))
 LIB_PATH = os.path.join(CURR_PATH, os.path.pardir)
@@ -25,6 +27,7 @@ copyright = f"{str(datetime.datetime.now().year)}, AI Lab ML Tools"
 author = "AI Lab ML Tools"
 
 os.environ["DOCUMENTATION_ENV"] = "True"
+os.environ["PATH"] = os.path.dirname(pypandoc.get_pandoc_path()) + os.pathsep + os.environ["PATH"]
 
 extensions = [
     "sphinx.ext.autodoc",
@@ -49,6 +52,7 @@ autosummary_mock_imports = [
     "sklearn",
     "torch",
     "lightgbm",
+    "xgboost",
     "networkx",
     "holidays",
     "joblib",
@@ -65,10 +69,13 @@ autosummary_mock_imports = [
     "autowoe",
     "matplotlib",
     "seaborn",
-    "json2html",
     "faiss",
     "hypex",
+    "sqlalchemy",
+    "tabicl",
+    "tabm",
 ]
+autodoc_mock_imports = autosummary_mock_imports
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]

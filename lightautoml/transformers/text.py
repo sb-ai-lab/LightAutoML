@@ -305,14 +305,10 @@ class TfidfTextTransformer(TunableTransformer):
             subs = df
 
         feats = []
-        for n, i in enumerate(subs.columns):
+        for i in subs.columns:
             vect = self.vect(**self.params)
             vect.fit(subs[i].fillna("").astype(str))
-            features = list(
-                np.char.array([self._fname_prefix + "_"])
-                + np.arange(len(vect.vocabulary_)).astype(str)
-                + np.char.array(["__" + i])
-            )
+            features = [f"{self._fname_prefix}_{idx}__{i}" for idx in range(len(vect.vocabulary_))]
             self.dicts[i] = {"vect": vect, "feats": features}
             feats.extend(features)
         self._features = feats

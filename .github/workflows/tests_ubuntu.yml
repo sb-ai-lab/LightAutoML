@@ -15,18 +15,20 @@ on:
 
 jobs:
   ubuntu-tests:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: true
       matrix:
-        python-version: ["3.8", "3.10", "3.11", "3.12"] # "3.9" is tested in CI
+        python-version: ["3.8", "3.10", "3.11", "3.12", "3.13", "3.14"] # "3.9" is tested in CI
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
 

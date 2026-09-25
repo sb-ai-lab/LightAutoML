@@ -23,7 +23,8 @@ def __validate_extra_deps(extra_section: str, error: bool = False) -> None:
         error: How to process error
 
     """
-    ignore_deps = os.environ.get("DOCUMENTATION_ENV", False)
+    if os.environ.get("DOCUMENTATION_ENV"):
+        return
 
     md = distribution("lightautoml").metadata
     extra_pattern = f'extra == "{extra_section}"'
@@ -46,6 +47,5 @@ def __validate_extra_deps(extra_section: str, error: bool = False) -> None:
                 lib_name,
             )
 
-            if not ignore_deps:
-                if error:
-                    raise e
+            if error:
+                raise e
