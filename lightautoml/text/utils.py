@@ -10,6 +10,7 @@ from sklearn.utils.murmurhash import murmurhash3_32
 from typing import List
 from typing import Dict
 from typing import Sequence
+from typing import Union
 
 
 _dtypes_mapping = {
@@ -136,7 +137,13 @@ def parse_devices(dvs, is_dp: bool = False) -> tuple:
     return device[0], ids if (len(device) > 1) and is_dp else None
 
 
-def custom_collate(batch: List[np.ndarray]) -> torch.Tensor:
+def _cast_collated_tensor(tensor: torch.Tensor, dtype_name: str) -> torch.Tensor:
+    if dtype_name == "long":
+        return tensor if tensor.dtype == torch.long else tensor.long()
+    return tensor if tensor.dtype == torch.float32 else tensor.float()
+
+
+def custom_collate(batch: List[np.ndarray], dtype_name: str = "float") -> torch.Tensor:
     """Puts each data field into a tensor with outer dimension batch size."""
     elem = batch[0]
     if isinstance(elem, torch.Tensor):
@@ -144,16 +151,22 @@ def custom_collate(batch: List[np.ndarray]) -> torch.Tensor:
         numel = sum([x.numel() for x in batch])
         storage = elem.storage()._new_shared(numel)
         out = elem.new(storage)
-        return torch.stack(batch, 0, out=out)
+        return _cast_collated_tensor(torch.stack(batch, 0, out=out), dtype_name)
     else:
-        return torch.from_numpy(np.array(batch)).float()
+        return _cast_collated_tensor(torch.from_numpy(np.array(batch)), dtype_name)
 
 
-def collate_dict(batch: List[Dict[str, np.ndarray]]) -> Dict[str, torch.Tensor]:
+def collate_dict(batch: Union[Dict[str, np.ndarray], List[Dict[str, np.ndarray]]]) -> Dict[str, torch.Tensor]:
     """custom_collate for dicts."""
+    if isinstance(batch, dict):
+        return {
+            key: _cast_collated_tensor(torch.as_tensor(value), _dtypes_mapping.get(key, "float"))
+            for key, value in batch.items()
+        }
+
     keys = list(batch[0].keys())
     transposed_data = list(map(list, zip(*[tuple([i[name] for name in i.keys()]) for i in batch])))
-    return {key: custom_collate(transposed_data[n]) for n, key in enumerate(keys)}
+    return {key: custom_collate(transposed_data[n], _dtypes_mapping.get(key, "float")) for n, key in enumerate(keys)}
 
 
 def single_text_hash(x: str) -> str:
