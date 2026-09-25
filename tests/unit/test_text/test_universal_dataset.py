@@ -1,31 +1,44 @@
 import numpy as np
 import torch
+from torch.utils.data import DataLoader
 
 from lightautoml.text.nn_model import UniversalDataset
 from lightautoml.text.utils import collate_dict
 
 
-def test_universal_dataset_batched_getitems_matches_rowwise_batch():
+class DummyTokenizer:
+    def __call__(self, *args, **kwargs):
+        return {
+            "input_ids": [1, 2, 3],
+            "attention_mask": [1, 1, 1],
+            "token_type_ids": [0, 0, 0],
+        }
+
+
+def _tabular_dataset():
     data = {
         "cat": np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9], [10, 11, 12]], dtype=np.int64),
         "cont": np.array([[0.1, 0.2], [1.1, 1.2], [2.1, 2.2], [3.1, 3.2]], dtype=np.float32),
     }
     y = np.array([0.0, 1.0, 0.0, 1.0], dtype=np.float32)
     w = np.array([1.0, 0.5, 2.0, 1.5], dtype=np.float32)
+    return UniversalDataset(data=data, y=y, w=w, tokenizer=None)
+
+
+def _assert_batch_equal(left, right):
+    assert left.keys() == right.keys()
+    for key in left:
+        assert left[key].shape == right[key].shape
+        assert torch.equal(left[key], right[key])
+
+
+def test_universal_dataset_batched_getitems_matches_rowwise_batch():
+    dataset = _tabular_dataset()
     indices = [0, 2, 3]
+    row_collated = collate_dict([dataset[index] for index in indices])
+    fast_collated = collate_dict(dataset.__getitems__(indices))
 
-    dataset = UniversalDataset(data=data, y=y, w=w, tokenizer=None)
-
-    row_batch = [dataset[index] for index in indices]
-    fast_batch = dataset.__getitems__(indices)
-    row_collated = collate_dict(row_batch)
-    fast_collated = collate_dict(fast_batch)
-
-    assert row_collated.keys() == fast_collated.keys()
-    for key in row_collated:
-        assert row_collated[key].shape == fast_collated[key].shape
-        assert torch.equal(row_collated[key], fast_collated[key])
-
+    _assert_batch_equal(row_collated, fast_collated)
     assert fast_collated["cat"].dtype == torch.int64
     assert fast_collated["cont"].dtype == torch.float32
     assert fast_collated["label"].dtype == torch.float32
@@ -69,14 +82,6 @@ def test_collate_dict_supports_rowwise_and_batched_dict_inputs():
 
 
 def test_universal_dataset_getitems_falls_back_to_rowwise_with_tokenizer():
-    class DummyTokenizer:
-        def encode_plus(self, *args, **kwargs):
-            return {
-                "input_ids": [1, 2, 3],
-                "attention_mask": [1, 1, 1],
-                "token_type_ids": [0, 0, 0],
-            }
-
     dataset = UniversalDataset(
         data={"text": np.array([["hello"], ["world"]])},
         y=np.array([0.0, 1.0], dtype=np.float32),
@@ -92,3 +97,39 @@ def test_universal_dataset_getitems_falls_back_to_rowwise_with_tokenizer():
         assert batched_item.keys() == row_item.keys()
         for key in batched_item:
             assert np.array_equal(batched_item[key], row_item[key])
+
+
+def test_dataloader_tabular_matches_rowwise_collate():
+    dataset = _tabular_dataset()
+    batch = next(iter(DataLoader(dataset, batch_size=3, shuffle=False, collate_fn=collate_dict)))
+    expected = collate_dict([dataset[i] for i in range(3)])
+    _assert_batch_equal(batch, expected)
+
+
+def test_dataloader_tokenizer_returns_collated_batch():
+    dataset = UniversalDataset(
+        data={"text": np.array([["hello"], ["world"], ["sep"]])},
+        y=np.array([0.0, 1.0, 0.0], dtype=np.float32),
+        tokenizer=DummyTokenizer(),
+    )
+    batch = next(iter(DataLoader(dataset, batch_size=2, shuffle=False, collate_fn=collate_dict)))
+    expected = collate_dict([dataset[0], dataset[1]])
+    _assert_batch_equal(batch, expected)
+    assert batch["input_ids"].dtype == torch.int64
+
+
+def test_getitems_accepts_numpy_indices():
+    dataset = _tabular_dataset()
+    indices = np.array([0, 2, 3])
+    _assert_batch_equal(
+        collate_dict(dataset.__getitems__(indices)),
+        collate_dict([dataset[int(i)] for i in indices]),
+    )
+
+
+def test_getitems_matches_rowwise_for_2d_tabm_indices():
+    dataset = _tabular_dataset()
+    indices = np.array([[0, 2, 3], [1, 1, 0]])  # (batch, k)
+    fast = collate_dict(dataset.__getitems__(indices))
+    _assert_batch_equal(fast, collate_dict([dataset[row] for row in indices]))
+    assert fast["cat"].shape == (2, 3, 3)
