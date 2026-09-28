@@ -5,6 +5,7 @@ import logging
 from typing import Any
 from typing import Callable
 from typing import Dict
+from typing import List
 from typing import Optional
 from typing import Union
 import numpy as np
@@ -71,6 +72,18 @@ class UniversalDataset:
             res.update({i: np.array(data[i]) for i in data.keys()})
         if self.w is not None:
             res["weight"] = self.w[index]
+
+        return res
+
+    def __getitems__(self, indices) -> Union[Dict[str, np.ndarray], List[Dict[str, np.ndarray]]]:
+        if self.tokenizer is not None:
+            return [self.__getitem__(index) for index in indices]
+
+        indices = np.asarray(indices)
+        res = {"label": self.y[indices]}
+        res.update({key: value[indices] for key, value in self.data.items() if key != "text"})
+        if self.w is not None:
+            res["weight"] = self.w[indices]
 
         return res
 
