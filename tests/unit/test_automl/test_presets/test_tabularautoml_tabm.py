@@ -3,10 +3,56 @@ import warnings
 
 from sklearn.metrics import roc_auc_score
 import pytest
+import torch.nn as nn
 
+from lightautoml.ml_algo.dl_model import TorchModel
 from lightautoml.automl.presets.tabular_presets import TabularAutoML
+from lightautoml.tasks import Task
+from lightautoml.text.embed import ContEmbedder
+from lightautoml.text.nn_model import TorchUniversalModel
 from tests.unit.test_automl.test_presets.presets_utils import check_pickling
 from tests.unit.test_automl.test_presets.presets_utils import get_target_name
+
+
+class _BackboneParamsRecorder(nn.Module):
+    """Tiny model used to inspect parameters passed by TorchUniversalModel."""
+
+    def __init__(self, n_in, n_out, backbone_params=None, **kwargs):
+        super().__init__()
+        self.backbone_params = backbone_params
+        self.linear = nn.Linear(n_in, n_out)
+
+    def forward(self, x):
+        return self.linear(x)
+
+
+def test_torch_universal_model_preserves_backbone_params():
+    """Test that wrapper adds TabM chunks without dropping user backbone params."""
+    task = Task("binary")
+
+    model = TorchUniversalModel(
+        task=task,
+        loss=task.losses["torch"].loss,
+        torch_model=_BackboneParamsRecorder,
+        n_out=1,
+        cont_embedder_=ContEmbedder,
+        cont_params={"num_dims": 3, "input_bn": False, "embedding_size": 1},
+        backbone_params={"k": 4, "arch_type": "tabm-mini"},
+    )
+
+    backbone_params = model.torch_model.backbone_params
+    assert backbone_params["k"] == 4
+    assert backbone_params["arch_type"] == "tabm-mini"
+    assert backbone_params["start_scaling_init_chunks"] == [1, 1, 1]
+
+
+def test_torch_model_uses_tabm_k_from_backbone_params():
+    """Test that TabM sampler follows the model ensemble size."""
+    model = TorchModel(default_params={"backbone_params": {"k": 7}})
+    assert model._get_tabm_k() == 7
+
+    model = TorchModel(default_params={"k": 5})
+    assert model._get_tabm_k() == 5
 
 
 class TestTabM:
