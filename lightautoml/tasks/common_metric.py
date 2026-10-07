@@ -37,7 +37,7 @@ def mean_quantile_error(
     err = y_pred - y_true
     s = np.sign(err)
     err = np.abs(err)
-    err = np.where(s > 0, q, 1 - q) * err
+    err = np.where(s > 0, 1 - q, q) * err
     if sample_weight is not None:
         return (err * sample_weight).mean() / sample_weight.mean()
 
