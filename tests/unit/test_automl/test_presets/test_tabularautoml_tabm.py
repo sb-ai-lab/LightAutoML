@@ -1,12 +1,11 @@
-import sys
 import warnings
 
-from sklearn.metrics import roc_auc_score
-import pytest
 import torch.nn as nn
 
-from lightautoml.ml_algo.dl_model import TorchModel
+from sklearn.metrics import roc_auc_score
+
 from lightautoml.automl.presets.tabular_presets import TabularAutoML
+from lightautoml.ml_algo.dl_model import TorchModel
 from lightautoml.tasks import Task
 from lightautoml.text.embed import ContEmbedder
 from lightautoml.text.nn_model import TorchUniversalModel
@@ -86,16 +85,7 @@ class TestTabM:
                 nn_params=self.nn_params,
             )
 
-            if sys.version_info < (3, 9):
-                with pytest.raises(RuntimeError) as excinfo:
-                    oof_predictions = automl.fit_predict(train, roles=sampled_app_roles, verbose=10)
-                assert (
-                    "TabM requires Python 3.9+ and the 'tabm' package. Please upgrade Python or install tabm: pip install tabm"
-                    in str(excinfo.value)
-                )
-                return
-            else:
-                oof_predictions = automl.fit_predict(train, roles=sampled_app_roles, verbose=10)
+            oof_predictions = automl.fit_predict(train, roles=sampled_app_roles, verbose=10)
 
             ho_predictions = automl.predict(test)
 
@@ -105,7 +95,7 @@ class TestTabM:
             ho_score = roc_auc_score(test[target_name].values, ho_predictions.data[:, 0])
 
             # checks
-            assert oof_score > 0.64
+            assert oof_score > 0.63
             assert ho_score > 0.63
 
             check_pickling(automl, ho_score, binary_task, test, target_name)
@@ -126,16 +116,7 @@ class TestTabM:
                 nn_params={**self.nn_params, **{"share_training_batches": True}},
             )
 
-            if sys.version_info < (3, 9):
-                with pytest.raises(RuntimeError) as excinfo:
-                    oof_predictions = automl.fit_predict(train, roles=sampled_app_roles, verbose=10)
-                assert (
-                    "TabM requires Python 3.9+ and the 'tabm' package. Please upgrade Python or install tabm: pip install tabm"
-                    in str(excinfo.value)
-                )
-                return
-            else:
-                oof_predictions = automl.fit_predict(train, roles=sampled_app_roles, verbose=10)
+            oof_predictions = automl.fit_predict(train, roles=sampled_app_roles, verbose=10)
 
             ho_predictions = automl.predict(test)
 

@@ -276,7 +276,7 @@ class UpliftIterator:
         self.mode = mode
 
         idx = np.arange(treatment_col.shape[0])
-        flg = treatment_col.astype(np.bool) == self.mode
+        flg = treatment_col.astype(bool) == self.mode
 
         self.constant_idx = idx[flg]
         self.splitted_idx = idx[~flg]

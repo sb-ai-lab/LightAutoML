@@ -187,8 +187,9 @@ class LinearL1CD(TabularMLAlgo):
         cs = params.pop("cs")
 
         if self.task.name in ["binary", "multiclass"]:
-
-            if l1_ratios == (1,):
+            if LogisticRegression().get_params()["penalty"] == "deprecated":
+                model = LogisticRegression(warm_start=True, **params)
+            elif l1_ratios == (1,):
                 model = LogisticRegression(warm_start=True, penalty="l1", **params)
             else:
                 model = LogisticRegression(warm_start=True, penalty="elasticnet", **params)
@@ -273,13 +274,11 @@ class LinearL1CD(TabularMLAlgo):
         metric = self.task.losses["sklearn"].metric_func
 
         for l1_ratio in sorted(l1_ratios, reverse=True):
-
-            try:
-                model.set_params(**{"l1_ratio": l1_ratio})
-            except ValueError:
-                pass
-
             model = deepcopy(_model)
+            model_params = model.get_params()
+
+            if "l1_ratio" in model_params and model_params.get("penalty") != "l1":
+                model.set_params(**{"l1_ratio": l1_ratio})
 
             c_best_score = -np.inf
             c_best_pred = None

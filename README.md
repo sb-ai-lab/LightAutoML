@@ -5,7 +5,10 @@
 ![pypi - Downloads](https://img.shields.io/pypi/dm/lightautoml?color=green&label=PyPI%20downloads&logo=pypi&logoColor=green)
 [![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/sb-ai-lab/lightautoml/CI.yml)](https://github.com/sb-ai-lab/lightautoml/actions/workflows/CI.yml?query=branch%3Amaster)
 ![Read the Docs](https://img.shields.io/readthedocs/lightautoml)
-### [Documentation](https://lightautoml.readthedocs.io/)  |  [Installation](#installation) | [Examples](#resources) | [Telegram chat](https://t.me/joinchat/sp8P7sdAqaU0YmRi) | [Telegram channel](https://t.me/lightautoml)
+
+
+
+### [Documentation](https://lightautoml.readthedocs.io/en/latest/)  |  [Installation](#installation) | [Examples](#resources) | [Telegram chat](https://t.me/joinchat/sp8P7sdAqaU0YmRi) | [Telegram channel](https://t.me/lightautoml)
 
 LightAutoML (LAMA) allows you create machine learning models using just a few lines of code, or build your own custom pipeline using ready blocks. It supports tabular, time series, image and text data.
 

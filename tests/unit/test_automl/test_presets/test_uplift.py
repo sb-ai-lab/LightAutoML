@@ -8,6 +8,14 @@ from lightautoml.addons.uplift.metrics import (
     calculate_min_max_uplift_auc,
     calculate_uplift_auc,
 )
+from lightautoml.report.report_deco import _render_params_html
+
+
+def test_report_params_renderer_is_dependency_free():
+    rendered = _render_params_html({"name": "<unsafe>", "nested": {"value": "a&b"}})
+
+    assert "<th>name</th><td>&lt;unsafe&gt;</td>" in rendered
+    assert "<th>value</th><td>a&amp;b</td>" in rendered
 
 
 class TestAutoUpliftPreset:

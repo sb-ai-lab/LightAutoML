@@ -6,6 +6,7 @@ import warnings
 
 from copy import copy
 from copy import deepcopy
+from html import escape
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,7 +15,6 @@ import seaborn as sns
 
 from jinja2 import Environment
 from jinja2 import FileSystemLoader
-from json2html import json2html
 from sklearn.metrics import average_precision_score
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import explained_variance_score
@@ -61,6 +61,18 @@ def extract_params(input_struct):
         else:
             params[key] = str(type(value))
     return params
+
+
+def _render_params_html(params):
+    """Render model parameters as an escaped nested HTML table."""
+    rows = []
+    for key, value in params.items():
+        if isinstance(value, dict):
+            value = _render_params_html(value)
+        else:
+            value = escape(str(value))
+        rows.append(f"<tr><th>{escape(str(key))}</th><td>{value}</td></tr>")
+    return f"<table>{''.join(rows)}</table>"
 
 
 def plot_roc_curve_image(data, path):
@@ -515,7 +527,7 @@ class ReportDeco:
 
         # add informataion to report
         self._model_name = model.__class__.__name__
-        self._model_parameters = json2html.convert(extract_params(model))
+        self._model_parameters = _render_params_html(extract_params(model))
         self._model_summary = None
 
         self._sections = {}
@@ -1474,7 +1486,7 @@ class ReportDecoUtilized(ReportDeco):
             if preset_desc is not None:
                 preset_name = f"{preset_desc} ({preset_name})"
 
-            model_parameters = json2html.convert(extract_params(model.ml_algos[0].models[0][0]))
+            model_parameters = _render_params_html(extract_params(model.ml_algos[0].models[0][0]))
             preset_section = env.get_template(self._preset_section_path).render(
                 preset_name=preset_name, model_parameters=model_parameters
             )
@@ -1689,7 +1701,7 @@ class ReportDecoNLP(ReportDeco):
 
         # add informataion to report
         self._model_name = model.__class__.__name__
-        self._model_parameters = json2html.convert(extract_params(model))
+        self._model_parameters = _render_params_html(extract_params(model))
         self._model_summary = None
 
         self._sections = {}
@@ -1899,7 +1911,7 @@ class ReportDecoUplift(ReportDeco):
 
         # add informataion to report
         self._model_name = model.__class__.__name__
-        self._model_parameters = json2html.convert(extract_params(model))
+        self._model_parameters = _render_params_html(extract_params(model))
         self._model_summary = None
 
         self._sections = {}

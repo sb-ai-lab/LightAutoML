@@ -13,6 +13,9 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# TabICL 2.x changes its default checkpoint independently of the package API.
+_TABICL_CHECKPOINT_VERSION = "tabicl-classifier-v1.1-20250506.ckpt"
+
 
 class TabICL(TabularMLAlgo):
     """TabICL classifier.
@@ -35,6 +38,10 @@ class TabICL(TabularMLAlgo):
             kwargs["device"] = "cpu"
 
         kwargs.pop("freeze_defaults", None)
+
+        # Keep predictions and quality checks stable across TabICL 2.x releases.
+        # A caller may still explicitly select a different checkpoint.
+        kwargs.setdefault("checkpoint_version", _TABICL_CHECKPOINT_VERSION)
 
         self.clf = TabICLClassifier(**kwargs)
         self.imputer = None

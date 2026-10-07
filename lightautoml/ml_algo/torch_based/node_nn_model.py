@@ -6,7 +6,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from torch.autograd import Function
-from torch.jit import script
 
 
 def check_numpy(x):
@@ -256,7 +255,6 @@ class Entmoid15Optimized(Function):
         return output
 
     @staticmethod
-    @script
     def _forward(input):
         input, is_pos = abs(input), input >= 0
         tau = (input + torch.sqrt(F.relu(8 - input ** 2))) / 2
@@ -278,7 +276,6 @@ class Entmoid15Optimized(Function):
         return Entmoid15Optimized._backward(ctx.saved_tensors[0], grad_output)
 
     @staticmethod
-    @script
     def _backward(output, grad_output):
         gppr0, gppr1 = output.sqrt(), (1 - output).sqrt()
         grad_input = grad_output * gppr0

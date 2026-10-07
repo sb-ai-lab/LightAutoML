@@ -32,6 +32,7 @@ def test_logging(
 
     automl = TabularAutoML(
         task=binary_task,
+        gpu_ids=None,
         tuning_params={"max_tuning_iter": 3, "max_tuning_time": 30},
         lgb_params={"default_params": {"num_trees": 5}},
     )

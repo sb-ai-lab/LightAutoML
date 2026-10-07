@@ -5,6 +5,7 @@ import logging
 from typing import Any
 from typing import Callable
 from typing import Dict
+from typing import List
 from typing import Optional
 from typing import Union
 import numpy as np
@@ -12,7 +13,7 @@ import torch
 import torch.nn as nn
 from ..tasks.base import Task
 
-# Import TabM only if available (Python 3.9+)
+# Import TabM only if available.
 try:
     from ..ml_algo.torch_based.nn_models import TabM
 
@@ -64,13 +65,25 @@ class UniversalDataset:
             sent = self.data["text"][index, 0]  # only one column
             _split = sent.split("[SEP]")
             sent = _split if len(_split) == 2 else (sent,)
-            data = self.tokenizer.encode_plus(
+            data = self.tokenizer(
                 *sent, add_special_tokens=True, max_length=self.max_length, padding="max_length", truncation=True
             )
 
             res.update({i: np.array(data[i]) for i in data.keys()})
         if self.w is not None:
             res["weight"] = self.w[index]
+
+        return res
+
+    def __getitems__(self, indices) -> Union[Dict[str, np.ndarray], List[Dict[str, np.ndarray]]]:
+        if self.tokenizer is not None:
+            return [self.__getitem__(index) for index in indices]
+
+        indices = np.asarray(indices)
+        res = {"label": self.y[indices]}
+        res.update({key: value[indices] for key, value in self.data.items() if key != "text"})
+        if self.w is not None:
+            res["weight"] = self.w[indices]
 
         return res
 

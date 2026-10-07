@@ -1,3 +1,5 @@
+import pytest
+
 from sklearn.metrics import roc_auc_score
 
 from lightautoml.automl.presets.whitebox_presets import WhiteBoxPreset
@@ -5,6 +7,16 @@ from tests.unit.test_automl.test_presets.presets_utils import check_pickling
 from tests.unit.test_automl.test_presets.presets_utils import get_target_name
 
 
+# AutoWoE uses deprecated scikit-learn logistic parameters: https://github.com/sb-ai-lab/AutoMLWhitebox/issues/29
+@pytest.mark.filterwarnings(
+    r"ignore:The default value for l1_ratios will change from None:FutureWarning:sklearn\.linear_model\._logistic"
+)
+@pytest.mark.filterwarnings(
+    r"ignore:'penalty' was deprecated in version 1\.8:FutureWarning:sklearn\.linear_model\._logistic"
+)
+@pytest.mark.filterwarnings(
+    r"ignore:The fitted attributes of LogisticRegressionCV:FutureWarning:sklearn\.linear_model\._logistic"
+)
 class TestWhiteBoxPreset:
     def test_fit_predict(self, jobs_train_test, jobs_roles, binary_task):
         # load and prepare data
