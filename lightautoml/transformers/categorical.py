@@ -454,7 +454,8 @@ class TargetEncoder(LAMLTransformer):
         # convert to accepted dtype and get attributes
         dataset = dataset.to_numpy()
         data = dataset.data
-        target = dataset.target.astype(np.int32)
+        # Preserve fractional regression targets when computing encoding statistics.
+        target = dataset.target.astype(np.float64, copy=False)
         score_func = self.binary_score_func if dataset.task.name == "binary" else self.reg_score_func
 
         folds = dataset.folds
