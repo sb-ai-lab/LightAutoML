@@ -1,10 +1,6 @@
-import sys
 import warnings
 
 import pytest
-
-if sys.version_info < (3, 9):
-    pytest.skip("TabICL requires Python 3.9 or newer", allow_module_level=True)
 
 import torch
 from sklearn.metrics import roc_auc_score

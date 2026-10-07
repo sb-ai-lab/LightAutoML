@@ -65,7 +65,7 @@ Examples can be added in several ways:
 
 ### Installation
 
-If you are installing from the source, you will need Python 3.8 or later.
+If you are installing from the source, you will need Python 3.10 or later.
 We recommend you install an [Anaconda](https://www.anaconda.com/products/individual#download-section)
 to work with environments.
 
@@ -146,17 +146,17 @@ tox --parallel 6
 
 To run all tests with specific Python versions:
 ```bash
-tox -e py38
+tox -e py310
 ```
 
 To run specific test:
 ```
-tox -e py38 -- -x tests/unit/test_utils
+tox -e py310 -- -x tests/unit/test_utils
 ```
 
-To run tests for specific Python versions (for example python 3.8):
+To run tests for specific Python versions (for example Python 3.10):
 ```bash
-tox -e py38
+tox -e py310
 ```
 
 

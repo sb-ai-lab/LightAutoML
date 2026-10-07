@@ -12,7 +12,7 @@ import torch
 import torch.nn as nn
 from ..tasks.base import Task
 
-# Import TabM only if available (Python 3.9+)
+# Import TabM only if available.
 try:
     from ..ml_algo.torch_based.nn_models import TabM
 

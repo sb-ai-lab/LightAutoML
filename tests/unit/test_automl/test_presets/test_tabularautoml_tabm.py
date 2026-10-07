@@ -1,8 +1,6 @@
-import sys
 import warnings
 
 from sklearn.metrics import roc_auc_score
-import pytest
 
 from lightautoml.automl.presets.tabular_presets import TabularAutoML
 from tests.unit.test_automl.test_presets.presets_utils import check_pickling
@@ -40,16 +38,7 @@ class TestTabM:
                 nn_params=self.nn_params,
             )
 
-            if sys.version_info < (3, 9):
-                with pytest.raises(RuntimeError) as excinfo:
-                    oof_predictions = automl.fit_predict(train, roles=sampled_app_roles, verbose=10)
-                assert (
-                    "TabM requires Python 3.9+ and the 'tabm' package. Please upgrade Python or install tabm: pip install tabm"
-                    in str(excinfo.value)
-                )
-                return
-            else:
-                oof_predictions = automl.fit_predict(train, roles=sampled_app_roles, verbose=10)
+            oof_predictions = automl.fit_predict(train, roles=sampled_app_roles, verbose=10)
 
             ho_predictions = automl.predict(test)
 
@@ -80,16 +69,7 @@ class TestTabM:
                 nn_params={**self.nn_params, **{"share_training_batches": True}},
             )
 
-            if sys.version_info < (3, 9):
-                with pytest.raises(RuntimeError) as excinfo:
-                    oof_predictions = automl.fit_predict(train, roles=sampled_app_roles, verbose=10)
-                assert (
-                    "TabM requires Python 3.9+ and the 'tabm' package. Please upgrade Python or install tabm: pip install tabm"
-                    in str(excinfo.value)
-                )
-                return
-            else:
-                oof_predictions = automl.fit_predict(train, roles=sampled_app_roles, verbose=10)
+            oof_predictions = automl.fit_predict(train, roles=sampled_app_roles, verbose=10)
 
             ho_predictions = automl.predict(test)
 

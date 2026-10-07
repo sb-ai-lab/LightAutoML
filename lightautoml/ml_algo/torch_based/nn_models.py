@@ -14,7 +14,7 @@ from .autoint.ghost_norm import GhostBatchNorm
 from .fttransformer.fttransformer_utils import Transformer
 from .node_nn_model import DenseODSTBlock, MeanPooling
 
-# Import tabm only for Python 3.9+
+# Import tabm only if available.
 try:
     from tabm import EnsembleView, make_tabm_backbone, LinearEnsemble
 
@@ -1129,10 +1129,7 @@ class TabM(nn.Module):
         super().__init__()
 
         if not TABM_AVAILABLE:
-            raise RuntimeError(
-                "TabM requires Python 3.9+ and the 'tabm' package. "
-                "Please upgrade Python or install tabm: pip install tabm"
-            )
+            raise RuntimeError("TabM requires the 'tabm' package. Install it with: pip install tabm")
 
         self.share_training_batches = share_training_batches
         self.device = device

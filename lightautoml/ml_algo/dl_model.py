@@ -81,7 +81,7 @@ from .torch_based.nn_models import _LinearLayer
 from .torch_based.nn_models import AutoInt
 from .torch_based.nn_models import FTTransformer
 
-# Import TabM only if available (Python 3.9+)
+# Import TabM only if available.
 try:
     from .torch_based.nn_models import TabM
     from .torch_based.tabm.sampler import TabMBatchSampler
@@ -547,10 +547,7 @@ class TorchModel(TabularMLAlgo):
 
             if (self.params.get("model") == "tabm") and (stage == "train"):
                 if not TABM_AVAILABLE:
-                    raise RuntimeError(
-                        "TabM model requires Python 3.9+ and the 'tabm' package. "
-                        "Please upgrade Python or install tabm: pip install tabm"
-                    )
+                    raise RuntimeError("TabM model requires the 'tabm' package. Install it with: pip install tabm")
                 # Custom DataLoader for TabM
                 dataloaders[stage] = torch.utils.data.DataLoader(
                     dataset=dataset,
