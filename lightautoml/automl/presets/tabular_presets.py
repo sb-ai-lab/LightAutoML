@@ -3,7 +3,6 @@
 
 import logging
 import os
-import sys
 
 from collections import Counter
 from copy import copy
@@ -64,8 +63,7 @@ from .utils import plot_pdp_with_distribution
 
 from ...dataset.roles import TargetRole
 
-if sys.version_info >= (3, 9):
-    from ...ml_algo.icl import TabICL
+from ...ml_algo.icl import TabICL
 
 
 _base_dir = os.path.dirname(__file__)
@@ -625,11 +623,8 @@ class TabularAutoML(AutoMLPreset):
                 lvl.append(self.get_rfs(rf_models, n + 1, selector))
 
             if "tabicl" in names:
-                if sys.version_info >= (3, 9):
-                    selector = None
-                    lvl.append(self.get_icl())
-                else:
-                    logger.info("TabICL is not supported in Python 3.8 and below.")
+                selector = None
+                lvl.append(self.get_icl())
 
             if "linear_l2" in names:
                 selector = None
