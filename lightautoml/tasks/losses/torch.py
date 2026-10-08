@@ -113,7 +113,7 @@ def torch_quantile(
     err = y_pred - y_true
     s = err < 0
     err = torch.abs(err)
-    err = torch.where(s, err * (1 - q), err * q)
+    err = torch.where(s, err * q, err * (1 - q))
 
     if len(err.shape) == 2:
         err = err.sum(dim=1)
