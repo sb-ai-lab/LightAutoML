@@ -205,6 +205,14 @@ class TorchUniversalModel(nn.Module):
             self.text_embedder = text_embedder(**text_params)
             n_in += self.text_embedder.get_out_shape()
 
+        backbone_params = dict(kwargs.get("backbone_params") or {})
+        # Packed ensembles do not use scaling initialization or its chunks.
+        backbone_params["start_scaling_init_chunks"] = (
+            start_scaling_init_chunks
+            if start_scaling_init_chunks and backbone_params.get("arch_type") != "tabm-packed"
+            else None
+        )
+
         self.torch_model = (
             torch_model(
                 **{
@@ -214,11 +222,7 @@ class TorchUniversalModel(nn.Module):
                         "n_out": n_out,
                         "loss": loss,
                         "task": task,
-                        "backbone_params": {
-                            "start_scaling_init_chunks": start_scaling_init_chunks
-                            if len(start_scaling_init_chunks) > 0
-                            else None
-                        },
+                        "backbone_params": backbone_params,
                     },
                 }
             )
