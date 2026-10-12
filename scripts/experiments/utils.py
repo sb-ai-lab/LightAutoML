@@ -1,6 +1,7 @@
 """Utils for running experiments."""
 
-import os
+import subprocess
+import sys
 import time
 
 
@@ -42,12 +43,8 @@ class Timer:  # noqa: D101
 
 def install_lightautoml():
     """Install lightautoml using pip."""
-    # os.system("curl -sSL https://install.python-poetry.org | ../../bin/python -vvv -")
-    # os.system("/root/.local/bin/poetry build")
-    # os.system("ls -la ./dist/")
-    os.system("pip install packaging==22.0")
-    os.system("python scripts/poetry_fix.py -f")
-    os.system("../../bin/pip install .")  # ./dist/*.whl
+    subprocess.run([sys.executable, "scripts/poetry_fix.py", "-f"], check=True)
+    subprocess.run([sys.executable, "-m", "pip", "install", "."], check=True)
 
 
 #        .pip install --upgrade pip
