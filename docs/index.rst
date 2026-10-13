@@ -20,6 +20,7 @@ LightAutoML provides easy-to-use pipeline creation, that enables:
     Installation Guide <pages/Installation>
     Tutorials <pages/Tutorials>
     Frequently Asked Questions <pages/FAQ>
+    Dependency and device compatibility <pages/Compatibility>
     Kaggle kernel examples of LightAutoML usage <pages/Kaggle_Kernels>
     Courses, videos and papers <pages/Others>
     Python-API <pages/Python-API>

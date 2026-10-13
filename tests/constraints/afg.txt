@@ -1,0 +1,6 @@
+# Latest compatible optional feature-generation stack checked on 2026-10-13.
+# Use separately from latest.txt, whose pandas 3 pin is for the other extras.
+pandas==2.3.3
+featuretools==1.31.0
+woodwork==0.31.0
+setuptools==81.0.0

@@ -3,6 +3,7 @@
 import logging
 
 from copy import deepcopy
+from inspect import signature
 from typing import Any
 from typing import Callable
 from typing import Dict
@@ -21,6 +22,7 @@ from tqdm import tqdm
 from ..utils.logging import get_stdout_level
 from .dp_utils import CustomDataParallel
 
+
 try:
     from apex import amp
 except:
@@ -31,6 +33,15 @@ from .utils import _dtypes_mapping
 
 
 logger = logging.getLogger(__name__)
+
+
+def _load_checkpoint(path):
+    """Load a trusted LAMA checkpoint, including legacy NumPy snapshot state."""
+    # PyTorch 2.6 changed the default to weights_only=True. LAMA checkpoints
+    # also contain optimizer and NumPy snapshot state. As with joblib models,
+    # these files must only be loaded from trusted sources.
+    kwargs = {"weights_only": False} if "weights_only" in signature(torch.load).parameters else {}
+    return torch.load(path, map_location=torch.device("cpu"), **kwargs)
 
 
 def optim_to_device(optim: torch.optim.Optimizer, device: torch.device) -> torch.optim.Optimizer:
@@ -331,9 +342,24 @@ class Trainer:
 
     def _init(self):
         """Init all models."""
+        self.device = self.validate_device_availability(self.device)
+        if isinstance(self.device, int):
+            self.device = torch.device(f"cuda:{self.device}")
+        if self.device.type == "cpu":
+            self.device_ids = None
+        elif self.device_ids is not None:
+            self.device_ids = list(dict.fromkeys(self.validate_device_availability(self.device_ids)))
+
+        # Constructors may allocate tensors before the final model.to(device).
+        # Keep the serialized parameters untouched while rebinding their devices.
+        self.net_params = dict(self.net_params)
+        if "device" in self.net_params:
+            self.net_params["device"] = self.device
+        for key in ("cont_params", "cat_params", "text_params"):
+            if isinstance(self.net_params.get(key), dict) and "device" in self.net_params[key]:
+                self.net_params[key] = {**self.net_params[key], "device": self.device}
         self.model = self.net(**self.net_params)
         if self.device_ids is not None:
-            self.device_ids = self.validate_device_availability(self.device_ids)
             self.model = CustomDataParallel(self.model, device_ids=self.device_ids)
 
         self.se = SnapshotEns(self.device, **self.snap_params)
@@ -360,7 +386,7 @@ class Trainer:
 
         """
         if isinstance(path, str):
-            checkpoint = torch.load(path, map_location=torch.device("cpu"))
+            checkpoint = _load_checkpoint(path)
             self.pretrained_path = path
         else:
             checkpoint = path
@@ -628,13 +654,13 @@ class Trainer:
         return pred
 
     @staticmethod
-    def validate_device_availability(device: Union[int, list, torch.device]):
+    def validate_device_availability(device: Union[int, str, list, torch.device]):
         """Validates requested device(s) and returns available equivalents, preserving input types.
 
         If a requested CUDA device is unavailable, falls back to the first available GPU or CPU.
 
         Args:
-            device (int, torch.device, or list): Device index, torch.device, or a list of them.
+            device: Device index, device string, torch.device, or a list of them.
 
         Returns:
             int, torch.device, or list: Processed device(s) with original type(s) preserved.
@@ -643,6 +669,8 @@ class Trainer:
         device_count = torch.cuda.device_count()
 
         def to_torch_device(dev):
+            if isinstance(dev, str):
+                dev = torch.device("cuda:" + dev if dev.isdigit() else dev)
             if isinstance(dev, torch.device):
                 if dev.type == "cuda":
                     if cuda_available and (dev.index is None or dev.index < device_count):

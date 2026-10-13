@@ -9,20 +9,42 @@ from typing import Dict
 from typing import Optional
 from typing import Tuple
 
-import xgboost
 import numpy as np
+import xgboost
 
+from pandas import DataFrame
 from pandas import Series
+from scipy import sparse
 
 from ..pipelines.selection.base import ImportanceEstimator
 from ..utils.logging import LoggerStream
 from ..validation.base import TrainValidIterator
 from .base import TabularDataset
 from .base import TabularMLAlgo
-from .tuning.base import Uniform, Choice
+from .tuning.base import Choice
+from .tuning.base import Uniform
 
 
 logger = logging.getLogger(__name__)
+
+
+def _sanitize_features(data):
+    """Replace non-representable XGBoost features with missing values without changing the input."""
+    values = data.data if sparse.issparse(data) else np.asarray(data)
+    limit = np.finfo(np.float32).max
+    # Comparisons also catch infinities without a full-size abs(values) copy.
+    invalid = (values > limit) | (values < -limit)
+    if not invalid.any():
+        return data
+    if isinstance(data, DataFrame):
+        # DMatrix validates these names against those saved during training.
+        return data.mask(invalid)
+    result = data.copy() if sparse.issparse(data) else values.copy()
+    if sparse.issparse(result):
+        result.data[invalid] = np.nan
+    else:
+        result[invalid] = np.nan
+    return result
 
 
 class BoostXGB(TabularMLAlgo, ImportanceEstimator):
@@ -158,8 +180,8 @@ class BoostXGB(TabularMLAlgo, ImportanceEstimator):
         train_target, train_weight = self.task.losses["xgb"].fw_func(train.target, train.weights)
         valid_target, valid_weight = self.task.losses["xgb"].fw_func(valid.target, valid.weights)
 
-        dtrain = xgboost.DMatrix(train.data, label=train_target, weight=train_weight)
-        dval = xgboost.DMatrix(valid.data, label=valid_target, weight=valid_weight)
+        dtrain = xgboost.DMatrix(_sanitize_features(train.data), label=train_target, weight=train_weight)
+        dval = xgboost.DMatrix(_sanitize_features(valid.data), label=valid_target, weight=valid_weight)
 
         with redirect_stdout(LoggerStream(logger)):
             early_stopping_params = {
@@ -200,7 +222,7 @@ class BoostXGB(TabularMLAlgo, ImportanceEstimator):
             Predicted target values.
 
         """
-        pred = self.task.losses["xgb"].bw_func(model.predict(xgboost.DMatrix(dataset.data)))
+        pred = self.task.losses["xgb"].bw_func(model.predict(xgboost.DMatrix(_sanitize_features(dataset.data))))
 
         return pred
 

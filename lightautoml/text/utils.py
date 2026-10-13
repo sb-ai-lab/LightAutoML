@@ -1,16 +1,17 @@
 """Text utility script."""
 
 import os
-import numpy as np
 import random
+
+from typing import Dict
+from typing import List
+from typing import Sequence
+from typing import Union
+
+import numpy as np
 import torch
 
 from sklearn.utils.murmurhash import murmurhash3_32
-
-from typing import List
-from typing import Dict
-from typing import Sequence
-from typing import Union
 
 
 _dtypes_mapping = {
@@ -118,7 +119,7 @@ def parse_devices(dvs, is_dp: bool = False) -> tuple:
                 return torch.device("cpu"), None
             else:
                 ids.append(int(_device))
-                _device = torch.device(int(_device))
+                _device = torch.device(f"cuda:{int(_device)}")
 
         elif isinstance(_device, int):
             ids.append(_device)

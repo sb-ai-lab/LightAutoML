@@ -8,10 +8,13 @@ from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Union
+
 import numpy as np
 import torch
 import torch.nn as nn
+
 from ..tasks.base import Task
+
 
 # Import TabM only if available.
 try:

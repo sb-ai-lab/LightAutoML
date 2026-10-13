@@ -73,7 +73,8 @@ class ColorFeatures:
 
         """
         # TODO: add value range check
-        hist = cv2.calcHist([img], [0], mask=None, histSize=[self.hist_size], ranges=(0, 255))[:, 0]
+        # OpenCV 4 returns (n_bins, 1), while OpenCV 5 returns (n_bins,).
+        hist = cv2.calcHist([img], [0], mask=None, histSize=[self.hist_size], ranges=(0, 256)).reshape(-1)
 
         return list(hist / hist.sum())
 

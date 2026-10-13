@@ -1,22 +1,31 @@
 """Torch models."""
 
 from collections import OrderedDict
-from typing import List, Tuple, Type
+from typing import List
 from typing import Optional
+from typing import Tuple
+from typing import Type
 from typing import Union
 
 import numpy as np
 import torch
 import torch.nn as nn
-from ..tabnet.utils import TabNetEncoder, _initialize_non_glu
-from .autoint.autoint_utils import AttnInteractionBlock, LeakyGate
+
+from ..tabnet.utils import TabNetEncoder
+from ..tabnet.utils import _initialize_non_glu
+from .autoint.autoint_utils import AttnInteractionBlock
+from .autoint.autoint_utils import LeakyGate
 from .autoint.ghost_norm import GhostBatchNorm
 from .fttransformer.fttransformer_utils import Transformer
-from .node_nn_model import DenseODSTBlock, MeanPooling
+from .node_nn_model import DenseODSTBlock
+from .node_nn_model import MeanPooling
+
 
 # Import tabm only if available.
 try:
-    from tabm import EnsembleView, make_tabm_backbone, LinearEnsemble
+    from tabm import EnsembleView
+    from tabm import LinearEnsemble
+    from tabm import make_tabm_backbone
 
     TABM_AVAILABLE = True
 except ImportError:
@@ -40,7 +49,7 @@ class GaussianNoise(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward-pass."""
         if self.training:
-            return x + torch.randn(x.size(), device=self.device) * self.stddev
+            return x + torch.randn_like(x) * self.stddev
         return x
 
 
@@ -61,7 +70,7 @@ class UniformNoise(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward-pass."""
         if self.training:
-            return x + (torch.rand(x.size(), device=self.device) - 0.5) * self.stddev
+            return x + (torch.rand_like(x) - 0.5) * self.stddev
         return x
 
 
@@ -1087,11 +1096,11 @@ class FTTransformer(nn.Module):
 
         """
         cls_token = torch.unsqueeze(
-            self.cls_token(torch.ones(embedded.shape[0], dtype=torch.int).to(self.device)), dim=1
+            self.cls_token(torch.ones(embedded.shape[0], dtype=torch.long, device=embedded.device)), dim=1
         )
         x = torch.cat((cls_token, embedded), dim=1)
         x = self.transformer(x)
-        x_mask = torch.ones(x.shape, dtype=torch.bool).to(self.device)
+        x_mask = torch.ones_like(x, dtype=torch.bool)
         pool_tokens = self.pooling(x=x, x_mask=x_mask)
         if isinstance(self.pooling, SequenceIndentityPooler):
             pool_tokens = pool_tokens[:, 0]

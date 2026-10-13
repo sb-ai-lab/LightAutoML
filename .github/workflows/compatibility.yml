@@ -1,0 +1,79 @@
+name: Dependency compatibility
+
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+
+jobs:
+  regression-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - python: "3.10"
+            constraints: legacy
+            torch: "2.2.2"
+            torchvision: "0.17.2"
+            extras: nlp
+          - python: "3.12"
+            constraints: legacy
+            torch: "2.2.2"
+            torchvision: "0.17.2"
+            extras: nlp
+          - python: "3.14"
+            constraints: latest
+            torch: "2.14.1"
+            torchvision: "0.29.1"
+            extras: nlp,cv,report
+    env:
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      HF_HUB_OFFLINE: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install CPU dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "torch==${{ matrix.torch }}" "torchvision==${{ matrix.torchvision }}" --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -c tests/constraints/${{ matrix.constraints }}.txt -e '.[${{ matrix.extras }}]' pytest pyarrow
+          python -m pip check
+      - name: Run offline regression tests
+        run: |
+          legacy_warnings=()
+          if [ '${{ matrix.constraints }}' = legacy ]; then
+            # PyTorch 2.2's circular import: arogozhnikov/einops#315.
+            legacy_warnings=(-W 'ignore:allow_ops_in_compiled_graph failed to import torch:ImportWarning')
+          fi
+          python -m pytest -q -W error "${legacy_warnings[@]}" \
+            tests/unit/test_ml_algo \
+            tests/unit/test_transformers \
+            tests/unit/test_text \
+            tests/unit/test_tasks \
+            tests/unit/test_validation \
+            tests/unit/test_reader \
+            tests/unit/test_image \
+            tests/unit/test_automl/test_presets/test_tabular_compatibility.py
+
+  optional-feature-generation:
+    runs-on: ubuntu-latest
+    env:
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+      - name: Install compatible AFG dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "torch==2.14.1" --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -c tests/constraints/afg.txt -e '.[afg]' pytest
+          python -m pip check
+      - name: Run feature-generation regression
+        run: python -m pytest -q -W error tests/unit/test_optional/test_afg_compatibility.py
