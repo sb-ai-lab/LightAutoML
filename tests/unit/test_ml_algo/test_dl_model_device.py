@@ -186,6 +186,24 @@ def test_saved_cuda_index_is_remapped_when_fewer_gpus_are_available(monkeypatch)
     assert Trainer.validate_device_availability("cuda:3") == torch.device("cuda:0")
 
 
+@pytest.mark.parametrize("device", ["cpu", torch.device("cpu")])
+@pytest.mark.parametrize("multigpu", [False, True])
+def test_explicit_cpu_device_overrides_saved_cuda_ids(device, multigpu, monkeypatch):
+    dataset = _make_cat_binary_dataset(n_samples=160)
+    algo = _make_torch_algo("autoint", "cpu")
+    algo.fit_predict(FoldsIterator(dataset))
+    expected = algo.predict(dataset).data
+    algo.params["device_ids"] = [0, 1]
+    algo.params["multigpu"] = multigpu
+    algo.params["device"] = device
+    # A CPU request must win even if CUDA is available on this machine.
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: True)
+    actual = algo.predict(dataset).data
+    assert algo.params["device"] == torch.device("cpu")
+    assert algo.params["device_ids"] is None
+    np.testing.assert_allclose(actual, expected)
+
+
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="Requires a real CUDA GPU")
 @pytest.mark.parametrize("model_name", ["tabnet", "autoint", "fttransformer"])
 def test_real_gpu_training_then_cpu_prediction(model_name, monkeypatch):

@@ -662,8 +662,19 @@ class TorchModel(TabularMLAlgo):
 
         # model could be trained on another machine (e.g. with GPU),
         # so the device stored in params may be unavailable here - re-validate it
-        devices = self.params.get("device_ids") or self.params["device"]
-        self.params["device"], self.params["device_ids"] = parse_devices(devices, self.params["multigpu"])
+        device, device_ids = parse_devices(self.params["device"], self.params["multigpu"])
+        saved_ids = self.params.get("device_ids")
+        if (
+            self.params["multigpu"]
+            and device.type == "cuda"
+            and device_ids is None
+            and saved_ids
+            and (device.index is None or device.index == saved_ids[0])
+        ):
+            # Keep a saved multi-GPU selection only while its primary device
+            # is still requested. Explicit device overrides take precedence.
+            device, device_ids = parse_devices(saved_ids, True)
+        self.params["device"], self.params["device_ids"] = device, device_ids
 
         dataloaders = self.get_dataloaders_from_dicts({"test": dataset.to_pandas()})
 

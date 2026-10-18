@@ -50,6 +50,8 @@ At prediction time, unavailable CUDA devices fall back to CPU. When a saved
 CUDA index no longer exists but CUDA is available, the trainer uses the first
 available GPU. Constructor parameters are updated before modules allocate
 tensors. Tensors created during forward passes follow the input device.
+An explicit CPU request takes precedence over saved multi-GPU IDs and clears
+the saved parallel-device selection.
 
 The checkpoint reader continues to accept existing in-memory and file-based
 states, including NumPy snapshot-ensemble metadata. Checkpoints, like joblib
@@ -65,7 +67,16 @@ float32 range as missing values during training, validation and prediction.
 Input datasets are not modified. Sparse inputs keep their sparse structure,
 including the distinction between explicit zero and a missing sparse entry.
 Pandas inputs retain column names and indexes for XGBoost's feature validation.
+Nullable pandas and Arrow numeric columns retain their dtypes and existing
+missing values during sanitization.
 Invalid targets and weights still raise the underlying model's error.
+
+The Linux CUDA wheels of XGBoost 3.3.0 and 3.4.1 were observed to raise
+``cudaErrorNoDevice`` for multiclass training with ``device="cpu"`` when an
+NVIDIA driver is installed but all GPUs are hidden with
+``CUDA_VISIBLE_DEVICES=""``. This also reproduces in a direct ``xgboost.train``
+call without LightAutoML. Hiding GPUs on a driver-equipped machine therefore
+does not reproduce the driver-free CPU environment used by compatibility CI.
 
 Only piecewise numeric embeddings compute quantile bins. For compatibility,
 bins retain their existing fitting population: the first fold's combined

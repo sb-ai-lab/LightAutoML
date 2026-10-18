@@ -77,3 +77,34 @@ def test_pandas_sanitization_preserves_feature_names_for_prediction():
     pd.testing.assert_index_equal(sanitized.index, dataset.data.index)
     assert np.isfinite(model.predict(dataset).data).all()
     assert np.isinf(dataset.data.iloc[0, 0])
+
+
+@pytest.mark.parametrize("dtype", ["Int64", "Float64", "float64[pyarrow]"])
+def test_nullable_pandas_features_fit_and_predict(dtype):
+    if "pyarrow" in dtype:
+        pytest.importorskip("pyarrow")
+    frame = pd.DataFrame({"a": [0, None, 2, 3] * 10, "b": np.arange(40)}, dtype=dtype)
+    assert _sanitize_features(frame) is frame
+    if dtype != "Int64":
+        frame.iloc[[0, 2, 4, 6], 0] = [np.inf, -np.inf, 1e300, -1e300]
+    original = frame.copy(deep=True)
+    expected = frame.copy(deep=True)
+    if dtype != "Int64":
+        expected.iloc[[0, 2, 4, 6], 0] = pd.NA
+    pd.testing.assert_frame_equal(_sanitize_features(frame), expected)
+    pd.testing.assert_frame_equal(frame, original)
+
+    dataset = PandasDataset(
+        frame,
+        roles={name: NumericRole(frame[name].dtype) for name in frame},
+        task=Task("binary"),
+        target=pd.Series(np.tile([0, 1, 1, 0], 10), dtype=np.float32),
+        folds=pd.Series(np.arange(40) % 2),
+    )
+    model = BoostXGB(default_params={"n_estimators": 3, "early_stopping_rounds": 2, "nthread": 1})
+    oof = model.fit_predict(FoldsIterator(dataset)).data
+    predictions = model.predict(dataset).data
+    assert oof.shape == predictions.shape == (40, 1)
+    assert np.isfinite(oof).all()
+    assert np.isfinite(predictions).all()
+    pd.testing.assert_frame_equal(dataset.data, original)

@@ -30,10 +30,14 @@ logger = logging.getLogger(__name__)
 
 def _sanitize_features(data):
     """Replace non-representable XGBoost features with missing values without changing the input."""
-    values = data.data if sparse.issparse(data) else np.asarray(data)
+    values = data.data if sparse.issparse(data) else data if isinstance(data, DataFrame) else np.asarray(data)
     limit = np.finfo(np.float32).max
     # Comparisons also catch infinities without a full-size abs(values) copy.
     invalid = (values > limit) | (values < -limit)
+    if isinstance(invalid, DataFrame):
+        # Nullable pandas/Arrow columns must not become object arrays with pd.NA.
+        # Existing missing values are already valid XGBoost inputs.
+        invalid = invalid.fillna(False).to_numpy(dtype=bool)
     if not invalid.any():
         return data
     if isinstance(data, DataFrame):
