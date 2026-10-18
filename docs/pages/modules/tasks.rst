@@ -5,6 +5,12 @@
 lightautoml.tasks
 ==============================
 
+See :doc:`../Advanced_metrics` for the metric catalog, parameters and examples.
+
+.. toctree::
+    :hidden:
+
+    ../Advanced_metrics
 
 Task Class
 ----------
@@ -56,3 +62,9 @@ Functions
     roc_auc_ovr
     rmsle
     auc_mu
+
+
+Metric lookup
+-------------
+
+.. autofunction:: lightautoml.tasks.metrics.get_metric

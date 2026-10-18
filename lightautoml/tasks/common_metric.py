@@ -15,6 +15,8 @@ from sklearn.metrics import mean_squared_log_error
 from sklearn.metrics import r2_score
 from sklearn.metrics import roc_auc_score
 
+from .metrics import _METRICS
+
 
 def mean_quantile_error(
     y_true: np.ndarray,
@@ -350,5 +352,10 @@ _valid_str_metric_names = {
     "multi:reg": _valid_str_multireg_metric_names,
     "multilabel": _valid_str_multilabel_metric_names,
 }
+
+for _task_name, _metric_dict in _valid_str_metric_names.items():
+    for _metric_name, _spec in _METRICS[_task_name].items():
+        if _metric_name not in _metric_dict or (_task_name == "multiclass" and _metric_name.startswith("f1_")):
+            _metric_dict[_metric_name] = _spec.func
 
 _valid_metric_args = {"quantile": ["q"], "huber": ["a"], "fair": ["c"]}
