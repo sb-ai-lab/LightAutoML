@@ -82,6 +82,29 @@ every observation and output.
 their own copies of the model and data. Use ``n_jobs=1`` when memory is limited;
 it is required for models containing neural networks.
 
+GPU-trained models
+~~~~~~~~~~~~~~~~~~
+
+SSWARM's NumPy sampling and accumulation run on the CPU. Prediction can use a GPU
+if the fitted model is configured for GPU inference. Training on a GPU does not
+require using a GPU for subsequent SHAP calculations or retraining the model.
+
+LightAutoML's CatBoost prediction calls use the CPU evaluator by default, even
+after GPU training. For XGBoost, select CPU inference on each fitted booster with
+``booster.set_param({"device": "cpu"})``. For a fitted ``TorchModel``, set
+``algo.params["device"] = torch.device("cpu")``, clear ``device_ids`` to ``None``
+and set ``multigpu`` to ``False``. Apply this to every relevant fitted algorithm
+in the pipeline; changing the preset's training ``gpu_ids`` alone is insufficient.
+Select CPU inference before serialization to avoid XGBoost's GPU fallback
+warnings when loading without CUDA.
+
+``tests/integration/test_sswarm_gpu.py`` checks GPU training followed by SSWARM
+for CatBoost, XGBoost, MLP and FTTransformer on small numeric binary datasets.
+It compares predictions and SHAP values after explicit CPU selection and again
+after loading the model in a separate process with ``CUDA_VISIBLE_DEVICES=""``.
+The test requires a CUDA GPU for training and is skipped when one is unavailable.
+This covers explicit device selection, not every model's automatic fallback.
+
 Sampling budget
 ~~~~~~~~~~~~~~~
 
