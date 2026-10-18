@@ -9,6 +9,7 @@ from typing import Union
 
 import numpy as np
 
+from ..common_metric import _valid_str_metric_names
 from .base import Loss
 from .base import fw_rmsle
 
@@ -188,6 +189,15 @@ class CBLoss(Loss):
         self.metric_params = {}
         if metric_params is not None:
             self.metric_params = metric_params
+
+        if isinstance(metric, str) and (
+            metric not in _cb_metrics_dict[task_name]
+            or (self.metric_params and metric not in _cb_metric_params_mapping)
+        ):
+            # Match the existing callable-metric policy, including CPU/GPU and multioutput training.
+            # Model selection still evaluates the requested Task metric on held-out predictions.
+            logger.info("CatBoost uses its objective for early stopping with metric %s.", metric)
+            metric = _valid_str_metric_names[task_name][metric]
 
         if type(metric) is str:
             self.metric = None

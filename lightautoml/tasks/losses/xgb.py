@@ -12,6 +12,7 @@ from typing import Union
 import numpy as np
 import xgboost
 
+from ..common_metric import _valid_str_metric_names
 from ..common_metric import _valid_str_multiclass_metric_names
 from ..utils import infer_gib
 from .base import Loss
@@ -244,14 +245,17 @@ class XGBLoss(Loss):
                 self.metric_params = metric_params
 
             _metric_dict = _xgb_metrics_dict[task_name]
-            _metric = _metric_dict.get(metric)
+            _metric = _metric_dict.get(metric, _valid_str_metric_names[task_name][metric])
+            if self.metric_params and metric not in ("quantile", "huber", "fair"):
+                _metric = _valid_str_metric_names[task_name][metric]
             if type(_metric) is str:
                 self.metric_name = _metric
                 self.feval = None
             else:
                 self.metric_name = None
-                # _metric = CustomWrapper(_metric)
-                self.feval = self.metric_wrapper(_metric, greater_is_better, {})
+                self.feval = self.metric_wrapper(_metric, greater_is_better, self.metric_params)
+                # Python metric arguments must not leak into XGBoost training parameters.
+                self.metric_params = {}
 
         else:
             self.metric_name = None
