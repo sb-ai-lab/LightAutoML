@@ -77,9 +77,7 @@ class TestBenchmarkInstallation(unittest.TestCase):
         self.assertEqual(calls[0]["python"], sys.executable)
         self.assertEqual(calls[0]["args"], ["install", "."])
         self.assertEqual(calls[0]["cwd"], str(self.root))
-        self.assertEqual(
-            (self.root / "pyproject.toml").read_text(), '[tool.poetry.dependencies]\npython = "~3.10.0"\n'
-        )
+        self.assertEqual((self.root / "pyproject.toml").read_text(), '[tool.poetry.dependencies]\npython = "~3.10.0"\n')
 
     def test_pip_failure_stops_the_installer(self):
         """Report installation failure instead of continuing to benchmark imports."""
