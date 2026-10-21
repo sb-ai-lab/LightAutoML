@@ -4,9 +4,11 @@ Guidance for coding agents working in the LightAutoML repository.
 
 ## Project overview
 
-LightAutoML is a Python library for automated machine learning. The supported
-Python range is `>=3.8,<4.0`; do not introduce syntax or standard-library APIs
-that exclude a supported version.
+LightAutoML is a Python library for automated machine learning. Read the
+supported Python range from `tool.poetry.dependencies.python` in
+[pyproject.toml](pyproject.toml) before making compatibility decisions. Do not
+duplicate version numbers here. Keep syntax and standard-library APIs
+compatible with the declared range.
 
 Keep changes focused on the request and, when available, its linked issue or
 discussion. The contribution process expects substantial work to be discussed
