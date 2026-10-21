@@ -1,4 +1,4 @@
-name: ClearML benchmark
+name: benchmark
 
 on:
   workflow_dispatch:

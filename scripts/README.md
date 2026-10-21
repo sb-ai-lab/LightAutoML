@@ -27,10 +27,10 @@
 
     ```
 
-## ClearML benchmark in GitHub Actions
+## Benchmark in GitHub Actions
 
-The `ClearML benchmark` workflow (`.github/workflows/benchmark_clearml.yml`)
-is started manually from **Actions → ClearML benchmark → Run workflow**.
+The `benchmark` workflow (`.github/workflows/benchmark.yml`)
+is started manually from **Actions → benchmark → Run workflow**.
 Select the branch or tag to benchmark and supply a dataset name, or leave it
 empty to select random datasets from `dataset_project`. `n_datasets` defaults
 to 5; use -1 to submit all matching datasets.
