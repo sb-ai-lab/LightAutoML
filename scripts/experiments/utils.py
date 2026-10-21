@@ -43,13 +43,11 @@ class Timer:  # noqa: D101
 
 def install_lightautoml():
     """Install lightautoml using pip."""
-    subprocess.run([sys.executable, "scripts/poetry_fix.py", "-f"], check=True)
     subprocess.run([sys.executable, "-m", "pip", "install", "."], check=True)
 
 
 #        .pip install --upgrade pip
 # poetry config virtualenvs.create false --local
-# poetry run python ./scripts/poetry_fix.py -c
 # ls -la
 # poetry run pip install pillow==9.2.0
 # poetry install

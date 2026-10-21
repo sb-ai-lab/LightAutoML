@@ -2,7 +2,6 @@
 
 import json
 import os
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -46,8 +45,6 @@ class TestBenchmarkInstallation(unittest.TestCase):
         temporary = tempfile.TemporaryDirectory(prefix="benchmark install ")
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name)
-        (self.root / "scripts").mkdir()
-        shutil.copyfile(REPOSITORY / "scripts" / "poetry_fix.py", self.root / "scripts" / "poetry_fix.py")
         (self.root / "pyproject.toml").write_text('[tool.poetry.dependencies]\npython = "~3.10.0"\n')
         (self.root / "pip.py").write_text(FAKE_PIP)
         self.log = self.root / "pip_calls.jsonl"
@@ -80,7 +77,9 @@ class TestBenchmarkInstallation(unittest.TestCase):
         self.assertEqual(calls[0]["python"], sys.executable)
         self.assertEqual(calls[0]["args"], ["install", "."])
         self.assertEqual(calls[0]["cwd"], str(self.root))
-        self.assertIn('python = ">=3.10,<4.0"', (self.root / "pyproject.toml").read_text())
+        self.assertEqual(
+            (self.root / "pyproject.toml").read_text(), '[tool.poetry.dependencies]\npython = "~3.10.0"\n'
+        )
 
     def test_pip_failure_stops_the_installer(self):
         """Report installation failure instead of continuing to benchmark imports."""
@@ -91,16 +90,6 @@ class TestBenchmarkInstallation(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("CalledProcessError", result.stderr)
         self.assertIn("exit status 7", result.stderr)
-
-    def test_preparation_failure_prevents_pip_installation(self):
-        """Stop before pip when the Python compatibility preparation fails."""
-        (self.root / "scripts" / "poetry_fix.py").unlink()
-
-        result = self.run_installer()
-
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("CalledProcessError", result.stderr)
-        self.assertFalse(self.log.exists())
 
 
 if __name__ == "__main__":
