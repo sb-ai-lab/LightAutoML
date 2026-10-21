@@ -29,38 +29,11 @@ following project files as the authoritative source for their respective area:
 When repository configuration and prose disagree, follow the executable
 configuration and mention the discrepancy in the handoff.
 
-## Branch naming
-
-Do not create or switch branches unless the user requests it. When branch
-creation is requested, take the base branch from the request or linked issue;
-do not guess between `master`, `development`, or a release branch. Name new
-work branches as:
-
-```text
-<type>/issue-<number>-<short-description>
-```
-
-Use lowercase kebab-case for `<short-description>`: keep it descriptive,
-English, and brief. Choose one of these types:
-
-- `feat` — new user-facing capability.
-- `fix` — bug fix.
-- `docs` — documentation-only change.
-- `test` — test-only change.
-- `refactor` — behavior-preserving restructuring.
-- `chore` — tooling, CI, or maintenance work.
-- `release` — version preparation or release maintenance.
-
-Examples: `feat/issue-184-python-313-support`,
-`fix/issue-271-handle-empty-target`, and
-`docs/issue-305-installation-example`.
-
-Do not use spaces, uppercase letters, opaque personal names, or generic names
-such as `work` or `changes`. For a small change without an issue, omit the
-issue segment (for example, `docs/update-contributing-guide`). Flag a missing
-issue before pull-request preparation rather than creating one without
-permission. Do not push branches named `experiment/*` to the main LightAutoML
-repository: its pre-push hook blocks them.
+Follow the shared contributor rules in
+[Branch naming](.github/CONTRIBUTING.md#branch-naming),
+[Code conventions](.github/CONTRIBUTING.md#code-conventions),
+[Tests and checks](.github/CONTRIBUTING.md#tests-and-checks), and
+[Preparing a release](.github/CONTRIBUTING.md#preparing-a-release).
 
 ## Repository layout
 
@@ -73,8 +46,7 @@ repository: its pre-push hook blocks them.
   - `text/`, `image/`, `addons/`, `report/` — optional and domain-specific
     functionality.
   - `utils/` — shared utilities such as logging, timers, and profiling.
-- `tests/` — unit and integration tests. Add or update tests for every
-  behavior change.
+- `tests/` — unit and integration tests.
 - `docs/` — Sphinx documentation and tutorials.
 - `examples/` — runnable usage examples and notebooks.
 - `scripts/` — repository maintenance and experiment helpers.
@@ -89,74 +61,11 @@ repository: its pre-push hook blocks them.
   `git clean`, or forced checkout to discard changes.
 - Do not commit, push, create a pull request, or modify remote state unless the
   user explicitly requests it.
-
-## Code conventions
-
-- Follow PEP 8 and the repository tooling configuration.
-- Format Python with Black. The configured maximum line length is 120.
-- Keep imports compatible with the configured isort profile: one import per
-  line and two blank lines after the import block.
-- Preserve public APIs unless the task explicitly requires a compatibility
-  change. When changing an API, update its tests, documentation, and examples
-  as applicable.
-- Avoid broad refactors in a bug fix. Maintain existing naming, logging, type
-  annotations, error handling, and data-interface conventions in the touched
-  module.
-- Do not add large datasets, model artifacts, generated documentation, or
-  secrets to the repository.
-
-## Tests and checks
-
-Run the narrowest relevant check first, then broaden it when practical:
-
-```bash
-# One test module or directory; choose an installed supported Python environment
-tox -e py312 -- -x tests/unit/test_utils
-
-# All tests for that Python version
-tox -e py312
-
-# Formatting, linting, and repository hooks
-tox -e lint
-
-# Spelling
-tox -e codespell
-
-# Documentation
-tox -e docs
-
-# Complete project check before a pull request
-tox --parallel 6
-```
-
-Replace `py312` with an available environment declared in `tox.ini`, such as
-`py38`, `py39`, `py310`, or `py311`. Do not claim that an unavailable Python
-version was tested.
-
-The test environments install all extras and run pytest with warnings treated
-as errors (apart from the explicit exceptions in `tox.ini`). Do not suppress a
-new warning merely to make a test pass; fix its cause or explain why it is
-unavoidable. If a full test suite cannot be run, state exactly what was run
-and why the remaining checks were skipped.
-
-`tox -e lint` installs and runs the pre-commit hooks. The hook set includes
-Black, Flake8, trailing-whitespace and EOF checks, YAML validation, rstcheck,
-and the project Python-version updater; spelling is checked separately by
-`tox -e codespell`. The lint environment writes a pre-commit hook into Git
-metadata, and hooks can modify files, including `pyproject.toml`. Always inspect
-`git status` and `git diff` afterward and keep only changes relevant to the
-task.
-
-For tests of machine-learning behavior:
-
-- Prefer small deterministic synthetic fixtures and set `random_state` or all
-  applicable random seeds.
-- Avoid external network access, dataset or model downloads, GPU requirements,
-  and unnecessarily expensive training in unit tests.
-- Preserve index alignment, feature names, shapes, dtypes, sparse/dense
-  behavior, and train/validation separation where those are part of the API.
-- Compare floating-point results with suitable tolerances instead of exact
-  equality.
+- Do not create or switch branches unless the user requests it. Take the base
+  branch from the request or linked issue; if none is specified, ask the user
+  before creating the branch.
+- Flag a missing issue before pull-request preparation rather than creating
+  one without permission.
 
 ## Code Review Rules
 
