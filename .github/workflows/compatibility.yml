@@ -61,6 +61,14 @@ jobs:
 
   optional-feature-generation:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - constraints: afg
+            extras: afg
+          - constraints: afg-pandas3
+            extras: all
     env:
       OMP_NUM_THREADS: "1"
       MKL_NUM_THREADS: "1"
@@ -72,8 +80,8 @@ jobs:
       - name: Install compatible AFG dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install "torch==2.14.1" --index-url https://download.pytorch.org/whl/cpu
-          python -m pip install -c tests/constraints/afg.txt -e '.[afg]' pytest
+          python -m pip install "torch==2.14.1" "torchvision==0.29.1" --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -c tests/constraints/${{ matrix.constraints }}.txt -e '.[${{ matrix.extras }}]' pytest 'dask[distributed]'
           python -m pip check
       - name: Run feature-generation regression
         run: python -m pytest -q -W error tests/unit/test_optional/test_afg_compatibility.py

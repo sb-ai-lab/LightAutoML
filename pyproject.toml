@@ -35,8 +35,7 @@ python = ">=3.10,<4.0"
 
 pandas = [
     {version = "*"},
-    # Woodwork 0.31 relies on cached DataFrame accessors, removed in pandas 3.
-    {version = ">=2.0,<3", markers = "extra == 'afg' or extra == 'all'"},
+    {version = ">=2.0", markers = "extra == 'afg' or extra == 'all'"},
 ]
 numpy = ">=1.22"
 scipy = "*"

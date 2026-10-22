@@ -20,8 +20,10 @@ Reproducible dependency snapshots are in ``tests/constraints/legacy.txt`` and
 on 2026-10-13. These constraints apply to tests, not to user installations.
 The dedicated compatibility workflow runs the regression tests without model
 downloads or a GPU, with both older and current dependency versions.
-The AFG extra is tested separately with ``tests/constraints/afg.txt``; its
-pandas constraint cannot be combined with the pandas 3 snapshot.
+AFG is also tested with pandas 2 (``tests/constraints/afg.txt``) and the complete
+``all`` extra with pandas 3 (``tests/constraints/afg-pandas3.txt``). Both jobs
+check dependency consistency and exercise feature selection, relational and
+temporal features, serialization and parallel computation.
 Legacy jobs pin Arrow to a NumPy 1 compatible release and allow only the
 specific ``ImportWarning`` from
 `PyTorch 2.2's circular einops import <https://github.com/arogozhnikov/einops/issues/315>`_.
@@ -34,12 +36,37 @@ retained; changing them would also change neural-network inputs and training.
 Color histograms accept both OpenCV 4's column vectors and OpenCV 5's flat
 arrays, and include the full uint8 range, including white pixels (255).
 
-The optional ``afg``/``all`` extra currently requires ``pandas>=2,<3`` and
-``setuptools<82``. Featuretools' current Woodwork dependency relies on cached
-DataFrame accessors (removed in pandas 3), and still imports ``pkg_resources``
-(removed in setuptools 82). These restrictions do not apply to the core,
-NLP, CV or report extras, which can use pandas 3 and current setuptools.
-Woodwork also emits a deprecation warning for its ``pkg_resources`` import.
+The optional ``afg``/``all`` extras support pandas 2 and 3. Woodwork through 0.31
+relies on cached accessors, removed in pandas 3. On pandas 3 only, constructing
+or unpickling a ``FeatureGeneratorTransformer`` installs an adapter that caches
+``DataFrame.ww`` and ``Series.ww`` on their owners. Importing LightAutoML or its
+generator module does not activate it. Initialization is idempotent; pandas 2
+and Woodwork 0.32 or later retain their original behavior. The version guard
+should be revisited when Woodwork releases native pandas 3 support.
+
+The replacement descriptors affect **all Woodwork users in the process**.
+Other pandas accessors and pandas' general accessor implementation are unchanged.
+Woodwork uses weak references to the owning objects, so caching does not add
+a reference cycle. Dask workers initialize the adapter before receiving AFG's
+EntitySets. Parallel AFG requires Dask's optional distributed dependencies
+(``pip install "dask[distributed]"``), as required by Featuretools.
+LightAutoML calls Featuretools' public serial calculator in Dask workers to
+avoid the obsolete Dask APIs in Featuretools 1.31's parallel backend
+(`upstream issue <https://github.com/alteryx/featuretools/issues/2767>`_).
+Workers receive the complete EntitySet and a common cutoff time. Feature
+columns are partitioned instead of rows, preserving history for order-dependent
+primitives such as ``TIME_SINCE_PREVIOUS``. The number of workers is capped by
+the number of requested features.
+
+On pandas 2, Featuretools 1.31's use of NumPy ``sum`` in groupby emits a
+``FutureWarning`` about pandas' future callable dispatch. The compatibility
+tests exempt this specific upstream warning on pandas 2 only. Application
+warning filters and aggregation semantics remain unchanged.
+
+The ``afg``/``all`` extras still require ``setuptools<82`` because Woodwork
+imports ``pkg_resources`` (removed in setuptools 82). Woodwork also emits a
+deprecation warning for that import. This restriction does not apply to the
+core, NLP, CV or report extras.
 See the
 `setuptools removal notice <https://setuptools.pypa.io/en/latest/pkg_resources.html>`_.
 
