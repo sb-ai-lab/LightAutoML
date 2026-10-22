@@ -1,9 +1,11 @@
 """Run tabular automl using ClearML logging."""
 import argparse
 import os
-import pandas as pd
+import subprocess
+
 import clearml
 import numpy as np
+import pandas as pd
 
 
 def bench_bonus(path_to_bonus, task_name, project):  # noqa D103
@@ -79,21 +81,30 @@ def main(  # noqa D103
     dataset_partial_name: str = None,
     n_datasets: int = -1,
     save_model: bool = False,
+    repo: str = None,
+    branch: str = None,
+    commit: str = None,
 ):
+    if n_datasets == 0 or n_datasets < -1:
+        raise ValueError("n_datasets must be -1 or a positive integer.")
+    if cpu_limit <= 0 or memory_limit <= 0:
+        raise ValueError("CPU and memory limits must be positive integers.")
+
     if dataset_name is not None:
         dataset_list = [dataset_name]
     else:
-        dataset_list = pd.DataFrame(
-            clearml.Dataset.list_datasets(
-                dataset_project=dataset_project,
-                partial_name=dataset_partial_name,
-                tags=tags,
-                ids=None,
-                only_completed=True,
-                recursive_project_search=True,
-                include_archived=False,
-            )
+        datasets = clearml.Dataset.list_datasets(
+            dataset_project=dataset_project,
+            partial_name=dataset_partial_name,
+            tags=tags,
+            ids=None,
+            only_completed=True,
+            recursive_project_search=True,
+            include_archived=False,
         )
+        if not datasets:
+            raise ValueError("No one dataset was found with passed parameters.")
+        dataset_list = pd.DataFrame(datasets)
         dataset_list = (
             dataset_list.sort_values("version", ascending=False).drop_duplicates(subset=["name"]).to_dict("records")
         )
@@ -108,26 +119,47 @@ def main(  # noqa D103
             raise ValueError("No one dataset was found with passed parameters.")
 
         np.random.shuffle(dataset_list)
-        dataset_list = dataset_list[:n_datasets]
+        if n_datasets != -1:
+            dataset_list = dataset_list[:n_datasets]
 
     print(f"Running {len(dataset_list)} datasets:")
 
     for dataset in dataset_list:
         if isinstance(dataset, str):
             dataset_name = dataset
-            tags = [""]
+            task_tags = []
         else:
             dataset_name = dataset["name"]
-            tags = dataset["tags"]
+            task_tags = list(dataset.get("tags") or [])
 
         curr_task_name = f"{task_name}@{dataset_name}" if task_name is not None else f"{dataset_name}"
 
-        tags.append(queue)
-        tags = f"--tags {' '.join(tags)}" if len(tags) else ""
-
-        os.system(
-            f'clearml-task --project {project} --name {curr_task_name} --script scripts/experiments/run_tabular.py --queue {queue} {tags} --docker {image} --docker_args "--cpus={cpu_limit} --memory={memory_limit}g" --args dataset={dataset_name} save_model={save_model}'
-        )
+        command = [
+            "clearml-task",
+            "--project",
+            project,
+            "--name",
+            curr_task_name,
+            "--script",
+            "scripts/experiments/run_tabular.py",
+            "--queue",
+            queue,
+            "--docker",
+            image,
+            f"--docker_args=--cpus={cpu_limit} --memory={memory_limit}g",
+            "--args",
+            f"dataset={dataset_name}",
+            f"cpu_limit={cpu_limit}",
+            f"memory_limit={memory_limit}",
+            f"save_model={save_model}",
+            "--tags",
+            *task_tags,
+            queue,
+        ]
+        for option, value in (("--repo", repo), ("--branch", branch), ("--commit", commit)):
+            if value is not None:
+                command.extend([option, value])
+        subprocess.run(command, check=True)
 
 
 if __name__ == "__main__":
@@ -146,6 +178,9 @@ if __name__ == "__main__":
     parser.add_argument("--n_datasets", type=int, help="number of datasets", default=-1)
     parser.add_argument("--min_num_obs", type=int, help="min number of samples", default=None)
     parser.add_argument("--save_model", action="store_true")
+    parser.add_argument("--repo", type=str, help="repository URL for remote tasks", default=None)
+    parser.add_argument("--branch", type=str, help="repository branch or tag for remote tasks", default=None)
+    parser.add_argument("--commit", type=str, help="commit SHA for remote tasks", default=None)
     args = parser.parse_args()
 
     if args.bonus is not None:
@@ -165,4 +200,7 @@ if __name__ == "__main__":
             n_datasets=args.n_datasets,
             min_num_obs=args.min_num_obs,
             save_model=args.save_model,
+            repo=args.repo,
+            branch=args.branch,
+            commit=args.commit,
         )
