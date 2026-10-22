@@ -2,12 +2,20 @@
 
 - [Table of contents](#table-of-contents)
   - [Contributing to LightAutoML](#contributing-to-lightautoml)
+    - [Fork and base branch](#fork-and-base-branch)
+    - [Branch naming](#branch-naming)
+    - [Submitting a pull request](#submitting-a-pull-request)
   - [Codebase structure](#codebase-structure)
   - [Developing LightAutoML](#developing-lightautoml)
     - [Installation](#installation)
-    - [Style Guide](#style-guide)
+      - [Optional Poetry workflow](#optional-poetry-workflow)
+    - [Code conventions](#code-conventions)
+    - [Tests and checks](#tests-and-checks)
       - [Automated code checking](#automated-code-checking)
-    - [Testing](#testing)
+      - [Testing machine-learning behavior](#testing-machine-learning-behavior)
+  - [Preparing a release](#preparing-a-release)
+    - [Required release benchmark](#required-release-benchmark)
+    - [Publishing and verifying the release](#publishing-and-verifying-the-release)
   - [Documentation](#documentation)
     - [Building Documentation](#building-documentation)
     - [Writing Documentation](#writing-documentation)
@@ -28,181 +36,380 @@ before implementing anything inside the project.
   and maybe your proposed solution.
 - If you need more details, please ask we will provide them ASAP.
 
-Once you implement and test your feature or bug-fix, please submit
-a Pull Request to <https://github.com/sb-ai-lab/LightAutoML>.
+Follow the workflow below to prepare your branch and submit a pull request.
 
 When adding functionality, please add examples that will fully explain it.
 Examples can be added in several ways:
 
 - [Inside the documentation](#writing-documentation)
 - [Jupyter notebooks](#adding-tutorials)
-- [Your own tests](#testing)
+- [Your own tests](#tests-and-checks)
+
+### Fork and base branch
+
+1. If you do not have write access to the repository, fork
+   [LightAutoML](https://github.com/sb-ai-lab/LightAutoML) to your GitHub account.
+   Clone your fork and add the original repository as `upstream`:
+
+   ```bash
+   git clone git@github.com:YOUR_GITHUB_USERNAME/LightAutoML.git
+   cd LightAutoML
+   git remote add upstream git@github.com:sb-ai-lab/LightAutoML.git
+   ```
+
+   Replace `YOUR_GITHUB_USERNAME` with your GitHub username. If you have write
+   access, you may clone the original repository and use `origin` as upstream.
+
+2. Use the base branch specified in the issue or agreed with the maintainers.
+   If none is specified, ask which branch to use before starting work.
+   Use the same branch as the target of your pull request.
+
+3. Fetch the latest upstream changes and create a separate work branch using
+   the naming rules below. For a fork, the commands are:
+
+   ```bash
+   git fetch upstream
+   git switch -c WORK_BRANCH upstream/BASE_BRANCH
+   ```
+
+   Replace `WORK_BRANCH` with your new branch name and `BASE_BRANCH` with the
+   agreed base branch. When working directly in the original repository,
+   replace `upstream` with `origin` in these commands.
+
+### Branch naming
+
+Name work branches as:
+
+```text
+<type>/issue-<number>-<short-description>
+```
+
+Use lowercase kebab-case for `<short-description>`: keep it descriptive,
+English, and brief. Choose one of these types:
+
+- `feat` — new user-facing capability.
+- `fix` — bug fix.
+- `docs` — documentation-only change.
+- `test` — test-only change.
+- `refactor` — behavior-preserving restructuring.
+- `chore` — tooling, CI, or maintenance work.
+- `release` — version preparation or release maintenance.
+
+Examples: `feat/issue-184-python-313-support`,
+`fix/issue-271-handle-empty-target`, and
+`docs/issue-305-installation-example`.
+
+Do not use spaces, uppercase letters, opaque personal names, or generic names
+such as `work` or `changes`. For a small change without an issue, omit the
+issue segment (for example, `docs/update-contributing-guide`). Substantial
+changes should be discussed in an issue before implementation, as described
+above. Do not push branches named `experiment/*` to the main LightAutoML
+repository.
+
+### Submitting a pull request
+
+1. Keep the change focused on the agreed issue. Add tests for changed behavior
+   and documentation or examples for new functionality. Choose the checks in
+   [Tests and checks](#tests-and-checks) that apply to your change and inspect
+   `git diff` for unintended changes.
+2. Commit your changes and push your work branch to your fork, or to the
+   original repository if you have write access:
+
+   ```bash
+   git push -u origin WORK_BRANCH
+   ```
+
+3. Open a pull request against `sb-ai-lab/LightAutoML`. Select the agreed base
+   branch as the target and your work branch as the source.
+4. Start the description from the existing
+   [pull request template](pull_request_template.md%E2%80%8E) and retain its headings:
+   - `What was done` — describe the behavior changes and the validation commands
+     and results. Explain any checks that were not run.
+   - `Why / Goal` — explain the motivation and include the goal or milestone ID
+     and title when applicable.
+   - `Related issues` — reference the actual issue, for example `#123`, or use
+     `N/A` for a small change without an issue.
+
+   Remove placeholders and instructional comments before submitting.
+5. Review the CI results and address failures and reviewer feedback. Push
+   follow-up commits to the same work branch to update the pull request.
 
 ## Codebase structure
 
-- [docs](docs) - For documenting we use [Sphinx](https://www.sphinx-doc.org/).
+- [docs](../docs) - For documenting we use [Sphinx](https://www.sphinx-doc.org/).
   It provides easy to use auto-documenting via docstrings.
-  - [Tutorials](docs/tutorials) - Notebooks with tutorials.
+  - [Tutorial notebooks](../examples/tutorials) - Notebooks used in the documentation.
+  - [Tutorial links](../docs/pages/tutorials) - Links that include the notebooks in Sphinx.
 
-- [lightautoml](lightautoml) - The code of LightAutoML library.
-  - [addons](lightautoml/addons) - Extensions of core functionality.
-  - [automl](lightautoml/automl) - The main module, which includes the AutoML class,
+- [lightautoml](../lightautoml) - The code of LightAutoML library.
+  - [addons](../lightautoml/addons) - Extensions of core functionality.
+  - [automl](../lightautoml/automl) - The main module, which includes the AutoML class,
       blenders and ready-made presets.
-  - [dataset](lightautoml/dataset) - The internal interface for working with data.
-  - [image](lightautoml/image) - The internal interface for working with image data.
-  - [ml_algo](lightautoml/ml_algo) - Modules with machine learning algorithms
+  - [dataset](../lightautoml/dataset) - The internal interface for working with data.
+  - [image](../lightautoml/image) - The internal interface for working with image data.
+  - [ml_algo](../lightautoml/ml_algo) - Modules with machine learning algorithms
       and hyperparameters tuning tools.
-  - [pipelines](lightautoml/pipelines) - Pipelines for different tasks (feature processing & selection).
-  - [reader](lightautoml/reader) - Utils for training and analysing data.
-  - [report](lightautoml/report) - Report generators and templates.
-  - [tasks](lightautoml/tasks) - Define the task to solve its loss, metric.
-  - [text](lightautoml/text) - The internal interface for working with text data.
-  - [transformers](lightautoml/transformers) - Feature transformations.
-  - [utils](lightautoml/utils) - Common util tools (Timer, Profiler, Logging).
-  - [validation](lightautoml/validation) - Validation module.
+  - [pipelines](../lightautoml/pipelines) - Pipelines for different tasks (feature processing & selection).
+  - [reader](../lightautoml/reader) - Utils for training and analysing data.
+  - [report](../lightautoml/report) - Report generators and templates.
+  - [tasks](../lightautoml/tasks) - Define the task to solve its loss, metric.
+  - [text](../lightautoml/text) - The internal interface for working with text data.
+  - [transformers](../lightautoml/transformers) - Feature transformations.
+  - [utils](../lightautoml/utils) - Common util tools (Timer, Profiler, Logging).
+  - [validation](../lightautoml/validation) - Validation module.
 
 ## Developing LightAutoML
 
 ### Installation
 
-If you are installing from the source, you will need Python 3.10 or later.
-We recommend you install an [Anaconda](https://www.anaconda.com/products/individual#download-section)
-to work with environments.
+Use Python 3.10 or later. If you have not cloned the project yet, follow
+[Fork and base branch](#fork-and-base-branch). Run the commands below from the
+`LightAutoML` repository root.
 
-1. Install poetry using [the poetry installation guide](https://python-poetry.org/docs/#installation).
+Create and activate a virtual environment:
 
-2. Clone the project to your own local machine:
-
-    ```bash
-    git clone git@github.com:sb-ai-lab/LightAutoML.git
-    cd LightAutoML
-    ```
-
-3. **Optional**: specify python for poetry
-
-    ```bash
-    poetry env use PYTHON_PATH
-    ```
-
-4. Install LightAutoML (**warning**: it may take a long time, check the ```script/poetry_fix.py``` to shorten the installation time.):
-
-    To install only necessary dependencies, without extras:
-    ```bash
-    poetry install
-    ```
-
-    To install all dependencies:
-    ```bash
-    poetry install --all-extras
-    ```
-
-    To install only specific dependency groups:
-    ```
-    poetry install -E cv -E report
-    ```
-
-After that, there is virtual environment, where you can test and implement your own code.
-So, you don't need to rebuild the full project every time.
-Each change in the code will be reflected in the library inside the environment.
-
-### Style Guide
-
-We follow [the standard python PEP8](https://www.python.org/dev/peps/pep-0008/) conventions for style.
-
-#### Automated code checking
-
-In order to automate checking of the code quality, we use
-[pre-commit](https://pre-commit.com/). For more details, see the documentation,
-here we will give a quick-start guide:
-
-1. Install and configure:
-
-```console
-tox -e lint
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
 ```
 
-2. Now, when you run `$ git commit`, there will be a pre-commit check.
-   This is going to search for issues in your code: spelling, formatting, etc.
-   In some cases, it will automatically fix the code, in other cases, it will
-   print a warning. If it automatically fixed the code, you'll need to add the
-   changes to the index (`$ git add FILE.py`) and run `$ git commit` again. If
-   it didn't automatically fix the code, but still failed, it will have printed
-   a message as to why the commit failed. Read the message, fix the issues,
-   then recommit.
-3. The pre-commit checks are done to avoid pushing and then failing. But, you
-   can skip them by running `$ git commit --no-verify`, but note that the C.I.
-   still does the check so you won't be able to merge until the issues are
-   resolved.
-If you experience any issues with pre-commit, please ask for support on the
-usual help channels.
+On Windows, use these PowerShell commands instead:
 
-### Testing
+```powershell
+py -3 -m venv .venv
+.venv\Scripts\Activate.ps1
+```
 
-Before making a pull request (despite changing only the documentation or writing new code), please check your code on tests:
+Install pip updates and the tox version used by the test workflows:
+
 ```bash
+python -m pip install --upgrade pip
+python -m pip install "tox==3.28.0"
+```
+
+For documentation-only work or running checks through tox, this setup is
+sufficient: tox installs its own dependencies. You can go directly to
+[Tests and checks](#tests-and-checks) or
+[Building Documentation](#building-documentation).
+
+To develop library code or run examples in your active environment, also
+install LightAutoML in editable mode:
+
+```bash
+python -m pip install -e .
+```
+
+Choose optional extras for the functionality you work on, for example:
+
+```bash
+python -m pip install -e ".[cv,nlp]"
+```
+
+Available extras are declared in [pyproject.toml](../pyproject.toml). Editable
+installation makes source changes available in the environment without
+reinstalling the library. Pip automatically installs the `poetry-core` build
+backend in an isolated build environment; the Poetry CLI is not required.
+
+#### Optional Poetry workflow
+
+If you prefer Poetry, install it using
+[the Poetry installation guide](https://python-poetry.org/docs/#installation)
+and run `poetry install` from the repository root. Use `poetry run` to execute
+commands in its environment. Install tox there as described above if needed.
+The publishing workflow also uses Poetry.
+
+### Code conventions
+
+- Follow [PEP 8](https://www.python.org/dev/peps/pep-0008/) and the repository
+  tooling configuration.
+- Format Python with Black. The configured maximum line length is 120.
+- Keep imports compatible with the configured isort profile: one import per
+  line and two blank lines after the import block.
+- Preserve public APIs unless the change explicitly requires a compatibility
+  change. When changing an API, update its tests, documentation, and examples
+  as applicable.
+- Avoid broad refactors in a bug fix. Maintain existing naming, logging, type
+  annotations, error handling, and data-interface conventions in the touched
+  module.
+- Do not add large datasets, model artifacts, generated documentation, or
+  secrets to the repository.
+
+### Tests and checks
+
+Follow [Installation](#installation) to create a virtual environment and
+install tox. Run the following commands from the repository root. Tox creates
+isolated environments and installs each environment's dependencies from
+[tox.ini](../tox.ini); installing LightAutoML in the outer environment is not
+required to run these checks.
+
+Choose checks according to the files and behavior you change:
+
+| Change | Checks before a pull request |
+| --- | --- |
+| Markdown prose outside the Sphinx documentation | `lint` and `codespell`; no Python test matrix is needed. |
+| Sphinx pages, docstrings, or tutorial notebooks | `lint`, `codespell`, and `docs`; run relevant tests too if code behavior changes. |
+| Library code or tests | `lint`, `codespell`, focused tests, then the full test suite for an available supported Python version; add `docs` for public API or documentation changes. |
+| Dependencies, packaging, hooks, or CI configuration | `lint`, `codespell`, and the affected tox environments; check the supported Python versions affected by the change. |
+
+Add or update tests for every behavior change. Start with the narrowest
+relevant check, then broaden it as indicated above:
+
+```bash
+# One test module or directory; choose an installed supported Python environment
+tox -e py312 -- -x tests/unit/test_utils
+
+# All tests for that Python version
+tox -e py312
+
+# Formatting, linting, and repository hooks
+tox -e lint
+
+# Spelling
+tox -e codespell
+
+# Documentation
+tox -e docs
+
+# Optional complete local matrix: all configured Python versions and checks
 tox --parallel 6
 ```
 
+Replace `py312` with an available environment declared in `tox.ini`: `py310`,
+`py311`, `py312`, `py313`, or `py314`. Each test environment requires its
+matching Python interpreter. The optional complete local matrix requires all
+of these interpreters; running tox does not install them. A documentation-only
+change does not require this matrix. Do not claim that an unavailable Python
+version was tested.
 
-To run all tests with specific Python versions:
-```bash
-tox -e py310
-```
+The test environments install the `cv`, `nlp`, and `afg` extras and run pytest
+with warnings treated as errors (apart from the explicit exceptions in
+`tox.ini`). Do not suppress a new warning merely to make a test pass; fix its
+cause or explain why it is unavoidable. If a full test suite cannot be run,
+state exactly what was run and why the remaining checks were skipped.
 
-To run specific test:
-```
-tox -e py310 -- -x tests/unit/test_utils
-```
+#### Automated code checking
 
-To run tests for specific Python versions (for example Python 3.10):
-```bash
-tox -e py310
-```
+We use [pre-commit](https://pre-commit.com/) to automate code quality checks.
+The `lint` environment installs a Git commit hook and runs the checks on all
+tracked files. The hook set includes Black, Flake8, trailing-whitespace and
+EOF checks, debug-statement checks, YAML validation, and rstcheck. Spelling
+is checked separately by the `codespell` environment.
 
+Once installed, the commit hook runs on `git commit`. Hooks can modify files.
+Always inspect `git status` and `git diff` afterward and keep only changes
+relevant to the task. If a hook fixes files, review and
+stage those changes, then retry the commit. If a check fails without fixing
+the issue, read its message, fix the cause, and retry. Skipping the commit hook
+with `git commit --no-verify` does not bypass the CI checks.
 
-Also if you develop new functionality, please add your own tests.
+#### Testing machine-learning behavior
+
+- Prefer small deterministic synthetic fixtures and set `random_state` or all
+  applicable random seeds.
+- Avoid external network access, dataset or model downloads, GPU requirements,
+  and unnecessarily expensive training in unit tests.
+- Preserve index alignment, feature names, shapes, dtypes, sparse/dense
+  behavior, and train/validation separation where those are part of the API.
+- Compare floating-point results with suitable tolerances instead of exact
+  equality.
+
+## Preparing a release
+
+Release preparation is a maintainer responsibility. Agree on the release
+branch, version, and scope, then prepare a focused release pull request using
+the [branch naming rules](#branch-naming).
+
+Before tagging the release:
+
+1. Update `tool.poetry.version` in [pyproject.toml](../pyproject.toml).
+   `lightautoml.__version__` is read from installed package metadata and does
+   not need a separate edit. Check the supported Python range, dependencies,
+   and extras.
+2. Prepare release notes covering features, fixes, dependency changes,
+   compatibility changes, and any migration steps.
+3. Obtain passing results for the supported Python test matrix, `lint`,
+   `codespell`, and `docs` as described in [Tests and checks](#tests-and-checks).
+   Unlike an ordinary documentation change, a release needs the full matrix;
+   it may be run in CI instead of on one local machine.
+4. Build the wheel and source distribution. Check their version, metadata,
+   and contents, and verify installation and a small training/prediction
+   example in clean environments for both distributions.
+5. Complete the [required release benchmark](#required-release-benchmark)
+   against the previous stable release and attach the comparison to the
+   release pull request. Unit tests alone do not establish that model quality
+   has been preserved.
+
+Record the exact candidate commit tested and benchmarked. Changes affecting
+code, dependencies, configuration, or packaging require a new candidate and
+the affected checks and benchmarks to be repeated before publication.
+
+### Required release benchmark
+
+Compare the exact release candidate with the previous stable release on the
+agreed benchmark suite under comparable conditions. Review quality per
+dataset and training/inference time, using acceptance criteria agreed before
+the runs. Require complete results and resolve confirmed regressions before
+publication.
+
+Follow the team's
+[release benchmark instructions in experimenttracking](https://tech-point.ailabtools.org/ai-lab-pmo/mltools/automl/experimenttracking/-/blob/master/docs/release-benchmark.md)
+for setup, execution, and comparison. Attach a concise benchmark conclusion
+to the release pull request and link to the detailed report in the appropriate
+workspace. Keep infrastructure details and internal experiment data there.
+
+### Publishing and verifying the release
+
+After the release pull request is approved and merged, verify that the
+release commit matches the accepted checks and benchmark evidence. Agree on
+the tag spelling and ensure its version matches `pyproject.toml`; historical
+tags use both `v0.x.y` and `v.0.x.y`.
+
+Pushing a tag matching `v*.*.*` triggers
+[publish_pypi.yml](workflows/publish_pypi.yml), which publishes using
+`LAMA_PYPI_TOKEN`. The publishing job does not wait for tests or benchmark
+acceptance; maintainers must complete the checks above before pushing the tag.
+
+After publication, check the workflow result, install the published version
+from PyPI in a clean environment, and verify its version and a small
+training/prediction example. Publish a GitHub Release with the release notes
+and a summary of the accepted benchmark comparison.
 
 ## Documentation
 
-Before writing the documentation, you should collect it to make sure that the code
-you wrote doesn't break the rest of the documentation. The library might work,
-but the documentation might not be. It is built on the Read the Docs service,
-which uses its own virtual environment, which contains only part
-of the LightAutoML library dependencies. This is done to make
-the documentation more lightweight.
-
-By default, functions, that have no description will be mock from overall documentation.
+Build the documentation locally after changing Sphinx pages, docstrings,
+public APIs, or tutorials. The documentation uses Sphinx and is published on
+Read the Docs. Its configuration in [docs/conf.py](../docs/conf.py) mocks heavy
+library dependencies so the documentation can be built without installing
+the full machine-learning environment.
 
 ### Building Documentation
 
-To build the documentation:
-
-1. Clone repository to your device.
-
-```
-git clone https://github.com/sb-ai-lab/LightAutoML
-cd LightAutoML
-```
-
-2. Make environment and install requirements.
+Follow [Fork and base branch](#fork-and-base-branch) if you have not cloned the
+repository yet. Install tox as described in [Tests and checks](#tests-and-checks)
+and ensure that `make` is available on your `PATH` (GNU Make on Windows).
+From the repository root, run:
 
 ```bash
-poetry install -E cv -E nlp
+tox -e docs
 ```
 
-3. Remove existing html files:
+The `docs` environment installs Sphinx, its theme and extensions, and
+`pypandoc-binary`, which supplies Pandoc for notebook conversion. Installing
+the `cv` and `nlp` extras alone does not install these documentation tools.
+The dependency list in [docs/requirements.txt](../docs/requirements.txt) is
+shared by tox and Read the Docs. The GitHub Actions documentation workflow
+runs the same tox environment; Read the Docs installs these requirements with
+pip and uses its standard Sphinx build without installing the ML dependencies.
 
-```bash
-cd docs
-poetry run make clean html
-cd ..
-```
+Tox runs these steps in order:
 
-4. Generate HTML documentation files. The generated files will be in `docs/_build/html`.
+1. `make clean html` in `docs/` removes previous build output and generates
+   the HTML documentation.
+2. `python ../check_docs.py` checks for the HTML files expected by the
+   repository's post-build validation script. It does not generate HTML.
 
-```bash
-poetry run python check_docs.py
-```
+Open `docs/_build/html/index.html` to preview the result and inspect the build
+warnings for pages affected by your change. Do not commit generated HTML.
 
 ### Writing Documentation
 
@@ -219,7 +426,7 @@ There are some rules, that docstrings should fit.
 
 3. Once you added some module to LightAutoML,
    you should add some info about it at the beginning of the module.
-   Example of this you can find in `docs/mock_docs.py`.
+   An example is available in [docs/mock_docs.py](../docs/mock_docs.py).
    Also, if you use submodules, please add description to `__init__.py`
    (it is usefull for Sphinx's autosummary).
 
@@ -485,15 +692,30 @@ class A:
 
 ### Adding new submodules
 
-If you add your own directory to LightAutoML, you should add a corresponding module as new `.rst`
-file to the `docs/`.  And also mention it in `docs/index.rst`.
+When adding a library submodule, create or update its `.rst` page in
+[docs/pages/modules](../docs/pages/modules). Register a new module page in the
+toctree in [docs/pages/Python-API.rst](../docs/pages/Python-API.rst).
 
-If you add your own module, class or function, then you will need
-to add it description to the corresponding `.rst` in `docs`.
+Add new classes and functions to the corresponding module page. For a new
+top-level documentation page, update the toctree in
+[docs/index.rst](../docs/index.rst). Run the
+[documentation build](#building-documentation) to check the result.
 
 ### Adding Tutorials
 
-We use [nbsphinx](https://nbsphinx.readthedocs.io/) extension for tutorials.
-Examples, you can find in `docs/notebooks`.
-Please, put your tutorial in this folder
-and after add it in `docs/Tutorials.rst`.
+We use [nbsphinx](https://nbsphinx.readthedocs.io/) and nbsphinx-link to include
+tutorial notebooks:
+
+1. Put the notebook in [examples/tutorials](../examples/tutorials). New
+   notebooks match the repository's `*.ipynb` ignore rule; explicitly stage
+   the intended notebook with `git add -f examples/tutorials/YOUR_NOTEBOOK.ipynb`.
+2. Add a `.nblink` file in [docs/pages/tutorials](../docs/pages/tutorials),
+   pointing to the notebook relative to that directory. Follow the existing
+   [Tutorial_1_basics.nblink](../docs/pages/tutorials/Tutorial_1_basics.nblink)
+   example, including any required media paths.
+3. Add the `.nblink` file to the appropriate toctree in
+   [docs/pages/Tutorials.rst](../docs/pages/Tutorials.rst).
+4. Run the notebook to check its examples and save its intended output, then
+   run the [documentation build](#building-documentation). The Sphinx
+   configuration uses `nbsphinx_execute = "never"`, so building the
+   documentation does not execute notebook cells.

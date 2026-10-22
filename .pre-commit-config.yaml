@@ -34,15 +34,6 @@ repos:
     hooks:
       - id: rstcheck
 
-  - repo: local
-    hooks:
-      - id: set-py-versions
-        name: set python versions
-        description: set supported python versions to `pyproject.toml`
-        language: python
-        entry: python scripts/poetry_fix.py -f
-        pass_filenames: false
-
   # - repo: https://github.com/python-jsonschema/check-jsonschema
   #   rev: 0.18.2
   #   hooks:

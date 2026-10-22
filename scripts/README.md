@@ -1,21 +1,6 @@
 # Useful scripts
 
-1. ```poetry_fix.py``` fixes problem: too long time of poetry lock command. It re-writes a single python version in the ```pyproject.toml```, which helps resolve all dependencies in a short time.
-
-    ```bash
-
-    # Set current python version from poetry env
-    # After that you can easily run command: `poetry lock`
-    poetry run python poetry_fix.py -c
-
-    # Set all python versions before `git push` or `poetry publish`
-    poetry run python poetry_fix.py -f
-
-    ```
-
-    **Warning**: You must set the default version before publishing the library to PyPI.
-
-2. ```run_tutorials.py``` - execute tutorials in CLI. The execution drops in case of an any error. More information in `help`.
+1. ```run_tutorials.py``` - execute tutorials in CLI. The execution drops in case of an any error. More information in `help`.
 
     ```bash
 
@@ -26,3 +11,12 @@
     poetry run python scripts/run_tutorials -t 1 -t 2
 
     ```
+
+## Benchmark in GitHub Actions
+
+The `benchmark` workflow (`.github/workflows/benchmark.yml`)
+is started manually from **Actions → benchmark → Run workflow**.
+It submits benchmark tasks for the selected revision; completion and quality
+review are separate steps. Setup, inputs, and release comparison procedures
+are documented in the team's
+[experimenttracking runbook](https://tech-point.ailabtools.org/ai-lab-pmo/mltools/automl/experimenttracking/-/blob/master/docs/release-benchmark.md).
