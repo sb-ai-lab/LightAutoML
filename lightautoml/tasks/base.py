@@ -20,6 +20,7 @@ from .losses import LGBLoss
 from .losses import XGBLoss
 from .losses import SKLoss
 from .losses import TORCHLoss
+from .metrics import _METRICS
 from .utils import infer_gib
 from .utils import infer_gib_multiclass
 
@@ -227,6 +228,10 @@ class Task:
         greater_is_better: Whether or not higher value is better.
 
     Note:
+        Additional classification, regression and ranking metrics are documented
+        in :mod:`lightautoml.tasks.metrics`. Named metrics provide their own
+        optimization direction; ``greater_is_better`` can override it.
+
         There is 3 different task types:
 
             - `'binary'` - for binary classification.
@@ -377,7 +382,7 @@ class Task:
 
         if type(metric) is str:
 
-            self._check_metric_from_params(metric, self.metric_params)
+            self._check_metric_from_params(metric, self.metric_params, self.name)
             metric_func = _valid_str_metric_names[self.name][metric]
             metric_func = partial(metric_func, **self.metric_params)
             self.metric_func = metric_func
@@ -390,8 +395,11 @@ class Task:
             self.metric_name = None
 
         if greater_is_better is None:
-            infer_gib_fn = infer_gib_multiclass if (name == "multiclass" or name == "multilabel") else infer_gib
-            greater_is_better = infer_gib_fn(self.metric_func)
+            if self.metric_name in _METRICS[self.name]:
+                greater_is_better = _METRICS[self.name][self.metric_name].greater_is_better
+            else:
+                infer_gib_fn = infer_gib_multiclass if (name == "multiclass" or name == "multilabel") else infer_gib
+                greater_is_better = infer_gib_fn(self.metric_func)
 
         self.greater_is_better = greater_is_better
 
@@ -436,9 +444,12 @@ class Task:
         )
 
     @staticmethod
-    def _check_metric_from_params(metric_name, metric_params):
+    def _check_metric_from_params(metric_name, metric_params, task_name=None):
+        if task_name is not None and metric_name in _METRICS[task_name]:
+            _METRICS[task_name][metric_name].validate(metric_name, metric_params)
+            return
         if metric_name in _valid_metric_args:
-            required_params = set(_valid_loss_args[metric_name])
+            required_params = set(_valid_metric_args[metric_name])
         else:
             required_params = set()
         given_params = set(metric_params)
