@@ -1,0 +1,16 @@
+# Older dependency snapshot for the Python 3.10 and 3.12 compatibility jobs.
+numpy==1.26.4
+pandas==2.2.3
+scipy==1.12.0
+scikit-learn==1.5.2
+torch==2.2.2
+torchvision==0.17.2
+lightgbm==4.6.0
+catboost==1.2.8
+xgboost==2.1.4
+optuna==4.5.0
+statsmodels==0.14.6
+transformers==4.46.3
+einops==0.8.2
+# Newer Arrow wheels require NumPy 2 at runtime.
+pyarrow==18.1.0
