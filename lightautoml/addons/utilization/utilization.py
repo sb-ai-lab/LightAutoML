@@ -230,9 +230,12 @@ class TimeUtilization:
         log_file: str = None,
         path_to_save: Optional[str] = None,
     ) -> LAMLDataset:
-        """Fit and get prediction on validation dataset.
+        """Fit utilized presets and return OOF or validation predictions.
 
         Almost same as :meth:`lightautoml.automl.base.AutoML.fit_predict`.
+        The utilization timeout is an upper bound shared by all runs. If one
+        configuration finishes early, another configuration or random state
+        can be started while time remains.
 
         Additional features - working with different data formats.
         Supported now:
@@ -251,15 +254,25 @@ class TimeUtilization:
                 be inferred from `train_data`.
             cv_iter: Custom cv-iterator. For example,
                 :class:`~lightautoml.validation.np_iterators.TimeSeriesIterator`.
-            valid_data: Optional validation dataset.
+            valid_data: Optional holdout validation dataset.
             valid_features: Optional validation dataset features
                 if cannot be inferred from `valid_data`.
             verbose: Verbose.
             log_file: Log filename.
-            path_to_save: The path that joblib will use to save the model after fit stage is completed. Use *.joblib format.
+            path_to_save: Path used by joblib to save the fitted utilized
+                AutoML. The ``.joblib`` suffix is added when omitted.
 
         Returns:
-            Dataset with predictions. Call ``.data`` to get predictions array.
+            Dataset with out-of-fold predictions when ``valid_data`` is not
+            provided, otherwise predictions for the holdout dataset. Call
+            ``.data`` to get the underlying NumPy array.
+
+        Note:
+            The returned prediction dataset is not stored inside the
+            serialized model.
+
+        See Also:
+            :ref:`faq-training-validation`, :ref:`faq-saving-loading`
 
         """
         set_stdout_level(verbosity_to_loglevel(verbose))
@@ -414,11 +427,18 @@ class TimeUtilization:
             data: Dataset to perform inference.
             features_names: Optional features names,
                 if cannot be inferred from `train_data`.
-            return_all_predictions: bool - skip blending phase
+            return_all_predictions: If ``True``, skip the outer blending
+                phase and return predictions for every retained utilized
+                configuration. ``None`` uses the instance setting. An
+                instance configured to return all predictions cannot be
+                overridden to blend at prediction time.
             **kwargs: Other params.
 
         Returns:
-            Dataset with predictions.
+            Dataset with outer-blended predictions by default.
+
+        See Also:
+            :ref:`faq-targets-predictions`
 
         """
         if return_all_predictions is None or self.return_all_predictions:

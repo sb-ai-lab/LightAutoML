@@ -131,6 +131,22 @@ class TrendModel:
 
 
 class AutoTS:
+    """Forecast a time series with trend and tabular sequence models.
+
+    Args:
+        task: :class:`~lightautoml.tasks.base.Task` that defines the
+            forecasting objective.
+        time_series_trend_params: Overrides for trend estimation parameters.
+        reader_params: Overrides for sequence reader parameters, including
+            history and forecast window lengths.
+        **kwargs: Additional arguments forwarded to
+            :class:`~lightautoml.automl.presets.tabular_presets.TabularAutoML`.
+
+    See Also:
+        :ref:`faq-time-series`
+
+    """
+
     @property
     def n_target(self):
         """Get length of future prediction.
@@ -186,6 +202,22 @@ class AutoTS:
         self.TM = TrendModel(params=self.time_series_trend_params)
 
     def fit_predict(self, train_data, roles, verbose=0):
+        """Fit the forecaster and return training predictions.
+
+        The roles must define one target and a datetime column. The input must
+        contain a regularly spaced segment long enough for the configured
+        history and forecast windows.
+
+        Args:
+            train_data: Time series training data.
+            roles: Column roles, including target and datetime roles.
+            verbose: Logging verbosity passed to the tabular preset.
+
+        Returns:
+            A tuple with out-of-fold predictions for the detrended series and
+            the estimated training trend.
+
+        """
         self.roles = roles
         train_trend = self.TM.fit_predict(train_data, roles)
 
@@ -207,6 +239,22 @@ class AutoTS:
         return oof_pred_seq, train_trend
 
     def predict(self, data, return_raw=False):
+        """Forecast the next configured target window.
+
+        The configured ``n_history`` observations are used to predict the next
+        ``n_target`` points.
+
+        Args:
+            data: Time series history with the fitted target and datetime
+                columns.
+            return_raw: If ``True``, return the raw detrended
+                :class:`~lightautoml.dataset.np_pd_dataset.NumpyDataset`.
+
+        Returns:
+            Raw detrended predictions when ``return_raw=True``. Otherwise, a
+            tuple with final predictions and the predicted trend.
+
+        """
         test_idx = None
         if self.time_series_trend_params["trend"] is True:
             last_datetime = pd.to_datetime(data[self.datetime_key]).values[-1]

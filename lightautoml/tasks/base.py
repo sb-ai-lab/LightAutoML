@@ -215,7 +215,7 @@ class SkMetric(LAMLMetric):
 
 
 class Task:
-    """Specify task (binary classification, multiclass classification, regression), metrics, losses.
+    """Specify a classification or regression task, its metrics, and losses.
 
     Args:
         name: Task name.
@@ -227,11 +227,13 @@ class Task:
         greater_is_better: Whether or not higher value is better.
 
     Note:
-        There is 3 different task types:
+        There are 5 task types:
 
             - `'binary'` - for binary classification.
             - `'reg'` - for regression.
             - `'multiclass'` - for multiclass classification.
+            - `'multi:reg'` - for multi-output regression.
+            - `'multilabel'` - for multilabel classification.
 
         Available losses for binary task:
 
@@ -257,6 +259,11 @@ class Task:
                 LightGBM and NN models. Here we implicitly assume
                 that the prediction lies not in the set ``{0, 1}``,
                 but in the interval ``[0, 1]``.
+
+        Available losses for multi-output tasks:
+
+            - `'multi:reg'` supports `'mae'` (default) and `'mse'`.
+            - `'multilabel'` supports `'logloss'` (default).
 
         Available metrics for binary task:
 
@@ -286,6 +293,10 @@ class Task:
                 mean of n_classes * (n_classes - 1) / 2 binary AUCs.
                 More info on http://proceedings.mlr.press/v97/kleiman19a/kleiman19a.pdf
 
+        The default metrics for `'multi:reg'` and `'multilabel'` are
+        `'mae'` and `'logloss'`, respectively. Backend-specific loss objects
+        are created only where supported. Unsupported backends are absent
+        from ``Task.losses`` and are not selected by presets for this task.
 
     Example:
         >>> task = Task('binary', metric='auc')

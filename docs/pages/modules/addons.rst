@@ -18,6 +18,18 @@ Utilization
 
     ~utilization.TimeUtilization
 
+Time series
+-----------
+
+.. currentmodule:: lightautoml.addons.autots
+
+.. autosummary::
+    :toctree: ./generated
+    :nosignatures:
+    :template: classtemplate.rst
+
+    ~base.AutoTS
+
 HypEx -- Hypothesises and Experiments
 -------------------------------------
 

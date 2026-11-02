@@ -292,7 +292,9 @@ class WeightedBlender(Blender):
         max_iters: Max number of coord desc loops.
         max_inner_iters: Max number of iters to solve
             inner scalar optimization task.
-        max_nonzero_coef: Maximum model weight value to stay in ensemble.
+        max_nonzero_coef: Minimum optimized model weight required to stay in
+            the ensemble. A successfully trained model can be pruned when its
+            weight is below this threshold.
 
     """
 

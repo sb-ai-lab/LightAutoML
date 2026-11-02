@@ -7,6 +7,8 @@ discussion behaves differently, first check the installed versions of
 LightAutoML, Python, pandas, scikit-learn, LightGBM, and XGBoost.
 
 
+.. _faq-training-validation:
+
 Training and validation
 -----------------------
 
@@ -62,6 +64,8 @@ outer cross-validation prediction with holdout prediction. Multi-level
 stacking requires CV folds and cannot be fitted with ``valid_data``.
 
 
+.. _faq-targets-predictions:
+
 Targets and predictions
 -----------------------
 
@@ -101,6 +105,8 @@ probability range narrower than ``0..1`` is not itself evidence of a bug, and
 problem. Choose the threshold on validation data for the required metric or
 business cost. Probability calibration is a separate step.
 
+
+.. _faq-features-roles:
 
 Features and roles
 ------------------
@@ -157,6 +163,8 @@ or worker processes. Parallel inference via ``predict(..., n_jobs=N)`` can
 use more RAM; set ``batch_size`` to trade speed for lower memory use.
 
 
+.. _faq-saving-loading:
+
 Saving and loading
 ------------------
 
@@ -190,6 +198,8 @@ For production, preserve the training environment. Across significant
 dependency or LightAutoML upgrades, retraining is safer than assuming that
 an old joblib file is compatible.
 
+
+.. _faq-time-series:
 
 Time series
 -----------
