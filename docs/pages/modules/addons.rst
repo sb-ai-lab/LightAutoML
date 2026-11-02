@@ -21,14 +21,14 @@ Utilization
 Time series
 -----------
 
-.. currentmodule:: lightautoml.addons.autots
+.. currentmodule:: lightautoml.addons.autots.base
 
 .. autosummary::
     :toctree: ./generated
     :nosignatures:
     :template: classtemplate.rst
 
-    ~base.AutoTS
+    ~AutoTS
 
 HypEx -- Hypothesises and Experiments
 -------------------------------------
