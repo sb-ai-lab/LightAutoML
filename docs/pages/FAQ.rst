@@ -6,6 +6,12 @@ target the current stable LightAutoML release. If an example from an old
 discussion behaves differently, first check the installed versions of
 LightAutoML, Python, pandas, scikit-learn, LightGBM, and XGBoost.
 
+Sections: `Training and validation <faq-training-validation_>`_,
+`Targets and predictions <faq-targets-predictions_>`_,
+`Features and roles <faq-features-roles_>`_,
+`Saving and loading <faq-saving-loading_>`_, and
+`Time series <faq-time-series_>`_.
+
 
 .. _faq-training-validation:
 
