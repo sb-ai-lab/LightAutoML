@@ -1,31 +1,33 @@
 """Categorical features transformerrs."""
 
+import warnings
+
 from itertools import combinations
+from typing import Any
+from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Sequence
 from typing import Union
 from typing import cast
-from typing import Dict, Any
-
-import warnings
-import tqdm
 
 import numpy as np
 import torch
+import tqdm
+
 
 try:
     import sklearn.tree as sklearn_tree
 except ImportError:
     sklearn_tree = None
 
-from pandas import __version__ as pandas_version
 from pandas import DataFrame
 from pandas import Series
+from pandas import __version__ as pandas_version
 from pandas import concat
+from sklearn import __version__ as sklearn_version
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.utils.murmurhash import murmurhash3_32
-from sklearn import __version__ as sklearn_version
 
 from ..dataset.base import LAMLDataset
 from ..dataset.np_pd_dataset import CSRSparseDataset
@@ -1049,7 +1051,6 @@ class OrdinalEncoder(LabelEncoder):
                 flg_number = False
 
             if not flg_number:
-
                 value_counts_index = "index"
                 if pandas_version >= "2.0.0":
                     value_counts_index = "count"
@@ -1057,8 +1058,11 @@ class OrdinalEncoder(LabelEncoder):
                 co = role.unknown
                 cnts = subs[i].value_counts(dropna=True)
                 cnts = cnts[cnts > co].reset_index()
+                # Preserve existing mappings while avoiding Arrow's deprecated
+                # string rank API in pandas 3.
                 cnts = Series(
-                    cnts[value_counts_index].astype(str).rank().values, index=cnts[value_counts_index].values
+                    cnts[value_counts_index].astype(str).astype(object).rank().values,
+                    index=cnts[value_counts_index].values,
                 ).drop_duplicates()
                 cnts = concat([cnts, Series([cnts.shape[0] + 1], index=[np.nan])])
                 self.dicts[i] = cnts
@@ -1103,6 +1107,8 @@ def compute_bins(
     y: Optional[torch.Tensor] = None,
     regression: Optional[bool] = None,
     verbose: bool = False,
+    subsample: Optional[int] = 200_000,
+    random_state: int = 42,
 ) -> List[torch.Tensor]:
     """Compute the bin boundaries for `PiecewiseLinearEncoding` and `PiecewiseLinearEmbeddings`.
 
@@ -1130,7 +1136,7 @@ def compute_bins(
 
     Args:
         X: the training features.
-        n_bins: the number of bins. The default number of bins in compute_bins is set with MLPs in mind.
+        n_bins: the maximum number of bins, reduced automatically for small samples.
         tree_kwargs: keyword arguments for `sklearn.tree.DecisionTreeRegressor`
             (if ``regression=True``) or `sklearn.tree.DecisionTreeClassifier`
             (if ``regression=False``).
@@ -1140,6 +1146,10 @@ def compute_bins(
             (must be provided if ``tree`` is not None).
         verbose: if True and ``tree_kwargs`` is not None, than ``tqdm``
             (must be installed) will report the progress while fitting trees.
+        subsample: Maximum rows used for quantiles. Sampling is deterministic,
+            preserves the full feature range and does not affect tree-based bins.
+            None uses all rows up to PyTorch's limit of 2**24.
+        random_state: Seed for quantile subsampling, independent of global RNG state.
 
     Returns:
         A list of bin edges for all features. For one feature:
@@ -1155,15 +1165,16 @@ def compute_bins(
         raise ValueError(f"X must have at least two rows, however: {X.shape[0]=}")
     if X.shape[1] < 1:
         raise ValueError(f"X must have at least one column, however: {X.shape[1]=}")
-    if not X.isfinite().all():
+    if any(not column.isfinite().all() for column in X.T):
         raise ValueError("X must not contain nan/inf/-inf.")
     # if (X == X[0]).all(dim=0).any():
     #     raise ValueError(
     #         "All columns of X must have at least two distinct values."
     #         " However, X contains columns with just one distinct value."
     #     )
-    if n_bins <= 1 or n_bins >= len(X):
-        raise ValueError("n_bins must be more than 1, but less than len(X), however:" f" {n_bins=}, {len(X)=}")
+    if not isinstance(n_bins, int) or n_bins <= 1:
+        raise ValueError(f"n_bins must be an integer greater than 1, however: {n_bins=}")
+    n_bins = min(n_bins, max(2, len(X) - 1))
 
     if tree_kwargs is None:
         if y is not None or regression is not None or verbose:
@@ -1171,30 +1182,32 @@ def compute_bins(
                 "If tree_kwargs is None, then y must be None, regression must be None" " and verbose must be False"
             )
 
-        _upper = 2 ** 24  # 16_777_216
-        if len(X) > _upper:
-            warnings.warn(
-                f"Computing quantile-based bins for more than {_upper} million objects"
-                " may not be possible due to the limitation of PyTorch"
-                " (for details, see https://github.com/pytorch/pytorch/issues/64947;"
-                " if that issue is successfully resolved, this warning may be irrelevant)."  # noqa
-                " As a workaround, subsample the data, i.e. instead of"
-                "\ncompute_bins(X, ...)"
-                "\ndo"
-                "\ncompute_bins(X[torch.randperm(len(X), device=X.device)[:16_777_216]], ...)"  # noqa
-                "\nOn CUDA, the computation can still fail with OOM even after"
-                " subsampling. If this is the case, try passing features by groups:"
-                "\nbins = sum("
-                "\n    compute_bins(X[:, idx], ...)"
-                "\n    for idx in torch.arange(len(X), device=X.device).split(group_size),"  # noqa
-                "\n    start=[]"
-                "\n)"
-                "\nAnother option is to perform the computation on CPU:"
-                "\ncompute_bins(X.cpu(), ...)"
+        if subsample is not None and (not isinstance(subsample, int) or subsample < 2):
+            raise ValueError("subsample must be None or an integer of at least 2")
+        limit = min(subsample if subsample is not None else 2 ** 24, 2 ** 24)
+        indices = None
+        if len(X) > limit:
+            indices = torch.as_tensor(
+                np.random.default_rng(random_state).choice(len(X), limit, replace=False, shuffle=False),
+                device=X.device,
             )
-        del _upper
-
-        bins = [q.unique() for q in torch.quantile(X, torch.linspace(0.0, 1.0, n_bins + 1).to(X), dim=0).T]
+        quantiles = torch.linspace(0.0, 1.0, n_bins + 1).to(X)
+        bins = []
+        # Quantile workspace is bounded by one feature, not the entire table.
+        for column in X.T:
+            sample = column if indices is None else column[indices]
+            edges = torch.quantile(sample, quantiles)
+            edges[0], edges[-1] = column.min(), column.max()
+            edges = edges.unique()
+            if len(edges) == 1:
+                # A feature may be constant within a fold. Give its encoding
+                # a finite interval instead of producing a zero-width layer.
+                value = edges[0]
+                neighbour = value + 1 if value <= 0 else value - 1
+                if neighbour == value:
+                    neighbour = torch.nextafter(value, torch.zeros_like(value))
+                edges = torch.stack((value, neighbour)).sort().values
+            bins.append(edges)
         _check_bins(bins)
         return bins
 

@@ -1,6 +1,5 @@
 """Neural net for tabular datasets."""
 
-
 from lightautoml.utils.installation import __validate_extra_deps
 
 
@@ -26,8 +25,8 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from ..dataset.np_pd_dataset import NumpyDataset
 from ..tasks.losses.torch import TorchLossWrapper
-from ..validation.base import TrainValidIterator
 from ..transformers.categorical import compute_bins
+from ..validation.base import TrainValidIterator
 
 
 try:
@@ -42,25 +41,23 @@ except ImportError:
 from ..ml_algo.base import TabularDataset
 from ..ml_algo.base import TabularMLAlgo
 from ..pipelines.utils import get_columns_by_role
-from ..text.embed import (
-    BasicCatEmbeddingFlat,
-    CatEmbedder,
-    DenseEmbedding,
-    DenseEmbeddingFlat,
-    LinearEmbedding,
-    LinearEmbeddingFlat,
-    PLREmbedding,
-    PLREmbeddingFlat,
-    SoftEmbedding,
-    SoftEmbeddingFlat,
-    WeightedCatEmbedding,
-    BasicCatEmbedding,
-    WeightedCatEmbeddingFlat,
-    PiecewiseLinearEmbeddings,
-    PiecewiseLinearEmbeddingsFlat,
-)
+from ..text.embed import BasicCatEmbedding
+from ..text.embed import BasicCatEmbeddingFlat
+from ..text.embed import CatEmbedder
 from ..text.embed import ContEmbedder
+from ..text.embed import DenseEmbedding
+from ..text.embed import DenseEmbeddingFlat
+from ..text.embed import LinearEmbedding
+from ..text.embed import LinearEmbeddingFlat
+from ..text.embed import PiecewiseLinearEmbeddings
+from ..text.embed import PiecewiseLinearEmbeddingsFlat
+from ..text.embed import PLREmbedding
+from ..text.embed import PLREmbeddingFlat
+from ..text.embed import SoftEmbedding
+from ..text.embed import SoftEmbeddingFlat
 from ..text.embed import TextBert
+from ..text.embed import WeightedCatEmbedding
+from ..text.embed import WeightedCatEmbeddingFlat
 from ..text.nn_model import TorchUniversalModel
 from ..text.nn_model import UniversalDataset
 from ..text.trainer import Trainer
@@ -70,16 +67,18 @@ from ..text.utils import inv_softmax
 from ..text.utils import is_shuffle
 from ..text.utils import parse_devices
 from ..text.utils import seed_everything
-from .torch_based.nn_models import MLP, TabNet
+from .torch_based.nn_models import MLP
 from .torch_based.nn_models import NODE
 from .torch_based.nn_models import SNN
+from .torch_based.nn_models import AutoInt
 from .torch_based.nn_models import DenseLightModel
 from .torch_based.nn_models import DenseModel
+from .torch_based.nn_models import FTTransformer
 from .torch_based.nn_models import LinearLayer
 from .torch_based.nn_models import ResNetModel
+from .torch_based.nn_models import TabNet
 from .torch_based.nn_models import _LinearLayer
-from .torch_based.nn_models import AutoInt
-from .torch_based.nn_models import FTTransformer
+
 
 # Import TabM only if available.
 try:
@@ -305,11 +304,13 @@ class TorchModel(TabularMLAlgo):
         bins = None
         if "bins" in self.params:
             bins = self.params["bins"]
-        elif (train is not None) and (len(self.params["cont_features"]) > 0):
+        elif train is not None and is_cont and params["cont_embedder"] == "piecewise":
+            # Preserve the existing fitting population, dtype and shared cache.
+            # Other embedders do not use bins and must not compute quantiles.
             x_cont = np.concatenate(
-                [train.data[self.params["cont_features"]].values, valid.data[self.params["cont_features"]].values]
+                [train.data[params["cont_features"]].values, valid.data[params["cont_features"]].values]
             )
-            bins = compute_bins(torch.Tensor(x_cont))
+            bins = compute_bins(torch.as_tensor(x_cont, dtype=torch.float32))
             self.params["bins"] = bins
 
         torch_model = params["model"]
@@ -570,9 +571,14 @@ class TorchModel(TabularMLAlgo):
                 )
             else:
                 # Standard DataLoader
+                batch_size = self.train_params["bs"]
+                if stage == "train":
+                    # With drop_last=True, a fold smaller than the configured
+                    # batch size would otherwise have no training batches.
+                    batch_size = min(batch_size, len(dataset))
                 dataloaders[stage] = torch.utils.data.DataLoader(
                     dataset,
-                    batch_size=self.train_params["bs"],
+                    batch_size=batch_size,
                     shuffle=is_shuffle(stage),
                     num_workers=self.train_params["num_workers"],
                     collate_fn=collate_dict,
@@ -653,6 +659,23 @@ class TorchModel(TabularMLAlgo):
 
         """
         seed_everything(self.params["random_state"], self.params["deterministic"])
+
+        # model could be trained on another machine (e.g. with GPU),
+        # so the device stored in params may be unavailable here - re-validate it
+        device, device_ids = parse_devices(self.params["device"], self.params["multigpu"])
+        saved_ids = self.params.get("device_ids")
+        if (
+            self.params["multigpu"]
+            and device.type == "cuda"
+            and device_ids is None
+            and saved_ids
+            and (device.index is None or device.index == saved_ids[0])
+        ):
+            # Keep a saved multi-GPU selection only while its primary device
+            # is still requested. Explicit device overrides take precedence.
+            device, device_ids = parse_devices(saved_ids, True)
+        self.params["device"], self.params["device_ids"] = device, device_ids
+
         dataloaders = self.get_dataloaders_from_dicts({"test": dataset.to_pandas()})
 
         if isinstance(model, (str, dict)):

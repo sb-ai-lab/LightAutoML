@@ -19,6 +19,7 @@ except:
     warnings.warn("Library 'featuretools' - package isn't installed")
 
 
+import numpy as np
 import pandas as pd
 
 from ..dataset.base import LAMLDataset
@@ -32,12 +33,20 @@ from ..pipelines.selection.permutation_importance_based import (
 )
 from ..pipelines.utils import get_columns_by_role
 from ..reader.utils import set_sklearn_folds
+from ..utils._woodwork import initialize_woodwork
 from ..validation.utils import create_validation_iterator
 from .base import LAMLTransformer
 
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+
+def _calculate_feature_chunk(feature_indices, features, entityset, cutoff_time):
+    """Calculate feature columns with the complete row history."""
+    return ft.calculate_feature_matrix(
+        features=[features[i] for i in feature_indices], entityset=entityset, cutoff_time=cutoff_time, n_jobs=1
+    )
 
 
 def get_interesting_values(dataset: LAMLDataset, per_top_categories: float) -> Dict:
@@ -108,6 +117,13 @@ class FeatureGeneratorTransformer(LAMLTransformer, TabularDataFeatures):
     def features(self) -> List[str]:
         """Features list."""
         return self._features
+
+    def __new__(cls, *args, **kwargs):
+        """Initialize Woodwork before construction or unpickling."""
+        # Pickle calls __new__ before restoring nested EntitySets, whose
+        # __setstate__ already requires persistent Woodwork accessors.
+        initialize_woodwork()
+        return super().__new__(cls)
 
     def __init__(
         self,
@@ -314,7 +330,7 @@ class FeatureGeneratorTransformer(LAMLTransformer, TabularDataFeatures):
 
         self.es.replace_dataframe("plain", df_sample)
 
-        fm_sample = ft.calculate_feature_matrix(features=self._ft_features, entityset=self.es, n_jobs=self.n_jobs)
+        fm_sample = self._calculate_feature_matrix(self._ft_features)
 
         fm_sample = fm_sample.set_index(df_sample.index)
         fm_sample = fm_sample.rename(columns=dict(zip(fm_sample.columns, self._features)))
@@ -358,13 +374,11 @@ class FeatureGeneratorTransformer(LAMLTransformer, TabularDataFeatures):
 
         fm_roles_dict = dict(zip(self.selected_features, [NumericRole()] * len(self.selected_features)))
 
-        self.es.replace_dataframe("plain", dataset.data)
+        # Give EntitySet a fresh accessor without overwriting the caller's
+        # initialized Woodwork schema or copying the underlying data buffers.
+        self.es.replace_dataframe("plain", dataset.data.copy(deep=False))
 
-        fm = ft.calculate_feature_matrix(
-            features=[self.feature_dict.get(feature) for feature in self.selected_features],
-            entityset=self.es,
-            n_jobs=self.n_jobs,
-        )
+        fm = self._calculate_feature_matrix([self.feature_dict.get(feature) for feature in self.selected_features])
 
         fm = fm.rename(columns=dict(zip(fm.columns, self.selected_features)))
 
@@ -373,3 +387,42 @@ class FeatureGeneratorTransformer(LAMLTransformer, TabularDataFeatures):
 
         logger.info3("Feature generation is completed")
         return dataset_out
+
+    def _calculate_feature_matrix(self, features):
+        if self.n_jobs == 1 or not features:
+            return ft.calculate_feature_matrix(features=features, entityset=self.es, n_jobs=1)
+
+        from distributed import Client
+        from distributed import LocalCluster
+        from featuretools.computational_backends.utils import n_jobs_to_workers
+        from psutil import virtual_memory
+
+        workers = min(n_jobs_to_workers(self.n_jobs), len(features))
+        instance_ids = self.es["plain"].index
+        if len(instance_ids) == 0:
+            return ft.calculate_feature_matrix(features=features, entityset=self.es, n_jobs=1)
+        preload = ["lightautoml.utils._woodwork"] if initialize_woodwork() else []
+        # Use the public single-process calculator in workers. Featuretools
+        # 1.31's parallel backend uses removed Dask APIs (alteryx/featuretools#2767).
+        # Partition feature columns, keeping every row on each worker. Splitting
+        # instance IDs changes order-dependent primitives like TimeSincePrevious.
+        cutoff_time = np.inf if self.es.time_type == "numeric" else pd.Timestamp.now()
+        with LocalCluster(
+            n_workers=workers,
+            threads_per_worker=1,
+            memory_limit=int(virtual_memory().total / workers),
+            dashboard_address=None,
+            scheduler_kwargs={"dashboard_address": "127.0.0.1:0"},
+            preload=preload,
+        ) as cluster, Client(cluster) as client:
+            entityset = client.scatter([self.es], broadcast=True)[0]
+            shared_features = client.scatter([features], broadcast=True)[0]
+            chunks = np.array_split(np.arange(len(features)), workers)
+            futures = client.map(
+                _calculate_feature_chunk,
+                chunks,
+                features=shared_features,
+                entityset=entityset,
+                cutoff_time=cutoff_time,
+            )
+            return pd.concat(client.gather(futures), axis=1)

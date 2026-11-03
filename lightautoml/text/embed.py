@@ -1,21 +1,29 @@
 """Neural Net modules for different data types."""
 
 import logging
+import operator
+import warnings
 
-from typing import Any, List, Tuple, Type, Literal
+from functools import reduce
+from typing import Any
 from typing import Dict
+from typing import List
+from typing import Literal
 from typing import Optional
 from typing import Sequence
+from typing import Tuple
+from typing import Type
 from typing import Union
-from functools import reduce
+
+import numpy as np
 import torch
 import torch.nn as nn
-from torch.nn.parameter import Parameter
+
 from torch import Tensor
-import operator
-import numpy as np
+from torch.nn.parameter import Parameter
+
 from ..transformers.categorical import _check_bins
-import warnings
+
 
 try:
     from transformers import AutoModel
@@ -344,10 +352,7 @@ class WeightedCatEmbedding(nn.Module):
         )
 
         emb_default = torch.stack(
-            [
-                emb_layer(torch.tensor([0] * len(X[:, i]), device=self._device))
-                for i, emb_layer in enumerate(self.def_layers)
-            ],
+            [emb_layer(torch.zeros_like(X[:, i])) for i, emb_layer in enumerate(self.def_layers)],
             dim=1,
         )
 
