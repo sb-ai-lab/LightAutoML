@@ -726,9 +726,12 @@ class TabularAutoML(AutoMLPreset):
         verbose: int = 0,
         path_to_save: Optional[str] = None,
     ) -> NumpyDataset:
-        """Fit and get prediction on validation dataset.
+        """Fit and return out-of-fold or validation predictions.
 
         Almost same as :meth:`lightautoml.automl.base.AutoML.fit_predict`.
+        Without ``valid_data``, predictions are out-of-fold values for
+        ``train_data``. With ``valid_data``, predictions are for that holdout
+        dataset.
 
         Additional features - working with different data formats.
         Supported now:
@@ -745,7 +748,7 @@ class TabularAutoML(AutoMLPreset):
             roles: Roles dict.
             train_features: Optional features names, if can't be inferred from `train_data`.
             cv_iter: Custom cv-iterator. For example, :class:`~lightautoml.validation.np_iterators.TimeSeriesIterator`.
-            valid_data: Optional validation dataset.
+            valid_data: Optional holdout validation dataset.
             valid_features: Optional validation dataset features if cannot be inferred from `valid_data`.
             verbose: Controls the verbosity: the higher, the more messages.
                 <1  : messages are not displayed;
@@ -755,10 +758,19 @@ class TabularAutoML(AutoMLPreset):
                 >=4 : the training process for every algorithm is displayed;
             log_file: Filename for writing logging messages. If log_file is specified,
                 the messages will be saved in a the file. If the file exists, it will be overwritten.
-            path_to_save: The path that joblib will use to save the model after fit stage is completed. Use *.joblib format.
+            path_to_save: Path used by joblib to save the fitted AutoML.
+                The ``.joblib`` suffix is added when omitted.
 
         Returns:
-            Dataset with predictions. Call ``.data`` to get predictions array.
+            Dataset with out-of-fold or holdout predictions. Call ``.data``
+            to get the underlying NumPy array.
+
+        Note:
+            The returned prediction dataset is not stored inside the
+            serialized model.
+
+        See Also:
+            :ref:`faq-training-validation`, :ref:`faq-saving-loading`
 
         """
         # roles may be none in case of train data is set {'data': np.ndarray, 'target': np.ndarray ...}
@@ -818,14 +830,22 @@ class TabularAutoML(AutoMLPreset):
         Args:
             data: Dataset to perform inference.
             features_names: Optional features names,
-                if cannot be inferred from `train_data`.
-            batch_size: Batch size or ``None``.
-            n_jobs: Number of jobs.
-            return_all_predictions: if True,
-                returns all model predictions from last level
+                if they cannot be inferred from ``data``.
+            batch_size: Number of rows per inference batch. Using batches can
+                reduce memory usage at the cost of additional runtime.
+            n_jobs: Number of parallel inference jobs. Values above one can
+                improve throughput but require more memory.
+            return_all_predictions: If ``True``, return predictions from
+                every model in the last level without blending. If ``None``,
+                use the value configured on this AutoML instance.
 
         Returns:
-            Dataset with predictions.
+            Dataset with blended predictions by default. For multiclass
+            tasks, probability columns follow ``reader.class_mapping`` when
+            target labels were remapped.
+
+        See Also:
+            :ref:`faq-targets-predictions`
 
         """
         read_csv_params = self._get_read_csv_params()
@@ -869,6 +889,29 @@ class TabularAutoML(AutoMLPreset):
         features_names: Optional[Sequence[str]] = None,
         silent: bool = True,
     ):
+        """Calculate feature importances for the fitted AutoML.
+
+        The ``fast`` method returns importances produced by a fitted
+        pre-selector and may be unavailable when no such selector was used.
+        The ``accurate`` method measures permutation importance for the whole
+        fitted composition and requires ``data``.
+
+        Args:
+            calc_method: ``"fast"`` for selector importances or
+                ``"accurate"`` for permutation importances.
+            data: Dataset used by the accurate method.
+            features_names: Optional feature names when they cannot be
+                inferred from ``data``.
+            silent: If ``False``, log why importances cannot be returned.
+
+        Returns:
+            DataFrame with ``Feature`` and ``Importance`` columns, or
+            ``None`` when the requested calculation is unavailable.
+
+        See Also:
+            :ref:`faq-features-roles`
+
+        """
         if calc_method == "fast":
             for level in self.levels:
                 for pipe in level:
@@ -1082,6 +1125,29 @@ class TabularUtilizedAutoML(TimeUtilization):
         features_names: Optional[Sequence[str]] = None,
         silent: bool = True,
     ):
+        """Calculate aggregated feature importances for the utilized preset.
+
+        The ``fast`` method averages available selector importances across
+        fitted AutoML runs. The ``accurate`` method uses the first fitted
+        AutoML to measure permutation importance over the union of features
+        used by the utilized ensemble and requires ``data``.
+
+        Args:
+            calc_method: ``"fast"`` for averaged selector importances or
+                ``"accurate"`` for permutation importances.
+            data: Dataset used by the accurate method.
+            features_names: Optional feature names when they cannot be
+                inferred from ``data``.
+            silent: If ``False``, log why importances cannot be returned.
+
+        Returns:
+            DataFrame with ``Feature`` and ``Importance`` columns, or
+            ``None`` when the requested calculation is unavailable.
+
+        See Also:
+            :ref:`faq-features-roles`
+
+        """
         if calc_method == "fast":
             feat_imps = []
             for pipe in self.outer_pipes:

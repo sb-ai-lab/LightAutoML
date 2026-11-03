@@ -69,6 +69,7 @@ autosummary_mock_imports = [
     "autowoe",
     "matplotlib",
     "seaborn",
+    "statsmodels",
     "faiss",
     "hypex",
     "sqlalchemy",

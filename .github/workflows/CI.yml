@@ -20,7 +20,7 @@ on:
 
 jobs:
   pre-commit:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -34,7 +34,7 @@ jobs:
 
   linux-py310-tests:
     needs: pre-commit
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     if: |
       ( github.event_name == 'push' ) && ( needs.pre-commit.result == 'success' )
       ||
@@ -58,7 +58,7 @@ jobs:
       #   run: pip install setuptools && python -m ensurepip --upgrade
 
       - name: install deps for Ubuntu
-        run: sudo apt-get install build-essential libcairo2 libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf2.0-0 libffi-dev shared-mime-info
+        run: sudo apt-get install build-essential libcairo2 libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf-2.0-0 libffi-dev shared-mime-info
 
       - name: install tox
         run: |

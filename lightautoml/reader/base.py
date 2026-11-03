@@ -201,7 +201,9 @@ class PandasToPandasReader(Reader):
             Ex. {'numeric': {'dtype': np.float32}, 'datetime': {'date_format': '%Y-%m-%d'}}
             It's optional and commonly comes from config
         n_jobs: Int number of processes.
-        advanced_roles: Param of roles guess (experimental, do not change).
+        advanced_roles: If ``True``, use target-aware statistics to refine
+            numeric and categorical processing roles after simple dtype-based
+            guessing. This can also drop weak features unless they are forced.
         numeric_unique_rate: Param of roles guess (experimental, do not change).
         max_to_3rd_rate: Param of roles guess (experimental, do not change).
         binning_enc_rate: Param of roles guess (experimental, do not change).
@@ -210,6 +212,15 @@ class PandasToPandasReader(Reader):
         abs_score_val: Param of roles guess (experimental, do not change).
         drop_score_co: Param of roles guess (experimental, do not change).
         **kwargs: For now not used.
+
+    Attributes:
+        class_mapping: Mapping from original classification labels to
+            internal integer indices after :meth:`fit_read`. It is ``None``
+            when labels already use the expected indices. For multilabel
+            tasks, contains one mapping per target column.
+
+    See Also:
+        :ref:`faq-targets-predictions`, :ref:`faq-features-roles`
 
     """
 
@@ -685,7 +696,9 @@ class DictToPandasSeqReader(PandasToPandasReader):
             Ex. {'numeric': {'dtype': np.float32}, 'datetime': {'date_format': '%Y-%m-%d'}}
             It's optional and commonly comes from config
         n_jobs: Int number of processes.
-        advanced_roles: Param of roles guess (experimental, do not change).
+        advanced_roles: If ``True``, use target-aware statistics to refine
+            numeric and categorical processing roles after simple dtype-based
+            guessing. This can also drop weak features unless they are forced.
         numeric_unqiue_rate: Param of roles guess (experimental, do not change).
         max_to_3rd_rate: Param of roles guess (experimental, do not change).
         binning_enc_rate: Param of roles guess (experimental, do not change).

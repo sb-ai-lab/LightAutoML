@@ -167,7 +167,11 @@ class AutoML:
         verbose: int = 0,
         path_to_save: Optional[str] = None,
     ) -> LAMLDataset:
-        """Fit on input data and make prediction on validation part.
+        """Fit on input data and return out-of-fold or validation predictions.
+
+        If ``valid_data`` is not provided, each training row is predicted by
+        a fold model that was not fitted on that row. If ``valid_data`` is
+        provided, predictions are returned for that dataset instead.
 
         Args:
             train_data: Dataset to train.
@@ -176,7 +180,8 @@ class AutoML:
                 if cannot be inferred from train_data.
             cv_iter: Custom cv iterator. For example,
                 :class:`~lightautoml.validation.np_iterators.TimeSeriesIterator`.
-            valid_data: Optional validation dataset.
+            valid_data: Optional holdout validation dataset. Multi-level
+                stacking cannot be fitted with holdout validation.
             valid_features: Optional validation dataset
                 features if can't be inferred from `valid_data`.
             verbose: Controls the verbosity: the higher, the more messages.
@@ -185,10 +190,20 @@ class AutoML:
                 >=2 : the information about folds processing is also displayed;
                 >=3 : the hyperparameters optimization process is also displayed;
                 >=4 : the training process for every algorithm is displayed.
-            path_to_save: The path that joblib will use to save the model after fit stage is completed. Use *.joblib format.
+            path_to_save: Path used by joblib to save the fitted AutoML.
+                The ``.joblib`` suffix is added when omitted.
 
         Returns:
-            Predicted values.
+            Out-of-fold predictions for ``train_data`` or predictions for
+            ``valid_data`` when it is provided.
+
+        Note:
+            Keep the returned dataset if the predictions are needed later.
+            ``path_to_save`` serializes the fitted AutoML, not this returned
+            prediction dataset.
+
+        See Also:
+            :ref:`faq-training-validation`, :ref:`faq-saving-loading`
 
         """
         set_stdout_level(verbosity_to_loglevel(verbose))
@@ -317,11 +332,17 @@ class AutoML:
             data: Dataset to perform inference.
             features_names: Optional features names,
                 if cannot be inferred from `train_data`.
-            return_all_predictions: if True,
-                returns all model predictions from last level
+            return_all_predictions: If ``True``, return predictions from
+                every model in the last level without blending. If ``None``,
+                use the value configured on this AutoML instance.
 
         Returns:
-            Dataset with predictions.
+            Dataset with blended predictions by default. For multiclass
+            tasks, columns follow ``reader.class_mapping`` when target labels
+            were remapped.
+
+        See Also:
+            :ref:`faq-targets-predictions`
 
         """
         dataset = self.reader.read(data, features_names=features_names, add_array_attrs=False)
@@ -355,10 +376,14 @@ class AutoML:
                 return self.blender.predict(level_predictions)
 
     def collect_used_feats(self) -> List[str]:
-        """Get feats that automl uses on inference.
+        """Get the union of features used by fitted inference pipelines.
+
+        The returned features belong to pipelines that remain after blending
+        and pruning. This is not a feature-importance ranking or necessarily
+        the selected subset of any single model.
 
         Returns:
-            Features names list.
+            Feature names in unspecified order.
 
         """
         used_feats = set()
