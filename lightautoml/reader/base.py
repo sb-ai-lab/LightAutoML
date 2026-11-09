@@ -1,6 +1,7 @@
 """Reader and its derivatives."""
 
 import logging
+import warnings
 
 from copy import deepcopy
 from typing import Any
@@ -13,7 +14,6 @@ from typing import Tuple
 from typing import TypeVar
 from typing import Union
 from typing import cast
-import warnings
 
 import numpy as np
 import pandas as pd
@@ -371,7 +371,7 @@ class PandasToPandasReader(Reader):
                     if (
                         flg_default_params
                         and not np.issubdtype(cat_role.dtype, np.number)
-                        and np.issubdtype(subsample.dtypes[feat], np.number)
+                        and pd.api.types.is_numeric_dtype(subsample.dtypes[feat])
                     ):
                         r.dtype = self._get_default_role_from_str("numeric").dtype
 
@@ -825,7 +825,7 @@ class DictToPandasSeqReader(PandasToPandasReader):
                     if (
                         flg_default_params
                         and not np.issubdtype(cat_role.dtype, np.number)
-                        and np.issubdtype(subsample.dtypes[feat], np.number)
+                        and pd.api.types.is_numeric_dtype(subsample.dtypes[feat])
                     ):
                         r.dtype = self._get_default_role_from_str("numeric").dtype
 
@@ -882,9 +882,11 @@ class DictToPandasSeqReader(PandasToPandasReader):
             data=seq_dataset[self.meta[dataset_name]["features"]],
             features=self.meta[dataset_name]["features"],
             roles=self.meta[dataset_name]["roles"],
-            idx=self.meta[dataset_name]["seq_idx_target"]
-            if self.meta[dataset_name]["seq_idx_target"] is not None
-            else self.meta[dataset_name]["seq_idx_data"],
+            idx=(
+                self.meta[dataset_name]["seq_idx_target"]
+                if self.meta[dataset_name]["seq_idx_target"] is not None
+                else self.meta[dataset_name]["seq_idx_data"]
+            ),
             name=dataset_name,
             scheme=self.seq_params[dataset_name].get("scheme", None),
             **kwargs,
@@ -1004,7 +1006,7 @@ class DictToPandasSeqReader(PandasToPandasReader):
                         if (
                             flg_default_params
                             and not np.issubdtype(cat_role.dtype, np.number)
-                            and np.issubdtype(subsample.dtypes[feat], np.number)
+                            and pd.api.types.is_numeric_dtype(subsample.dtypes[feat])
                         ):
                             r.dtype = self._get_default_role_from_str("numeric").dtype
 

@@ -1,0 +1,36 @@
+# Latest stable direct dependencies checked on PyPI on 2026-10-13.
+# This snapshot is for reproducing tests, not a lock on library users.
+numpy==2.5.4
+pandas==3.0.6
+scipy==1.18.1
+scikit-learn==1.9.1
+torch==2.14.1
+torchvision==0.29.1
+lightgbm==4.7.0
+catboost==1.2.10
+xgboost==3.4.1
+optuna==5.0.0
+statsmodels==0.15.0
+holidays==0.106
+networkx==3.7
+cmaes==0.13.1
+PyYAML==6.0.3
+tqdm==4.70.1
+joblib==1.6.0
+Jinja2==3.1.6
+seaborn==0.13.2
+SQLAlchemy==2.1.4
+transformers==5.19.0
+fasttext-numpy2==0.10.4
+nltk==3.10.3
+autowoe==1.4.0
+tabm==0.0.3
+tabicl==2.2.0
+albumentations==2.0.8
+timm==1.0.30
+opencv-python==5.0.0.93
+PyWavelets==1.10.0
+scikit-image==0.26.0
+featuretools==1.31.0
+weasyprint==70.0
+cffi==2.1.1

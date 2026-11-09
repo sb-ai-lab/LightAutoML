@@ -1,0 +1,7 @@
+# Pandas 3 AFG/all compatibility checked on 2026-10-22.
+pandas==3.0.6
+featuretools==1.31.0
+woodwork==0.31.0
+setuptools==81.0.0
+dask==2026.8.0
+distributed==2026.8.0
