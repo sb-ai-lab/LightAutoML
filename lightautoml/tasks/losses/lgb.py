@@ -84,10 +84,11 @@ _lgb_force_metric = {
 class LGBFunc:
     """Wrapper of metric function for LightGBM."""
 
-    def __init__(self, metric_func, greater_is_better, bw_func):
+    def __init__(self, metric_func, greater_is_better, bw_func, label_bw_func=None):
         self.metric_func = metric_func
         self.greater_is_better = greater_is_better
         self.bw_func = bw_func
+        self.label_bw_func = bw_func if label_bw_func is None else label_bw_func
 
     def __call__(self, pred: np.ndarray, dtrain: lgb.Dataset) -> Tuple[str, float, bool]:
         """Calculate metric."""
@@ -99,7 +100,7 @@ class LGBFunc:
             pred = pred.reshape((label.shape[0], -1), order="F")
             label = label.astype(np.int32)
 
-        label = self.bw_func(label)
+        label = getattr(self, "label_bw_func", self.bw_func)(label)
         pred = self.bw_func(pred)
 
         # for weighted case
@@ -200,7 +201,8 @@ class LGBLoss(Loss):
         if metric_params is not None:
             metric_func = partial(metric_func, **metric_params)
 
-        return LGBFunc(metric_func, greater_is_better, self._bw_func)
+        label_bw_func = self._bw_func if self._fw_func is not Loss._fw_func else Loss._bw_func
+        return LGBFunc(metric_func, greater_is_better, self._bw_func, label_bw_func)
 
     def set_callback_metric(
         self,

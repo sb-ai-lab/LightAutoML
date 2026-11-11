@@ -210,8 +210,7 @@ class BoostXGB(TabularMLAlgo, ImportanceEstimator):
                 callbacks=[early_stopping],
             )
 
-        val_pred = model.predict(data=dval)
-        val_pred = self.task.losses["xgb"].bw_func(val_pred)
+        val_pred = self._predict(model, dval)
 
         return model, val_pred
 
@@ -226,9 +225,18 @@ class BoostXGB(TabularMLAlgo, ImportanceEstimator):
             Predicted target values.
 
         """
-        pred = self.task.losses["xgb"].bw_func(model.predict(xgboost.DMatrix(_sanitize_features(dataset.data))))
+        pred = self._predict(model, xgboost.DMatrix(_sanitize_features(dataset.data)))
 
         return pred
+
+    def _predict(self, model: xgboost.Booster, data: xgboost.DMatrix) -> np.ndarray:
+        iteration_range = (0, 0)
+        best_iteration = getattr(model, "best_iteration", None)
+        if best_iteration is not None and self.params.get("booster", "gbtree") != "gblinear":
+            iteration_range = (0, best_iteration + 1)
+        loss = self.task.losses["xgb"]
+        pred = model.predict(data, iteration_range=iteration_range, output_margin=loss.fobj is not None)
+        return loss.bw_func(pred)
 
     def get_features_score(self) -> Series:
         """Computes feature importance as mean values of feature importance provided by xgboost per all models.
@@ -237,9 +245,14 @@ class BoostXGB(TabularMLAlgo, ImportanceEstimator):
             Series with feature importances.
 
         """
-        imp = 0
+        assert self.is_fitted, "Model must be fitted to compute importance."
+        imp = np.zeros(len(self.features))
         for model in self.models:
-            imp = imp + model.feature_importance(importance_type="gain")
+            if hasattr(model, "best_iteration") and self.params.get("booster", "gbtree") != "gblinear":
+                model = model[: model.best_iteration + 1]
+            scores = model.get_score(importance_type="gain")
+            names = model.feature_names or [f"f{index}" for index in range(len(self.features))]
+            imp += np.array([scores.get(name, 0.0) for name in names])
 
         imp = imp / len(self.models)
 
