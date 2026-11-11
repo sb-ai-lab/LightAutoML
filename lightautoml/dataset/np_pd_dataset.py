@@ -577,7 +577,7 @@ class PandasDataset(LAMLDataset):
                 self.dtypes[f] = self.roles[f].dtype
 
         self.data = self.data.astype(self.dtypes)
-        self.data.reset_index(drop=True, inplace=True)
+        self.data = self.data.reset_index(drop=True)
         # do we need to reset_index ?? If yes - drop for Series attrs too
         # case to check - concat pandas dataset and from numpy to pandas dataset
         # TODO: Think about reset_index here

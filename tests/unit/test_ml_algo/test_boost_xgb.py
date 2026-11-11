@@ -1,8 +1,11 @@
 """Regressions for non-finite XGBoost features in dense and sparse datasets."""
 
+import pickle
+
 import numpy as np
 import pandas as pd
 import pytest
+import xgboost
 
 from scipy import sparse
 
@@ -12,6 +15,7 @@ from lightautoml.dataset.roles import NumericRole
 from lightautoml.ml_algo.boost_xgb import BoostXGB
 from lightautoml.ml_algo.boost_xgb import _sanitize_features
 from lightautoml.tasks import Task
+from lightautoml.validation.base import HoldoutIterator
 from lightautoml.validation.np_iterators import FoldsIterator
 
 
@@ -108,3 +112,72 @@ def test_nullable_pandas_features_fit_and_predict(dtype):
     assert np.isfinite(oof).all()
     assert np.isfinite(predictions).all()
     pd.testing.assert_frame_equal(dataset.data, original)
+
+
+@pytest.mark.parametrize("early_stopping_rounds", [3, 100])
+def test_predictions_use_best_iteration_even_without_early_stop(early_stopping_rounds):
+    rng = np.random.RandomState(42)
+    data = rng.normal(size=(120, 2)).astype(np.float32)
+    target = data[:, 0] * 3
+    target[80:] *= -1
+    dataset = NumpyDataset(data, ["a", "b"], NumericRole(), Task("reg"), target=target)
+    model = BoostXGB(
+        default_params={
+            "n_estimators": 12,
+            "early_stopping_rounds": early_stopping_rounds,
+            "learning_rate": 0.5,
+            "max_depth": 2,
+            "nthread": 1,
+            "verbose_eval": False,
+        }
+    )
+    valid = dataset[80:]
+
+    oof = model.fit_predict(HoldoutIterator(dataset[:80], valid)).data[:, 0]
+    booster = model.models[0]
+    matrix = xgboost.DMatrix(valid.data)
+    best = booster.predict(matrix, iteration_range=(0, booster.best_iteration + 1))
+
+    assert booster.best_iteration + 1 < booster.num_boosted_rounds()
+    assert not np.allclose(booster.predict(matrix), best)
+    np.testing.assert_allclose(oof, best)
+    np.testing.assert_allclose(model.predict(valid).data[:, 0], best)
+    np.testing.assert_allclose(pickle.loads(pickle.dumps(model)).predict(valid).data[:, 0], best)
+    best_importance = booster[: booster.best_iteration + 1].get_score(importance_type="gain")
+    np.testing.assert_allclose(
+        model.get_features_score().reindex(["a", "b"]),
+        [best_importance.get("f0", 0), best_importance.get("f1", 0)],
+    )
+
+
+@pytest.mark.parametrize("pandas_input", [False, True])
+def test_feature_importance_includes_unused_features_in_original_names(pandas_input):
+    target = np.tile([0, 1], 40).astype(np.float32)
+    data = np.column_stack([np.ones(80), target, np.zeros(80)])
+    dataset = NumpyDataset(
+        data, ["f1", "signal", "f0"], NumericRole(), Task("binary"), target=target, folds=(np.arange(80) // 2) % 2
+    )
+    if pandas_input:
+        dataset = dataset.to_pandas()
+    model = BoostXGB(default_params={"n_estimators": 4, "early_stopping_rounds": 2, "max_depth": 1, "nthread": 1})
+    model.fit_predict(FoldsIterator(dataset))
+
+    importance = model.get_features_score()
+
+    assert len(importance) == 3
+    assert set(importance.index) == set(dataset.features)
+    assert importance.index[0] == "signal"
+    assert importance["signal"] > 0
+    assert importance["f1"] == importance["f0"] == 0
+
+
+@pytest.mark.filterwarnings("ignore:.*booster=gblinear.*deprecated:UserWarning")
+def test_linear_booster_prediction_does_not_slice_tree_iterations():
+    data = np.arange(120, dtype=np.float32).reshape(60, 2)
+    dataset = NumpyDataset(data, ["a", "b"], NumericRole(), Task("reg"), target=data[:, 0])
+    model = BoostXGB(default_params={"booster": "gblinear", "n_estimators": 4, "nthread": 1, "verbose_eval": False})
+
+    result = model.fit_predict(HoldoutIterator(dataset[:40], dataset[40:]))
+
+    assert np.isfinite(result.data).all()
+    np.testing.assert_allclose(model.predict(dataset[40:]).data, result.data)
