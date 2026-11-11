@@ -21,7 +21,7 @@ def _rolling_error(y_true, y_pred, sample_weight, start_indices, squared):
     for forecast, start, weight in zip(forecasts, starts, weights):
         forecast = np.asarray(forecast, dtype=float)
         # The work format has NaN placeholders before the first forecast origin.
-        if np.isnan(forecast).all():
+        if forecast.ndim == 0 and np.isnan(forecast):
             if horizon is not None:
                 raise ValueError("Missing forecasts are allowed only before the first forecast.")
             continue

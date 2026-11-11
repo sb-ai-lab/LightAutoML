@@ -65,7 +65,9 @@ def recall_at_specificity(y_true, y_pred, sample_weight=None, threshold=0.99):
     weights = _weights(sample_weight, len(target))
     if not np.array_equal(np.unique(target[weights > 0]), [0, 1]):
         raise ValueError("Recall at specificity requires both binary classes with positive weight.")
-    fpr, recall, _ = roc_curve(target, y_pred, sample_weight=weights)
+    # Collinear ROC points still represent attainable score thresholds. Dropping
+    # them can discard the best recall satisfying the specificity constraint.
+    fpr, recall, _ = roc_curve(target, y_pred, sample_weight=weights, drop_intermediate=False)
     return float(recall[1 - fpr >= threshold].max())
 
 

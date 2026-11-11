@@ -258,6 +258,5 @@ class LGBLoss(Loss):
                 self.metric_params = {}
 
         else:
-            self.metric_name = None
-            # metric = CustomWrapper(metric)
+            self.metric_name = "None"
             self.feval = self.metric_wrapper(metric, greater_is_better, self.metric_params)

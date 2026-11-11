@@ -4,9 +4,11 @@ import pytest
 import lightautoml.utils.logging  # noqa: F401
 
 from lightautoml.tasks import Task
+from lightautoml.tasks.metrics import get_metric
 
 
 @pytest.mark.parametrize("backend", ["lgb", "xgb"])
+@pytest.mark.parametrize("as_callable", [False, True])
 @pytest.mark.parametrize(
     "name,params",
     [
@@ -16,8 +18,12 @@ from lightautoml.tasks import Task
         ("pr_auc", {}),
     ],
 )
-def test_callback_receives_metric_parameters_weights_and_direction(backend, name, params):
-    task = Task("binary", metric=name, metric_params=params)
+def test_callback_receives_metric_parameters_weights_and_direction(backend, as_callable, name, params):
+    task = (
+        Task("binary", metric=get_metric(name, **params))
+        if as_callable
+        else Task("binary", metric=name, metric_params=params)
+    )
     target, pred, weights = np.array([0, 1, 1, 0]), np.array([0.1, 0.75, 0.8, 0.9]), np.array([1, 2, 3, 4])
 
     class Dataset:
@@ -38,6 +44,7 @@ def test_callback_receives_metric_parameters_weights_and_direction(backend, name
 
 
 @pytest.mark.parametrize("backend", ["lgb", "xgb", "cb"])
+@pytest.mark.parametrize("as_callable", [False, True])
 @pytest.mark.parametrize(
     "task_name,metric,metric_params",
     [
@@ -47,7 +54,7 @@ def test_callback_receives_metric_parameters_weights_and_direction(backend, name
         ("multiclass", "precision_macro", {}),
     ],
 )
-def test_training_with_new_metrics(backend, task_name, metric, metric_params, tmp_path):
+def test_training_with_new_metrics(backend, as_callable, task_name, metric, metric_params, tmp_path):
     rng = np.random.RandomState(12)
     features = rng.normal(size=(120, 4))
     if task_name == "binary":
@@ -57,7 +64,11 @@ def test_training_with_new_metrics(backend, task_name, metric, metric_params, tm
     else:
         target = 5 + features[:, 0]
     weights = rng.uniform(1, 2, 120)
-    task = Task(task_name, metric=metric, metric_params=metric_params)
+    task = (
+        Task(task_name, metric=get_metric(metric, task=task_name, **metric_params))
+        if as_callable
+        else Task(task_name, metric=metric, metric_params=metric_params)
+    )
     loss = task.losses[backend]
     train_x, valid_x, train_y, valid_y = features[:80], features[80:], target[:80], target[80:]
     if backend == "lgb":

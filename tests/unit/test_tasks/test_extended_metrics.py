@@ -118,6 +118,36 @@ def test_partial_roc_metrics():
         get_metric("rec@spec")([1, 1], [0.2, 0.8])
 
 
+@pytest.mark.parametrize("weighted", [False, True])
+def test_recall_at_specificity_considers_collinear_roc_thresholds(weighted):
+    target = np.tile([0, 1], 5)
+    pred = np.repeat([0.9, 0.8, 0.7, 0.6, 0.5], 2)
+    weights = np.tile([2, 3], 5) if weighted else None
+    # The thresholds at .8 and .7 are collinear and normally omitted from a
+    # plotted ROC curve. At specificity .5, threshold .8 achieves recall .4.
+    assert get_metric("rec@spec", threshold=0.5)(target, pred, sample_weight=weights) == pytest.approx(0.4)
+
+
+@pytest.mark.parametrize(
+    "task_name,name,params",
+    [
+        ("reg", "r2_adj", {"n_features": 2}),
+        ("binary", "precision@k", {"k": 1.0}),
+        ("multilabel", "map@k", {}),
+        ("binary", "ece", {}),
+    ],
+)
+def test_metric_factory_callable_keeps_direction_in_task(task_name, name, params):
+    metric = get_metric(name, task=task_name, **params)
+    task = Task(task_name, metric=metric)
+    restored = pickle.loads(pickle.dumps(task))
+    assert restored.greater_is_better == metric.greater_is_better
+    assert (
+        Task(task_name, metric=metric, greater_is_better=not metric.greater_is_better).greater_is_better
+        != metric.greater_is_better
+    )
+
+
 def test_nan_aware_auc_keeps_weight_alignment_and_ignores_degenerate_columns():
     target = pd.DataFrame([[0, 1, np.nan], [1, 1, 0], [np.nan, 1, 1], [1, 1, 0]], index=[8, 2, 5, 9])
     pred = pd.DataFrame([[0.2, 0.5, 0.4], [0.7, 0.5, 0.6], [0.9, 0.5, 0.8], [0.1, 0.5, 0.7]], index=target.index)

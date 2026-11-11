@@ -30,6 +30,9 @@ def test_rolling_forecasts_and_explicit_origins():
         ([[1, 2]], {"start_indices": [0.5]}),
         ([[1, 2]], {"start_indices": [10]}),
         ([[1, 2], np.nan], {}),
+        ([[], [2, 3]], {}),
+        ([[np.nan, np.nan], [2, 3]], {}),
+        ([[[np.nan]], [2, 3]], {}),
     ],
 )
 def test_forecast_validation(forecasts, kwargs):

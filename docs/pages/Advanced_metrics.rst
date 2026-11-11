@@ -22,15 +22,22 @@ Pass a dictionary for metric parameters. String expressions are not evaluated::
     task = Task("reg", metric="r2_adj", metric_params={"n_features": 12})
     task = Task("multilabel", metric="hamming_accuracy")
 
-Named metrics carry their optimization direction. You do not need to infer it
+Named metrics and callables returned by ``get_metric`` carry their optimization
+direction. You do not need to infer it
 from artificial predictions. ``Task.metric_func`` returns the raw value;
 ``Task.get_dataset_metric()`` negates losses so that model selection always
 maximizes the returned score. An explicit ``greater_is_better`` overrides the
-registered direction.
+registered direction. For example, the following also works for metrics that
+cannot be evaluated on the small artificial sample used for inference::
+
+    from lightautoml.tasks.metrics import get_metric
+
+    task = Task("reg", metric=get_metric("r2_adj", task="reg", n_features=12))
 
 LightGBM and XGBoost use the new metrics through evaluation callbacks, with
 their parameters and observation weights. LightGBM disables its default
-evaluation metric when a Python metric is selected. Existing special-loss
+evaluation metric when a Python metric is selected, whether supplied by name
+or as a callable. Existing special-loss
 overrides remain in place, including transformed-target losses.
 
 CatBoost retains LightAutoML's existing callable-metric policy: metrics without
@@ -122,6 +129,8 @@ All names below are accepted by ``Task`` for the indicated task and by
    * - ``rec@spec``, ``recall_at_specificity``
      - binary
      - Maximum recall at specificity >= ``threshold`` (default 0.99).
+       Considers every attainable score threshold, including collinear ROC
+       points, without interpolating between thresholds.
    * - ``aucroc@fpr``, ``partial_auc``
      - binary
      - scikit-learn standardized partial ROC AUC up to FPR ``threshold``
@@ -305,8 +314,9 @@ requires positive overall uplift.
 forecast origins. By default forecast row i starts at observed series position
 i. ``start_indices`` allows a compact matrix of forecasts beginning later in
 the series. Leading scalar NaN placeholders (the work format) are accepted;
-later missing forecasts, partial NaN horizons and unequal horizon lengths are
-errors. Trailing horizons extending past the observed series are skipped.
+later missing forecasts, empty vectors, partially or entirely NaN horizons,
+and unequal horizon lengths are errors. Trailing horizons extending past the
+observed series are skipped.
 Weights apply to forecast origins. At least one complete positive-weight
 horizon is required. Ordinary aligned forecast matrices can instead use
 ``Task("multi:reg", metric="MAE")`` or ``"MSE"``.

@@ -400,6 +400,8 @@ class Task:
             self.metric_name = metric
 
         else:
+            if greater_is_better is None:
+                greater_is_better = getattr(metric, "greater_is_better", None)
             metric = ArgsWrapper(metric, self.metric_params)
             self.metric_params = {}
             self.metric_func = metric
