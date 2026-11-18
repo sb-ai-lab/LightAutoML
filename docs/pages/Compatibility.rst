@@ -129,3 +129,20 @@ binning, and XGBoost with dense and sparse non-finite features. Mocked CUDA
 availability checks device selection; they do not validate CUDA kernels,
 driver compatibility, real multi-GPU execution or GPU memory consumption.
 Those checks require GPU hardware.
+
+CatBoost multioutput training
+-----------------------------
+
+CatBoost honors ``task_type="GPU"`` for ``multi:reg`` with CatBoost 1.2.1
+or later and for ``multilabel`` with CatBoost 1.2 or later. Both numeric and
+categorical features can be used. Older CatBoost releases retain CPU training
+for these tasks and emit a log warning explaining the minimum GPU version.
+An explicit ``task_type="CPU"`` remains on CPU. GPU training failures are
+propagated; they do not trigger an automatic retry on CPU.
+
+With ``TabularAutoML``, select a GPU using ``gpu_ids="0"``. Automatic device
+selection requires a CUDA-enabled PyTorch installation, even for CatBoost.
+The lower-level ``BoostCB`` interface accepts ``task_type="GPU"`` and
+``devices="0"`` in ``default_params`` without requiring PyTorch CUDA support.
+CatBoost inference uses CPU by default, including after GPU training and
+serialization; no GPU is required when loading and predicting with the model.

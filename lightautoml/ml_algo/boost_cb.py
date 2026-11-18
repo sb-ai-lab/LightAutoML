@@ -11,6 +11,7 @@ from typing import Union
 import catboost as cb
 import numpy as np
 
+from packaging.version import Version
 from pandas import Series
 
 from ..dataset.np_pd_dataset import CSRSparseDataset
@@ -253,10 +254,6 @@ class BoostCB(TabularMLAlgo, ImportanceEstimator):
             dtypes = {**dtypes, **{x: "int" for x in self._text_features}}
 
         data = data.astype(dtypes)
-        if self._le_cat_features:
-            # copy was made in prev astype
-            data.astype({x: "category" for x in self._le_cat_features}, copy=False)
-
         if dataset.target is not None:
             target, weights = self.task.losses["cb"].fw_func(dataset.target, dataset.weights)
         else:
@@ -286,6 +283,20 @@ class BoostCB(TabularMLAlgo, ImportanceEstimator):
         """
         params, num_trees, early_stopping_rounds, verbose_eval, fobj, feval = self._infer_params()
 
+        minimum_gpu_version = {"multi:reg": "1.2.1", "multilabel": "1.2"}.get(self.task.name)
+        if (
+            params["task_type"] == "GPU"
+            and minimum_gpu_version is not None
+            and Version(cb.__version__) < Version(minimum_gpu_version)
+        ):
+            logger.warning(
+                "CatBoost %s does not support %s on GPU (requires >= %s); training on CPU.",
+                cb.__version__,
+                fobj,
+                minimum_gpu_version,
+            )
+            params["task_type"] = "CPU"
+
         cb_train = self._get_pool(train)
         cb_valid = self._get_pool(valid)
 
@@ -297,9 +308,6 @@ class BoostCB(TabularMLAlgo, ImportanceEstimator):
                     "objective": fobj,
                     "eval_metric": feval,
                     "od_wait": early_stopping_rounds,
-                    "task_type": "CPU"
-                    if self.task.name in ["multilabel", "multi:reg"]
-                    else params["task_type"],  # warning in TabularAutoML?
                 },
             }
         )
