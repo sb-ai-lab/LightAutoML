@@ -150,3 +150,80 @@ To compare revisions, run the same script with ``PYTHONPATH`` pointing to each
 checkout. It reports peak process RSS, retained array storage, prediction row
 count and elapsed time. RSS includes Python and imported libraries, and depends
 on the platform and allocator; the figures are not a fixed memory guarantee.
+
+Uplift modelling
+----------------
+
+Uplift meta-learners estimate the difference between the treated and control
+outcomes. Use a binary treatment column (0 for control, 1 for treated) and a
+``binary`` or ``reg`` outcome task. Categorical covariates can be declared in
+``roles`` and are processed by the supplied base learners.
+
+.. code-block:: python
+
+    from lightautoml.addons.uplift.metalearners import TLearner
+    from lightautoml.automl.presets.tabular_presets import TabularAutoML
+    from lightautoml.tasks import Task
+
+    def outcome_model():
+        return TabularAutoML(
+            task=Task("binary"),
+            timeout=120,
+            cpu_limit=4,
+            gpu_ids="",
+            general_params={"use_algos": [["cb"]]},
+        )
+
+    model = TLearner(
+        control_learner=outcome_model(),
+        treatment_learner=outcome_model(),
+    )
+    model.fit(train, {
+        "target": "outcome",
+        "treatment": "treated",
+        "category": ["segment"],
+    })
+    effect, treated_outcome, control_outcome = model.predict(test)
+
+``SLearner`` and ``T2Learner`` retain treatment as an input feature even when
+feature selection finds little marginal association with the outcome.
+``T2Learner`` trains on both groups but validates each model on its own group,
+using every requested fold.
+
+``XLearner`` fits effect regressions on imputed outcomes in each group. If
+``e(x)`` is the probability of treatment, its prediction is
+``e(x) * effect_control(x) + (1 - e(x)) * effect_treatment(x)``. This follows
+`Kuenzel et al., Metalearners for estimating heterogeneous treatment effects
+<https://escholarship.org/uc/item/3xk984qv>`_. An older implementation reversed
+these weights, which can degrade estimates for imbalanced treatment groups.
+``RLearner`` clips propensity predictions away from zero and one before
+constructing residual targets and weights.
+
+``AutoUpliftTX`` compares T- and X-learners on a held-out portion of the data
+while reusing fitted components. Its selected model can predict immediately;
+``create_best_metalearner(need_report=False)`` returns a fresh model to refit.
+Effect models are paired with the outcome models used to construct their
+training targets. Repeated calls to ``fit`` discard previous search results.
+
+Checking uplift quality
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Outcome AUC or regression error alone does not measure treatment-effect
+quality. Compare meta-learners on an untouched uplift evaluation set, keep
+preprocessing inside training folds, and include a simple T-learner baseline.
+A linear S-learner with no treatment interactions cannot express arbitrary
+heterogeneous effects; changing only its tuning budget does not fix that
+limitation. For imbalanced groups, try flexible outcome models and simpler
+X-learner effect regressions when a simple effect is plausible.
+
+The repository includes a diagnostic experiment with a nonlinear baseline,
+a linear treatment effect, categorical covariates, and an independent test
+sample with known effects::
+
+    PYTHONPATH=. python scripts/experiments/benchmark_uplift_weights.py
+
+It evaluates three seeds at treatment rates 0.1, 0.5 and 0.9. Old and corrected
+X-learner weights use identical fitted models, isolating the weighting change.
+It also reports T-learner estimates from the same outcome models and from two
+direct CatBoost models. This is a synthetic diagnostic, not a comparison under
+equal tuning budgets or evidence of superiority on every real dataset.
