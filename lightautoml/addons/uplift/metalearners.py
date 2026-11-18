@@ -17,6 +17,7 @@ from pandas import DataFrame
 
 from lightautoml.automl.base import AutoML
 from lightautoml.automl.presets.tabular_presets import TabularAutoML
+from lightautoml.dataset.roles import NumericRole
 from lightautoml.tasks import Task
 from lightautoml.utils.timer import Timer
 from lightautoml.validation.np_iterators import UpliftIterator
@@ -74,7 +75,7 @@ class MetaLearner(metaclass=ABCMeta):
         self._is_fitted = True
         if self._timer.time_limit_exceeded():
             logger.warning(
-                "{} is trained, but time limit exceeded.",
+                "%s is trained, but time limit exceeded.",
                 self.__class__.__name__,
             )
 
@@ -179,6 +180,7 @@ class SLearner(MetaLearner):
 
         uplift_roles = copy.deepcopy(roles)
         uplift_roles.pop(treatment_role)
+        uplift_roles[NumericRole(force_input=True)] = treatment_col
 
         self.learner.fit_predict(
             train_data,
@@ -382,12 +384,13 @@ class T2Learner(MetaLearner):
             control_learner if control_learner is not None else self._get_default_learner(self.base_task)
         )
 
-    def _fit(self, train_data: DataFrame, roles: Dict):
+    def _fit(self, train_data: DataFrame, roles: Dict, verbose: int = 0):
         """Fit metalearner.
 
         Args:
             train_data: Dataset to train
             roles: Roles dict with 'treatment' roles
+            verbose: Verbosity passed to both base learners.
 
         """
         (
@@ -399,6 +402,7 @@ class T2Learner(MetaLearner):
 
         new_roles = copy.deepcopy(roles)
         new_roles.pop(treatment_role)
+        new_roles[NumericRole(force_input=True)] = treatment_col
 
         train_data_c = train_data.copy()
         treatment_values = train_data_c[treatment_col].values
@@ -407,7 +411,7 @@ class T2Learner(MetaLearner):
         treatment_iterator = UpliftIterator(
             treatment_values,
             target_values,
-            True,
+            False,
             self.base_task,
             self._n_uplift_iterator_folds,
         )
@@ -415,12 +419,13 @@ class T2Learner(MetaLearner):
             train_data_c,
             new_roles,
             cv_iter=treatment_iterator,
+            verbose=verbose,
         )
 
         control_iterator = UpliftIterator(
             treatment_values,
             target_values,
-            False,
+            True,
             self.base_task,
             self._n_uplift_iterator_folds,
         )
@@ -428,6 +433,7 @@ class T2Learner(MetaLearner):
             train_data_c,
             new_roles,
             cv_iter=control_iterator,
+            verbose=verbose,
         )
 
     def _predict(self, data: DataFrame):
@@ -443,9 +449,9 @@ class T2Learner(MetaLearner):
 
         """
         data_с = data.copy()
-        data_с[self._treatment_col] = True
+        data_с[self._treatment_col] = 1
         treatment_pred = self.treatment_learner.predict(data_с).data.ravel()
-        data_с[self._treatment_col] = False
+        data_с[self._treatment_col] = 0
         control_pred = self.control_learner.predict(data_с).data.ravel()
 
         uplift = treatment_pred - control_pred
@@ -533,7 +539,7 @@ class TDLearner(MetaLearner):
             treatment_col,
         ) = _get_treatment_role(roles)
 
-        self._set_dependent_group(train_data[treatment_col].mean())
+        self._set_dependent_group(train_data[treatment_col].to_numpy(dtype=float).mean())
 
         new_roles = copy.deepcopy(roles)
         new_roles.pop(treatment_role)
@@ -870,7 +876,7 @@ class XLearner(MetaLearner):
         propensity_score = self.learners["propensity"].predict(data).data.ravel()
         uplift_control_pred = self.learners["effect"]["control"].predict(data).data.ravel()
         uplift_treatment_pred = self.learners["effect"]["treatment"].predict(data).data.ravel()
-        uplift = propensity_score * uplift_treatment_pred + (1.0 - propensity_score) * uplift_control_pred
+        uplift = propensity_score * uplift_control_pred + (1.0 - propensity_score) * uplift_treatment_pred
 
         return (
             uplift,
@@ -1107,10 +1113,11 @@ class RLearner(MetaLearner):
             treatment_role,
             treatment_col,
         ) = _get_treatment_role(roles)
-        train_treatment = train_data[treatment_col]
+        train_treatment = train_data[treatment_col].to_numpy(dtype=float)
         effect_roles.pop(treatment_role)
 
-        weights = train_treatment - propensity_pred + self._epsi
+        propensity_pred = np.clip(propensity_pred, self._epsi, 1 - self._epsi)
+        weights = train_treatment - propensity_pred
 
         train_cp = train_data.copy()
         train_cp.drop(treatment_col, axis=1, inplace=True)

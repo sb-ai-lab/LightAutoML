@@ -252,12 +252,13 @@ class TimeSeriesIterator:
 class UpliftIterator:
     """Iterator for uplift modeling task.
 
-    Generates time series data split. Sorter - include left, exclude right.
+    Validate one treatment group while retaining the other in training.
 
     Args:
         treatment_col: Treatment column: 0 - control group, 1 - treatment group.
         target: Target values.
-        mode: Flag.
+        mode: Group retained in every training fold; the opposite group
+            is split for validation. False for control, True for treatment.
         task: Task.
         n_folds: Number of folds.
 
@@ -295,7 +296,7 @@ class UpliftIterator:
     def __getitem__(self, item):
         """Select train/validation indexes.
 
-        For Train indexes use all dates before Validation dates.
+        Training includes the other group and the remaining folds.
 
         Args:
             item: index of fold.
@@ -304,7 +305,7 @@ class UpliftIterator:
             Tuple of train/validation indexes.
 
         """
-        if item + 1 >= self.__len__():
+        if item < 0 or item >= self.__len__():
             raise IndexError()
 
         val_idx = self.splitted_idx[self.folds == item]

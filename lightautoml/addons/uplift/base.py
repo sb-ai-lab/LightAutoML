@@ -407,7 +407,7 @@ class AutoUplift(BaseAutoUplift):
         best_metric_value = 0.0
 
         if len(self.uplift_candidates) == 0:
-            self._generate_uplift_candidates(data, roles)
+            self._generate_uplift_candidates(train_data, roles)
 
         self.candidate_holdout_metrics = [None] * len(self.uplift_candidates)
         self.candidate_worktime = [None] * len(self.uplift_candidates)
@@ -838,7 +838,7 @@ class AutoUplift(BaseAutoUplift):
 
         _, treatment_col = uplift_utils._get_treatment_role(roles)
 
-        treatment_rate = data[treatment_col].mean()
+        treatment_rate = data[treatment_col].to_numpy(dtype=float).mean()
 
         is_imbalance_treatment = False
 
@@ -846,7 +846,7 @@ class AutoUplift(BaseAutoUplift):
             BaseLearnerWrapper(
                 name="__Linear__",
                 klass=uplift_utils.create_linear_automl,
-                params={"task": Task("binary")},
+                params={"task": self.base_task},
             ),
             BaseLearnerWrapper(
                 name="__TabularAutoML__",
@@ -1080,6 +1080,8 @@ class AutoUpliftTX(BaseAutoUplift):
         """
         train_data, test_data, test_treatment, test_target = self._prepare_data(data, roles)
 
+        self._trained_stage_baselearners.clear()
+        self._metalearner_metrics.clear()
         self._timer.start()
 
         for stage_info in self._generate_stage_baselearner_candidates():
@@ -1094,7 +1096,7 @@ class AutoUpliftTX(BaseAutoUplift):
                 )
                 break
 
-        self._calculate_metalearners_metrics(test_treatment, test_target)
+        self._calculate_metalearners_metrics(test_target, test_treatment)
 
         self._set_best_metalearner()
 
@@ -1189,6 +1191,7 @@ class AutoUpliftTX(BaseAutoUplift):
     ) -> Generator[Tuple[Tuple[MetaLearnerStage, BaseLearnerWrapper], ...], None, None]:
         """Iterate through a stage of baselearners one at a time."""
         stage_baselearners = self._set_stage_baselearners()
+        rng = np.random.RandomState(self.random_state)
 
         stage_by_levels = defaultdict(list)
         for stage in stage_baselearners:
@@ -1204,6 +1207,8 @@ class AutoUpliftTX(BaseAutoUplift):
         n_runs = 0
         for bls in bls_level_1:
             for stage_name_l1, bl_l1 in zip(stage_by_levels[1], bls):
+                if bl_l1 is None:
+                    continue
                 stage_l1 = self._extract_stage(stage_name_l1)
 
                 for stage_name_l2 in stage_by_levels[2]:
@@ -1226,7 +1231,7 @@ class AutoUpliftTX(BaseAutoUplift):
 
                     for _ in range(min(n_stage_iters, self._n_run_l2)):
                         n_stage_iters = len(pool_iter_levels[2])
-                        idx = np.random.randint(0, n_stage_iters, 1)[0]
+                        idx = rng.randint(n_stage_iters)
                         try:
                             (stage_name_l2, bl_l1, bls_iter,) = pool_iter_levels[
                                 2
@@ -1248,7 +1253,7 @@ class AutoUpliftTX(BaseAutoUplift):
         while len(pool_iter_levels[2]) > 0:
             n_stage_iters = len(pool_iter_levels[2])
             try:
-                idx = np.random.randint(0, n_stage_iters, 1)[0]
+                idx = rng.randint(n_stage_iters)
 
                 stage_name_l2, bl_l1, bls_iter = pool_iter_levels[2][idx]
                 bl_l2 = next(bls_iter)
@@ -1295,10 +1300,12 @@ class AutoUpliftTX(BaseAutoUplift):
             stage_baselearners = {k: deepcopy(self._validate_baselearners(v)) for k, v in self.baselearners.items()}
 
         all_stages_full_names = set(
-            stage.full_name() for ml, ml_stages in self.__MAP_META_TO_STAGES__.items() for stage in ml_stages
+            stage.full_name() for ml in self.metalearners for stage in self.__MAP_META_TO_STAGES__[ml]
         )
 
-        if len(stage_baselearners) != len(all_stages_full_names):
+        stage_baselearners = {k: v for k, v in stage_baselearners.items() if k in all_stages_full_names}
+
+        if not all_stages_full_names.issubset(stage_baselearners):
             timeout = self._calculate_single_bl_timeout(len(stage_baselearners) > 0)
 
             if isinstance(self.baselearners, list) and len(self.baselearners) > 0:
@@ -1322,7 +1329,7 @@ class AutoUpliftTX(BaseAutoUplift):
                 else:
                     raw_baselearners.append(bl)
 
-            for full_name in remain_stages_full_names:
+            for full_name in sorted(remain_stages_full_names):
                 stage = self._extract_stage(full_name)
 
                 stage_task = stage.params["task"] if "task" in stage.params else self.base_task
@@ -1421,7 +1428,7 @@ class AutoUpliftTX(BaseAutoUplift):
 
         bl = bl_wrap()
 
-        bl.fit_predict(train_data, train_roles, verbose)
+        bl.fit_predict(train_data, train_roles, verbose=verbose)
         test_pred = bl.predict(test).data.ravel()
 
         tsbl = TrainedStageBaseLearner(
@@ -1539,6 +1546,8 @@ class AutoUpliftTX(BaseAutoUplift):
             ml_name,
             ml_stages,
         ) in self.__MAP_META_TO_STAGES__.items():
+            if ml_name not in self.metalearners:
+                continue
             ready_metalearners.append(all(s.full_name() in self._trained_stage_baselearners for s in ml_stages))
 
         if not any(ready_metalearners):
@@ -1562,6 +1571,8 @@ class AutoUpliftTX(BaseAutoUplift):
                 ml_name,
                 ml_stages,
             ) in self.__MAP_META_TO_STAGES__.items():
+                if ml_name not in self.metalearners:
+                    continue
                 ml_bls = {}
                 for ml_stage in ml_stages:
                     ml_stage_full_name = ml_stage.full_name()
@@ -1614,7 +1625,7 @@ class AutoUpliftTX(BaseAutoUplift):
                 )
             ].pred
             propensity_pred = baselearners[("propensity",)].pred
-            uplift_pred = propensity_pred * treatment_pred + (1 - propensity_pred) * control_pred
+            uplift_pred = propensity_pred * control_pred + (1 - propensity_pred) * treatment_pred
         else:
             raise Exception()
 
@@ -1662,26 +1673,34 @@ class AutoUpliftTX(BaseAutoUplift):
             otl = self._get_trained_bl(("outcome_treatment",), bls[("outcome_treatment",)]).trained_model
             pl = self._get_trained_bl(("propensity",), bls[("propensity",)]).trained_model
             ecl = self._get_trained_bl(
-                ("outcome_treatment", "effect_control"), bls[("outcome_treatment", "effect_control")]
+                ("outcome_treatment", "effect_control"),
+                bls[("outcome_treatment", "effect_control")],
+                bls[("outcome_treatment",)],
             ).trained_model
             etl = self._get_trained_bl(
                 ("outcome_control", "effect_treatment"),
                 bls[("outcome_control", "effect_treatment")],
+                bls[("outcome_control",)],
             ).trained_model
 
             ml = XLearner(outcome_learners=[ocl, otl], effect_learners=[ecl, etl], propensity_learner=pl)
         else:
             raise Exception()
 
+        ml._is_fitted = True
         return ml
 
     def _get_trained_bl(
         self,
         metalearner_stage: MLStageFullName,
         baselearner_name: str,
+        previous_baselearner_name: Optional[str] = None,
     ):
         for bl in self._trained_stage_baselearners[metalearner_stage]:
-            if bl.stage_bl.name == baselearner_name:
+            if bl.stage_bl.name == baselearner_name and (
+                previous_baselearner_name is None
+                or (bl.prev_stage_bl is not None and bl.prev_stage_bl.name == previous_baselearner_name)
+            ):
                 return bl
         raise Exception(f"There isn't baselearner {baselearner_name}")
 
@@ -1704,7 +1723,7 @@ class AutoUpliftTX(BaseAutoUplift):
 
         ml_wrap: Optional[MetaLearnerWrapper] = None
         if metalearner_name == "TLearner":
-            ocl = self._get_trained_bl(("outcome_control"), bls[("outcome_control",)]).stage_bl
+            ocl = self._get_trained_bl(("outcome_control",), bls[("outcome_control",)]).stage_bl
             otl = self._get_trained_bl(("outcome_treatment",), bls[("outcome_treatment",)]).stage_bl
 
             ml_wrap = MetaLearnerWrapper(
@@ -1717,11 +1736,14 @@ class AutoUpliftTX(BaseAutoUplift):
             otl = self._get_trained_bl(("outcome_treatment",), bls[("outcome_treatment",)]).stage_bl
             pl = self._get_trained_bl(("propensity",), bls[("propensity",)]).stage_bl
             ecl = self._get_trained_bl(
-                ("outcome_treatment", "effect_control"), bls[("outcome_treatment", "effect_control")]
+                ("outcome_treatment", "effect_control"),
+                bls[("outcome_treatment", "effect_control")],
+                bls[("outcome_treatment",)],
             ).stage_bl
             etl = self._get_trained_bl(
                 ("outcome_control", "effect_treatment"),
                 bls[("outcome_control", "effect_treatment")],
+                bls[("outcome_control",)],
             ).stage_bl
 
             ml_wrap = MetaLearnerWrapper(
