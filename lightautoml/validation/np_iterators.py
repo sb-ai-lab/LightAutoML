@@ -175,15 +175,10 @@ class TimeSeriesIterator:
             folds: Array of folds' indexes.
 
         """
-        idx = np.arange(datetime_col.shape[0])
-        order = np.argsort(datetime_col)
-        sorted_idx = idx[order]
-        folds = np.concatenate(
-            [[n] * x.shape[0] for (n, x) in enumerate(np.array_split(sorted_idx, n_splits))],
-            axis=0,
-        )
-        folds = folds[sorted_idx]
-
+        order = np.argsort(np.asarray(datetime_col), kind="stable")
+        folds = np.empty(len(order), dtype=np.intp)
+        for fold, rows in enumerate(np.array_split(order, n_splits)):
+            folds[rows] = fold
         return folds
 
     def __init__(

@@ -82,6 +82,8 @@ selection_params:
   feature_group_size: 1
   # max features count (mode2)
   max_features_cnt_in_result:
+  # Shared budget of original input columns across all pipelines and levels (all modes).
+  max_input_features:
   # list of algos to apply selector. Possible values - 'gbm', 'rf', 'linear_l2'. gbm stands for both catboost and lgb
   select_algos: [ 'gbm' ]
 
