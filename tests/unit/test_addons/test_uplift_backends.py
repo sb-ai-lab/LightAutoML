@@ -17,6 +17,14 @@ from lightautoml.automl.presets.tabular_presets import TabularAutoML
 from lightautoml.tasks import Task
 
 
+# development still contains a discarded CatBoost astype(copy=False) call.
+# PRs #198 and #200 remove it; keep these tests independent of those changes
+# while ignoring only that existing pandas 3 deprecation.
+pytestmark = pytest.mark.filterwarnings(
+    r"ignore:The copy keyword is deprecated:DeprecationWarning:lightautoml\.ml_algo\.boost_cb"
+)
+
+
 def small_automl(task, algorithm):
     return TabularAutoML(
         task=task if isinstance(task, Task) else Task(task),
