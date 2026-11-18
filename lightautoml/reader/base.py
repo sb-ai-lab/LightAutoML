@@ -431,12 +431,13 @@ class PandasToPandasReader(Reader):
         if (self.task.name == "binary") or (self.task.name == "multiclass"):
             target, self.class_mapping = self.check_class_target(target)
         elif self.task.name == "multilabel":
+            target = target.copy()
             self.class_mapping = {}
 
             for col in target.columns:
                 target_col, class_mapping = self.check_class_target(target[col])
                 self.class_mapping[col] = class_mapping
-                target.loc[:, col] = target_col.values
+                target[col] = target_col.values
 
             self._n_classes = len(target.columns) * 2
             # TODO: interpretation
@@ -448,8 +449,10 @@ class PandasToPandasReader(Reader):
     def check_class_target(self, target) -> Tuple[pd.Series, Optional[Union[Mapping, Dict[str, Mapping]]]]:
         """Validate target values."""
         target = pd.Series(target)
+        assert not target.isna().any(), "Nan in target detected"
         cnts = target.value_counts(dropna=False)
-        assert np.nan not in cnts.index, "Nan in target detected"
+        if self.task.name == "multilabel":
+            assert len(cnts) == 2, "Multilabel target columns must have exactly 2 unique values"
         unqiues = cnts.index.values
         srtd = np.sort(unqiues)
         # WARNING: Multilabel task
@@ -597,7 +600,7 @@ class PandasToPandasReader(Reader):
                     else:
                         for col in val.columns:
                             if self.class_mapping[col] is not None:
-                                val.loc[:, col] = val.loc[:, col].map(self.class_mapping[col])
+                                val[col] = val[col].map(self.class_mapping[col])
 
                 kwargs[array_attr] = val
 
@@ -1126,7 +1129,7 @@ class DictToPandasSeqReader(PandasToPandasReader):
                     else:
                         for col in val.columns:
                             if self.class_mapping[col] is not None:
-                                val.loc[:, col] = val.loc[:, col].map(self.class_mapping[col])
+                                val[col] = val[col].map(self.class_mapping[col])
                 kwargs[array_attr] = val
 
         dataset = PandasDataset(

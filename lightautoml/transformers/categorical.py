@@ -741,7 +741,7 @@ class MultioutputTargetEncoder(LAMLTransformer):
 
         scores = ((target - candidates) ** 2).mean(axis=0)
 
-        idx = scores[0].argmin()
+        idx = scores.mean(axis=0).argmin()
 
         return idx
 
@@ -758,8 +758,9 @@ class MultioutputTargetEncoder(LAMLTransformer):
 
         """
         target = target[:, :, np.newaxis]
+        candidates = np.clip(candidates, 1e-7, 1 - 1e-7)
         scores = -(target * np.log(candidates) + (1 - target) * np.log(1 - candidates)).mean(axis=0)
-        idx = scores[0].argmin()
+        idx = scores.mean(axis=0).argmin()
 
         return idx
 
@@ -844,15 +845,11 @@ class MultioutputTargetEncoder(LAMLTransformer):
                 / (oof_count[vec, :, folds, np.newaxis] + alphas)
             ).astype(np.float32)
 
-            # norm over 1 axis
-            candidates /= candidates.sum(axis=1, keepdims=True)
-
             idx = score_func(candidates, target)
             oof_feats[:, n] = candidates[..., idx]
             enc = ((t_sum[..., 0] + alphas[0, 0, idx] * prior) / (t_count[..., 0] + alphas[0, 0, idx])).astype(
                 np.float32
             )
-            enc /= enc.sum(axis=1, keepdims=True)
 
             self.encodings.append(enc)
 

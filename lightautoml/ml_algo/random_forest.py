@@ -184,12 +184,11 @@ class RandomForestSklearn(TabularMLAlgo, ImportanceEstimator):
             val_pred = model.predict(valid.data)
         else:
             model = RandomForestClassifier(**params)
-            model.fit(train.data, train.target, train.weights)
-            val_pred = model.predict_proba(valid.data)
-            if task == "binary":
-                val_pred = val_pred[:, 1]
-            elif task == "multilabel":
-                val_pred = np.moveaxis(np.array(val_pred)[:, :, 1], 1, 0)
+            target = train.target
+            if task == "multilabel" and target.shape[1] == 1:
+                target = np.asarray(target).ravel()
+            model.fit(train.data, target, train.weights)
+            val_pred = self.predict_single_fold(model, valid)
 
         metric = self.task.losses["sklearn"].metric_func
         score = metric(valid.target, val_pred, valid.weights)
@@ -216,7 +215,11 @@ class RandomForestSklearn(TabularMLAlgo, ImportanceEstimator):
             if task == "binary":
                 pred = pred[:, 1]
             elif task == "multilabel":
-                pred = np.moveaxis(np.array(pred)[:, :, 1], 1, 0)
+                probabilities = pred if isinstance(pred, list) else [pred]
+                classes = model.classes_ if isinstance(pred, list) else [model.classes_]
+                pred = np.column_stack(
+                    [proba[:, labels == 1].sum(axis=1) for proba, labels in zip(probabilities, classes)]
+                )
 
         return pred
 
