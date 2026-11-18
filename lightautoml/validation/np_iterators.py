@@ -257,7 +257,8 @@ class UpliftIterator:
     Args:
         treatment_col: Treatment column: 0 - control group, 1 - treatment group.
         target: Target values.
-        mode: Group to validate: False for control, True for treatment.
+        mode: Group retained in every training fold; the opposite group
+            is split for validation. False for control, True for treatment.
         task: Task.
         n_folds: Number of folds.
 
@@ -278,8 +279,8 @@ class UpliftIterator:
         idx = np.arange(treatment_col.shape[0])
         flg = treatment_col.astype(bool) == self.mode
 
-        self.constant_idx = idx[~flg]
-        self.splitted_idx = idx[flg]
+        self.constant_idx = idx[flg]
+        self.splitted_idx = idx[~flg]
 
         self.folds = set_sklearn_folds(self.task, target[self.splitted_idx], self.n_folds)
 

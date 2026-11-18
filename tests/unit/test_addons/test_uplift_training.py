@@ -44,17 +44,17 @@ def uplift_frame():
 
 
 @pytest.mark.parametrize("mode", [False, True])
-def test_uplift_iterator_validates_requested_group_and_all_folds(mode):
+def test_uplift_iterator_splits_opposite_group_with_all_folds(mode):
     treatment = np.tile([0, 1], 20)
     iterator = UpliftIterator(treatment, np.arange(40), mode, Task("reg"), n_folds=4)
     folds = list(iterator)
     assert len(folds) == 4
     validation = np.concatenate([valid for _, valid in folds])
-    np.testing.assert_array_equal(np.sort(validation), np.flatnonzero(treatment == mode))
+    np.testing.assert_array_equal(np.sort(validation), np.flatnonzero(treatment != mode))
     for train, valid in folds:
         assert not np.intersect1d(train, valid).size
         assert len(train) + len(valid) == len(treatment)
-        assert np.all(np.isin(np.flatnonzero(treatment != mode), train))
+        assert np.all(np.isin(np.flatnonzero(treatment == mode), train))
     with pytest.raises(IndexError):
         iterator[4]
     with pytest.raises(IndexError):
@@ -69,6 +69,9 @@ def test_t2_public_fit_and_categorical_treatment_inference(uplift_frame):
     learner = T2Learner(treated, control, n_uplift_iterator_folds=2)
     learner.fit(uplift_frame, {"target": "y", "treatment": "w"}, verbose=2)
     learner.predict(uplift_frame.drop(columns=["w", "y"]))
+    for group, arm in [(1, treated), (0, control)]:
+        validation = np.concatenate([valid for _, valid in arm.calls[0][2]])
+        np.testing.assert_array_equal(np.sort(validation), np.flatnonzero(uplift_frame.w == group))
     assert treated.calls[0][3] == control.calls[0][3] == 2
     assert set(treated.inputs[0].w.astype(str)) == {"1"}
     assert set(control.inputs[0].w.astype(str)) == {"0"}

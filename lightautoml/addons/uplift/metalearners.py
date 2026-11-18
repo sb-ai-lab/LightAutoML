@@ -411,7 +411,7 @@ class T2Learner(MetaLearner):
         treatment_iterator = UpliftIterator(
             treatment_values,
             target_values,
-            True,
+            False,
             self.base_task,
             self._n_uplift_iterator_folds,
         )
@@ -425,7 +425,7 @@ class T2Learner(MetaLearner):
         control_iterator = UpliftIterator(
             treatment_values,
             target_values,
-            False,
+            True,
             self.base_task,
             self._n_uplift_iterator_folds,
         )
