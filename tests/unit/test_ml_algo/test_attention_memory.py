@@ -27,7 +27,10 @@ def assert_outputs_and_gradients(layer, x, actual, expected):
         torch.testing.assert_close(actual_grad, expected_grad)
 
 
-@pytest.mark.filterwarnings("ignore:`torch.jit.script` is deprecated")
+# PyTorch 2.2 reads string literals via ast.Str and its s attribute on Python 3.12.
+@pytest.mark.filterwarnings(r"ignore:(ast\.Str|Attribute s) is deprecated:DeprecationWarning:torch\.jit\.frontend$")
+@pytest.mark.filterwarnings(r"ignore:`torch\.jit\.script` is not supported in Python 3\.14\+:FutureWarning")
+@pytest.mark.filterwarnings(r"ignore:`torch\.jit\.script` is deprecated")
 def test_scripted_ft_attention_still_returns_weights():
     layer = Attention(dim=8, heads=2, dim_head=4).eval()
     x = torch.randn(3, 5, 8)
