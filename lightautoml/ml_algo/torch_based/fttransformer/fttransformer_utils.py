@@ -4,6 +4,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from .._attention import attention_by_query
+
 
 class GEGLU(nn.Module):
     """GEGLU activation for Attention block."""
@@ -41,16 +43,28 @@ class Attention(nn.Module):
         self.to_out = nn.Linear(inner_dim, dim, bias=False)
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, x):
+    def _weights(self, q, k):
+        return torch.softmax(torch.matmul(q * self.scale, k.transpose(-2, -1)), dim=-1)
+
+    def _attend(self, q, k, v):
+        q, k, v = q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2)
+        if hasattr(F, "scaled_dot_product_attention"):
+            out = F.scaled_dot_product_attention(q, k, v, dropout_p=self.dropout.p if self.dropout.training else 0.0)
+        else:
+            out = torch.matmul(self.dropout(self._weights(q, k)), v)
+        return out.transpose(1, 2)
+
+    def forward(self, x, return_attn: bool = True):
         """Transform the input tensor with attention.
 
         Args:
             x : torch.Tensor
                 3-d tensor; for example, embedded numeric and/or categorical values,
                 or the output of a previous attention layer.
+            return_attn: Return the pre-dropout attention weights alongside the output.
 
         Returns:
-            torch.Tensor
+            Projected output and the attention weights, or an empty tensor if omitted.
 
         """
         batch_size, seq_len, dim = x.shape
@@ -60,20 +74,15 @@ class Attention(nn.Module):
         qkv = self.to_qkv(x)
         q, k, v = torch.split(qkv, qkv.size(-1) // 3, dim=-1)
 
-        q = q.view(batch_size, seq_len, h, -1).permute(0, 2, 1, 3)
-        k = k.view(batch_size, seq_len, h, -1).permute(0, 2, 1, 3)
-        v = v.view(batch_size, seq_len, h, -1).permute(0, 2, 1, 3)
-
-        q = q * self.scale
-        sim = torch.matmul(q, k.transpose(-2, -1))
-        attn = torch.softmax(sim, dim=-1)
-        dropped_attn = self.dropout(attn)
-
-        out = torch.matmul(dropped_attn, v)
-        out = out.permute(0, 2, 1, 3).contiguous().view(batch_size, seq_len, -1)
-        out = self.to_out(out)
-
-        return out, attn
+        q = q.view(batch_size, seq_len, h, -1)
+        k = k.view(batch_size, seq_len, h, -1)
+        v = v.view(batch_size, seq_len, h, -1)
+        if torch.jit.is_scripting() or return_attn:
+            weights = self._weights(q.transpose(1, 2), k.transpose(1, 2))
+            out = torch.matmul(self.dropout(weights), v.transpose(1, 2)).transpose(1, 2)
+        else:
+            out = attention_by_query(self._attend, q, k, v, num_heads=h)
+        return self.to_out(out.reshape(batch_size, seq_len, -1)), weights if return_attn else x.new_empty((0,))
 
 
 # transformer
@@ -87,7 +96,6 @@ class Transformer(nn.Module):
             dim_head: Attention head dimension.
             attn_dropout: Post-Attention dropout.
             ff_dropout: Feed-Forward Dropout.
-            return_attn: Return attention scores or not.
     """
 
     def __init__(self, dim, depth, heads, dim_head, attn_dropout, ff_dropout):
@@ -116,11 +124,8 @@ class Transformer(nn.Module):
             torch.Tensor
 
         """
-        post_softmax_attns = []
-
         for attn, ff in self.layers:
-            attn_out, post_softmax_attn = attn(x)
-            post_softmax_attns.append(post_softmax_attn)
+            attn_out, _ = attn(x, return_attn=False)
             x = attn_out + x
             x = ff(x) + x
 
