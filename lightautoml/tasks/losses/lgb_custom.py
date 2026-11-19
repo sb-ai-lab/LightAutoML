@@ -35,6 +35,7 @@ def lgb_f1_loss_multiclass(
         Gradient, hessian.
 
     """
+    original_shape = preds.shape
     y_true = train_data.get_label().astype(np.int32)
     preds = preds.reshape((y_true.shape[0], -1), order="F")
     # softmax
@@ -46,5 +47,9 @@ def lgb_f1_loss_multiclass(
     grad = (preds - y_ohe) * preds
     # hess
     hess = (1 - preds) * preds * np.clip((2 * preds - y_ohe), 1e-3, np.inf)
+    weights = train_data.get_weight()
+    if weights is not None and len(weights):
+        grad *= weights[:, None]
+        hess *= weights[:, None]
     # reshape back preds
-    return grad.reshape((-1,), order="F"), hess.reshape((-1,), order="F")
+    return grad.reshape(original_shape, order="F"), hess.reshape(original_shape, order="F")

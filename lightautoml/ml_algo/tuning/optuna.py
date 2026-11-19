@@ -11,16 +11,18 @@ from typing import TypeVar
 from typing import Union
 
 import optuna
+
+from optuna.trial import TrialState
 from tqdm import tqdm
 
 from ...dataset.base import LAMLDataset
+from ...utils.logging import get_stdout_level
+from ...validation.base import HoldoutIterator
+from ...validation.base import TrainValidIterator
 from ..base import MLAlgo
 from .base import Choice
 from .base import ParamsTuner
 from .base import Uniform
-from ...validation.base import HoldoutIterator
-from ...validation.base import TrainValidIterator
-from ...utils.logging import get_stdout_level
 
 
 logger = logging.getLogger(__name__)
@@ -90,7 +92,9 @@ class OptunaTuner(ParamsTuner):
             and ``maximize`` for maximization.
         fit_on_holdout: Will be used holdout cv-iterator.
         random_state: Seed for optuna sampler.
-        fail_tolerance: the maximum allowed percentage of failed tuner trials. Exception will be thrown after crossing the threshold value.
+        fail_tolerance: Maximum fraction of the estimated trials allowed to fail.
+            Crossing the threshold stops tuning and keeps the best completed trial.
+            If no trial completes, the model's initial parameters are used.
 
     """
 
@@ -140,6 +144,12 @@ class OptunaTuner(ParamsTuner):
 
         """
         assert not ml_algo.is_fitted, "Fitted algo cannot be tuned."
+        self._best_params = None
+        search_space = ml_algo.optimization_search_space
+        if search_space and not callable(search_space):
+            for distribution in search_space.values():
+                if not isinstance(distribution, tuple(OPTUNA_DISTRIBUTIONS_MAP)):
+                    raise ValueError(f"Optuna does not support distribution {distribution}")
         # optuna.logging.set_verbosity(logger.getEffectiveLevel())
         # upd timeout according to ml_algo timer
         estimated_tuning_time = ml_algo.timer.estimate_tuner_time(len(train_valid_iterator))
@@ -170,7 +180,8 @@ class OptunaTuner(ParamsTuner):
 
             """
             ml_algo.mean_trial_time = study.trials_dataframe()["duration"].mean().total_seconds()
-            self.estimated_n_trials = min(self.n_trials, self.timeout // ml_algo.mean_trial_time)
+            if ml_algo.mean_trial_time > 0:
+                self.estimated_n_trials = min(self.n_trials, self.timeout // ml_algo.mean_trial_time)
 
             logger.info3(
                 f"\x1b[1mTrial {len(study.trials)}\x1b[0m with hyperparameters {trial.params} scored {trial.value} in {trial.duration}"
@@ -182,15 +193,21 @@ class OptunaTuner(ParamsTuner):
             if (self.estimated_n_trials > 0) and (
                 df[df["state"] == "FAIL"].shape[0] / self.estimated_n_trials > self.fail_tolerance
             ):
-                raise Exception(
-                    f"Too much trials was failed ({df[df['state'] == 'FAIL'].shape[0]} of {df.shape[0]}). Check the model or search space for it."
+                logger.warning(
+                    "Stopping hyperparameter optimization after %s failed trials out of %s. "
+                    "Keeping completed trials; check the model or search space.",
+                    df[df["state"] == "FAIL"].shape[0],
+                    df.shape[0],
                 )
+                study.stop()
 
+        progress_bar = None
         try:
             # Custom progress bar
             def custom_progress_bar(study: optuna.study.Study, trial: optuna.trial.FrozenTrial):
-                best_trial = study.best_trial
-                progress_bar.set_postfix(best_trial=best_trial.number, best_value=best_trial.value)
+                if study.get_trials(deepcopy=False, states=(TrialState.COMPLETE,)):
+                    best_trial = study.best_trial
+                    progress_bar.set_postfix(best_trial=best_trial.number, best_value=best_trial.value)
                 progress_bar.update(1)
 
             # Initialize progress bar
@@ -210,24 +227,25 @@ class OptunaTuner(ParamsTuner):
                 timeout=self.timeout,
                 callbacks=(
                     [update_trial_time, check_fail_tolerance, custom_progress_bar]
-                    if get_stdout_level() in [logging.INFO, logging.INFO2]
+                    if progress_bar is not None
                     else [update_trial_time, check_fail_tolerance]
                 ),
                 catch=(Exception,),
             )
 
-            # Close the progress bar if it was initialized
-            if get_stdout_level() in [logging.INFO, logging.INFO2]:
-                progress_bar.close()
-
-            # need to update best params here
-            self._best_params = self.study.best_params
+            completed_trials = self.study.get_trials(deepcopy=False, states=(TrialState.COMPLETE,))
+            if completed_trials:
+                self._best_params = self.study.best_params
+            else:
+                logger.warning("No trials completed successfully. Training with the model's initial parameters.")
+                self._best_params = ml_algo.init_params_on_input(train_valid_iterator)
             ml_algo.params = self._best_params
 
             logger.info(f"Hyperparameters optimization for \x1b[1m{ml_algo._name}\x1b[0m completed")
-            logger.info2(
-                f"The set of hyperparameters \x1b[1m{self._best_params}\x1b[0m\n achieve {self.study.best_value:.4f} {metric_name}"
-            )
+            if completed_trials:
+                logger.info2(
+                    f"The set of hyperparameters \x1b[1m{self._best_params}\x1b[0m\n achieve {self.study.best_value:.4f} {metric_name}"
+                )
 
             if flg_new_iterator:
                 # if tuner was fitted on holdout set we dont need to save train results
@@ -238,6 +256,9 @@ class OptunaTuner(ParamsTuner):
             return ml_algo, preds_ds
         except optuna.exceptions.OptunaError:
             return None, None
+        finally:
+            if progress_bar is not None:
+                progress_bar.close()
 
     def _get_objective(
         self,

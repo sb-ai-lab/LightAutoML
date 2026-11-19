@@ -12,7 +12,9 @@ from typing import Union
 import numpy as np
 import xgboost
 
+from ..common_metric import _valid_str_metric_names
 from ..common_metric import _valid_str_multiclass_metric_names
+from ..common_metric import mean_quantile_error
 from ..utils import infer_gib
 from .base import Loss
 from .base import fw_rmsle
@@ -35,7 +37,7 @@ _xgb_reg_metrics_dict = {
     "r2": "rmse",
     "rmsle": "rmsle",
     "mape": "mape",
-    # "quantile": "", # TODO
+    "quantile": mean_quantile_error,
     "huber": "mphe",
     # "fair": "",# TODO
 }
@@ -62,7 +64,7 @@ _xgb_loss_mapping = {
     "mae": ("reg:absoluteerror", None, None),
     # "mape": ("mape", None, None), # not supported in XGBoost
     "crossentropy": ("multi:softprob", None, None),
-    "rmsle": ("reg:squaredlogerror", fw_rmsle, np.expm1),  # TODO: fw and bw
+    "rmsle": ("reg:squarederror", fw_rmsle, np.expm1),
     "quantile": ("reg:quantileerror", None, None),
     "huber": ("reg:pseudohubererror", None, None),
     # "fair": ("fair", None, None), # not supported in XGBoost
@@ -83,10 +85,11 @@ _xgb_force_metric = {
 class XGBFunc:
     """Wrapper of metric function for LightGBM."""
 
-    def __init__(self, metric_func, greater_is_better, bw_func):
+    def __init__(self, metric_func, greater_is_better, bw_func, label_bw_func=None):
         self.metric_func = metric_func
         self.greater_is_better = greater_is_better
         self.bw_func = bw_func
+        self.label_bw_func = bw_func if label_bw_func is None else label_bw_func
 
     def __call__(self, pred: np.ndarray, dtrain: xgboost.DMatrix) -> Tuple[str, float, bool]:
         """Calculate metric."""
@@ -99,7 +102,7 @@ class XGBFunc:
             pred = pred.reshape((label.shape[0], -1), order="F")
             label = label.astype(np.int32)
 
-        label = self.bw_func(label)
+        label = getattr(self, "label_bw_func", self.bw_func)(label)
         pred = self.bw_func(pred)
 
         # for weighted case
@@ -152,9 +155,9 @@ class XGBLoss(Loss):
                 self.fobj_name = None
                 self.fobj = fobj
             # map param name for known objectives
-            if self.fobj_name in _xgb_loss_params_mapping:
-                param_mapping = _xgb_loss_params_mapping[self.fobj_name]
-                loss_params = {param_mapping[x]: loss_params[x] for x in loss_params}
+            if loss in _xgb_loss_params_mapping and loss_params is not None:
+                param_mapping = _xgb_loss_params_mapping[loss]
+                loss_params = {param_mapping.get(name, name): value for name, value in loss_params.items()}
 
         else:
             # set lgb style objective
@@ -200,7 +203,8 @@ class XGBLoss(Loss):
         if metric_params is not None:
             metric_func = partial(metric_func, **metric_params)
 
-        return XGBFunc(metric_func, greater_is_better, self._bw_func)
+        label_bw_func = self._bw_func if self._fw_func is not Loss._fw_func else Loss._bw_func
+        return XGBFunc(metric_func, greater_is_better, self._bw_func, label_bw_func)
 
     def set_callback_metric(
         self,
@@ -238,6 +242,15 @@ class XGBLoss(Loss):
 
         # set lgb style metric
         self.metric = metric
+        if self._fw_func is fw_rmsle and isinstance(metric, str):
+            # RMSE on logged targets is RMSLE; other metrics need the original scale.
+            self.metric_name = "rmse" if metric == "rmsle" else None
+            self.feval = None
+            if metric != "rmsle":
+                self.feval = self.metric_wrapper(
+                    _valid_str_metric_names[task_name][metric], greater_is_better, metric_params
+                )
+            return
         if type(metric) is str:
 
             if metric_params is not None:
@@ -248,10 +261,15 @@ class XGBLoss(Loss):
             if type(_metric) is str:
                 self.metric_name = _metric
                 self.feval = None
+                if metric == "huber":
+                    self.metric_params = {
+                        "huber_slope" if name == "a" else name: value for name, value in self.metric_params.items()
+                    }
             else:
                 self.metric_name = None
-                # _metric = CustomWrapper(_metric)
-                self.feval = self.metric_wrapper(_metric, greater_is_better, {})
+                self.feval = self.metric_wrapper(_metric, greater_is_better, self.metric_params)
+                # Python metric arguments must not leak into XGBoost training parameters.
+                self.metric_params = {}
 
         else:
             self.metric_name = None

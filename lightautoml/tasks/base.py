@@ -52,7 +52,7 @@ _default_metrics = {
     "multilabel": "logloss",
 }
 
-_valid_loss_types = ["lgb", "sklearn", "torch", "cb"]
+_valid_loss_types = ["lgb", "sklearn", "torch", "cb", "xgb"]
 
 _valid_str_loss_names = {
     "binary": ["logloss"],
@@ -371,7 +371,7 @@ class Task:
             # TODO: check loss parameters?
             #  Or it there will be assert when use functools.partial
             # assert all(map(lambda x: x in _valid_loss_types, loss)), 'Invalid loss key.'
-            assert len([key for key in loss.keys() if key in _valid_loss_types]) != len(loss), "Invalid loss key."
+            assert loss and all(key in _valid_loss_types for key in loss), "Invalid loss key."
             self.losses = loss
 
         else:

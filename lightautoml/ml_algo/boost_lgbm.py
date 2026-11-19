@@ -261,7 +261,8 @@ class BoostLGBM(TabularMLAlgo, ImportanceEstimator):
                 "feval": feval,
             }
 
-            if lgb.__version__ >= "3.3.0":
+            lgb_version = tuple(int(part) for part in lgb.__version__.split(".")[:2])
+            if lgb_version >= (3, 3):
                 lgb_kwargs["callbacks"] = [
                     lgb.log_evaluation(period=verbose_eval),
                     lgb.early_stopping(early_stopping_rounds, False, True),
@@ -270,8 +271,10 @@ class BoostLGBM(TabularMLAlgo, ImportanceEstimator):
                 lgb_kwargs["early_stopping_rounds"] = early_stopping_rounds
                 lgb_kwargs["verbose_eval"] = verbose_eval
 
-            if lgb.__version__ < "4.0.0":
+            if lgb_version < (4, 0):
                 lgb_kwargs["fobj"] = fobj
+            elif fobj is not None:
+                params["objective"] = fobj
 
             model = lgb.train(**lgb_kwargs)
 

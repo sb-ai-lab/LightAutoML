@@ -330,10 +330,37 @@ _valid_str_reg_metric_names = {
     "mape": mean_absolute_percentage_error,
 }
 
+
+def multiclass_log_loss(y_true: np.ndarray, y_pred: np.ndarray, sample_weight: Optional[np.ndarray] = None):
+    """Calculate log loss with one probability column per encoded class.
+
+    Args:
+        y_true: Encoded class labels.
+        y_pred: Class probabilities, including classes absent from this split.
+        sample_weight: Optional observation weights.
+
+    Returns:
+        Mean multiclass log loss.
+
+    """
+    y_true, y_pred = np.asarray(y_true), np.asarray(y_pred)
+    labels = None
+    if (
+        y_pred.ndim == 2
+        and y_true.ndim == 1
+        and y_true.size
+        and y_true.dtype.kind in "biuf"
+        and y_true.min() >= 0
+        and y_true.max() < y_pred.shape[1]
+    ):
+        labels = np.arange(y_pred.shape[1])
+    return log_loss(y_true, y_pred, sample_weight=sample_weight, labels=labels)
+
+
 _valid_str_multiclass_metric_names = {
     "auc_mu": auc_mu,
     "auc": roc_auc_ovr,
-    "crossentropy": partial(log_loss),
+    "crossentropy": multiclass_log_loss,
     "accuracy": BestClassMulticlassWrapper(accuracy_score),
     "f1_macro": BestClassMulticlassWrapper(F1Factory("macro")),
     "f1_micro": BestClassMulticlassWrapper(F1Factory("micro")),
