@@ -8,6 +8,8 @@ import torch
 from torch import nn, Tensor
 from torch.nn import functional as F
 
+from .._attention import attention_by_query
+
 
 EmbeddingInfo = namedtuple("EmbeddingInfo", ["num_fields", "output_size"])
 UniformEmbeddingInfo = namedtuple("EmbeddingInfo", ["num_fields", "embedding_size", "output_size"])
@@ -138,6 +140,10 @@ class AttnInteractionLayer(nn.Module):
 
         self.to(device)
 
+    def _attention_mass(self, queries, keys):
+        scores = torch.einsum("rdoh,rfoh->rdfh", queries, keys)
+        return self.dropout(F.softmax(scores, dim=2)).sum(dim=2)
+
     def forward(self, x: Tensor) -> Tensor:
         """Transform the input tensor with attention interaction.
 
@@ -164,13 +170,9 @@ class AttnInteractionLayer(nn.Module):
         if self.use_residual:
             rsdl = torch.tensordot(x, self.w_act(self.W_r), dims=([-1], [0]))
 
-        product = torch.einsum("rdoh,rfoh->rdfh", qrys, keys)  # (R, F, F, H)
-
-        alpha = F.softmax(product, dim=2)  # (R, F, F, H)
-        alpha = self.dropout(alpha)
-
-        # (R, F, F, H) * (R, F, O, H) -> (R, F, O, H)
-        out = torch.einsum("rfdh,rfoh->rfoh", alpha, vals)
+        # Each query scales its own value by the sum of its post-dropout weights.
+        mass = attention_by_query(self._attention_mass, qrys, keys, num_heads=keys.size(-1))
+        out = vals * mass.unsqueeze(2)
         out = out.reshape((num_rows, num_fields, -1))  # (R, F, O * H)
         if self.use_residual:
             out = out + rsdl  # (R, F, O * H)
