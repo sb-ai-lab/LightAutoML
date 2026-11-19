@@ -20,6 +20,8 @@ from lightautoml.automl.presets.tabular_presets import TabularAutoML
 from lightautoml.tasks import Task
 from lightautoml.utils.timer import Timer
 from lightautoml.validation.np_iterators import UpliftIterator
+from lightautoml.pipelines.selection.input_budget import restrict_training_inputs
+from lightautoml.reader.base import PandasToPandasReader
 
 from .utils import _get_target_role
 from .utils import _get_treatment_role
@@ -229,6 +231,7 @@ class TLearner(MetaLearner):
         treatment_learner: AutoML model, if `None` then will be used model by default
         control_learner: AutoML model, if `None` then will be used model by default
         base_task: task
+        max_input_features: Shared upper bound on original predictors for both arms.
         timeout: Timeout
         cpu_limit: CPU limit that that are passed to each automl.
         gpu_ids: GPU IDs that are passed to each automl.
@@ -243,6 +246,7 @@ class TLearner(MetaLearner):
         timeout: Optional[int] = None,
         cpu_limit: int = 4,
         gpu_ids: Optional[str] = "all",
+        max_input_features: Optional[int] = None,
     ):
         assert any(
             x is not None
@@ -261,6 +265,7 @@ class TLearner(MetaLearner):
 
         super().__init__(base_task, timeout, cpu_limit, gpu_ids)
 
+        self.max_input_features = max_input_features
         self.treatment_learner = (
             treatment_learner if treatment_learner is not None else self._get_default_learner(self.base_task)
         )
@@ -286,6 +291,10 @@ class TLearner(MetaLearner):
             treatment_role,
             treatment_col,
         ) = _get_treatment_role(roles)
+
+        if self.max_input_features is not None:
+            reader = PandasToPandasReader(self.base_task, cv=None, advanced_roles=False, n_jobs=1)
+            train_data, roles = restrict_training_inputs(train_data, roles, reader, self.max_input_features)
 
         new_roles = copy.deepcopy(roles)
         new_roles.pop(treatment_role)

@@ -394,15 +394,21 @@ class PandasToPandasReader(Reader):
         # assert len(self.used_array_attrs) > 0, 'At least target should be defined in train dataset'
         # create folds
 
-        folds = set_sklearn_folds(
-            self.task,
-            kwargs["target"].values,
-            cv=self.cv,
-            random_state=self.random_state,
-            group=None if "group" not in kwargs else kwargs["group"],
-        )
-        if folds is not None:
-            kwargs["folds"] = Series(folds, index=train_data.index)
+        if kwargs.get("folds") is None:
+            folds = set_sklearn_folds(
+                self.task,
+                kwargs["target"].values,
+                cv=self.cv,
+                random_state=self.random_state,
+                group=None if "group" not in kwargs else kwargs["group"],
+            )
+            if folds is not None:
+                kwargs["folds"] = Series(folds, index=train_data.index)
+        else:
+            folds = np.asarray(kwargs["folds"])
+            if pd.isna(folds).any() or not np.array_equal(np.unique(folds), np.arange(len(pd.unique(folds)))):
+                raise ValueError("Explicit folds must be consecutive integer IDs starting at zero")
+            kwargs["folds"] = Series(folds.astype(np.intp), index=train_data.index)
 
         # get dataset
         dataset = PandasDataset(train_data[self.used_features], self.roles, task=self.task, **kwargs)

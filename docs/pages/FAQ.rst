@@ -132,17 +132,68 @@ An unspecified string column in ``TabularAutoML`` is normally treated as a
 categorical feature. Assign a text role and use the appropriate NLP preset or
 build a custom pipeline when TF-IDF or transformer features are required.
 
-Does feature selection affect every model?
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+How can I limit the number of columns needed at inference?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Not necessarily. ``selection_params["select_algos"]`` controls which
-algorithm families receive selected features. In the default tabular
-configuration it contains ``"gbm"``; linear and random-forest pipelines do
-not automatically receive the same selected subset.
+Set a shared input budget when constructing a tabular preset:
 
-``automl.collect_used_feats()`` returns the features retained by the fitted
-AutoML object. Fast feature importance should not be interpreted as proof
-that every lower-ranked feature is safe to remove.
+.. code-block:: python
+
+    automl = TabularAutoML(Task("binary"), selection_params={"max_input_features": 30})
+    oof = automl.fit_predict(train, roles={"target": "outcome"})
+    inputs = list(automl.reader.used_features)
+    predictions = automl.predict(test[inputs])
+
+The budget counts distinct original predictor columns across every pipeline and
+stacking level of this fitted preset. Targets, weights, folds and intermediate
+stacking predictions do not consume slots. Mandatory predictors
+(``force_input=True``) occupy slots first. If they exceed the limit, fitting
+raises ``ValueError``. With the default ``None``, the shared selection step is
+disabled. For a custom tabular ``AutoML``, pass ``max_input_features`` directly
+to its constructor. For ``TabularUtilizedAutoML``, pass the shared budget in
+``selection_params`` to restrict the input once across configurations and seeds.
+
+If the training input exceeds the budget, a shallow, seeded Extra Trees model
+ranks columns by impurity importance, using training weights when present.
+Categorical values are factorized for this ranking. Downstream pipelines keep
+their own categorical processing and may retain fewer inputs. Validate the
+budget and quality on held-out data. For an independent cross-validation
+estimate of supervised selection, repeat the entire fit inside each outer
+training fold. A supplied ``folds`` role takes precedence over generated folds;
+use consecutive integer fold IDs starting at zero.
+
+For an uplift T-learner, set the budget on the meta-learner:
+
+.. code-block:: python
+
+    uplift = TLearner(treatment_model, control_model, max_input_features=30)
+    uplift.fit(train, roles={"target": "outcome", "treatment": "arm"})
+    inputs = sorted(
+        set(uplift.treatment_learner.reader.used_features)
+        | set(uplift.control_learner.reader.used_features)
+    )
+    effects, treated, control = uplift.predict(test[inputs])
+
+Each arm contributes equally to the shared importance score. Both learners
+train on the resulting covariates. Treatment assignment is a training role.
+
+How does the per-pipeline selector use its limit?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``selection_params["select_algos"]`` controls which families receive additional
+selection. The default is ``["gbm"]``. In mode 2, ``max_features_cnt_in_result``
+bounds one iterative selector. It starts with forced inputs and evaluates
+groups of up to ``feature_group_size`` additional inputs, truncating the last
+group to the available space. Mode 1 applies an importance cutoff. A shared
+``max_input_features`` also applies when this per-pipeline selection is disabled.
+
+After fitting or loading a model, ``automl.reader.used_features`` lists the
+input columns for prediction. The full input DataFrame can also be passed.
+``automl.collect_used_feats()`` includes inputs to internal stacking levels.
+``get_feature_scores("fast")`` reports selector importances.
+``get_feature_scores("accurate", data, random_state=42)`` measures the effect
+of a reproducible row permutation on the fitted model using a labeled DataFrame
+or file. Include the weights column to evaluate the weighted metric.
 
 
 Configuration and resources

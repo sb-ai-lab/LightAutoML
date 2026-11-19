@@ -12,6 +12,7 @@ from typing import Sequence
 from ..dataset.base import LAMLDataset
 from ..dataset.utils import concatenate
 from ..pipelines.ml.base import MLPipeline
+from ..pipelines.selection.input_budget import select_input_features
 from lightautoml.dataset.roles import TargetRole
 from ..reader.base import Reader
 from ..utils.logging import set_stdout_level
@@ -64,6 +65,7 @@ class AutoML:
         >>> automl.fit_predict(data, roles={'target': 'TARGET'})
 
     Args:
+        max_input_features: Optional shared upper bound on original input columns.
         reader: Instance of Reader class object that
             creates :class:`~lightautoml.dataset.base.LAMLDataset`
             from input data.
@@ -96,8 +98,9 @@ class AutoML:
         skip_conn: bool = False,
         return_all_predictions: bool = False,
         debug: bool = False,
+        max_input_features: Optional[int] = None,
     ):
-        self._initialize(reader, levels, timer, blender, skip_conn, return_all_predictions, debug)
+        self._initialize(reader, levels, timer, blender, skip_conn, return_all_predictions, debug, max_input_features)
 
     def _initialize(
         self,
@@ -108,12 +111,14 @@ class AutoML:
         skip_conn: bool = False,
         return_all_predictions: bool = False,
         debug: bool = False,
+        max_input_features: Optional[int] = None,
     ):
         """Same as __init__. Exists for delayed initialization in presets.
 
         Args:
             reader: Instance of Reader class object that
                 creates :class:`~lightautoml.dataset.base.LAMLDataset` from input data.
+            max_input_features: Optional shared upper bound on original input columns.
             levels: List of list of :class:`~lightautoml.pipelines.ml..base.MLPipelines`.
             timer: Timer instance of :class:`~lightautoml.utils.timer.PipelineTimer`.
                 Default - unlimited timer.
@@ -139,6 +144,7 @@ class AutoML:
         if timer is None:
             self.timer = PipelineTimer()
         self.reader = reader
+        self.max_input_features = max_input_features
         self._levels = levels
 
         # default blender is - select best model and prune other pipes
@@ -209,6 +215,11 @@ class AutoML:
         set_stdout_level(verbosity_to_loglevel(verbose))
         self.timer.start()
         train_dataset = self.reader.fit_read(train_data, train_features, roles)
+
+        if self.max_input_features is not None:
+            inputs = select_input_features(train_dataset, self.max_input_features)
+            self.reader.upd_used_features(remove=set(train_dataset.features).difference(inputs))
+            train_dataset = train_dataset[:, inputs]
 
         # Saving class mapping
         target_col_name = roles["target"] if "target" in roles else roles[TargetRole()]
@@ -347,33 +358,28 @@ class AutoML:
         """
         dataset = self.reader.read(data, features_names=features_names, add_array_attrs=False)
 
-        for n, level in enumerate(self.levels, 1):
-            # check if last level
+        return self._predict_from_level(dataset, 0, return_all_predictions)
 
-            level_predictions = []
-            for _n, ml_pipe in enumerate(level):
-                level_predictions.append(ml_pipe.predict(dataset))
+    def _next_level_input(self, dataset, predictions):
+        predictions = concatenate(predictions)
+        if self.skip_conn:
+            try:
+                predictions = dataset.from_dataset(predictions)
+            except TypeError as exc:
+                raise TypeError(
+                    "Can not convert prediction dataset type to input features. Set skip_conn=False"
+                ) from exc
+            return concatenate([predictions, dataset])
+        return predictions
 
-            if n != len(self.levels):
-
-                level_predictions = concatenate(level_predictions)
-
-                if self.skip_conn:
-
-                    try:
-                        # convert to initial  dataset type
-                        level_predictions = dataset.from_dataset(level_predictions)
-                    except TypeError:
-                        raise TypeError(
-                            "Can not convert prediction dataset type to input features. Set skip_conn=False"
-                        )
-                    dataset = concatenate([level_predictions, dataset])
-                else:
-                    dataset = level_predictions
-            else:
+    def _predict_from_level(self, dataset, start, return_all_predictions=False):
+        for n in range(start, len(self.levels)):
+            predictions = [pipe.predict(dataset) for pipe in self.levels[n]]
+            if n == len(self.levels) - 1:
                 if (return_all_predictions is None and self.return_all_predictions) or return_all_predictions:
-                    return concatenate(level_predictions)
-                return self.blender.predict(level_predictions)
+                    return concatenate(predictions)
+                return self.blender.predict(predictions)
+            dataset = self._next_level_input(dataset, predictions)
 
     def collect_used_feats(self) -> List[str]:
         """Get the union of features used by fitted inference pipelines.

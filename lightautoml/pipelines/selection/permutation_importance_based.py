@@ -2,40 +2,32 @@
 
 import logging
 
+from copy import copy
 from copy import deepcopy
+from functools import partial
 from typing import Optional
 
 import numpy as np
 
 from pandas import Series
 
+from lightautoml.validation.base import DummyIterator
+from lightautoml.validation.base import HoldoutIterator
 from lightautoml.validation.base import TrainValidIterator
 
 from ...dataset.base import LAMLDataset
+from ...dataset.np_pd_dataset import CSRSparseDataset
 from ...ml_algo.base import MLAlgo
 from ...ml_algo.utils import tune_and_fit_predict
 from ..features.base import FeaturesPipeline
+from ..utils import map_pipeline_names
 from .base import ImportanceEstimator
 from .base import PredefinedSelector
 from .base import SelectionPipeline
+from .input_budget import validate_feature_count
 
 
 logger = logging.getLogger(__name__)
-
-
-def _create_chunks_from_list(lst, n):
-    """Creates chunks of list.
-
-    Args:
-        lst: List of elements.
-        n: Size of chunk.
-
-    Yields:
-        Sequential chunks of size `n`.
-
-    """
-    for i in range(0, len(lst), n):
-        yield lst[i : i + n]
 
 
 class NpPermutationImportanceEstimator(ImportanceEstimator):
@@ -67,41 +59,59 @@ class NpPermutationImportanceEstimator(ImportanceEstimator):
             preds: Predicted target values for validation dataset.
 
         """
-        normal_score = ml_algo.score(preds)
-        logger.debug(f"Normal score = {normal_score}")
-
-        valid_data = train_valid.get_validation_data()
-        valid_data = valid_data.to_numpy()
-
-        permutation = np.random.RandomState(seed=self.random_state + 1).permutation(valid_data.shape[0])
-        permutation_importance = {}
-
-        for it, col in enumerate(valid_data.features):
-            logger.debug(f"Start processing ({it},{col})")
-            # Save initial column
-            save_col = deepcopy(valid_data[:, col])
-
-            # Get current column and shuffle it
-            shuffled_col = valid_data[permutation, col]
-
-            # Set shuffled column
-            logger.info3("Shuffled column set")
-            valid_data[col] = shuffled_col
-
-            # Calculate predict and metric
-            logger.info3("Shuffled column set")
-            new_preds = ml_algo.predict(valid_data)
-            shuffled_score = ml_algo.score(new_preds)
-            logger.debug(
-                "Shuffled score for col {} = {}, difference with normal = {}".format(
-                    col, shuffled_score, normal_score - shuffled_score
+        rng = np.random.RandomState(self.random_state + 1)
+        holdout = isinstance(train_valid, (HoldoutIterator, DummyIterator))
+        if holdout:
+            valid = train_valid.get_validation_data()
+            folds = [(None, valid, ml_algo.predict)]
+            if preds is None:
+                preds = ml_algo.predict(valid)
+        else:
+            if preds is None:
+                raise ValueError(
+                    "Permutation importance for a pre-fitted CV model requires its original OOF predictions"
                 )
+            # A timed fit may have stopped before the final fold.
+            folds = [
+                (rows, valid, partial(ml_algo.predict_single_fold, model))
+                for model, (rows, _, valid) in zip(ml_algo.models, train_valid)
+            ]
+        if not folds:
+            raise ValueError("Permutation importance requires a fitted model and validation rows")
+        folds = [
+            (
+                rows,
+                valid.to_numpy() if isinstance(valid, CSRSparseDataset) else valid,
+                predict,
+                rng.permutation(valid.shape[0]),
             )
-            permutation_importance[col] = normal_score - shuffled_score
+            for rows, valid, predict in folds
+        ]
 
-            # Set normal column back to the dataset
-            logger.debug("Normal column set")
-            valid_data[col] = save_col
+        normal_score = ml_algo.score(preds)
+        permutation_importance = {}
+        for col in folds[0][1].features:
+            if not holdout:
+                values = np.zeros_like(preds.data)
+                counts = np.zeros((len(values), 1), dtype=np.int32)
+            for rows, valid, predict, permutation in folds:
+                original = valid[:, col].data.copy()
+                try:
+                    valid[col] = np.asarray(original)[permutation]
+                    prediction = predict(valid)
+                finally:
+                    valid[col] = original
+                if holdout:
+                    shuffled = prediction
+                else:
+                    values[rows] += prediction.reshape(valid.shape[0], -1)
+                    counts[rows] += 1
+            if not holdout:
+                shuffled = copy(preds)
+                np.divide(values, counts, out=values, where=counts != 0)
+                values[counts[:, 0] == 0] = np.nan
+                shuffled.set_data(values, preds.features, preds.roles)
+            permutation_importance[col] = normal_score - ml_algo.score(shuffled)
 
         self.raw_importances = Series(permutation_importance).sort_values(ascending=False)
 
@@ -120,8 +130,7 @@ class NpIterativeFeatureSelector(SelectionPipeline):
         imp_estimator: Feature importance estimator.
         fit_on_holdout: If use the holdout iterator.
         feature_group_size: Chunk size.
-        max_features_cnt_in_result: Lower bound of features after selection,
-            if it is reached, it will stop.
+        max_features_cnt_in_result: Upper bound on selected input columns, including forced inputs.
 
     """
 
@@ -131,7 +140,7 @@ class NpIterativeFeatureSelector(SelectionPipeline):
         ml_algo: Optional[MLAlgo] = None,
         imp_estimator: Optional[ImportanceEstimator] = None,
         fit_on_holdout: bool = True,
-        feature_group_size: Optional[int] = 5,
+        feature_group_size: int = 5,
         max_features_cnt_in_result: Optional[int] = None,
     ):
         if not fit_on_holdout:
@@ -139,67 +148,49 @@ class NpIterativeFeatureSelector(SelectionPipeline):
 
         super().__init__(feature_pipeline, ml_algo, imp_estimator, True)
 
+        validate_feature_count("feature_group_size", feature_group_size)
+        if max_features_cnt_in_result is not None:
+            validate_feature_count("max_features_cnt_in_result", max_features_cnt_in_result)
         self.feature_group_size = feature_group_size
         self.max_features_cnt_in_result = max_features_cnt_in_result
 
-    def perform_selection(self, train_valid: Optional[TrainValidIterator] = None):
-        """Select features iteratively by checking model quality for current selected feats and new group.
+    def _validate_input(self, dataset):
+        forced = sum(role.force_input for role in dataset.roles.values())
+        if self.max_features_cnt_in_result is not None and forced > self.max_features_cnt_in_result:
+            raise ValueError("Forced features exceed max_features_cnt_in_result")
 
-        Args:
-            train_valid: Iterator for dataset.
+    def perform_selection(self, train_valid: TrainValidIterator):
+        """Evaluate groups of raw input columns, starting with the mandatory inputs."""
+        self.map_raw_feature_importances(self.imp_estimator.get_features_score())
+        sources = map_pipeline_names(self.in_features, train_valid.features)
+        selected = list(self.forced_features)
+        mandatory = set(selected)
+        ranked = [f for f in self.mapped_importances.index if f not in mandatory]
+        limit = self.max_features_cnt_in_result
+        if limit is None:
+            limit = len(self.in_features)
 
-        """
-        # Calculate or receive permutation importances scores
-        imp = self.imp_estimator.get_features_score()
+        def score(inputs):
+            if self._empty_algo is None:
+                raise ValueError("Iterative selection requires an unfitted model to evaluate candidate subsets")
+            inputs = set(inputs)
+            columns = [col for col, source in zip(train_valid.features, sources) if source in inputs]
+            subset = train_valid.apply_selector(PredefinedSelector(columns))
+            model, preds = tune_and_fit_predict(deepcopy(self._empty_algo), self.tuner, subset)
+            if model is None:
+                raise RuntimeError("Could not fit the model for iterative feature selection")
+            return model.score(preds)
 
-        features_to_check = [x for x in imp.index if x in set(train_valid.features)]
+        best = score(selected) if selected and ranked and len(selected) < limit else None
+        start = 0
+        while start < len(ranked) and len(selected) < limit:
+            size = min(self.feature_group_size, limit - len(selected))
+            group = ranked[start : start + size]
+            start += len(group)
+            candidate_score = score(selected + group)
+            if best is None or candidate_score > best:
+                selected.extend(group)
+                best = candidate_score
 
-        # Perform iterative selection algo
-        chunks = _create_chunks_from_list(features_to_check, self.feature_group_size)
-        selected_feats = []
-        cnt_without_update = 0
-        cur_best_score = None
-
-        for it, chunk in enumerate(chunks):
-            if self.max_features_cnt_in_result is not None and len(selected_feats) >= self.max_features_cnt_in_result:
-                logger.info3(
-                    "We exceeded max_feature_cnt_in_result bound (selected features count = {}). Exiting from iterative algo...".format(
-                        len(selected_feats)
-                    )
-                )
-                break
-            selected_feats += chunk
-            logger.info3(f"Started iteration {it}, chunk = {chunk}, feats to check = {selected_feats}")
-            cs = PredefinedSelector(selected_feats)
-            selected_cols_iterator = train_valid.apply_selector(cs)
-            logger.info3(f"Features in SCI = {selected_cols_iterator.features}")
-
-            # Create copy of MLAlgo for iterative algo only
-            ml_algo_for_iterative, preds = tune_and_fit_predict(
-                deepcopy(self._empty_algo), self.tuner, selected_cols_iterator
-            )
-
-            cur_score = ml_algo_for_iterative.score(preds)
-            logger.debug(f"Current score = {cur_score}, current best score = {cur_best_score}")
-
-            if cur_best_score is None or cur_best_score < cur_score:
-                logger.info3(f"Update best score from {cur_best_score} to {cur_score}")
-                cur_best_score = cur_score
-                cnt_without_update = 0
-            else:
-                cnt_without_update += 1
-                logger.debug(
-                    "Without update for {} steps. Remove last added group {} from selected features...".format(
-                        cnt_without_update, chunk
-                    )
-                )
-                selected_feats = selected_feats[: -len(chunk)]
-                logger.debug(f"Selected feats after delete = {selected_feats}")
-
-        logger.debug("Update mapped importance")
-        imp = imp[imp.index.isin(selected_feats)]
-        self.map_raw_feature_importances(imp)
-
-        selected_feats = list(self.mapped_importances.index)
-        logger.info3(f"Finally selected feats = {selected_feats}")
-        self._selected_features = selected_feats
+        self._selected_features = selected
+        self.mapped_importances = self.mapped_importances[self.mapped_importances.index.isin(selected)]

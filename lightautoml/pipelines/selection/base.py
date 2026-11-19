@@ -111,7 +111,8 @@ class SelectionPipeline:
             list of dropped features.
 
         """
-        return [x for x in self._in_features if x not in set(self._selected_features)]
+        selected = set(self.selected_features)
+        return [x for x in self.in_features if x not in selected]
 
     def __init__(
         self,
@@ -157,7 +158,10 @@ class SelectionPipeline:
         """
         raise NotImplementedError
 
-    def fit(self, train_valid: TrainValidIterator):
+    def _validate_input(self, dataset):
+        """Check selector-specific constraints before fitting on the dataset."""
+
+    def fit(self, train_valid: TrainValidIterator, *, validation_predictions: Optional[LAMLDataset] = None):
         """Selection pipeline fit.
 
         Find features selection for given dataset based
@@ -165,18 +169,20 @@ class SelectionPipeline:
 
         Args:
             train_valid: Dataset iterator.
+            validation_predictions: Original OOF predictions for a pre-fitted model on these folds.
 
         """
         if not self.is_fitted:
-
+            self._validate_input(train_valid.train)
             if self._fit_on_holdout:
                 train_valid = train_valid.convert_to_holdout_iterator()
 
             self._in_features = train_valid.features
+            self.forced_features = [f for f, role in train_valid.train.roles.items() if role.force_input]
             if self.features_pipeline is not None:
                 train_valid = train_valid.apply_feature_pipeline(self.features_pipeline)
 
-            preds = None
+            preds = validation_predictions
             if self.ml_algo is not None:
                 if self.ml_algo.is_fitted:
                     assert list(self.ml_algo.features) == list(
@@ -184,6 +190,8 @@ class SelectionPipeline:
                     ), "Features in feated MLAlgo should match exactly"
                 else:
                     self.ml_algo, preds = tune_and_fit_predict(self.ml_algo, self.tuner, train_valid)
+                    if self.ml_algo is None:
+                        raise RuntimeError("Could not fit the feature selection model")
 
             if self.imp_estimator is not None:
                 self.imp_estimator.fit(train_valid, self.ml_algo, preds)
@@ -201,7 +209,7 @@ class SelectionPipeline:
 
         """
         # Update forced features
-        self.forced_features = [feature for feature in dataset.features if dataset.roles[feature].force_input]
+        self.forced_features = [feature for feature, role in dataset.roles.items() if role.force_input]
 
         return dataset[:, self.selected_features]
 
@@ -217,7 +225,8 @@ class SelectionPipeline:
 
         """
         if self.features_pipeline is None:
-            return raw_importances.copy()
+            self.mapped_importances = raw_importances.copy()
+            return self.mapped_importances
         mapped = map_pipeline_names(self.in_features, raw_importances.index)
         mapped_importance = Series(raw_importances.values, index=mapped)
 
@@ -293,6 +302,8 @@ class ComposedSelector(SelectionPipeline):
             train_valid: Dataset iterator.
 
         """
+        for selector in self.selectors:
+            selector._validate_input(train_valid.train)
         for selector in self.selectors:
             train_valid = train_valid.apply_selector(selector)
 

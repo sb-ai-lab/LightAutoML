@@ -18,6 +18,9 @@ from ...dataset.base import LAMLDataset
 from ...dataset.utils import concatenate
 from ...ml_algo.base import MLAlgo
 from ...pipelines.ml.base import MLPipeline
+from ...pipelines.selection.input_budget import restrict_training_inputs
+from ...reader.base import PandasToPandasReader
+from ...reader.tabular_batch_generator import read_data
 from ...tasks import Task
 from ...utils.logging import set_stdout_level
 from ...utils.logging import verbosity_to_loglevel
@@ -284,6 +287,15 @@ class TimeUtilization:
         logger.info("\x1b[1mIf one preset completes earlier, next preset configuration will be started\x1b[0m\n")
 
         timer = PipelineTimer(self.timeout, **self.timing_params).start()
+        limit = (self.kwargs.get("selection_params") or {}).get("max_input_features")
+        if limit is not None:
+            frame, file_roles = read_data(
+                train_data, train_features, self.cpu_limit, self.kwargs.get("read_csv_params")
+            )
+            reader_params = {**(self.kwargs.get("reader_params") or {}), "cv": None, "advanced_roles": False}
+            reader = PandasToPandasReader(self.task, **reader_params)
+            train_data, roles = restrict_training_inputs(frame, {**(roles or {}), **(file_roles or {})}, reader, limit)
+            train_features = None
         history = []
 
         amls = [[] for _ in range(len(self.configs_list))]

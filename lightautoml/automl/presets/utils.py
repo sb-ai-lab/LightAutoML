@@ -3,123 +3,78 @@ import logging
 
 import matplotlib.pyplot as plt
 import numpy as np
-from copy import copy
 import pandas as pd
 import seaborn as sns
-from ...dataset.utils import concatenate
 
 
 logger = logging.getLogger(__name__)
 
 
-def calc_one_feat_imp(iters, level, feat, model, data, norm_score, target, metric, silent):
-    # data is a LAMLDataset
-    initial_col = copy(data[:, feat].data)
-    new_col = np.random.permutation(initial_col)
-    data[feat] = new_col
-    dataset = copy(data)
-
-    # iterate through higher levels
-    for n, level in enumerate(model.levels[level:], level + 1):
-        level_predictions = []
-        for _n, ml_pipe in enumerate(level):
-            level_predictions.append(ml_pipe.predict(dataset))
-
-        if n != len(model.levels):
-
-            level_predictions = concatenate(level_predictions)
-
-            if model.skip_conn:
-
-                try:
-                    # convert to initial dataset type
-                    level_predictions = dataset.from_dataset(level_predictions)
-                except TypeError:
-                    raise TypeError("Can not convert prediction dataset type to input features. Set skip_conn=False")
-                dataset = concatenate([level_predictions, dataset])
-            else:
-                dataset = level_predictions
-
-    preds = model.blender.predict(level_predictions)
-    data[feat] = initial_col
-    preds.target = target.values
-    new_score = metric(preds)
-
+def calc_one_feat_imp(
+    iters, level, feat, model, data, norm_score, target, metric, silent, *, permutation=None, weights=None
+):
+    """Measure one permutation on the inference pipeline starting at the given level."""
+    if permutation is None:
+        permutation = np.random.RandomState(42).permutation(data.shape[0])
+    original = data[:, feat].data.copy()
+    try:
+        data[feat] = np.asarray(original)[permutation]
+        preds = model._predict_from_level(data, level)
+    finally:
+        data[feat] = original
+    preds.target = np.asarray(target)
+    preds.weights = data.weights if weights is None else weights
+    importance = norm_score - metric(preds)
     if not silent:
-        logger.info3(f"{iters[0]}/{iters[1]} Calculated score for {feat}: {norm_score - new_score:.7f}")
-    return feat, norm_score - new_score
+        logger.info3(f"{iters[0]}/{iters[1]} permutation importance for {feat}: {importance:.7f}")
+    return feat, importance
 
 
-def calc_feats_permutation_imps(model, used_feats, data, target, metric, silent=False):
-    n_used_feats = len(used_feats)
-    if not silent:
-        logger.info3(f"LightAutoML ts master used {n_used_feats} feats")
-    data = data.reset_index(drop=True)
-    preds = model.predict(data)
-    target_col = data[target]
-    preds.target = target_col.values
-    norm_score = metric(preds)
-    feat_imp = []
-
-    # construct levels of used feats
-    used_feats_leveled = {}
-
-    # input data features
-    initial_feats = data.drop(columns=target).columns.values
-    used_feats_leveled[0] = initial_feats
-
-    # construct levels of stacking feats
-    # only consider features not in initial_feats
-    for feat in list(set(used_feats) - set(initial_feats)):
-        # stacking feat looks like 'Lvl_0_Pipe_1_Mod_2_CatBoost_prediction_1'
-        level = feat.split("_")[1]
-        level = int(level) + 1
-
-        arr = used_feats_leveled.get(level, [])
-        arr.append(feat)
-        used_feats_leveled[level] = arr
-
-    # convert holdout data to LAMLDataset
-    data = model.reader.read(data, add_array_attrs=False)
-    used_feats_leveled[0] = [feature for feature in data.features if feature not in target]
-
-    # iterate through all the levels
-    for level in sorted(used_feats_leveled.keys()):
-        # compute importances for features
-        for it, f in enumerate(used_feats_leveled[level]):
-            feat_imp.append(
-                calc_one_feat_imp(
-                    (it + 1, n_used_feats),
-                    level,
-                    f,
-                    model,
-                    data,
-                    norm_score,
-                    target_col,
-                    metric,
-                    silent,
-                )
+def calc_feats_permutation_imps(model, used_feats, data, target, metric, silent=False, random_state=42):
+    """Score each input at the first level where it is available, including stacking inputs."""
+    frame = data.reset_index(drop=True)
+    labeled = model.reader.read(frame, add_array_attrs=True)
+    if labeled.target is None:
+        raise ValueError(f"Permutation importance requires labeled data with target {target}")
+    labels = np.asarray(labeled.target)
+    weights = None if labeled.weights is None else np.asarray(labeled.weights)
+    del labeled
+    # Run exactly the serving path: scoring labels and weights stay outside the predictors.
+    data = model.reader.read(frame)
+    preds = model._predict_from_level(data, 0)
+    preds.target = labels
+    preds.weights = weights
+    normal_score = metric(preds)
+    permutation = np.random.RandomState(random_state).permutation(data.shape[0])
+    remaining = set(used_feats)
+    importances = []
+    for level, pipes in enumerate(model.levels):
+        for feature in data.features:
+            if feature not in remaining:
+                continue
+            result = calc_one_feat_imp(
+                (len(importances) + 1, len(used_feats)),
+                level,
+                feature,
+                model,
+                data,
+                normal_score,
+                labels,
+                metric,
+                silent,
+                permutation=permutation,
+                weights=weights,
             )
-        # update holdout data with stacking features
-        if level != len(model.levels) - 1:
-            level_predictions = []
-            for _n, ml_pipe in enumerate(model.levels[level]):
-                level_predictions.append(ml_pipe.predict(data))
+            remaining.remove(feature)
+            importances.append(result)
+        if level + 1 < len(model.levels):
+            data = model._next_level_input(data, [pipe.predict(data) for pipe in pipes])
 
-            level_predictions = concatenate(level_predictions)
-            if model.skip_conn:
-                try:
-                    # convert to initial dataset type
-                    level_predictions = data.from_dataset(level_predictions)
-                except TypeError:
-                    raise TypeError("Can not convert prediction dataset type to input features. Set skip_conn=False")
-                data = concatenate([level_predictions, data])
-            else:
-                data = level_predictions
-
-    feat_imp = pd.DataFrame(feat_imp, columns=["Feature", "Importance"])
-    feat_imp = feat_imp.sort_values("Importance", ascending=False).reset_index(drop=True)
-    return feat_imp
+    return (
+        pd.DataFrame(importances, columns=["Feature", "Importance"])
+        .sort_values("Importance", ascending=False)
+        .reset_index(drop=True)
+    )
 
 
 def change_datetime(feature_datetime, key, value):

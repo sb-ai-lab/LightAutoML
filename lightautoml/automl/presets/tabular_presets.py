@@ -688,6 +688,7 @@ class TabularAutoML(AutoMLPreset):
             levels,
             skip_conn=self.general_params["skip_conn"],
             blender=blender,
+            max_input_features=None if self.is_time_series else self.selection_params.get("max_input_features"),
             return_all_predictions=self.general_params["return_all_predictions"],
             timer=self.timer,
             debug=self.debug,
@@ -784,7 +785,7 @@ class TabularAutoML(AutoMLPreset):
         if upd_roles:
             roles = {**roles, **upd_roles}
         if valid_data is not None:
-            data, _ = read_data(valid_data, valid_features, self.cpu_limit, self.read_csv_params)
+            valid_data, _ = read_data(valid_data, valid_features, self.cpu_limit, self.read_csv_params)
 
         if self.is_time_series:
             train = {"seq": {"seq0": train}}
@@ -888,6 +889,7 @@ class TabularAutoML(AutoMLPreset):
         data: Optional[ReadableToDf] = None,
         features_names: Optional[Sequence[str]] = None,
         silent: bool = True,
+        random_state: int = 42,
     ):
         """Calculate feature importances for the fitted AutoML.
 
@@ -902,6 +904,7 @@ class TabularAutoML(AutoMLPreset):
             data: Dataset used by the accurate method.
             features_names: Optional feature names when they cannot be
                 inferred from ``data``.
+            random_state: Seed for the accurate method's row permutation.
             silent: If ``False``, log why importances cannot be returned.
 
         Returns:
@@ -940,8 +943,7 @@ class TabularAutoML(AutoMLPreset):
                 logger.info2("Data parameter is not setup for accurate calculation method. Aborting...")
             return None
 
-        read_csv_params = self._get_read_csv_params()
-        data, _ = read_data(data, features_names, self.cpu_limit, read_csv_params)
+        data, _ = read_data(data, features_names, self.cpu_limit, self.read_csv_params)
         used_feats = self.collect_used_feats()
         fi = calc_feats_permutation_imps(
             self,
@@ -950,6 +952,7 @@ class TabularAutoML(AutoMLPreset):
             self.reader.target,
             self.task.get_dataset_metric(),
             silent=silent,
+            random_state=random_state,
         )
         return fi
 
@@ -1124,6 +1127,7 @@ class TabularUtilizedAutoML(TimeUtilization):
         data: Optional[ReadableToDf] = None,
         features_names: Optional[Sequence[str]] = None,
         silent: bool = True,
+        random_state: int = 42,
     ):
         """Calculate aggregated feature importances for the utilized preset.
 
@@ -1138,6 +1142,7 @@ class TabularUtilizedAutoML(TimeUtilization):
             data: Dataset used by the accurate method.
             features_names: Optional feature names when they cannot be
                 inferred from ``data``.
+            random_state: Seed for the accurate method's row permutation.
             silent: If ``False``, log why importances cannot be returned.
 
         Returns:
@@ -1181,8 +1186,7 @@ class TabularUtilizedAutoML(TimeUtilization):
             return None
 
         automl = self.outer_pipes[0].ml_algos[0].models[0][0]
-        read_csv_params = automl._get_read_csv_params()
-        data, _ = read_data(data, features_names, self.cpu_limit, read_csv_params)
+        data, _ = read_data(data, features_names, self.cpu_limit, automl.read_csv_params)
 
         used_feats = set()
         for pipe in self.outer_pipes:
@@ -1195,6 +1199,7 @@ class TabularUtilizedAutoML(TimeUtilization):
             automl.reader.target,
             automl.task.get_dataset_metric(),
             silent=silent,
+            random_state=random_state,
         )
         return fi
 
